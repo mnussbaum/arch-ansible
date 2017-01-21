@@ -1,0 +1,43 @@
+---
+- name: networking | Install packages
+  package: name={{ item }} state=latest
+  with_items:
+    - dhclient
+    - wireless_tools
+    - wpa_supplicant
+    - networkmanager
+
+- name: networking | Check for network-manager-applet
+  command: pacman -Qi network-manager-applet
+  register: network_manager_applet_check
+  failed_when: "network_manager_applet_check.rc not in [0, 1]"
+- name: networking | Install network-manager-applet
+  command: pacman -Syu --noconfirm network-manager-applet
+  when: network_manager_applet_check.rc != 0
+
+- name: networking | Configure NetworkManager
+  lineinfile:
+    dest: /etc/NetworkManager/NetworkManager.conf
+    regexp: '^dhcp='
+    line: 'dhcp=dhclient'
+
+- name: networking | Disable dhcpcd
+  service:
+    name: dhcpcd
+    enabled: no
+    state: stopped
+- name: networking | Enable wpa_supplicant
+  service:
+    name: wpa_supplicant
+    enabled: yes
+    state: started
+- name: networking | Enable NetworkManager
+  service:
+    name: NetworkManager
+    enabled: yes
+    state: started
+- name: networking | Enable NetworkManager dispatcher
+  service:
+    name: NetworkManager-dispatcher
+    enabled: yes
+    state: started

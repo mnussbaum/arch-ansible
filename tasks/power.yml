@@ -1,0 +1,29 @@
+---
+- name: power | Install TLP
+  package:
+    name: tlp
+    state: latest
+- name: power | Install TLP Radio controls
+  package:
+    name: tlp-rdw
+    state: latest
+
+- name: power | Disable systemd-rfkill
+  service:
+    name: systemd-rfkill
+    enabled: no
+    state: stopped
+- name: power | Enable TLP
+  service:
+    name: tlp
+    enabled: yes
+    state: started
+- name: power | Enable TLP Sleep
+  service:
+    name: tlp-sleep
+    enabled: yes
+    state: started
+
+# Need swap file
+# Need to enable hibernate
+# Need to enable suspend-sedation to move from suspend to hibernate after time

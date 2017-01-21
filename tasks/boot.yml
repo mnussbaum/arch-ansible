@@ -1,0 +1,13 @@
+---
+- name: boot | Install os-prober
+  package:
+    name: os-prober
+    state: latest
+  notify:
+    - Regenerate grub.cfg
+- name: boot | Install intel-ucode
+  package:
+    name: intel-ucode
+    state: latest
+  notify:
+    - Regenerate grub.cfg

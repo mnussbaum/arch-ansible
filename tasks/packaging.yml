@@ -1,0 +1,31 @@
+---
+# Reflector ranks mirrors
+- name: packaging | Install reflector
+  package: name=reflector state=latest
+
+- name: packaging | Install reflector service
+  copy:
+    src: files/reflector.service
+    dest: /etc/systemd/system/reflector.service
+
+- name: packaging | Install reflector timer
+  copy:
+    src: files/reflector.timer
+    dest: /etc/systemd/system/reflector.timer
+
+- name: packaging | Enable reflector service
+  service:
+    name: reflector.service
+    enabled: yes
+    state: started
+
+- name: packaging | Enable reflector timer
+  service:
+    name: reflector.timer
+    enabled: yes
+    state: started
+
+- name: packaging | Update all packages
+  pacman:
+    update_cache: yes
+    upgrade: yes
