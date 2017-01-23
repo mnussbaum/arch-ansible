@@ -11,8 +11,6 @@ Vagrant.configure("2") do |config|
     vb.memory = "4096"
   end
 
-  # config.vm.provision "shell", inline: "rm /dev/random"
-  # config.vm.provision "shell", inline: "ln -s /dev/urandom /dev/random"
   config.vm.provision "shell", inline: "pacman -Syu --noconfirm wpa_supplicant ansible python"
 
   config.vm.provision "ansible" do |ansible|
