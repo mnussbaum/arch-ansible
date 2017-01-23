@@ -11,3 +11,52 @@
     state: latest
   notify:
     - Regenerate grub.cfg
+
+- name: boot | Configure disk encryption
+  notify:
+    - Regenerate grub.cfg
+  lineinfile:
+    dest: /etc/default/grub
+    regexp: '^GRUB_ENABLE_CRYPTODISK='
+    line: 'GRUB_ENABLE_CRYPTODISK=y'
+- name: boot | Configure disk encryption
+  notify:
+    - Regenerate grub.cfg
+  lineinfile:
+    dest: /etc/default/grub
+    line: 'GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ ssd_device }}:vgcrypt"'
+
+- name: boot | Get power_image size
+  command: cat /sys/power/image_size
+  register: power_image_size_bytes
+
+- name: boot | Configure swapfile
+  include_role: name="ansible-swapfile"
+  vars:
+    swapfile_size: "{{ ((power_image_size_bytes.stdout | int) * 1.25) | int }}"
+    swapfile_swappiness: 0
+    swapfile_location: /swapfile
+    vfs_cache_pressure: 50
+
+- name: boot | Get swapfile offset
+  shell: filefrag -v /swapfile | awk '{gsub(/\./,""); if($1=="0:"){print $4}}'
+  register: swapfile_offset
+- name: boot | Configure swapfile kernel params
+  notify:
+    - Regenerate grub.cfg
+  lineinfile:
+    dest: /etc/default/grub
+    line: 'GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume={{ root_device }}"'
+- name: boot | Configure swapfile kernel params
+  notify:
+    - Regenerate grub.cfg
+  lineinfile:
+    dest: /etc/default/grub
+    line: 'GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"'
+
+- name: boot | Install mkinitcpio.confg
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  copy:
+    src: files/mkinitcpio.conf
+    dest: /etc/mkinitcpio.conf

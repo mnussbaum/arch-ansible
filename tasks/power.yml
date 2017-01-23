@@ -22,8 +22,9 @@
   service:
     name: tlp-sleep
     enabled: yes
-    state: started
 
-# Need swap file
-# Need to enable hibernate
-# Need to enable suspend-sedation to move from suspend to hibernate after time
+# Enable suspend on lid close
+# Enable wake on lid open
+# Enable wake on keypress
+# Enable wake on mouse
+# Enable suspend-to-hibernate

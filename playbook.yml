@@ -4,6 +4,8 @@
   handlers:
     - name: Regenerate grub.cfg
       command: grub-mkconfig -o /boot/grub/grub.cfg
+    - name: Regenerate mkinitcpio ramdisk
+      command: mkinitcpio -p linux
   tasks:
     - include: tasks/packaging.yml
     - include: tasks/boot.yml
@@ -12,13 +14,11 @@
 
 # Disk
   # Disable journaling
-  # Enable swap file
   # Other stuff from https://github.com/alghanmi/ubuntu-desktop_setup/wiki/SSD-Configuration-on-Linux
 # Limit journald total and max file sizes - https://github.com/groks/ansible-systemd-journal/blob/master/tasks/main.yml
 # Power management
 # Time sync
 # Remove psmouse errors from dmesg
-# Networking
 # Audio
 # GUI
 # Mouse input
