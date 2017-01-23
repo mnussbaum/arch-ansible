@@ -11,6 +11,7 @@
     - include: tasks/boot.yml
     - include: tasks/networking.yml
     - include: tasks/power.yml
+    - include: tasks/gui.yml
 
 # Disk
   # Disable journaling

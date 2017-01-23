@@ -1,0 +1,12 @@
+---
+- name: GUI | Install packages
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - i3
+    - xterm
+    - xorg-server
+    - xorg-xinit
+    - xorg-server-utils
+    - rxvt-unicode
