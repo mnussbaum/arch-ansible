@@ -23,8 +23,15 @@
     name: tlp-sleep
     enabled: yes
 
-# Enable suspend on lid close
-# Enable wake on lid open
+- name: power | Install suspend-sedation service
+  copy:
+    src: files/suspend-sedation.service
+    dest: /etc/systemd/system/suspend-sedation.service
+- name: power | Enable suspend-sedation service
+  service:
+    name: suspend-sedation
+    enabled: yes
+
+# Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120
 # Enable wake on keypress
 # Enable wake on mouse
-# Enable suspend-to-hibernate
