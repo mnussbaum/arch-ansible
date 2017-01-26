@@ -1,6 +1,10 @@
 ---
 - hosts: all
   become: true
+  vars_prompt:
+    - name: user_password
+      prompt: "Enter desired user password"
+      default: "password"
   handlers:
     - name: Regenerate grub.cfg
       command: grub-mkconfig -o /boot/grub/grub.cfg
@@ -11,6 +15,8 @@
     - include: tasks/boot.yml
     - include: tasks/networking.yml
     - include: tasks/power.yml
+    - include: tasks/cli-tools.yml
+    - include: tasks/user.yml
     - include: tasks/gui.yml
 
 # Disk

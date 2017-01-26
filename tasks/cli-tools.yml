@@ -1,0 +1,8 @@
+---
+- name: CLI Tools | Install packages
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - zsh
+    - tmux

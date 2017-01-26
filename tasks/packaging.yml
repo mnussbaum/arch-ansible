@@ -17,7 +17,6 @@
   service:
     name: reflector.service
     enabled: yes
-    state: started
 
 - name: packaging | Enable reflector timer
   service:
@@ -29,3 +28,6 @@
   pacman:
     update_cache: yes
     upgrade: yes
+
+- name: packaging | Install base-devel
+  package: name=base-devel state=latest

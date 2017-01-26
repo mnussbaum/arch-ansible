@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
     vb.memory = "4096"
   end
 
-  config.vm.provision "shell", inline: "pacman -Syu --noconfirm wpa_supplicant ansible python"
+  config.vm.provision "shell", inline: "pacman -Syu --noconfirm wpa_supplicant ansible python python-passlib"
 
   config.vm.provision "ansible" do |ansible|
     ansible.raw_arguments  = [
