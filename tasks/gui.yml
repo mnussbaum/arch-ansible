@@ -16,3 +16,9 @@
     dest: "/home/{{ user.name }}/.xinitrc"
     content: "exec i3"
     owner: "{{ user.name }}"
+
+- name: GUI | Start X at boot
+  copy:
+    dest: "/home/{{ user.name }}/.zprofile"
+    src: zprofile
+    owner: "{{ user.name }}"
