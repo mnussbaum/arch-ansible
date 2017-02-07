@@ -4,6 +4,7 @@
     name: "{{ item }}"
     state: latest
   with_items:
+    - dmenu
     - i3
     - xterm
     - xorg-server
@@ -21,4 +22,10 @@
   copy:
     dest: "/home/{{ user.name }}/.zprofile"
     src: zprofile
+    owner: "{{ user.name }}"
+
+- name: GUI | Install i3 configs
+  copy:
+    dest: "/home/{{ user.name }}/.config/i3/config"
+    src: i3_config
     owner: "{{ user.name }}"

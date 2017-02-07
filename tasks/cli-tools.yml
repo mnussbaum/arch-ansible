@@ -4,5 +4,18 @@
     name: "{{ item }}"
     state: latest
   with_items:
-    - zsh
+    - aws-cli
+    - bc
+    - curl
+    - dstat
+    - git
+    - gnupg
+    - htop
+    - jq
+    - lsof
+    - neovim
+    - net-tools
+    - rsync
+    - tig
     - tmux
+    - zsh

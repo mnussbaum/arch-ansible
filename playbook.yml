@@ -18,6 +18,7 @@
     - include: tasks/cli-tools.yml
     - include: tasks/user.yml
     - include: tasks/gui.yml
+    - include: tasks/gui-apps.yml
 
 # Disk
   # Disable journaling
@@ -41,10 +42,6 @@
   #   dotfiles
   #   editor
   #   shell
-# CLI Apps
-  # vim
-  # jq
-  # aws
 # GUI Apps
   # music
   # video
