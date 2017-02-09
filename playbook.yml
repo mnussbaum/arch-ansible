@@ -19,6 +19,7 @@
     - include: tasks/user.yml
     - include: tasks/gui.yml
     - include: tasks/gui-apps.yml
+    - include: tasks/fonts.yml
 
 # Disk
   # Disable journaling

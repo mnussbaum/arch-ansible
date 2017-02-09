@@ -6,16 +6,17 @@
   with_items:
     - dmenu
     - i3
-    - xterm
-    - xorg-server
-    - xorg-xinit
-    - xorg-server-utils
     - rxvt-unicode
+    - xorg-server
+    - xorg-server-utils
+    - xorg-xdpyinfo
+    - xorg-xinit
+    - xterm
 
 - name: GUI | Configure xinitrc
   copy:
     dest: "/home/{{ user.name }}/.xinitrc"
-    content: "exec i3"
+    content: "xrandr --dpi 192 && exec i3"
     owner: "{{ user.name }}"
 
 - name: GUI | Start X at boot

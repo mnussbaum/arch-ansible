@@ -1,0 +1,24 @@
+---
+- name: Fonts | Install packages
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - freetype2
+    - fontconfig
+    - cairo
+    - gsfonts
+    - ttf-dejavu
+    - noto-fonts
+
+- name: Fonts | Enable LCD filter
+  file:
+    src: /etc/fonts/conf.avail/11-lcdfilter-default.conf
+    dest: /etc/fonts/conf.d/11-lcdfilter-default.conf
+    state: link
+
+- name: Fonts | Enable sub-pixel rendering
+  file:
+    src: /etc/fonts/conf.avail/10-sub-pixel-rgb.conf
+    dest: /etc/fonts/conf.d/10-sub-pixel-rgb.conf
+    state: link
