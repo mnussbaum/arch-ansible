@@ -3,7 +3,7 @@
 
 Vagrant.configure("2") do |config|
   config.vm.box = "/Users/mnussbaum/src/atlas-archlinux/packer_outdir/packed/archlinux-virtualbox.box"
-  # config.vm.synced_folder "../data", "/vagrant_data"
+  config.vm.synced_folder ".", "/vagrant"
 
   config.vm.provider "virtualbox" do |vb|
     # vb.gui = true
@@ -13,7 +13,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", inline: "pacman -Syu --noconfirm wpa_supplicant ansible python python-passlib"
 
-  config.vm.provision "ansible" do |ansible|
+  config.vm.provision "ansible_local" do |ansible|
     ansible.raw_arguments  = [
       "-e ssd_device=/dev/sda2",
       "-e root_device=/dev/mapper/vgcrypt-root",
