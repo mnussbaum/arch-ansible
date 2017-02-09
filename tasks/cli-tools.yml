@@ -25,10 +25,12 @@
 - name: CLI Tools | Check if cower key present
   command: gpg --list-keys 1EB2638FF56C0C53
   ignore_errors: true
+  become: "{{ user.name }} "
   register: cower_key_installed
 - name: CLI Tools | Add cower author's key
-  command: gpg --recv-key 1EB2638FF56C0C53
+  command: gpg --recv-key --keyserver hkp://pgp.mit.edu 1EB2638FF56C0C53
   when: cower_key_installed | failed
+  become: "{{ user.name }} "
 - name: CLI Tools | Install cower for pacaur
   makepkg:
     name: cower
