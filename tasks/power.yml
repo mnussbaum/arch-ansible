@@ -35,4 +35,19 @@
 # Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120
 # Enable wake on keypress
 # Enable wake on mouse
-# Save power with nvme disk https://github.com/damige/linux-nvme
+
+- name: power | Add Linus' key
+  become: "{{ user.name }} "
+  gpg_import:
+    key_id: 79BE3E4300411886
+- name: power | Add Greg Kroah-Hartman's key
+  become: "{{ user.name }} "
+  gpg_import:
+    key_id: 38DBBDC86092693E
+- name: power | Install linux-nvme kernel patch
+  register: installed_linux_nvme
+  pacaur:
+    name: linux-nvme
+    state: present
+  notify:
+    - Regenerate grub.cfg
