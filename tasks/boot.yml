@@ -60,3 +60,9 @@
   copy:
     src: files/mkinitcpio.conf
     dest: /etc/mkinitcpio.conf
+
+- name: boot | Enable periodic TRIM
+  service:
+    name: fstrim.timer
+    enabled: yes
+    state: started
