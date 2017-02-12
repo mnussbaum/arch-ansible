@@ -3,7 +3,6 @@
 
 Vagrant.configure("2") do |config|
   config.vm.box = "/Users/mnussbaum/src/atlas-archlinux/packer_outdir/packed/archlinux-virtualbox.box"
-  config.vm.synced_folder ".", "/vagrant"
 
   config.vm.provider "virtualbox" do |vb|
     # vb.gui = true

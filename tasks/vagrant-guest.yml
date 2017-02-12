@@ -1,0 +1,11 @@
+---
+- name: vagrant-guest | Install vagrant kernel modules
+  when: ansible_bios_version == "VirtualBox"
+  package:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - virtualbox-host-dkms
+    - virtualbox-guest-dkms
+  notify:
+    - Regenerate grub.cfg

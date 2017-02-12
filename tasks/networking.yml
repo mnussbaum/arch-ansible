@@ -16,10 +16,9 @@
   when: network_manager_applet_check.rc != 0
 
 - name: networking | Configure NetworkManager
-  lineinfile:
+  copy:
+    src: files/NetworkManager.conf
     dest: /etc/NetworkManager/NetworkManager.conf
-    regexp: '^dhcp='
-    line: 'dhcp=dhclient'
 
 - name: networking | Disable dhcpcd
   service:

@@ -26,6 +26,12 @@
     owner: "{{ user.name }}"
 
 - name: GUI | Install i3 configs
+  file:
+    path: "/home/{{ user.name }}/.config/i3"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: GUI | Install i3 configs
   copy:
     dest: "/home/{{ user.name }}/.config/i3/config"
     src: i3_config

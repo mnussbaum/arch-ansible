@@ -32,6 +32,11 @@
     name: suspend-sedation
     enabled: yes
 
+- name: power | Install powerstat tool
+  pacaur:
+    name: powerstat-git
+    state: present
+
 # Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120
 # Enable wake on keypress
 # Enable wake on mouse
@@ -45,9 +50,11 @@
   gpg_import:
     key_id: 38DBBDC86092693E
 - name: power | Install linux-nvme kernel patch
-  register: installed_linux_nvme
   pacaur:
-    name: linux-nvme
+    name: "{{ item }}"
     state: present
+  with_items:
+    - linux-nvme
+    - linux-nvme-headers
   notify:
     - Regenerate grub.cfg
