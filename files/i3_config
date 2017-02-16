@@ -1,6 +1,6 @@
 set $mod Mod1
 
-font pango:monospace 8
+font pango:monospace 12
 
 bindsym $mod+Return exec i3-sensible-terminal
 bindsym $mod+d exec --no-startup-id i3-dmenu-desktop
