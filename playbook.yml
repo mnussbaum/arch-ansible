@@ -10,6 +10,9 @@
       command: grub-mkconfig -o /boot/grub/grub.cfg
     - name: Regenerate mkinitcpio ramdisk
       command: mkinitcpio -p linux
+    - name: Reload i3
+      command: i3-msg restart
+      ignore_errors: true
   tasks:
     - include: tasks/packaging.yml
     - include: tasks/boot.yml
@@ -21,6 +24,7 @@
     - include: tasks/gui.yml
     - include: tasks/gui-apps.yml
     - include: tasks/fonts.yml
+    - include: tasks/multitouch.yml
 
 # Disk
   # Disable journaling
