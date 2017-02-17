@@ -41,20 +41,5 @@
 # Enable wake on keypress
 # Enable wake on mouse
 
-- name: power | Add Linus' key
-  become: "{{ user.name }} "
-  gpg_import:
-    key_id: 79BE3E4300411886
-- name: power | Add Greg Kroah-Hartman's key
-  become: "{{ user.name }} "
-  gpg_import:
-    key_id: 38DBBDC86092693E
-- name: power | Install linux-nvme kernel patch
-  pacaur:
-    name: "{{ item }}"
-    state: present
-  with_items:
-    - linux-nvme
-    - linux-nvme-headers
-  notify:
-    - Regenerate grub.cfg
+- include: linux-nvme.yml
+  when: "'nvme' in ssd_device or force_nvme_patch is defined"
