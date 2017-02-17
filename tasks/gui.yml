@@ -14,9 +14,9 @@
     - xterm
 
 - name: GUI | Configure xinitrc
-  copy:
+  template:
     dest: "/home/{{ user.name }}/.xinitrc"
-    content: "xrandr --dpi 192 && exec i3"
+    src: templates/xinitrc.j2
     owner: "{{ user.name }}"
 
 - name: GUI | Start X at boot

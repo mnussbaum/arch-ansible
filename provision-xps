@@ -4,5 +4,6 @@ set -o errexit
 set -o nounset
 
 ansible-playbook -i localhost playbook.yml \
-  -e ssd_device=/dev/nvme0n1p8 \
-  -e root_device=/dev/mapper/vgcrypt-root
+  -e dpi=192 \
+  -e root_device=/dev/mapper/vgcrypt-root \
+  -e ssd_device=/dev/nvme0n1p8

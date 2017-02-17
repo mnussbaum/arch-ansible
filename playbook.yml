@@ -12,7 +12,8 @@
       command: mkinitcpio -p linux
     - name: Reload i3
       command: i3-msg restart
-      ignore_errors: true
+      register: i3_restart_result
+      failed_when: i3_restart_result.rc not in [0, 1]
   tasks:
     - include: tasks/packaging.yml
     - include: tasks/boot.yml
