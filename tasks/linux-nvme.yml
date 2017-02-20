@@ -1,10 +1,8 @@
 ---
 - name: linux-nvme | Add Linus' key
-  become: user.name
   gpg_import:
     key_id: 79BE3E4300411886
 - name: linux-nvme | Add Greg Kroah-Hartman's key
-  become: user.name
   gpg_import:
     key_id: 38DBBDC86092693E
 - name: linux-nvme | Install kernel patch and headers
@@ -16,3 +14,4 @@
     - linux-nvme-headers
   notify:
     - Regenerate grub.cfg
+  become: true

@@ -1,6 +1,5 @@
 ---
 - hosts: all
-  become: true
   vars_prompt:
     - name: user_password
       prompt: "Enter desired user password"
@@ -8,12 +7,10 @@
   handlers:
     - name: Regenerate grub.cfg
       command: grub-mkconfig -o /boot/grub/grub.cfg
+      become: true
     - name: Regenerate mkinitcpio ramdisk
       command: mkinitcpio -p linux
-    - name: Reload i3
-      command: i3-msg restart
-      register: i3_restart_result
-      failed_when: i3_restart_result.rc not in [0, 1]
+      become: true
   tasks:
     - include: tasks/packaging.yml
     - include: tasks/boot.yml
@@ -25,7 +22,6 @@
     - include: tasks/gui.yml
     - include: tasks/gui-apps.yml
     - include: tasks/fonts.yml
-    - include: tasks/multitouch.yml
 
 # Disk
   # Disable journaling

@@ -6,6 +6,7 @@
     - wireless_tools
     - wpa_supplicant
     - networkmanager
+  become: true
 
 - name: networking | Check for network-manager-applet
   command: pacman -Qi network-manager-applet
@@ -14,29 +15,35 @@
 - name: networking | Install network-manager-applet
   command: pacman -Syu --noconfirm network-manager-applet
   when: network_manager_applet_check.rc != 0
+  become: true
 
 - name: networking | Configure NetworkManager
   copy:
     src: files/NetworkManager.conf
     dest: /etc/NetworkManager/NetworkManager.conf
+  become: true
 
 - name: networking | Disable dhcpcd
   service:
     name: dhcpcd
     enabled: no
     state: stopped
+  become: true
 - name: networking | Enable wpa_supplicant
   service:
     name: wpa_supplicant
     enabled: yes
     state: started
+  become: true
 - name: networking | Enable NetworkManager
   service:
     name: NetworkManager
     enabled: yes
     state: started
+  become: true
 - name: networking | Enable NetworkManager dispatcher
   service:
     name: NetworkManager-dispatcher
     enabled: yes
     state: started
+  become: true

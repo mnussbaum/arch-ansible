@@ -1,41 +1,47 @@
 ---
-- name: power | Install TLP
+- name: power | Install packages
   package:
-    name: tlp
+    name: "{{ item }}"
     state: latest
-- name: power | Install TLP Radio controls
-  package:
-    name: tlp-rdw
-    state: latest
+  with_items:
+    - tlp
+    - tlp-rdw
+  become: true
 
 - name: power | Disable systemd-rfkill
   service:
     name: systemd-rfkill
     enabled: no
     state: stopped
+  become: true
 - name: power | Enable TLP
   service:
     name: tlp
     enabled: yes
     state: started
+  become: true
 - name: power | Enable TLP Sleep
   service:
     name: tlp-sleep
     enabled: yes
+  become: true
 
 - name: power | Install suspend-sedation service
   copy:
     src: files/suspend-sedation.service
     dest: /etc/systemd/system/suspend-sedation.service
+  become: true
 - name: power | Enable suspend-sedation service
   service:
     name: suspend-sedation
     enabled: yes
+  become: true
 
 - name: power | Install powerstat tool
   pacaur:
     name: powerstat-git
     state: present
+  become: true
 
 # Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120
 # Enable wake on keypress

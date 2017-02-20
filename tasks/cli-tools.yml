@@ -21,16 +21,18 @@
     - tig
     - tmux
     - zsh
+  become: true
 
 - name: CLI Tools | Add cower author's key
-  become: "{{ user.name }} "
   gpg_import:
     key_id: 1EB2638FF56C0C53
 - name: CLI Tools | Install cower for pacaur
+  become: true
   makepkg:
     name: cower
     state: present
 - name: CLI Tools | Install pacaur
+  become: true
   makepkg:
     name: pacaur
     state: present

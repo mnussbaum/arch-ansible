@@ -5,3 +5,5 @@
     state: latest
   with_items:
     - firefox
+  become: true
+

@@ -1,33 +1,44 @@
 ---
 # Reflector ranks mirrors
 - name: packaging | Install reflector
-  package: name=reflector state=latest
+  package:
+    name: reflector
+    state: latest
+  become: true
 
 - name: packaging | Install reflector service
   copy:
     src: files/reflector.service
     dest: /etc/systemd/system/reflector.service
+  become: true
 
 - name: packaging | Install reflector timer
   copy:
     src: files/reflector.timer
     dest: /etc/systemd/system/reflector.timer
+  become: true
 
 - name: packaging | Enable reflector service
   service:
     name: reflector.service
     enabled: yes
+  become: true
 
 - name: packaging | Enable reflector timer
   service:
     name: reflector.timer
     enabled: yes
     state: started
+  become: true
 
 - name: packaging | Update all packages
   pacman:
     update_cache: yes
     upgrade: yes
+  become: true
 
 - name: packaging | Install base-devel
-  package: name=base-devel state=latest
+  package:
+    name: base-devel
+    state: latest
+  become: true

@@ -9,3 +9,4 @@
     - virtualbox-guest-dkms
   notify:
     - Regenerate grub.cfg
+  become: true

@@ -1,8 +1,10 @@
 ---
 - name: user | Create wheel group
+  become: true
   group: name=wheel state=present
 
 - name: user | Configure sudoers
+  become: true
   lineinfile:
     dest: /etc/sudoers.d/ansible
     line: "%wheel ALL=(ALL) ALL"
@@ -11,12 +13,14 @@
     validate: "visudo -cf %s"
 
 - name: user | Create individual user group
+  become: true
   group: name={{ user.group }} state=present
 
 - name: user | Create user
+  become: true
   user:
     name: "{{ user.name }}"
-    groups: "{{ user.group }},wheel"
+    groups: "{{ user.group }},input,wheel"
     password: "{{ user_password | password_hash('sha512') }}"
     shell: "{{ user.shell }}"
     update_password: on_create

@@ -1,0 +1,8 @@
+Section "InputDevice"
+  Identifier "{{ touchpad_device_id }}"
+  Driver     "libinput"
+  Option     "ClickMethod"      "clickfinger" # Enable multi-finger click
+  Option     "Tapping"          "true"        # Enable tap to click
+  Option     "NaturalScrolling" "true"        # Enable natural scrolling
+  Option     "AccelSpeed"       "1"           # Increase mouse speed
+EndSection

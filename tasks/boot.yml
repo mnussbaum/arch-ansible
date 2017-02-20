@@ -1,18 +1,17 @@
 ---
-- name: boot | Install os-prober
+- name: boot | Install packages
+  become: true
   package:
-    name: os-prober
+    name: "{{ item }}"
     state: latest
   notify:
     - Regenerate grub.cfg
-- name: boot | Install intel-ucode
-  package:
-    name: intel-ucode
-    state: latest
-  notify:
-    - Regenerate grub.cfg
+  with_items:
+    - os-prober
+    - intel-ucode
 
 - name: boot | Configure disk encryption
+  become: true
   notify:
     - Regenerate grub.cfg
   lineinfile:
@@ -20,6 +19,7 @@
     regexp: '^GRUB_ENABLE_CRYPTODISK='
     line: 'GRUB_ENABLE_CRYPTODISK=y'
 - name: boot | Configure disk encryption
+  become: true
   notify:
     - Regenerate grub.cfg
   lineinfile:
@@ -31,6 +31,7 @@
   register: power_image_size_bytes
 
 - name: boot | Configure swapfile
+  become: true
   include_role: name="ansible-swapfile"
   vars:
     swapfile_size: "{{ ((power_image_size_bytes.stdout | int) * 1.25) | int }}"
@@ -42,12 +43,14 @@
   shell: filefrag -v /swapfile | awk '{gsub(/\./,""); if($1=="0:"){print $4}}'
   register: swapfile_offset
 - name: boot | Configure swapfile kernel params
+  become: true
   notify:
     - Regenerate grub.cfg
   lineinfile:
     dest: /etc/default/grub
     line: 'GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume={{ root_device }}"'
 - name: boot | Configure swapfile kernel params
+  become: true
   notify:
     - Regenerate grub.cfg
   lineinfile:
@@ -55,6 +58,7 @@
     line: 'GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"'
 
 - name: boot | Install mkinitcpio.confg
+  become: true
   notify:
     - Regenerate mkinitcpio ramdisk
   copy:
@@ -62,6 +66,7 @@
     dest: /etc/mkinitcpio.conf
 
 - name: boot | Enable periodic TRIM
+  become: true
   service:
     name: fstrim.timer
     enabled: yes

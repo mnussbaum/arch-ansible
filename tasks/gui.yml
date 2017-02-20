@@ -6,12 +6,35 @@
   with_items:
     - dmenu
     - i3
+    - libinput
     - rxvt-unicode
+    - wmctrl
+    - xdotool
+    - xf86-input-libinput
     - xorg-server
     - xorg-server-utils
     - xorg-xdpyinfo
     - xorg-xinit
+    - xorg-xinput
     - xterm
+  become: true
+
+- name: GUI | Install pacakges
+  become: true
+  pacaur:
+    name: libinput-gestures
+    state: present
+
+- name: GUI | Configure xorg to run with root privileges
+  copy:
+    dest: /etc/X11/Xwrapper.config
+    src: Xwrapper.config
+  become: true
+
+- name: GUI | Install xorg service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/xorg.service"
+    src: xorg.service
 
 - name: GUI | Configure xinitrc
   template:
@@ -19,7 +42,13 @@
     src: templates/xinitrc.j2
     owner: "{{ user.name }}"
 
-- name: GUI | Start X at boot
+- name: GUI | Install user profile to start X
+  copy:
+    dest: "/home/{{ user.name }}/.profile"
+    src: profile
+    owner: "{{ user.name }}"
+
+- name: GUI | Install user zprofile
   copy:
     dest: "/home/{{ user.name }}/.zprofile"
     src: zprofile
@@ -36,3 +65,30 @@
     dest: "/home/{{ user.name }}/.config/i3/config"
     src: i3_config
     owner: "{{ user.name }}"
+
+- name: GUI | Get touchpad device name
+  shell: xinput list | grep Touchpad | awk '{ print $3,$4,$5 }'
+  register: touchpad_device_id_res
+
+- name: GUI | Install libinput config
+  template:
+    dest: "/etc/X11/xorg.conf.d/99-libinput.conf"
+    src: templates/xorg-libinput.conf.j2
+  vars:
+    touchpad_device_id: "{{ touchpad_device_id_res.stdout }}"
+  become: true
+
+- name: GUI | Install libinput-gestures user service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/libinput-gestures.service"
+    src: libinput-gestures.service
+    owner: "{{ user.name }}"
+
+- name: GUI | Enable libinput-gestures service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: libinput-gestures.service
+    user: true
+    daemon-reload: true
