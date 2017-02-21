@@ -66,16 +66,10 @@
     src: i3_config
     owner: "{{ user.name }}"
 
-- name: GUI | Get touchpad device name
-  shell: xinput list | grep Touchpad | awk '{ print $3,$4,$5 }'
-  register: touchpad_device_id_res
-
-- name: GUI | Install libinput config
-  template:
-    dest: "/etc/X11/xorg.conf.d/99-libinput.conf"
-    src: templates/xorg-libinput.conf.j2
-  vars:
-    touchpad_device_id: "{{ touchpad_device_id_res.stdout }}"
+- name: GUI | Install Xorg multitouch config
+  copy:
+    dest: "/etc/X11/xorg.conf.d/99-multitouch.conf"
+    src: xorg-multitouch.conf
   become: true
 
 - name: GUI | Install libinput-gestures user service
