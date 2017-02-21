@@ -7,7 +7,7 @@
     key_id: 38DBBDC86092693E
 - name: linux-nvme | Install kernel patch and headers
   pacaur:
-    name: item
+    name: "{{ item }}"
     state: present
   with_items:
     - linux-nvme
