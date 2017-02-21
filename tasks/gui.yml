@@ -66,11 +66,17 @@
     src: i3_config
     owner: "{{ user.name }}"
 
-- name: GUI | Install Xorg multitouch config
+- name: GUI | Install xorg multitouch config
   copy:
     dest: "/etc/X11/xorg.conf.d/99-multitouch.conf"
     src: xorg-multitouch.conf
   become: true
+
+- name: GUI | Install libinput-gestures.conf
+  copy:
+    dest: "/home/{{ user.name }}/.config/libinput-gestures.conf"
+    src: libinput-gestures.conf
+    owner: "{{ user.name }}"
 
 - name: GUI | Install libinput-gestures user service
   copy:
