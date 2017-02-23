@@ -14,3 +14,10 @@
   with_items:
     - firefox-pentadactyl-signed
   become: true
+
+- name: GUI Apps | Enlarge Firefox text size
+  lineinfile:
+    dest: "/home/{{ user.name }}/.mozilla/firefox/wsxag0rs.default/prefs.js"
+    regexp: '^user_pref\("layout.css.devPixelsPerPx"'
+    line: 'user_pref("layout.css.devPixelsPerPx", "2");'
+# TODO: Template name of profile dir

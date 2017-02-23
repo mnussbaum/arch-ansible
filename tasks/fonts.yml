@@ -27,3 +27,10 @@
     state: link
   become: true
 
+- name: Fonts | Enable crisper fonts with hinting
+  file:
+    src: /etc/fonts/conf.avail/10-hinting-full.conf
+    dest: /etc/fonts/conf.d/10-hinting-full.conf
+    state: link
+  become: true
+

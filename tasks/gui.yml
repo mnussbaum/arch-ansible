@@ -48,6 +48,12 @@
     dest: "/etc/X11/xorg.conf.d/90-monitor.conf"
 # TODO template display name, size in this
 
+- name: GUI | Configure Xresources
+  copy:
+    src: Xresources
+    dest: "/home/{{ user.name }}/.Xresources"
+    owner: "{{ user.name }}"
+
 - name: GUI | Install user profile to start X
   copy:
     dest: "/home/{{ user.name }}/.profile"
