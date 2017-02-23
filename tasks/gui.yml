@@ -37,10 +37,16 @@
     src: xorg.service
 
 - name: GUI | Configure xinitrc
-  template:
+  copy:
+    content: "exec i3"
     dest: "/home/{{ user.name }}/.xinitrc"
-    src: templates/xinitrc.j2
     owner: "{{ user.name }}"
+
+- name: GUI | Configure screen size
+  copy:
+    src: xorg-monitor.conf
+    dest: "/etc/X11/xorg.conf.d/90-monitor.conf"
+# TODO template display name, size in this
 
 - name: GUI | Install user profile to start X
   copy:
@@ -92,3 +98,10 @@
     name: libinput-gestures.service
     user: true
     daemon-reload: true
+
+
+
+#TODO set font configs in Xresources
+#TODO set console font
+#TODO investigate pango
+#TODO investigate X RENDER
