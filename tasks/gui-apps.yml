@@ -7,3 +7,10 @@
     - firefox
   become: true
 
+- name: GUI Apps | Install pacaur packages
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - firefox-pentadactyl-signed
+  become: true
