@@ -36,6 +36,20 @@
     dest: "/home/{{ user.name }}/.config/systemd/user/xorg.service"
     src: xorg.service
 
+- name: GUI | Install xrdb service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/xrdb.service"
+    src: xrdb.service
+
+- name: GUI | Enable xrdb service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: xrdb.service
+    user: true
+    daemon-reload: true
+
 - name: GUI | Configure xinitrc
   copy:
     content: "exec i3"
@@ -107,7 +121,6 @@
 
 
 
-#TODO set font configs in Xresources
 #TODO set console font
 #TODO investigate pango
 #TODO investigate X RENDER

@@ -5,3 +5,6 @@ Xft.hintstyle:  hintfull
 Xft.hinting: 1
 Xft.antialias: 1
 Xft.rgba: rgb
+
+URxvt.font: xft:DejaVuSansMono:size=8
+URxvt.italicFont: xft:DejaVuSansMono:size=8

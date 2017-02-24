@@ -4,12 +4,13 @@
     name: "{{ item }}"
     state: latest
   with_items:
-    - freetype2
-    - fontconfig
     - cairo
+    - fontconfig
+    - freetype2
     - gsfonts
-    - ttf-dejavu
+    - libxft
     - noto-fonts
+    - ttf-dejavu
   become: true
 
 - name: Fonts | Enable LCD filter
