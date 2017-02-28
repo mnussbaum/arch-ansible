@@ -1,8 +1,0 @@
-[Unit]
-Description=Xorg server
-
-[Service]
-Type=simple
-SuccessExitStatus=0 1
-
-ExecStart=/usr/bin/startx

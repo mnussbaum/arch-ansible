@@ -25,28 +25,93 @@
     name: libinput-gestures
     state: present
 
+- name: GUI | Install X11 socket activation unit
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/x11@.socket"
+    src: x11@.socket
+
+- name: GUI | Install X11 target
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/x11@.target"
+    src: x11@.target
+
+- name: GUI | Install xorg-delay service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/xorg-delay@.service"
+    src: xorg-delay@.service
+
+- name: GUI | Install xorg service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/xorg@.service"
+    src: xorg@.service
+
+- name: GUI | Install xrdb service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/xrdb@.service"
+    src: xrdb@.service
+
+- name: GUI | Install i3 service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/i3@.service"
+    src: i3@.service
+
 - name: GUI | Configure xorg to run with root privileges
   copy:
     dest: /etc/X11/Xwrapper.config
     src: Xwrapper.config
   become: true
 
-- name: GUI | Install xorg service
-  copy:
-    dest: "/home/{{ user.name }}/.config/systemd/user/xorg.service"
-    src: xorg.service
+- name: GUI | Enable X11 socket
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: x11@0.socket
+    user: true
+    daemon-reload: true
 
-- name: GUI | Install xrdb service
-  copy:
-    dest: "/home/{{ user.name }}/.config/systemd/user/xrdb.service"
-    src: xrdb.service
+- name: GUI | Enable X11 target
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: x11@0.target
+    user: true
+    daemon-reload: true
+
+- name: GUI | Enable xorg service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: xorg@0.service
+    user: true
+    daemon-reload: true
+
+- name: GUI | Enable xorg-delay service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: xorg-delay@0.service
+    user: true
+    daemon-reload: true
 
 - name: GUI | Enable xrdb service
   become: true
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
-    name: xrdb.service
+    name: xrdb@0.service
+    user: true
+    daemon-reload: true
+
+- name: GUI | Enable i3 service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: i3@0.service
     user: true
     daemon-reload: true
 
@@ -56,12 +121,12 @@
     dest: "/home/{{ user.name }}/.xinitrc"
     owner: "{{ user.name }}"
 
+# TODO template display ID, size in this
 - name: GUI | Configure screen size
   become: true
   copy:
     src: xorg-monitor.conf
     dest: "/etc/X11/xorg.conf.d/90-monitor.conf"
-# TODO template display name, size in this
 
 - name: GUI | Configure Xresources
   copy:
@@ -107,8 +172,8 @@
 
 - name: GUI | Install libinput-gestures user service
   copy:
-    dest: "/home/{{ user.name }}/.config/systemd/user/libinput-gestures.service"
-    src: libinput-gestures.service
+    dest: "/home/{{ user.name }}/.config/systemd/user/libinput-gestures@.service"
+    src: libinput-gestures@.service
     owner: "{{ user.name }}"
 
 - name: GUI | Enable libinput-gestures service
@@ -116,10 +181,9 @@
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
-    name: libinput-gestures.service
+    name: libinput-gestures@0.service
     user: true
     daemon-reload: true
-
 
 
 #TODO set console font
