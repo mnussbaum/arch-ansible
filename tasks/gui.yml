@@ -57,6 +57,7 @@
     owner: "{{ user.name }}"
 
 - name: GUI | Configure screen size
+  become: true
   copy:
     src: xorg-monitor.conf
     dest: "/etc/X11/xorg.conf.d/90-monitor.conf"
