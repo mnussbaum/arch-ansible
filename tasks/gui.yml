@@ -129,8 +129,8 @@
     dest: "/etc/X11/xorg.conf.d/90-monitor.conf"
 
 - name: GUI | Configure Xresources
-  copy:
-    src: Xresources
+  template:
+    src: templates/Xresources.j2
     dest: "/home/{{ user.name }}/.Xresources"
     owner: "{{ user.name }}"
 

@@ -1,4 +1,6 @@
-Xft.dpi: 276
+{% if dpi is defined %}
+Xft.dpi: {{ dpi }}
+{% endif %}
 Xft.autohint: 0
 Xft.lcdfilter:  lcddefault
 Xft.hintstyle:  hintfull
