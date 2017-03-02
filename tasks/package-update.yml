@@ -1,0 +1,29 @@
+- name: package update | Install package-update service
+  copy:
+    src: files/package-update.service
+    dest: "/home/{{ user.name }}/.config/systemd/user/package-update.service"
+
+- name: package update | Install package-update timer
+  copy:
+    src: files/package-update.timer
+    dest: "/home/{{ user.name }}/.config/systemd/user/package-update.timer"
+
+- name: package update | Enable package-update service
+  become: true
+  become_user: "{{ user.name }}"
+  service:
+    name: package-update.service
+    enabled: yes
+    state: started
+    user: true
+    daemon-reload: true
+
+- name: package update | Enable package-update timer
+  become: true
+  become_user: "{{ user.name }}"
+  service:
+    name: package-update.timer
+    enabled: yes
+    state: started
+    user: true
+    daemon-reload: true

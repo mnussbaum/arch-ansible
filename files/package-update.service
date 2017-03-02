@@ -1,0 +1,9 @@
+[Unit]
+Description=Update installed packages
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/pacaur -Syu
+
+[Install]
+RequiredBy=default.target
