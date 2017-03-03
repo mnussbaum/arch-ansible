@@ -8,7 +8,6 @@
     - i3
     - libinput
     - rxvt-unicode
-    - wmctrl
     - xdotool
     - xf86-input-libinput
     - xorg-server
@@ -16,7 +15,6 @@
     - xorg-xdpyinfo
     - xorg-xinit
     - xorg-xinput
-    - xterm
   become: true
 
 - name: GUI | Install pacakges
