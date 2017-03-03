@@ -115,12 +115,6 @@
     user: true
     daemon-reload: true
 
-- name: GUI | Configure xinitrc
-  copy:
-    content: "exec i3"
-    dest: "/home/{{ user.name }}/.xinitrc"
-    owner: "{{ user.name }}"
-
 # TODO template display ID, size in this
 - name: GUI | Configure screen size
   become: true
