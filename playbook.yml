@@ -19,9 +19,9 @@
     - include: tasks/cli-tools.yml
     - include: tasks/power.yml
     - include: tasks/vagrant-guest.yml
+    - include: tasks/fonts.yml
     - include: tasks/gui.yml
     - include: tasks/gui-apps.yml
-    - include: tasks/fonts.yml
     - include: tasks/brightness.yml
 
 # Disk
