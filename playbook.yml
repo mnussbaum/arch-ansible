@@ -33,7 +33,6 @@
 # Remove psmouse errors from dmesg
 # Audio
 # GUI
-# Mouse input
 # Printing
 # PLs
   # Ruby
