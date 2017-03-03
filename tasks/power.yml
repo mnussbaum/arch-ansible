@@ -14,6 +14,14 @@
     enabled: no
     state: stopped
   become: true
+
+- name: power | Disable bluetooth
+  service:
+    name: rfkill-block@bluetooth.service
+    enabled: yes
+    state: started
+  become: true
+
 - name: power | Enable TLP
   service:
     name: tlp
