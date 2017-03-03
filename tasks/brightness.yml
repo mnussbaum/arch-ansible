@@ -1,0 +1,30 @@
+---
+- name: Brightness | Install pacakges
+  become: true
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - redshift
+
+- name: Brightness | Install redshift config
+  copy:
+    src: redshift.conf
+    dest: "/home/{{ user.name }}/.config/redshift.conf"
+    owner: "{{ user.name }}"
+
+- name: Brightness | Install redshift service config
+  copy:
+    src: redshift@.service
+    dest: "/home/{{ user.name }}/.config/systemd/user/redshift@.service"
+    owner: "{{ user.name }}"
+
+- name: Brightness | Start and enable redshift service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    state: started
+    name: redshift@0.service
+    user: true
+    daemon-reload: true
