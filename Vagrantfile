@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "/Users/mnussbaum/src/atlas-archlinux/packer_outdir/packed/archlinux-virtualbox.box"
+  config.vm.box = "/Users/mnussbaum/src/vagrant-arch-builder/packer_outdir/packed/archlinux-virtualbox.box"
 
   config.vm.provider "virtualbox" do |vb|
     # vb.gui = true
