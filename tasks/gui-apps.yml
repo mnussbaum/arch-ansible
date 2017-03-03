@@ -15,9 +15,13 @@
     - firefox-pentadactyl-signed
   become: true
 
+- name: GUI Apps | Make Firefox default profile
+  command: firefox -CreateProfile "default /home/{{ user.name }}/.mozilla/firefox/default.profile"
+  become: true
+  become_user: "{{ user.name }}"
+
 - name: GUI Apps | Enlarge Firefox text size
   lineinfile:
-    dest: "/home/{{ user.name }}/.mozilla/firefox/wsxag0rs.default/prefs.js"
+    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/prefs.js"
     regexp: '^user_pref\("layout.css.devPixelsPerPx"'
-    line: 'user_pref("layout.css.devPixelsPerPx", "2");'
-# TODO: Template name of profile dir
+    line: 'user_pref("layout.css.devPixelsPerPx", "1.2");'
