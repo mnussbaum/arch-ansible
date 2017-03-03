@@ -22,7 +22,6 @@
   service:
     name: reflector.service
     enabled: yes
-    state: started
   become: true
 
 - name: packaging | Enable reflector timer
@@ -32,7 +31,7 @@
     state: started
   become: true
 
-- name: packaging | Update official packages
+- name: packaging | Update all packages
   pacman:
     update_cache: yes
     upgrade: yes
