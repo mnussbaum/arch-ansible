@@ -53,3 +53,15 @@
   copy:
     src: fonts-local.conf
     dest: /etc/fonts/local.conf
+
+- name: Fonts | Fix console font setting
+  become: true
+  copy:
+    src: systemd-vconsole-setup.service
+    dest: /usr/lib/systemd/system/systemd-vconsole-setup.service
+
+- name: Fonts | Configure console font
+  become: true
+  copy:
+    src: vconsole.conf
+    dest: /etc/vconsole.conf

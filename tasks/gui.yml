@@ -186,6 +186,5 @@
     daemon-reload: true
 
 
-#TODO set console font
 #TODO investigate pango
 #TODO investigate X RENDER
