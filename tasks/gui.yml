@@ -178,7 +178,3 @@
     name: libinput-gestures@0.service
     user: true
     daemon-reload: true
-
-
-#TODO investigate pango
-#TODO investigate X RENDER
