@@ -21,6 +21,7 @@
     enabled: yes
     state: started
   become: true
+  when: ansible_bios_version != "VirtualBox"
 
 - name: power | Enable TLP
   service:
