@@ -5,6 +5,8 @@
     name: "{{ item }}"
     state: present
   with_items:
+    # TODO - calise-git
+    - illum-git
     - redshift
 
 - name: Brightness | Install redshift config
@@ -27,4 +29,12 @@
     state: started
     name: redshift@0.service
     user: true
+    daemon-reload: true
+
+- name: Brightness | Start and enable illum service for backlight keys
+  become: true
+  systemd:
+    enabled: true
+    state: started
+    name: illum.service
     daemon-reload: true
