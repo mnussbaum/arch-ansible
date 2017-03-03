@@ -24,10 +24,6 @@
     - include: tasks/gui-apps.yml
     - include: tasks/brightness.yml
 
-# Disk
-  # Disable journaling
-  # Other stuff from https://github.com/alghanmi/ubuntu-desktop_setup/wiki/SSD-Configuration-on-Linux
-# Limit journald total and max file sizes - https://github.com/groks/ansible-systemd-journal/blob/master/tasks/main.yml
 # Power management
 # Time sync
 # Remove psmouse errors from dmesg
