@@ -26,7 +26,6 @@
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
-    state: started
     name: redshift@0.service
     user: true
     daemon-reload: true
@@ -35,6 +34,5 @@
   become: true
   systemd:
     enabled: true
-    state: started
     name: illum.service
     daemon-reload: true

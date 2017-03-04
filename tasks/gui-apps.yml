@@ -5,6 +5,7 @@
     state: latest
   with_items:
     - firefox
+    - xorg-server-xvfb
   become: true
 
 - name: GUI Apps | Install pacaur packages
@@ -16,7 +17,7 @@
   become: true
 
 - name: GUI Apps | Make Firefox default profile
-  command: firefox -CreateProfile "default /home/{{ user.name }}/.mozilla/firefox/default.profile"
+  command: xvfb-run firefox -CreateProfile "default /home/{{ user.name }}/.mozilla/firefox/default.profile"
   become: true
   become_user: "{{ user.name }}"
 
