@@ -23,6 +23,7 @@
     - include: tasks/gui.yml
     - include: tasks/gui-apps.yml
     - include: tasks/brightness.yml
+    - include: tasks/audio.yml
 
 # Power management
 # Time sync

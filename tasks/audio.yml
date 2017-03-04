@@ -1,0 +1,10 @@
+---
+- name: Audio | Install pacakges
+  become: true
+  pacman:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - alsa-utils
+    - pulseaudio
+    - pulseaudio-alsa
