@@ -12,6 +12,7 @@
       command: mkinitcpio -p linux
       become: true
   tasks:
+    - include: tasks/time.yml
     - include: tasks/packaging.yml
     - include: tasks/boot.yml
     - include: tasks/user.yml
