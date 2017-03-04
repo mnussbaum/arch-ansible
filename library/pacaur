@@ -31,10 +31,39 @@ def pacman_in_path(module):
   rc, stdout, stderr = module.run_command('which pacman', check_rc=False)
   return rc == 0
 
+def get_version(pacaur_output):
+    '''Take pacaur -Qi or pacaur -Si output and get the Version'''
+    lines = pacaur_output.split('\n')
+    for line in lines:
+        if 'Version' in line:
+            return line.split(':')[1].strip()
+    return None
 
-def package_installed(module, pkg):
-  rc, stdout, stderr = module.run_command('pacman -Q %s' % pkg, check_rc=False)
-  return rc == 0
+def query_package(module, pkg, state):
+  '''
+  Query the package status in both the local system and the repository.
+  Returns three booleans to indicate:
+    * If the package is installed
+    * If the package is up-to-date
+    * Whether online information was available
+  '''
+  local_check_cmd = 'pacaur -Qi %s' % pkg
+  local_check_rc, local_check_stdout, _ = module.run_command(local_check_cmd, check_rc=False)
+  if local_check_rc != 0:
+    return False, False, False
+
+  local_version = get_version(local_check_stdout)
+
+  # Unfortunately pacaur -Si always seems to return a 0 exit code (03/04/17)
+  repo_check_cmd = 'pacaur -Si %s' % pkg
+  repo_check_rc, repo_check_stdout, repo_check_stderr = module.run_command(repo_check_cmd, check_rc=False)
+  repo_version = get_version(repo_check_stdout)
+
+  if repo_check_rc == 0 and repo_check_stderr == '':
+    return True, (local_version == repo_version), False
+  else:
+    # Indicate package is up-to-date, but just because we hit an error contacting the repo
+    return True, True, True
 
 def get_sudo_user(module):
   # ansible sets the SUDO_USER environment variable.  Default to using this,
@@ -50,9 +79,11 @@ def get_sudo_user(module):
 def check_packages(module, pkgs, state):
   would_be_changed = []
 
-  for pkg in packages:
-    installed = package_installed(module, pkg)
-    if (state == 'present' and not installed) or (state == 'absent' and installed):
+  for pkg in pkgs:
+    installed, updated, _ = query_package(module, pkg, state)
+    if ((state in ['present', 'latest'] and not installed) or
+        (state == 'latest' and not updated) or
+        (state == 'absent' and installed)):
       would_be_changed.append(pkg)
 
   word = 'installed'
@@ -65,30 +96,39 @@ def check_packages(module, pkgs, state):
     module.exit_json(changed=False, msg='all packages are already %s' % word)
 
 
-def install_packages(module, pkgs):
+def install_packages(module, pkgs, state):
   num_installed = 0
+  package_err = []
+  message = ''
 
   sudo_user = get_sudo_user(module)
   cmd = 'sudo -u %s pacaur --noconfirm --noedit -S %s'
 
   for pkg in pkgs:
-    if package_installed(module, pkg):
-      continue
+    installed, updated, latest_error = query_package(module, pkg, state)
+    if latest_error and state == 'latest':
+        package_err.append(pkg)
+
+    if installed and (state == 'present' or (state == 'latest' and updated)):
+        continue
 
     rc, stdout, stderr = module.run_command(cmd % (sudo_user, pkg), check_rc=False)
 
     if rc != 0:
-      module.fail_json(msg='failed to install package %s, because: %s' % (pkg,stderr))
+      module.fail_json(msg='Failed to install package %s, because: %s' % (pkg, stderr))
 
     num_installed += 1
 
+  if state == 'latest' and len(package_err) > 0:
+    message = 'But could not ensure "latest" state for %s package(s) as remote version could not be fetched.' % package_err
+
   if num_installed > 0:
-    module.exit_json(changed=True, msg='installed %s package(s)' % num_installed)
+    module.exit_json(changed=True, msg='Installed %s package(s). %s' % (num_installed, message))
   else:
-    module.exit_json(changed=False, msg='all packages were already installed')
+    module.exit_json(changed=False, msg='All packages were already installed. %s' % message)
 
 
-def remove_packages(module, pkgs, recurse):
+def remove_packages(module, pkgs, recurse, state):
   num_removed = 0
 
   arg = 'R'
@@ -100,7 +140,8 @@ def remove_packages(module, pkgs, recurse):
   cmd = 'pacman -%s --noconfirm %s'
 
   for pkg in pkgs:
-    if not package_installed(module, pkg):
+    installed, _, _ = query_package(module, pkg, state)
+    if not installed:
       continue
 
     rc, stdout, stderr = module.run_command(cmd % (arg, pkg), check_rc=False)
@@ -120,7 +161,7 @@ def main():
   module = AnsibleModule(
     argument_spec = dict(
       name         = dict(required=True),
-      state        = dict(default='present', choices=['present','absent']),
+      state        = dict(default='present', choices=['absent', 'present', 'latest']),
       recurse      = dict(default='no', choices=BOOLEANS, type='bool')
     ),
     supports_check_mode = True
@@ -139,10 +180,10 @@ def main():
   if module.check_mode:
     check_packages(module, pkgs, p['state'])
 
-  if p['state'] == 'present':
-    install_packages(module, pkgs)
+  if p['state'] in ['present', 'latest']:
+    install_packages(module, pkgs, p['state'])
   elif p['state'] == 'absent':
-    remove_packages(module, pkgs, p['recurse'])
+    remove_packages(module, pkgs, p['recurse'], p['state'])
 
 
 from ansible.module_utils.basic import *

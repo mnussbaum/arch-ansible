@@ -3,7 +3,7 @@
   become: true
   pacaur:
     name: "{{ item }}"
-    state: present
+    state: latest
   with_items:
     # TODO - calise-git
     - illum-git

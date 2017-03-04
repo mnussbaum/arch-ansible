@@ -2,11 +2,11 @@
 - name: Firefox | Install packages
   pacaur:
     name: "{{ item }}"
-    state: present
+    state: latest
   with_items:
     - firefox
     - firefox-pentadactyl-signed
-    - freshplayerplugin-git
+    - freshplayerplugin
     - pepper-flash
     - google-talkplugin
     - xorg-server-xvfb
@@ -28,7 +28,7 @@
 - name: Firefox | Configure flash plugin
   copy:
     remote_src: true
-    src: /usr/share/freshplayerplugin-git/freshwrapper.conf.example
+    src: /usr/share/freshplayerplugin/freshwrapper.conf.example
     dest: "/home/{{ user.name }}/.config/freshwrapper.conf"
     force: no
     owner: "{{ user.name }}"

@@ -8,7 +8,7 @@
 - name: linux-nvme | Install kernel patch and headers
   pacaur:
     name: "{{ item }}"
-    state: present
+    state: latest
   with_items:
     - linux-nvme
     - linux-nvme-headers

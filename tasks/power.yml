@@ -49,7 +49,7 @@
 - name: power | Install powerstat tool
   pacaur:
     name: powerstat-git
-    state: present
+    state: latest
   become: true
 
 # Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120

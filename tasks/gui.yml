@@ -1,12 +1,13 @@
 ---
 - name: GUI | Install packages
-  package:
+  pacaur:
     name: "{{ item }}"
     state: latest
   with_items:
     - dmenu
     - i3
     - libinput
+    - libinput-gestures
     - rxvt-unicode
     - xdotool
     - xf86-input-libinput
@@ -16,12 +17,6 @@
     - xorg-xinit
     - xorg-xinput
   become: true
-
-- name: GUI | Install pacakges
-  become: true
-  pacaur:
-    name: libinput-gestures
-    state: present
 
 - name: GUI | Install X11 socket activation unit
   copy:

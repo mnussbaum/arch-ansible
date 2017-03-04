@@ -2,7 +2,7 @@
 - name: Fonts | Install packages
   pacaur:
     name: "{{ item }}"
-    state: present
+    state: latest
   with_items:
     - cairo
     - fontconfig
