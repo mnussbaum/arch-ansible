@@ -29,8 +29,6 @@
 # Power management
 # Time sync
 # Remove psmouse errors from dmesg
-# Audio
-# GUI
 # Printing
 # PLs
   # Ruby
