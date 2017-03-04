@@ -29,6 +29,7 @@
 - name: boot | Get power_image size
   command: cat /sys/power/image_size
   register: power_image_size_bytes
+  changed_when: false
 
 - name: boot | Configure swapfile
   become: true
@@ -42,6 +43,8 @@
 - name: boot | Get swapfile offset
   shell: filefrag -v /swapfile | awk '{gsub(/\./,""); if($1=="0:"){print $4}}'
   register: swapfile_offset
+  changed_when: false
+
 - name: boot | Configure swapfile kernel params
   become: true
   notify:
@@ -49,6 +52,7 @@
   lineinfile:
     dest: /etc/default/grub
     line: 'GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume={{ root_device }}"'
+
 - name: boot | Configure swapfile kernel params
   become: true
   notify:

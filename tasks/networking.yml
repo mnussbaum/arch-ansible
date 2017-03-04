@@ -6,15 +6,7 @@
     - wireless_tools
     - wpa_supplicant
     - networkmanager
-  become: true
-
-- name: networking | Check for network-manager-applet
-  command: pacman -Qi network-manager-applet
-  register: network_manager_applet_check
-  failed_when: "network_manager_applet_check.rc not in [0, 1]"
-- name: networking | Install network-manager-applet
-  command: pacman -Syu --noconfirm network-manager-applet
-  when: network_manager_applet_check.rc != 0
+    - network-manager-applet
   become: true
 
 - name: networking | Configure NetworkManager
