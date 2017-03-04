@@ -30,6 +30,7 @@
     remote_src: true
     src: /usr/share/freshplayerplugin-git/freshwrapper.conf.example
     dest: "/home/{{ user.name }}/.config/freshwrapper.conf"
+    force: no
     owner: "{{ user.name }}"
 
 - name: Firefox | Enable hardware acceleration for flash plugin
