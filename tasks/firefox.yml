@@ -1,0 +1,39 @@
+---
+- name: Firefox | Install packages
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - firefox
+    - firefox-pentadactyl-signed
+    - freshplayerplugin-git
+    - pepper-flash
+    - google-talkplugin
+    - xorg-server-xvfb
+  become: true
+
+- name: Firefox | Make default profile
+  command: xvfb-run firefox -CreateProfile "default /home/{{ user.name }}/.mozilla/firefox/default.profile"
+  args:
+    creates: "/home/{{ user.name }}/.mozilla/firefox/default.profile"
+  become: true
+  become_user: "{{ user.name }}"
+
+- name: Firefox | Enlarge text size
+  lineinfile:
+    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/prefs.js"
+    regexp: '^user_pref\("layout.css.devPixelsPerPx"'
+    line: 'user_pref("layout.css.devPixelsPerPx", "1.2");'
+
+- name: Firefox | Configure flash plugin
+  copy:
+    remote_src: true
+    src: /usr/share/freshplayerplugin-git/freshwrapper.conf.example
+    dest: "/home/{{ user.name }}/.config/freshwrapper.conf"
+    owner: "{{ user.name }}"
+
+- name: Firefox | Enable hardware acceleration for flash plugin
+  lineinfile:
+    dest: "/home/{{ user.name }}/.config/freshwrapper.conf"
+    regexp: "^enable_hwdec ="
+    line: "enable_hwdec = 1"
