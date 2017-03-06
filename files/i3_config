@@ -19,13 +19,30 @@ bindsym $mod+Shift+j move down
 bindsym $mod+Shift+k move up
 bindsym $mod+Shift+l move right
 
-bindsym $mod+s splith
-bindsym $mod+v splitv
+bindsym $mod+s split h
+bindsym $mod+v split v
 
 bindsym $mod+f fullscreen toggle
 bindsym $mod+Shift+s layout stacking
 bindsym $mod+Shift+t layout tabbed
 bindsym $mod+Shift+p layout toggle split
+
+# Workspaces
+
+# Switch to last workspace
+bindsym $mod+6 workspace back_and_forth
+
+# Switch to next workspace
+bindsym $mod+Shift+Right workspace next
+
+# Switch to previous workspace
+bindsym $mod+Shift+Left workspace prev
+
+set $WS1 1
+set $WS2 2
+
+bindsym $mod+1 workspace $WS1
+bindsym $mod+2 workspace $WS2
 
 bindsym $mod+r mode "resize"
 mode "resize" {
