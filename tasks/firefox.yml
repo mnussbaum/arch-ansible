@@ -19,11 +19,11 @@
   become: true
   become_user: "{{ user.name }}"
 
-- name: Firefox | Enlarge text size
-  lineinfile:
-    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/prefs.js"
-    regexp: '^user_pref\("layout.css.devPixelsPerPx"'
-    line: 'user_pref("layout.css.devPixelsPerPx", "1.2");'
+- name: Firefox | Configure firefox
+  copy:
+    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/user.js"
+    src: firefox-user.js
+    owner: "{{ user.name }}"
 
 - name: Firefox | Configure flash plugin
   copy:
