@@ -1,14 +1,22 @@
 ---
 - name: power | Install packages
-  package:
+  pacaur:
     name: "{{ item }}"
     state: latest
   with_items:
+    - thermald
     - tlp
     - tlp-rdw
   become: true
 
-- name: power | Disable systemd-rfkill
+- name: power | Enable thermald
+  service:
+    name: thermald
+    enabled: yes
+    state: started
+  become: true
+
+- name: power | Disable systemd-rfkill to avoid TLP conflicts
   service:
     name: systemd-rfkill
     enabled: no
@@ -23,6 +31,11 @@
   become: true
   when: ansible_bios_version != "VirtualBox"
 
+- name: power | Configure TLP
+  copy:
+    src: tlp
+    dest: /etc/default/tlp
+  become: true
 - name: power | Enable TLP
   service:
     name: tlp
