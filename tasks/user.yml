@@ -36,3 +36,15 @@
     path: "/home/{{ user.name }}/.config/systemd/user"
     owner: "{{ user.name }}"
     state: directory
+
+- name: user | Install user profile
+  copy:
+    dest: "/home/{{ user.name }}/.profile"
+    src: profile
+    owner: "{{ user.name }}"
+
+- name: user | Install user zprofile, sourcing profile
+  copy:
+    dest: "/home/{{ user.name }}/.zprofile"
+    src: zprofile
+    owner: "{{ user.name }}"

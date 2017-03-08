@@ -122,18 +122,6 @@
     dest: "/home/{{ user.name }}/.Xresources"
     owner: "{{ user.name }}"
 
-- name: GUI | Install user profile to start X
-  copy:
-    dest: "/home/{{ user.name }}/.profile"
-    src: profile
-    owner: "{{ user.name }}"
-
-- name: GUI | Install user zprofile
-  copy:
-    dest: "/home/{{ user.name }}/.zprofile"
-    src: zprofile
-    owner: "{{ user.name }}"
-
 - name: GUI | Install i3 configs
   file:
     path: "/home/{{ user.name }}/.config/i3"
