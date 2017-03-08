@@ -18,7 +18,7 @@
     - include: tasks/user.yml
     - include: tasks/networking.yml
     - include: tasks/cli-tools.yml
-    - include: tasks/power.yml
+    - include: tasks/package-update.yml
     - include: tasks/vagrant-guest.yml
     - include: tasks/fonts.yml
     - include: tasks/gui.yml

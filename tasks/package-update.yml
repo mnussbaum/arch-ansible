@@ -1,0 +1,5 @@
+---
+- name: Package update | Update pacaur packages
+  pacaur:
+    update_cache: yes
+    upgrade: yes

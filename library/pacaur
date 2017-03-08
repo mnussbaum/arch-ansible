@@ -23,12 +23,12 @@
 # THE SOFTWARE.
 
 def pacaur_in_path(module):
-  rc, stdout, stderr = module.run_command('which pacaur', check_rc=False)
+  rc, _, _ = module.run_command('which pacaur', check_rc=False)
   return rc == 0
 
 
 def pacman_in_path(module):
-  rc, stdout, stderr = module.run_command('which pacman', check_rc=False)
+  rc, _, _ = module.run_command('which pacman', check_rc=False)
   return rc == 0
 
 def get_version(pacaur_output):
@@ -54,7 +54,6 @@ def query_package(module, pkg, state):
 
   local_version = get_version(local_check_stdout)
 
-  # Unfortunately pacaur -Si always seems to return a 0 exit code (03/04/17)
   repo_check_cmd = 'pacaur -Si %s' % pkg
   repo_check_rc, repo_check_stdout, repo_check_stderr = module.run_command(repo_check_cmd, check_rc=False)
   repo_version = get_version(repo_check_stdout)
@@ -65,16 +64,46 @@ def query_package(module, pkg, state):
     # Indicate package is up-to-date, but just because we hit an error contacting the repo
     return True, True, True
 
+def update_package_db(module):
+  rc, _, stderr = module.run_command('pacaur -Sy', check_rc=False)
+
+  if rc == 0 and stderr == '':
+    return False, 'Package DB up-to-date'
+  elif rc == 1 and stderr == '':
+    return True, 'Updated the package DB'
+  else:
+    module.fail_json(msg='could not update package db: %s' % stderr)
+
+def upgrade(module):
+  check_rc, check_stdout, check_stderr = module.run_command('pacaur -Qqu', check_rc=False)
+
+  if check_rc == 0 and check_stderr == '' and module.check_mode:
+    return True, '%s package(s) would be upgraded' % (len(check_stdout.split('\n')) - 1)
+  elif check_rc == 0 and check_stderr == '' and not module.check_mode:
+    upgrade_rc, _, upgrade_stderr = module.run_command(
+      'pacaur -Su --noconfirm',
+      check_rc=False,
+    )
+
+    if upgrade_rc == 0:
+      return True, 'System upgraded'
+    else:
+      module.fail_json(msg='unable to upgrade: %s' % upgrade_stderr)
+  elif check_rc == 1 and check_stderr == '':
+    return False, 'Nothing to upgrade'
+  else:
+    module.fail_json(msg='unable to check for upgrade: %s' % check_stderr)
+
 def get_sudo_user(module):
   # ansible sets the SUDO_USER environment variable.  Default to using this,
-  # calling `logname` if SUDO_USER is by some chance empty.
-  sudo_user = os.environ.get('SUDO_USER')
+  # checking USER and then `logname` as backups.
+  user = os.environ.get('SUDO_USER') or os.environ.get('USER')
 
-  if not sudo_user:
-    rc, stdout, stderr = module.run_command('logname', check_rc=True)
-    sudo_user = stdout
+  if not user:
+    rc, stdout, _ = module.run_command('logname', check_rc=True)
+    user = stdout
 
-  return sudo_user
+  return user
 
 def check_packages(module, pkgs, state):
   would_be_changed = []
@@ -91,10 +120,9 @@ def check_packages(module, pkgs, state):
     word = 'removed'
 
   if would_be_changed:
-    module.exit_json(changed=True, msg='%s package(s) would be %s' % (len(would_be_changed), word))
+    return True, '%s package(s) would be %s' % (len(would_be_changed), word)
   else:
-    module.exit_json(changed=False, msg='all packages are already %s' % word)
-
+    return False, 'All packages are already %s' % word
 
 def install_packages(module, pkgs, state):
   num_installed = 0
@@ -112,7 +140,7 @@ def install_packages(module, pkgs, state):
     if installed and (state == 'present' or (state == 'latest' and updated)):
         continue
 
-    rc, stdout, stderr = module.run_command(cmd % (sudo_user, pkg), check_rc=False)
+    rc, _, stderr = module.run_command(cmd % (sudo_user, pkg), check_rc=False)
 
     if rc != 0:
       module.fail_json(msg='Failed to install package %s, because: %s' % (pkg, stderr))
@@ -123,10 +151,9 @@ def install_packages(module, pkgs, state):
     message = 'But could not ensure "latest" state for %s package(s) as remote version could not be fetched.' % package_err
 
   if num_installed > 0:
-    module.exit_json(changed=True, msg='Installed %s package(s). %s' % (num_installed, message))
+    return True, 'Installed %s package(s). %s' % (num_installed, message)
   else:
-    module.exit_json(changed=False, msg='All packages were already installed. %s' % message)
-
+    return False, 'All packages were already installed. %s' % message
 
 def remove_packages(module, pkgs, recurse, state):
   num_removed = 0
@@ -144,7 +171,7 @@ def remove_packages(module, pkgs, recurse, state):
     if not installed:
       continue
 
-    rc, stdout, stderr = module.run_command(cmd % (arg, pkg), check_rc=False)
+    rc, _, stderr = module.run_command(cmd % (arg, pkg), check_rc=False)
 
     if rc != 0:
       module.fail_json(msg='failed to %s package %s because: %s' % (word, pkg, stderr))
@@ -152,18 +179,21 @@ def remove_packages(module, pkgs, recurse, state):
     num_removed += 1
 
   if num_removed > 0:
-    module.exit_json(changed=True, msg='removed %s package(s)' % num_removed)
+    return True, 'Removed %s package(s)' % num_removed
   else:
-    module.exit_json(changed=False, msg='all packages were already removed')
+    return False, 'All packages were already removed'
 
 
 def main():
   module = AnsibleModule(
     argument_spec = dict(
-      name         = dict(required=True),
+      name         = dict(),
       state        = dict(default='present', choices=['absent', 'present', 'latest']),
-      recurse      = dict(default='no', choices=BOOLEANS, type='bool')
+      recurse      = dict(default='no', choices=BOOLEANS, type='bool'),
+      upgrade      = dict(default='no', choices=BOOLEANS, type='bool'),
+      update_cache = dict(default='no', choices=BOOLEANS, aliases=['update-cache'], type='bool'),
     ),
+    required_one_of = [['name', 'update_cache', 'upgrade']],
     supports_check_mode = True
   )
 
@@ -175,15 +205,40 @@ def main():
 
   p = module.params
 
-  pkgs = p['name'].split(',')
+  if p['name']:
+    pkgs = p['name'].split(',')
 
-  if module.check_mode:
-    check_packages(module, pkgs, p['state'])
+  changed = False
+  messages = []
+  if p["update_cache"] and not module.check_mode:
+    updated, update_message = update_package_db(module)
+    changed = changed or updated
+    messages.append(update_message)
 
-  if p['state'] in ['present', 'latest']:
-    install_packages(module, pkgs, p['state'])
-  elif p['state'] == 'absent':
-    remove_packages(module, pkgs, p['recurse'], p['state'])
+  if p['update_cache'] and module.check_mode:
+    changed = True
+    messages.append('Would have updated the package cache')
+
+  if p['upgrade']:
+     upgraded, upgrade_message = upgrade(module)
+     changed = changed or upgraded
+     messages.append(upgrade_message)
+
+  if p['name'] and module.check_mode:
+    packages_would_change, check_message = check_packages(module, pkgs, p['state'])
+    changed = changed or packages_would_change
+    messages.append(check_message)
+  elif p['name'] and not module.check_mode:
+    if p['name']:
+      if p['state'] in ['present', 'latest']:
+        packages_changed, package_message = install_packages(module, pkgs, p['state'])
+      elif p['state'] == 'absent':
+        packages_changed, package_message = remove_packages(module, pkgs, p['recurse'], p['state'])
+
+      changed = changed or packages_changed
+      messages.append(package_message)
+
+  module.exit_json(changed=changed, msg='. '.join(messages))
 
 
 from ansible.module_utils.basic import *
