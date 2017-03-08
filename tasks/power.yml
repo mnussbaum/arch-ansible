@@ -4,6 +4,7 @@
     name: "{{ item }}"
     state: latest
   with_items:
+    - powertop
     - thermald
     - tlp
     - tlp-rdw
@@ -57,12 +58,6 @@
   service:
     name: suspend-sedation
     enabled: yes
-  become: true
-
-- name: power | Install powerstat tool
-  pacaur:
-    name: powerstat-git
-    state: latest
   become: true
 
 # Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120
