@@ -5,7 +5,7 @@
     name: "{{ item }}"
     state: latest
   with_items:
-    # TODO - calise-git
+    - calise-git
     - illum-git
     - redshift
 
@@ -21,7 +21,7 @@
     dest: "/home/{{ user.name }}/.config/systemd/user/redshift@.service"
     owner: "{{ user.name }}"
 
-- name: Brightness | Start and enable redshift service
+- name: Brightness | Enable redshift service
   become: true
   become_user: "{{ user.name }}"
   systemd:
@@ -30,7 +30,21 @@
     user: true
     daemon-reload: true
 
-- name: Brightness | Start and enable illum service for backlight keys
+# TODO: Allow this to differ on every machine
+- name: Brightness | Install calise config for screen auto-brightness
+  become: true
+  copy:
+    src: calise.conf
+    dest: "/etc/calise.conf"
+
+- name: Brightness | Enable calise service
+  become: true
+  systemd:
+    enabled: true
+    name: calised.service
+    daemon-reload: true
+
+- name: Brightness | Enable illum service for backlight keys
   become: true
   systemd:
     enabled: true
