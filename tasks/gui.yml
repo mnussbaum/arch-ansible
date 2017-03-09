@@ -1,9 +1,17 @@
 ---
 - name: GUI | Install packages
+  become: true
+  pacman:
+    name: mesa-libgl
+    state: absent
+
+- name: GUI | Install packages
   pacaur:
     name: "{{ item }}"
     state: latest
   with_items:
+    - mesa
+    - vulkan-intel
     - dmenu
     - i3-gaps
     - i3status

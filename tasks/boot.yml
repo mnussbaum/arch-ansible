@@ -10,22 +10,6 @@
     - os-prober
     - intel-ucode
 
-- name: boot | Configure disk encryption
-  become: true
-  notify:
-    - Regenerate grub.cfg
-  lineinfile:
-    dest: /etc/default/grub
-    regexp: '^GRUB_ENABLE_CRYPTODISK='
-    line: 'GRUB_ENABLE_CRYPTODISK=y'
-- name: boot | Configure disk encryption
-  become: true
-  notify:
-    - Regenerate grub.cfg
-  lineinfile:
-    dest: /etc/default/grub
-    line: 'GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ ssd_device }}:vgcrypt"'
-
 - name: boot | Get power_image size
   command: cat /sys/power/image_size
   register: power_image_size_bytes
@@ -44,22 +28,15 @@
   shell: filefrag -v /swapfile | awk '{gsub(/\./,""); if($1=="0:"){print $4}}'
   register: swapfile_offset
   changed_when: false
+  become: true
 
-- name: boot | Configure swapfile kernel params
+- name: boot | Configure grub
   become: true
   notify:
     - Regenerate grub.cfg
-  lineinfile:
+  template:
+    src: templates/grub.j2
     dest: /etc/default/grub
-    line: 'GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume={{ root_device }}"'
-
-- name: boot | Configure swapfile kernel params
-  become: true
-  notify:
-    - Regenerate grub.cfg
-  lineinfile:
-    dest: /etc/default/grub
-    line: 'GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"'
 
 - name: boot | Install mkinitcpio.confg
   become: true
