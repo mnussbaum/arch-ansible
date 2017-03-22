@@ -7,8 +7,10 @@
   notify:
     - Regenerate grub.cfg
   with_items:
-    - os-prober
+    - efibootmgr
+    - grub
     - intel-ucode
+    - os-prober
 
 - name: boot | Get power_image size
   command: cat /sys/power/image_size
@@ -38,17 +40,19 @@
     src: templates/grub.j2
     dest: /etc/default/grub
 
-- name: boot | Install mkinitcpio.confg
+- name: boot | Install grub
+  when: bootstrap is defined and bootstrap == "true"
+  notify:
+    - Regenerate grub.cfg
+  command: >
+    grub-install --target=x86_64-efi
+                 --efi-directory=/boot/efi
+                 --bootloader-id=arch_grub
+
+- name: boot | Install mkinitcpio.conf
   become: true
   notify:
     - Regenerate mkinitcpio ramdisk
   copy:
     src: files/mkinitcpio.conf
     dest: /etc/mkinitcpio.conf
-
-- name: boot | Enable periodic TRIM
-  become: true
-  service:
-    name: fstrim.timer
-    enabled: yes
-    state: started

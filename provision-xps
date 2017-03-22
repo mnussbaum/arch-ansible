@@ -3,8 +3,23 @@
 set -o errexit
 set -o nounset
 
+if [ -n "${1:-}" ] ; then
+  root_device=$1
+  shift
+else
+  root_device="/dev/mapper/vgcrypt-root"
+fi
+
+if [ -n "${1:-}" ] ; then
+  ssd_device=$1
+  shift
+else
+  ssd_device="/dev/nvme0n1p8"
+fi
+
 ansible-playbook -i localhost playbook.yml -v \
   --ask-become-pass \
   -e dpi=276 \
-  -e root_device=/dev/mapper/vgcrypt-root \
-  -e ssd_device=/dev/nvme0n1p8
+  -e root_device=$root_device \
+  -e ssd_device=$ssd_device \
+  $@

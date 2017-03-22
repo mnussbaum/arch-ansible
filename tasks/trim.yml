@@ -1,0 +1,7 @@
+---
+- name: trim | Enable periodic TRIM
+  become: true
+  service:
+    name: fstrim.timer
+    enabled: yes
+    state: started

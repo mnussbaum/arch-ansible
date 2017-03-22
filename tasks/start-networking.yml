@@ -1,14 +1,4 @@
 ---
-- name: networking | Install packages
-  package: name={{ item }} state=latest
-  with_items:
-    - dhclient
-    - wireless_tools
-    - wpa_supplicant
-    - networkmanager
-    - network-manager-applet
-  become: true
-
 - name: networking | Configure NetworkManager
   copy:
     src: files/NetworkManager.conf
@@ -21,18 +11,21 @@
     enabled: no
     state: stopped
   become: true
+
 - name: networking | Enable wpa_supplicant
   service:
     name: wpa_supplicant
     enabled: yes
     state: started
   become: true
+
 - name: networking | Enable NetworkManager
   service:
     name: NetworkManager
     enabled: yes
     state: started
   become: true
+
 - name: networking | Enable NetworkManager dispatcher
   service:
     name: NetworkManager-dispatcher

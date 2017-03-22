@@ -15,10 +15,16 @@
     - include: tasks/time.yml
     - include: tasks/packaging.yml
     - include: tasks/boot.yml
+      tags: [bootstrap]
+    - include: tasks/trim.yml
     - include: tasks/user.yml
-    - include: tasks/networking.yml
+      tags: [bootstrap]
+    - include: tasks/networking-packages.yml
+      tags: [bootstrap]
+    - include: tasks/start-networking.yml
     - include: tasks/cli-tools.yml
     - include: tasks/package-update.yml
+    - include: tasks/power.yml
     - include: tasks/vagrant-guest.yml
     - include: tasks/fonts.yml
     - include: tasks/gui.yml
@@ -27,7 +33,6 @@
     - include: tasks/firefox.yml
 
 # Power management
-# Time sync
 # Remove psmouse errors from dmesg
 # Printing
 # PLs

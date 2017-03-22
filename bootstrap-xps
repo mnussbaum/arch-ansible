@@ -1,0 +1,102 @@
+#! /bin/bash
+
+set -o errexit
+set -o nounset
+
+partition_for() {
+  local name=$1
+  local disk=$2
+
+  number=$(parted "$disk" print | grep "$name" | tr -s " " | cut -d " " -f 2)
+  echo "${disk}p${number}"
+}
+
+start_wpa_wifi() {
+  local wireless_card=$1
+  local ssid="$2"
+  local passphrase="$3"
+
+  ip link set dev $wireless_card up
+  wpa_supplicant -B -i $wireless_card -c <(wpa_passphrase "$ssid" "$passphrase")
+  dhcpcd $wireless_card
+}
+
+check_network() {
+  if ! curl --silent --fail --output /dev/null google.com ; then
+    >&2 echo "No internet. If over wifi probably use wpa_passphrase, wpa_supplicant and dhcpd"
+  fi
+}
+
+create_boot_partition() {
+  local boot_device=$1
+  local efi_partition=$2
+
+  mkfs.ext4 $boot_device
+  mkdir -p /mnt/boot
+  mount $boot_device /mnt/boot
+  mkdir -p /mnt/boot/efi
+  mount $efi_partition /mnt/boot/efi
+}
+
+create_encrypted_root_partition() {
+  local root_device=$1
+  local ssd_device=$2
+
+  cryptsetup -v --cipher aes-xts-plain64 --key-size 512 -y luksFormat $ssd_device
+  cryptsetup luksOpen $ssd_device lvm
+  pvcreate /dev/mapper/lvm
+  vgcreate vgcrypt /dev/mapper/lvm
+  lvcreate --extents +100%FREE -n root vgcrypt
+
+  mkfs.ext4 -O ^has_journal $root_device
+  mount $root_device /mnt
+}
+
+ansible_bootstrap() {
+  local root_device=$1
+  local ssd_device=$2
+
+  cp -r . /mnt/root/arch-ansible
+
+  arch-chroot /mnt /root/arch-ansible/initial-configure-xps $hostname $username
+  arch-chroot /mnt sh -c "cd /root/arch-ansible && ./provision-xps \
+    $root_device $ssd_device -e bootstrap='true' --tags bootstrap"
+}
+
+# TODO: Make reentrant (start with wifi setup)
+# TODO: Configure wifi for after reboot
+
+# TODO: Automate partitioning or restoring from a partition dump
+# parted --align optimal /dev/nvme0n1
+# > mkpart primary ext4 END_OF_A_PART END_OF_A_PART+512MB
+# > name 7 "Grub"
+# > set 7 boot on
+# > mkpart primary ext4 END_OF_A_PART+512MB BEGINNING_OF_NEXT_PART_OR_EOF
+# > name 8 "Arch Root"
+
+disk="/dev/nvme0n1"
+boot_device=$(partition_for "Grub" $disk)
+root_device="/dev/mapper/vgcrypt-root"
+ssd_device=$(partition_for "Arch Root" $disk)
+efi_partition=$(partition_for "EFI" $disk)
+
+hostname="fred"
+username="mnussbaum"
+
+wireless_card="wlp60s0"
+ssid="BAM"
+read -s -p "WPA passphrase:" wpa_passphrase
+
+start_wpa_wifi $wireless_card "$ssid" "$wpa_passphrase"
+check_network
+mkdir -p /mnt
+create_encrypted_root_partition $root_device $ssd_device
+create_boot_partition $boot_device $efi_partition
+cat <<'LIST' > /etc/pacman.d/mirrorlist
+Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
+Server = https://mirrors.ocf.berkeley.edu/archlinux/$repo/os/$arch
+Server = https://mirror.grig.io/archlinux/$repo/os/$arch
+LIST
+pacstrap /mnt base base-devel
+genfstab -U -p /mnt >> /mnt/etc/fstab
+ansible_bootstrap $root_device $ssd_device
