@@ -32,7 +32,17 @@
     - include: tasks/audio.yml
     - include: tasks/firefox.yml
 
-# Power management
+# Bootstrap:
+  # Convert script to re-entrant ansible
+  # Configure wifi for after reboot
+  # Automate partitioning or restoring from a partition dump
+  # Fix Grub not finding Windows
+  # Fix Grub two-password for decryption
+  # Install SSH key
+# Security harden
+# Make external displays easy to add
+# Make external speakers easy to add
+# Fix errors from systemd units starting too early
 # Remove psmouse errors from dmesg
 # Printing
 # PLs
@@ -41,15 +51,16 @@
   # Rust
   # Node
   # Java
+# Make ansible only prompt for new-user pw when needed
 # Users
   # mnussbaum
   #   dotfiles
   #   editor
   #   shell
+  #   git global config
 # GUI Apps
   # music
   # video
-  # browsers
   # PDF
   # notepad
   # dropbox

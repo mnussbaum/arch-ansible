@@ -63,10 +63,6 @@ ansible_bootstrap() {
     $root_device $ssd_device -e bootstrap='true' --tags bootstrap"
 }
 
-# TODO: Make reentrant (start with wifi setup)
-# TODO: Configure wifi for after reboot
-
-# TODO: Automate partitioning or restoring from a partition dump
 # parted --align optimal /dev/nvme0n1
 # > mkpart primary ext4 END_OF_A_PART END_OF_A_PART+512MB
 # > name 7 "Grub"
