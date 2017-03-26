@@ -4,6 +4,7 @@
     name: "{{ item }}"
     state: latest
   with_items:
+    - powerstat-git
     - powertop
     - thermald
     - tlp
