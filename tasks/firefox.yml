@@ -6,6 +6,7 @@
   with_items:
     - firefox
     - firefox-pentadactyl-signed
+    - firefox-ublock-origin
     - freshplayerplugin
     - pepper-flash
     - google-talkplugin

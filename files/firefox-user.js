@@ -12,8 +12,11 @@ user_pref("network.http.proxy.pipelining", true);
 // Enable HTTP cache
 user_pref("browser.cache.use_new_backend", 1);
 
+// Make pages render immediately
+user_pref("nglayout.initialpaint.delay", 0);
+
 // Decrease disk writes, less frequent session restore writes
 user_pref("browser.sessionstore.interval", 300000);
 
-// Make pages render immediately
-user_pref("nglayout.initialpaint.delay", 0);
+// Restore session at startup
+user_pref("browser.startup.page", 3);
