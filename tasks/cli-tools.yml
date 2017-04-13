@@ -14,13 +14,13 @@
     - htop
     - jq
     - lsof
-    - neovim
     - net-tools
     - openssh
     - rsync
-    - yajl
     - tig
     - tmux
+    - vim
+    - yajl
     - zsh
   become: true
 

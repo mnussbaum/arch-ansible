@@ -1,0 +1,6 @@
+---
+- name: python | Install pip
+  pacman:
+    name: python-pip
+    state: latest
+  become: true

@@ -1,0 +1,16 @@
+set runtimepath+={{ dein_install_dir }}/repos/github.com/Shougo/dein.vim
+
+let plugin_dir="{{ nvim_plugin_dir }}"
+if dein#load_state(plugin_dir)
+  call dein#begin(plugin_dir)
+
+  " Let Dein manage Dein
+  call dein#add("{{ dein_install_dir }}/repos/github.com/Shougo/dein.vim")
+
+  {% for plugin in vim_plugins %}
+call dein#add("{{ plugin }}")
+  {% endfor %}
+
+  call dein#end()
+  call dein#save_state()
+endif
