@@ -1,17 +1,21 @@
 ---
 - set_fact:
-    dein_install_dir: "/home/{{ user.name }}/.config/nvim/dein"
     nvim_config_dir: "/home/{{ user.name }}/.config/nvim"
-    nvim_plugin_dir: "/home/{{ user.name }}/.config/nvim/dein_plugin"
-    user_data_dir: "/home/{{ user.name }}/.local/share"
+    nvim_data_dir: "/home/{{ user.name }}/.local/share/nvim"
+    vim_plugins:
+      - "Shougo/deoplete.nvim"
+      - "pearofducks/ansible-vim"
+      - "shmay/vim-yaml"
 
-- name: nvim | Ensure nvim config and user data dirs exist
+- name: nvim | Ensure nvim config and data dirs exist
   file:
     path: "{{ item }}"
     state: directory
   with_items:
     - "{{ nvim_config_dir }}"
-    - "{{ nvim_plugin_dir }}"
+    - "{{ nvim_data_dir }}"
+    - "{{ nvim_data_dir }}/plugged"
+    - "{{ nvim_data_dir }}/site/autoload"
 
 - name: nvim | Install neovim-git
   pacaur:
@@ -22,31 +26,27 @@
   pip: name=neovim
   become: true
 
-- name: nvim | Download Dein.vim plugin manager installer
+- name: nvim | Download vim-plug installer
   get_url:
-    url: https://raw.githubusercontent.com/Shougo/dein.vim/master/bin/installer.sh
-    dest: "{{ user_data_dir }}/dein_installer.sh"
-    mode: 0755
-
-- name: nvim | Run dein.vim installer
-  command: "{{ user_data_dir }}/dein_installer.sh {{ dein_install_dir }}"
-  args:
-    creates: "{{ dein_install_dir }}"
+    url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+    dest: "{{ nvim_data_dir }}/site/autoload/plug.vim"
 
 - name: nvim | Install init.vim config
   template:
     src: templates/neovim/init.vim.j2
     dest: "{{ nvim_config_dir }}/init.vim"
 
-- name: nvim | Install dein.vim config
+- name: nvim | Install vim-plug.vim config
   template:
-    src: templates/neovim/dein.vim.j2
-    dest: "{{ nvim_config_dir }}/dein.vim"
-  vars:
-    vim_plugins:
-      - "Shougo/deoplete.nvim"
-  register: dein_config
+    src: templates/neovim/vim-plug.vim.j2
+    dest: "{{ nvim_config_dir }}/vim-plug.vim"
+  register: vim_plug_config
 
 - name: nvim | Install vim plugins
-  command: nvim --headless -n -c ":call dein#install()" -c ":qa!"
-  when: dein_config.changed
+  command: nvim --headless -n -c ":PlugInstall" -c ":qa!"
+  when: vim_plug_config.changed
+
+- name: nvim | Install vim plugins
+  copy:
+    src: files/neovim_plugins/
+    dest: "{{ nvim_config_dir }}/plugin"
