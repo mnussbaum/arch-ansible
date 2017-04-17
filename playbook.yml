@@ -26,6 +26,7 @@
     - include: tasks/package-update.yml
     - include: tasks/python.yml
     - include: tasks/neovim.yml
+    - include: tasks/gitconfig.yml
     - include: tasks/power.yml
     - include: tasks/vagrant-guest.yml
     - include: tasks/fonts.yml
