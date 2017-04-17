@@ -3,9 +3,14 @@
     nvim_config_dir: "/home/{{ user.name }}/.config/nvim"
     nvim_data_dir: "/home/{{ user.name }}/.local/share/nvim"
     vim_plugins:
-      - "Shougo/deoplete.nvim"
-      - "pearofducks/ansible-vim"
-      - "shmay/vim-yaml"
+      - "'Shougo/deoplete.nvim'"
+      - "'pearofducks/ansible-vim'"
+      - "'scrooloose/nerdtree'"
+      - "'jlanzarotta/bufexplorer'"
+      - "'shmay/vim-yaml'"
+      - "'junegunn/fzf', {'dir': '/home/{{ user.name }}/.fzf', 'do': './install --all'}"
+      - "'junegunn/fzf.vim'"
+      - "'tomtom/tcomment_vim'"
 
 - name: nvim | Ensure nvim config and data dirs exist
   file:
@@ -32,8 +37,8 @@
     dest: "{{ nvim_data_dir }}/site/autoload/plug.vim"
 
 - name: nvim | Install init.vim config
-  template:
-    src: templates/neovim/init.vim.j2
+  copy:
+    src: neovim/init.vim
     dest: "{{ nvim_config_dir }}/init.vim"
 
 - name: nvim | Install vim-plug.vim config
@@ -42,11 +47,15 @@
     dest: "{{ nvim_config_dir }}/vim-plug.vim"
   register: vim_plug_config
 
-- name: nvim | Install vim plugins
+- name: nvim | Install nvim plugins
   command: nvim --headless -n -c ":PlugInstall" -c ":qa!"
   when: vim_plug_config.changed
 
-- name: nvim | Install vim plugins
+- name: nvim | Install nvim configs
   copy:
-    src: files/neovim_plugins/
+    src: files/neovim/plugin/
     dest: "{{ nvim_config_dir }}/plugin"
+
+# TODO:
+# More ctrl-O history
+# Stop that prompt when leaving an edited file
