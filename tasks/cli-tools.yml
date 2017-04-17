@@ -18,7 +18,6 @@
     - openssh
     - rsync
     - tig
-    - tmux
     - vim
     - yajl
     - zsh

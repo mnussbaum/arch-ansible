@@ -1,0 +1,11 @@
+---
+- name: tmux | Install packages
+  package:
+    name: tmux
+    state: latest
+  become: true
+
+- name: tmux | Install tmux config
+  copy:
+    src: tmux.conf
+    dest: "/home/{{ user.name }}/.tmux.conf"
