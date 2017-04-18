@@ -15,7 +15,6 @@ Vagrant.configure("2") do |config|
   config.vm.provision "ansible_local" do |ansible|
     ansible.raw_arguments  = [
       "--ask-become-pass",
-      # "-e force_nvme_patch='true'",
       "-e root_device=/dev/mapper/vgcrypt-root",
       "-e ssd_device=/dev/sda2",
       "-e '{\"user\": {\"name\": \"vagrant\", \"group\": \"vagrant\", \"shell\": \"/usr/bin/zsh\"}}'",

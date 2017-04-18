@@ -64,6 +64,3 @@
 # Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120
 # Enable wake on keypress
 # Enable wake on mouse
-
-- include: linux-nvme.yml
-  when: "'nvme' in ssd_device or force_nvme_patch is defined"
