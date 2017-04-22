@@ -2,8 +2,8 @@
 filetype plugin indent on
 syntax enable
 
-" Enable full 256 colors
-set t_Co=256
+" Enable full color range
+set termguicolors
 
 " Show line numbers
 set number
