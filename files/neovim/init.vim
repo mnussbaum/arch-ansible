@@ -15,11 +15,11 @@ set nostartofline
 " Hide some prompts
 set shortmess=atI
 
-" Reopen file to same cursor location
-au BufReadPost * if line("'\"") > 0|if line("'\"") <=line("$")|exe("norm'\"")|else|exe "norm $"|endif|endif
-
 " Make Y work like other capitals, copy to end of line
 noremap Y y$
 
 " Save with sudo
 :command! W w !sudo tee % > /dev/null
+
+" Make esc fast
+set timeoutlen=1000 ttimeoutlen=0
