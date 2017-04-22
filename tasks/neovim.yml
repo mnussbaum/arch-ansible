@@ -11,6 +11,7 @@
       - "'junegunn/fzf', {'dir': '/home/{{ user.name }}/.fzf', 'do': './install --all'}"
       - "'junegunn/fzf.vim'"
       - "'tomtom/tcomment_vim'"
+      - "'tpope/vim-fugitive'"
 
 - name: nvim | Ensure nvim config and data dirs exist
   file:
