@@ -4,8 +4,6 @@
   package:
     name: "{{ item }}"
     state: latest
-  notify:
-    - Regenerate grub.cfg
   with_items:
     - efibootmgr
     - grub
