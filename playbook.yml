@@ -12,30 +12,7 @@
       command: mkinitcpio -p linux
       become: true
   tasks:
-    - include: tasks/time.yml
-    - include: tasks/packaging.yml
-    - include: tasks/boot.yml
-      tags: [bootstrap]
-    - include: tasks/trim.yml
-    - include: tasks/user.yml
-      tags: [bootstrap]
-    - include: tasks/networking-packages.yml
-      tags: [bootstrap]
-    - include: tasks/start-networking.yml
-    - include: tasks/cli-tools.yml
-    - include: tasks/package-update.yml
-    - include: tasks/python.yml
-    - include: tasks/neovim.yml
-    - include: tasks/global_environment_variables.yml
-    - include: tasks/gitconfig.yml
-    - include: tasks/tmux.yml
-    - include: tasks/power.yml
-    - include: tasks/vagrant-guest.yml
-    - include: tasks/fonts.yml
-    - include: tasks/gui.yml
-    - include: tasks/brightness.yml
-    - include: tasks/audio.yml
-    - include: tasks/firefox.yml
+    - include: tasks/wayland-gnome.yml
 
 # Bootstrap:
   # Convert script to re-entrant ansible

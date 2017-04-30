@@ -1,0 +1,11 @@
+[Unit]
+Description=Multitouch via libinput-gestures
+
+After=gdm.service
+BindsTo=gdm.service
+
+[Service]
+ExecStart=/usr/bin/libinput-gestures
+
+[Install]
+WantedBy=gdm.service

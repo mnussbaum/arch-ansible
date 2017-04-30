@@ -1,0 +1,54 @@
+---
+- name: wayland-gnome | Install packages
+  become: true
+  pacman:
+    name: mesa-libgl
+    state: absent
+
+- name: wayland-gnome | Install packages
+  pacaur:
+    name: "{{ item }}"
+    state: latest
+  with_items:
+    - gdm
+    - gnome
+    - gnome-extra
+    - libinput
+    - libinput-gestures
+    - mesa
+    - vulkan-intel
+    - wmctrl
+    - xorg-server-xwayland
+  become: true
+
+- name: wayland-gnome | Install injectinput.py
+  become: true
+  copy:
+    dest: /usr/local/bin/injectinput.py
+    src: injectinput.py
+
+- name: wayland-gnome | Enable gdm.service
+  become: true
+  systemd:
+    enabled: true
+    name: gdm.service
+    daemon-reload: true
+
+- name: wayland-gnome | Install libinput-gestures.conf
+  become: true
+  copy:
+    dest: "/etc/libinput-gestures.conf"
+    src: libinput-gestures.conf
+
+- name: wayland-gnome | Install libinput-gestures user service
+  copy:
+    dest: "/etc/systemd/system/libinput-gestures.service"
+    src: libinput-gestures.service
+    owner: "{{ user.name }}"
+
+- name: wayland-gnome | Enable libinput-gestures service
+  become: true
+  systemd:
+    enabled: true
+    name: libinput-gestures.service
+    daemon-reload: true
