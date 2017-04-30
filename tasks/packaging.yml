@@ -3,7 +3,7 @@
 - name: packaging | Install reflector
   package:
     name: reflector
-    state: latest
+    state: present
   become: true
 
 - name: packaging | Install reflector service
@@ -41,5 +41,5 @@
 - name: packaging | Install base-devel
   package:
     name: base-devel
-    state: latest
+    state: present
   become: true

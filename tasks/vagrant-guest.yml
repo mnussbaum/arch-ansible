@@ -3,7 +3,7 @@
   when: ansible_bios_version == "VirtualBox"
   package:
     name: "{{ item }}"
-    state: latest
+    state: present
   with_items:
     - virtualbox-host-dkms
     - virtualbox-guest-dkms

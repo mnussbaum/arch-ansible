@@ -8,7 +8,7 @@
 - name: GUI | Install packages
   pacaur:
     name: "{{ item }}"
-    state: latest
+    state: present
   with_items:
     - mesa
     - vulkan-intel

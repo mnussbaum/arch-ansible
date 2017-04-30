@@ -2,7 +2,7 @@
 - name: tmux | Install packages
   package:
     name: tmux
-    state: latest
+    state: present
   become: true
 
 - name: tmux | Install tmux config

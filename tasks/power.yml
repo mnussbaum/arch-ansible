@@ -2,7 +2,7 @@
 - name: power | Install packages
   pacaur:
     name: "{{ item }}"
-    state: latest
+    state: present
   with_items:
     - powerstat-git
     - powertop
