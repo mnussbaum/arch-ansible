@@ -17,7 +17,7 @@ Vagrant.configure("2") do |config|
       "--ask-become-pass",
       "-e root_device=/dev/mapper/vgcrypt-root",
       "-e ssd_device=/dev/sda2",
-      "-e '{\"user\": {\"name\": \"vagrant\", \"group\": \"vagrant\", \"shell\": \"/usr/bin/zsh\"}}'",
+      "-e '{\"user\": {\"name\": \"vagrant\", \"group\": \"vagrant\", \"shell\": \"/usr/bin/zsh\", \"email\": \"foo@bar.com\"}}'",
     ]
     ansible.verbose = "v"
     ansible.playbook = "playbook.yml"
