@@ -10,21 +10,42 @@
     name: "{{ item }}"
     state: present
   with_items:
-    - breeze-kde4
+    - breeze
     - kde-applications-meta
+    - kde-development-environment-meta
+    - libdbusmenu-qt5
+    - kwayland-integration
     - libinput
     - libinput-gestures
     - mesa
     - plasma-meta
     - plasma-wayland-session
+    - qt5-virtualkeyboard
     - sddm
     - vulkan-intel
     - xdotool
     - xorg-server
     - xorg-server-utils
+    - xorg-server-xwayland
     - xorg-xdpyinfo
     - xorg-xinput
   become: true
+
+- copy:
+    content: localhost.localdomain
+    dest: /etc/hostname
+  become: true
+- file:
+    path: "/home/{{ user.name }}/.config/plasma-workspace/env"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.name }}"
+    recurse: true
+- copy:
+    src: kwin_env.sh
+    dest: "/home/{{ user.name }}/.config/plasma-workspace/env/kwin_env.sh"
+    mode: 0755
+# set window style to breeze https://www.mail-archive.com/kde-bugs-dist@kde.org/msg65114.html
 
 - name: kde-wayland | Configure xorg to run with root privileges
   copy:
