@@ -15,21 +15,6 @@
     dest: "/home/{{ user.name }}/.config/redshift.conf"
     owner: "{{ user.name }}"
 
-- name: Brightness | Install redshift service config
-  copy:
-    src: redshift@.service
-    dest: "/home/{{ user.name }}/.config/systemd/user/redshift@.service"
-    owner: "{{ user.name }}"
-
-- name: Brightness | Enable redshift service
-  become: true
-  become_user: "{{ user.name }}"
-  systemd:
-    enabled: true
-    name: redshift@0.service
-    user: true
-    daemon-reload: true
-
 # TODO: Allow this to differ on every machine
 - name: Brightness | Install calise config for screen auto-brightness
   become: true

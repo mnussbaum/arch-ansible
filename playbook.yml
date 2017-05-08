@@ -32,7 +32,9 @@
     - include: tasks/power.yml
     - include: tasks/vagrant-guest.yml
     - include: tasks/fonts.yml
-    - include: tasks/gui.yml
+    - include: tasks/x11.yml
+    - include: tasks/libinput.yml
+    - include: tasks/kde.yml
     - include: tasks/brightness.yml
     - include: tasks/audio.yml
     - include: tasks/firefox.yml

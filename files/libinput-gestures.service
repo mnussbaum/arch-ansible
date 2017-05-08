@@ -1,0 +1,8 @@
+[Unit]
+Description=Multitouch via libinput-gestures
+
+[Service]
+ExecStart=/usr/bin/libinput-gestures
+
+[Install]
+WantedBy=default.target

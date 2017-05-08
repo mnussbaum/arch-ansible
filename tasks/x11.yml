@@ -1,0 +1,32 @@
+---
+- name: X11 | Remove bad packages
+  become: true
+  pacman:
+    name: mesa-libgl
+    state: absent
+
+- name: X11 | Install packages
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - mesa
+    - vulkan-intel
+    - xdotool
+    - xorg-apps
+    - xorg-server
+    - xorg-xdpyinfo
+    - xorg-xinput
+  become: true
+
+- name: X11 | Configure xorg to run with root privileges
+  copy:
+    dest: /etc/X11/Xwrapper.config
+    src: Xwrapper.config
+  become: true
+
+- name: X11 | Configure Xresources
+  template:
+    src: templates/Xresources.j2
+    dest: "/home/{{ user.name }}/.Xresources"
+    owner: "{{ user.name }}"

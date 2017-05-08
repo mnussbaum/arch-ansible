@@ -1,0 +1,44 @@
+---
+- name: libinput | Install packages
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - libinput
+    - libinput-gestures
+    - xdotool
+    - xf86-input-libinput
+  become: true
+
+- name: libinput | Make config dir
+  become: true
+  file:
+    path: "/etc/libinput/xorg.conf.d"
+    state: directory
+
+- name: libinput | Install xorg multitouch config
+  copy:
+    dest: "/etc/libinput/xorg.conf.d/99-multitouch.conf"
+    src: xorg-multitouch.conf
+  become: true
+
+- name: libinput | Install libinput-gestures user service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/libinput-gestures.service"
+    src: libinput-gestures.service
+    owner: "{{ user.name }}"
+
+- name: libinput | Install libinput-gestures.conf
+  copy:
+    dest: "/home/{{ user.name }}/.config/libinput-gestures.conf"
+    src: libinput-gestures.conf
+    owner: "{{ user.name }}"
+
+- name: libinput | Enable libinput-gestures service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: libinput-gestures.service
+    user: true
+    daemon-reload: true
