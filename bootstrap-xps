@@ -31,7 +31,9 @@ create_boot_partition() {
   local boot_device=$1
   local efi_partition=$2
 
-  mkfs.ext4 $boot_device
+  # TODO: clear out the partition
+
+  mkfs.ext4 -O ^has_journal -L grub $boot_device
   mkdir -p /mnt/boot
   mount $boot_device /mnt/boot
   mkdir -p /mnt/boot/efi
@@ -42,13 +44,19 @@ create_encrypted_root_partition() {
   local root_device=$1
   local ssd_device=$2
 
-  cryptsetup -v --cipher aes-xts-plain64 --key-size 512 -y luksFormat $ssd_device
+  cryptsetup -v --cipher aes-xts-plain64 --hash sha512 --key-size 512 -y luksFormat $ssd_device
   cryptsetup luksOpen $ssd_device lvm
+
+  # TODO: clear out the partition
+
   pvcreate /dev/mapper/lvm
   vgcreate vgcrypt /dev/mapper/lvm
+
+  # TODO: vgcrypt and root values for args need to be passed in, correspond with
+  # current $root_device arg
   lvcreate --extents +100%FREE -n root vgcrypt
 
-  mkfs.ext4 -O ^has_journal $root_device
+  mkfs.ext4 -O ^has_journal -b 4096 -L root $root_device
   mount $root_device /mnt
 }
 
@@ -63,10 +71,10 @@ ansible_bootstrap() {
     $root_device $ssd_device -e bootstrap='true' --tags bootstrap"
 }
 
+# cp -r /run/archiso/bootmnt/arch-ansible .
 # parted --align optimal /dev/nvme0n1
 # > mkpart primary ext4 END_OF_A_PART END_OF_A_PART+512MB
 # > name 7 "Grub"
-# > set 7 boot on
 # > mkpart primary ext4 END_OF_A_PART+512MB BEGINNING_OF_NEXT_PART_OR_EOF
 # > name 8 "Arch Root"
 
@@ -96,3 +104,12 @@ LIST
 pacstrap /mnt base base-devel
 genfstab -U -p /mnt >> /mnt/etc/fstab
 ansible_bootstrap $root_device $ssd_device
+
+# After rebooting:
+# sudo systemctl start NetworkManager
+# nmtui
+# sudo mkdir /mnt/usb
+# sudo mount /dev/sda1 /mnt/usb
+# cp -r /mnt/usb/arch-ansible .
+# cd arch-ansible
+# ./provision-xps
