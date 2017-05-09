@@ -23,14 +23,13 @@
     - "{{ nvim_data_dir }}/plugged"
     - "{{ nvim_data_dir }}/site/autoload"
 
-- name: nvim | Install neovim-git
+- name: nvim | Install neovim packages
   pacaur:
-    name: neovim-git
+    name: "{{ item }}"
     state: present
-
-- name: nvim | Install python-neovim
-  pip: name=neovim
-  become: true
+  with_items:
+    - neovim-git
+    - python2-neovim
 
 - name: nvim | Download vim-plug installer
   get_url:
