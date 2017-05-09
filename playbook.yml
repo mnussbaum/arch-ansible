@@ -44,11 +44,17 @@
   # Configure wifi for after reboot
   # Automate partitioning or restoring from a partition dump
   # Fix Grub not finding Windows
-  # Fix Grub two-password for decryption
   # Install SSH key
 # Security harden
-# Make external displays easy to add
-# Make external speakers easy to add
+# KDE
+  # Make resolution higher
+  # Make audio switch to displays by default
+  # Fix touch
+  # Window shortcuts
+  # Redshift
+  # Does calise work?
+  # Decrease KDE power usage
+  # Integrate disk decryption into SDDM
 # Fix errors from systemd units starting too early
 # Remove psmouse errors from dmesg
 # Printing
@@ -59,17 +65,11 @@
   # Node
   # Java
 # Make ansible only prompt for new-user pw when needed
-# Users
-  # mnussbaum
-  #   dotfiles
-  #   editor
-  #   shell
-  #   git global config
 # GUI Apps
   # music
   # video
   # PDF
   # notepad
   # dropbox
-  # Littlesnitch replacemend
+  # Littlesnitch replacement
 # Password sync
