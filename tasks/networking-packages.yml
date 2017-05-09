@@ -6,5 +6,4 @@
     - wireless_tools
     - wpa_supplicant
     - networkmanager
-    - network-manager-applet
   become: true
