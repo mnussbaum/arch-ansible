@@ -18,6 +18,7 @@
     - openssh
     - rsync
     - tig
+    - unzip
     - vim
     - yajl
     - zsh
