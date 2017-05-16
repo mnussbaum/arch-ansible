@@ -16,3 +16,13 @@
     enabled: true
     name: sddm.service
     daemon-reload: true
+
+- name: KDE | Install configs
+  copy:
+    dest: "/home/{{ user.name }}/.config/{{ item }}"
+    src: "{{ item }}"
+    owner: "{{ user.name }}"
+  with_items:
+    - touchpadrc
+    - kcminputrc
+
