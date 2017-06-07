@@ -19,10 +19,8 @@
 
 - name: KDE | Install configs
   copy:
-    dest: "/home/{{ user.name }}/.config/{{ item }}"
+    dest: "/home/{{ user.name }}/.config/{{ item | basename }}"
     src: "{{ item }}"
     owner: "{{ user.name }}"
-  with_items:
-    - touchpadrc
-    - kcminputrc
-
+  with_fileglob:
+    - files/kde/*
