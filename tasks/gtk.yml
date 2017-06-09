@@ -1,0 +1,8 @@
+---
+- name: GTK | Install configs
+  copy:
+    dest: "/home/{{ user.name }}/.config/gtk-3.0/{{ item | basename }}"
+    src: "{{ item }}"
+    owner: "{{ user.name }}"
+  with_fileglob:
+    - files/gtk-3.0/*

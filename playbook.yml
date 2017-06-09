@@ -35,6 +35,7 @@
     - include: tasks/x11.yml
     - include: tasks/libinput.yml
     - include: tasks/kde.yml
+    - include: tasks/gtk.yml
     - include: tasks/brightness.yml
     - include: tasks/audio.yml
     - include: tasks/firefox.yml
