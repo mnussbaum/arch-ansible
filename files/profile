@@ -3,3 +3,6 @@
 # fi
 
 export PATH="${PATH}:/usr/bin/core_perl"
+
+alias vi="nvim"
+alias vim="nvim"
