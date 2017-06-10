@@ -2,6 +2,7 @@
 Description=Multitouch via libinput-gestures
 
 [Service]
+Environment=DISPLAY=:0
 ExecStart=/usr/bin/libinput-gestures
 
 [Install]
