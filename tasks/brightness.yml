@@ -15,12 +15,24 @@
     dest: "/home/{{ user.name }}/.config/redshift.conf"
     owner: "{{ user.name }}"
 
+- name: Brightness | Install udev systemd rules to start calise after camera
+  copy:
+    src: udev-video-systemd.rules
+    dest: "/etc/udev/rules.d/99-video-systemd.rules"
+  become: true
+
 # TODO: Allow this to differ on every machine
 - name: Brightness | Install calise config for screen auto-brightness
   become: true
   copy:
     src: calise.conf
-    dest: "/etc/calise.conf"
+    dest: /etc/calise.conf
+
+- name: Brightness | Install calised.service config
+  copy:
+    src: calised.service
+    dest: /etc/systemd/system/calised.service
+  become: true
 
 - name: Brightness | Enable calise service
   become: true
