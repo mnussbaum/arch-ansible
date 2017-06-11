@@ -1,6 +1,0 @@
----
-- name: global environment variables | Install them
-  copy:
-    src: files/etc_environment
-    dest: /etc/environment
-  become: true

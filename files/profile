@@ -1,8 +1,0 @@
-# Run commands for WMs only in:
-# if [ -z "$DISPLAY" ] && [ -n "$XDG_VTNR" ] && [ "$XDG_VTNR" -eq 1 ]; then
-# fi
-
-export PATH="${PATH}:/usr/bin/core_perl"
-
-alias vi="nvim"
-alias vim="nvim"

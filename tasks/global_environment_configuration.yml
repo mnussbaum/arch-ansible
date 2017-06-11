@@ -1,0 +1,15 @@
+---
+- name: global environment configuration | Install /etc/environment
+  copy:
+    src: files/etc_environment
+    dest: /etc/environment
+  become: true
+
+- name: global environment configuration | Install shell profile files
+  become: true
+  copy:
+    dest: "/etc/profile.d/{{ item | basename }}"
+    src: "{{ item }}"
+    mode: "u=rwx,g=rx,o=rx"
+  with_fileglob:
+    - files/profile.d/*

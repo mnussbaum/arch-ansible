@@ -40,7 +40,7 @@
 - name: user | Install user profile
   copy:
     dest: "/home/{{ user.name }}/.profile"
-    src: profile
+    content: ""
     owner: "{{ user.name }}"
 
 - name: user | Install user zprofile, sourcing profile
