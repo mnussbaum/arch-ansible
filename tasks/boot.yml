@@ -10,6 +10,11 @@
     - intel-ucode
     - os-prober
 
+- name: boot | Run os-prober to find other OS
+  command: os-prober
+  become: true
+  changed_when: false
+
 - name: boot | Get power_image size
   command: cat /sys/power/image_size
   register: power_image_size_bytes
