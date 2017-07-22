@@ -23,3 +23,6 @@ noremap Y y$
 
 " Make esc fast
 set timeoutlen=1000 ttimeoutlen=0
+
+" Avoid neovim cursor bugs as of 07/21/17
+set guicursor=
