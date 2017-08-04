@@ -1,0 +1,12 @@
+---
+- name: Konsole | Install tab theme CSS
+  copy:
+    dest: "/home/{{ user.name }}/.local/share/konsole_arc_dark_tabs.css"
+    src: files/konsole_arc_dark_tabs.css
+    owner: "{{ user.name }}"
+
+- name: Konsole | Install konsolerc
+  copy:
+    dest: "/home/{{ user.name }}/.config/konsolerc"
+    src: files/konsolerc
+    owner: "{{ user.name }}"

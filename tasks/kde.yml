@@ -24,3 +24,5 @@
     owner: "{{ user.name }}"
   with_fileglob:
     - files/kde/*
+
+- include: tasks/konsole.yml
