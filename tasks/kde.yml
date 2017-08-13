@@ -25,4 +25,9 @@
   with_fileglob:
     - files/kde/*
 
+- name: KDE | Install kwin-quarter-tiling
+  pacaur:
+    name: kwin-scripts-quarter-tiling-git
+    state: present
+
 - include: tasks/konsole.yml

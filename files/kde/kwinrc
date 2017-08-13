@@ -3,6 +3,16 @@ OpenGLIsUnsafe=false
 
 [Desktops]
 Number=1
+Rows=1
+
+[Plugins]
+quarter-tilingEnabled=true
+
+[Script-quarter-tiling]
+numDesks=1
+
+[Windows]
+RollOverDesktops=true
 
 [org.kde.kdecoration2]
 BorderSize=None
