@@ -1,0 +1,5 @@
+---
+- name: KWin Tiling | Install package
+  pacaur:
+    name: kwin-scripts-quarter-tiling-git
+    state: present

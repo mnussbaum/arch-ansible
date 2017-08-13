@@ -25,4 +25,5 @@
   with_fileglob:
     - files/kde/*
 
+- include: tasks/kwin_tiling.yml
 - include: tasks/konsole.yml
