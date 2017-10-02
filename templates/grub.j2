@@ -58,7 +58,9 @@ GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ ssd_device }}:vgcrypt
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume={{ root_device }}"
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"
 
-# Save power, effects probably Kaby Lake specific
-GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} pcie_aspm=force i915.enable_fbc=1 i915.enable_psr=2"
-GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} i915.enable_guc_loading=1 i915.enable_guc_submission=1"
+# Save power, Kaby Lake specific
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} i915.semaphores=1"
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} pcie_aspm=force pcie_aspm.policy=powersave"
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} i915.enable_fbc=1 i915.enable_psr=2"
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} i915.enable_huc=1 i915.enable_guc_submission=1"
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} i915.enable_rc6=1 i915.modeset=1"
