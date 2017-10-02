@@ -27,7 +27,7 @@
     - include: tasks/package-update.yml
     - include: tasks/python.yml
     - include: tasks/neovim.yml
-    - include: tasks/global_environment_configuration.yml
+    - include: tasks/global-environment-configuration.yml
     - include: tasks/gitconfig.yml
     - include: tasks/tmux.yml
     - include: tasks/power.yml
