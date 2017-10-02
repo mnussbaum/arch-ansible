@@ -1,0 +1,14 @@
+[Unit]
+Description=Wait for internet connectivity before network-online.target
+DefaultDependencies=no
+After=local-fs.target
+Before=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+TimeoutStartSec=2min
+ExecStart=/usr/local/bin/wait-for-internet
+
+[Install]
+WantedBy=network-online.target

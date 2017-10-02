@@ -1,0 +1,19 @@
+---
+- name: network online | Install script to wait for internet
+  copy:
+    src: files/wait-for-internet
+    dest: /usr/local/bin/wait-for-internet
+    mode: a+x
+  become: true
+
+- name: network online | Install systemd unit to wait for internet
+  copy:
+    src: files/wait-for-internet.service
+    dest: /etc/systemd/system/wait-for-internet.service
+  become: true
+
+- name: network online | Enable systemd unit
+  systemd:
+    enabled: true
+    name: wait-for-internet.service
+  become: true

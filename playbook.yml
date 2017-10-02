@@ -22,6 +22,7 @@
     - include: tasks/networking-packages.yml
       tags: [bootstrap]
     - include: tasks/start-networking.yml
+    - include: tasks/network-online.yml
     - include: tasks/cli-tools.yml
     - include: tasks/package-update.yml
     - include: tasks/python.yml
