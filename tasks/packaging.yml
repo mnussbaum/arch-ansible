@@ -43,3 +43,21 @@
     name: base-devel
     state: present
   become: true
+
+- name: packaging | Install ccache for faster compilation
+  become: true
+  pacman:
+    name: ccache
+    state: present
+
+- name: packaging | Install lzop so we can use lzo compressed packages for faster decompression
+  become: true
+  pacman:
+    name: lzop
+    state: present
+
+- name: packaging | Install makepkg.conf
+  become: true
+  template:
+    src: templates/makepkg.conf.j2
+    dest: /etc/makepkg.conf
