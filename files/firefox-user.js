@@ -20,3 +20,11 @@ user_pref("browser.sessionstore.interval", 300000);
 
 // Restore session at startup
 user_pref("browser.startup.page", 3);
+
+// Don't upload data to mozilla
+user_pref("app.shield.optoutstudies.enabled", false);
+user_pref("datareporting.healthreport.uploadEnabled", false);
+user_pref("privacy.donottrackheader.enabled", true);
+
+// Disable password storage
+user_pref("signon.rememberSignons", false);
