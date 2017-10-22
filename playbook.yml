@@ -41,6 +41,7 @@
     - include: tasks/audio.yml
     - include: tasks/firefox.yml
     - include: tasks/deluge-torrents.yml
+    - include: tasks/firejail.yml
 
 # Bootstrap:
   # Convert script to re-entrant ansible

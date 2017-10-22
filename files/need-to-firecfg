@@ -1,0 +1,46 @@
+#!/usr/bin/python
+
+import os
+import subprocess
+
+
+def jailable():
+    with open("/usr/lib/firejail/firecfg.config", "r") as jail_configs:
+        return {jail_config.strip("\n") for jail_config in jail_configs}
+
+
+def jailed():
+    jailed_paths = subprocess.Popen(
+        ["firecfg", "--list"],
+        stdout=subprocess.PIPE,
+    ).communicate()[0].split()
+
+    jailed_binaries = set()
+    for jailed_path in jailed_paths:
+        jailed_binaries.add(str(os.path.basename(jailed_path), "utf-8"))
+
+    return jailed_binaries
+
+
+def installed():
+    installed = set()
+    for path_dir in os.getenv("PATH").split(":"):
+        installed.update(os.listdir(path_dir))
+
+    return installed
+
+
+def need_to_run_firejail():
+    installed_and_jailable = installed().intersection(jailable())
+    installed_and_jailed = installed().intersection(jailed())
+
+    return installed_and_jailable != installed_and_jailed
+
+
+if __name__ == "__main__":
+    if need_to_run_firejail():
+        print("You need to run firecfg")
+        exit(1)
+
+    print("All available binaries already firejailed")
+    exit(0)

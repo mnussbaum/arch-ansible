@@ -1,0 +1,24 @@
+---
+- name: firejail | Install firejail
+  pacman:
+    name: firejail
+    state: present
+  become: true
+
+- name: firejail | Install script to check firejail status
+  copy:
+    src: files/need-to-firecfg
+    dest: /usr/local/bin/need-to-firecfg
+    mode: a+x
+  become: true
+
+- name: firejail | Check if firecfg necessary
+  shell: type need-to-firecfg >/dev/null && need-to-firecfg
+  register: need_to_firecfg
+  changed_when: false
+  ignore_errors: true
+
+- name: firejail | Install default profiles
+  command: firecfg
+  become: true
+  when: need_to_firecfg | failed
