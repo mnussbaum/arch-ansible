@@ -4,12 +4,13 @@
     nvim_data_dir: "/home/{{ user.name }}/.local/share/nvim"
     vim_plugins:
       - "'Shougo/deoplete.nvim'"
-      - "'pearofducks/ansible-vim'"
-      - "'scrooloose/nerdtree'"
       - "'jlanzarotta/bufexplorer'"
-      - "'shmay/vim-yaml'"
       - "'junegunn/fzf', {'dir': '/home/{{ user.name }}/.fzf', 'do': './install --all'}"
       - "'junegunn/fzf.vim'"
+      - "'morhetz/gruvbox'"
+      - "'pearofducks/ansible-vim'"
+      - "'scrooloose/nerdtree'"
+      - "'shmay/vim-yaml'"
       - "'tomtom/tcomment_vim'"
       - "'tpope/vim-fugitive'"
 
