@@ -5,6 +5,9 @@ OpenGLIsUnsafe=false
 Number=1
 Rows=1
 
+[ModifierOnlyShortcuts]
+Meta=
+
 [Plugins]
 quarter-tilingEnabled=true
 
