@@ -5,6 +5,7 @@
     nvim_data_dir: "/home/{{ user.name }}/.local/share/nvim"
     vim_plugins:
       - "'Shougo/deoplete.nvim'"
+      - "'fatih/vim-go', {'do': ':GoInstallBinaries'}"
       - "'jlanzarotta/bufexplorer'"
       - "'junegunn/fzf', {'dir': '/home/{{ user.name }}/.fzf', 'do': './install --all'}"
       - "'junegunn/fzf.vim'"
@@ -14,6 +15,7 @@
       - "'shmay/vim-yaml'"
       - "'tomtom/tcomment_vim'"
       - "'tpope/vim-fugitive'"
+      - "'zchee/deoplete-go', { 'do': 'make'}"
 
 - name: nvim | Ensure nvim config and data dirs exist
   file:

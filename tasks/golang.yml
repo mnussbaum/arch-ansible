@@ -1,0 +1,16 @@
+# vim:ft=ansible:
+---
+- name: golang | Install packages
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  become: yes
+  with_items:
+    - go
+    - vim-gocode
+
+- name: golang | Create go src dir
+  file:
+    path: "/home/{{ user.name }}/go/src"
+    state: directory
+    owner: "{{ user.name }}"
