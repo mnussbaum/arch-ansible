@@ -27,19 +27,22 @@
     - ripgrep
   become: true
 
-- name: CLI Tools | Add cower author's key
-  gpg_import:
-    key_id: 1EB2638FF56C0C53
-- name: CLI Tools | Install cower for pacaur
+- name: CLI Tools | Install pacaur-install script
+  copy:
+    dest: /usr/local/bin/install-pacaur
+    src: install-pacaur
+    mode: a+x
   become: true
-  makepkg:
-    name: cower
-    state: present
+
+- name: CLI Tools | Check pacaur installed
+  shell: command -v pacaur >/dev/null
+  register: check_pacaur_installed
+  ignore_errors: true
+  changed_when: false
+
 - name: CLI Tools | Install pacaur
-  become: true
-  makepkg:
-    name: pacaur
-    state: present
+  command: /usr/local/bin/install-pacaur
+  when: check_pacaur_installed | failed
 
 - name: CLI Tools | Install fzf
   pacaur:

@@ -12,6 +12,12 @@
     src: files/konsolerc
     owner: "{{ user.name }}"
 
+- name: KDE | Create Konsole profile dir
+  file:
+    path: "/home/{{ user.name }}/.local/share/konsole"
+    state: directory
+    owner: "{{ user.name }}"
+
 - name: KDE | Install profile
   copy:
     dest: "/home/{{ user.name }}/.local/share/konsole/Profile 1.profile"
