@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: user | Create wheel group
   become: true

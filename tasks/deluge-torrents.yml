@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: Deluge torrents | Install pacakges
   become: true

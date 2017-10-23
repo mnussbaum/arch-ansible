@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: Package update | Update pacaur packages
   pacaur:

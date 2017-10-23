@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 # Reflector ranks mirrors
 - name: packaging | Install reflector

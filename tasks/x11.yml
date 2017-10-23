@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: X11 | Remove bad packages
   become: true

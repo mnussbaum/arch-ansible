@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: trim | Enable periodic TRIM
   become: true

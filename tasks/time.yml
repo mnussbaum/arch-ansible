@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: Set timezone to America/Las_Angeles
   become: true

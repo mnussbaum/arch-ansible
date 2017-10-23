@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: network online | Install script to wait for internet
   copy:

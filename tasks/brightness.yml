@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: Brightness | Install pacakges
   become: true

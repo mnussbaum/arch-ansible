@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: vagrant-guest | Install vagrant kernel modules
   when: ansible_bios_version == "VirtualBox"

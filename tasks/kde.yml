@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: KDE | Install packages
   pacaur:

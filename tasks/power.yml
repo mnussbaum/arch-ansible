@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: power | Install packages
   pacaur:

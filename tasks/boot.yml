@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: boot | Install packages
   become: true

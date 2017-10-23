@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: Konsole | Install tab theme CSS
   copy:

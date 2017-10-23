@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: Firefox | Install packages
   pacaur:

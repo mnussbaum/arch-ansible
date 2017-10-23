@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: Networking Pacakges | Install
   package: name={{ item }} state=latest

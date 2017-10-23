@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - name: Fonts | Install packages
   pacaur:

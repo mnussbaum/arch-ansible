@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - hosts: all
   vars_prompt:

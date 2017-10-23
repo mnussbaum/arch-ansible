@@ -1,3 +1,4 @@
+# vim:ft=ansible:
 ---
 - set_fact:
     nvim_config_dir: "/home/{{ user.name }}/.config/nvim"
