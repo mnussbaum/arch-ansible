@@ -11,3 +11,9 @@
     dest: "/home/{{ user.name }}/.config/konsolerc"
     src: files/konsolerc
     owner: "{{ user.name }}"
+
+- name: KDE | Install profile
+  copy:
+    dest: "/home/{{ user.name }}/.local/share/konsole/Profile 1.profile"
+    src: files/konsole_profile
+    owner: "{{ user.name }}"

@@ -1,0 +1,8 @@
+[Appearance]
+ColorScheme=WhiteOnBlack
+
+[General]
+Name=Profile 1
+Parent=FALLBACK/
+StartInCurrentSessionDir=false
+TerminalRows=20
