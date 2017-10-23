@@ -23,6 +23,8 @@
     - vim
     - yajl
     - zsh
+    - ruby
+    - ripgrep
   become: true
 
 - name: CLI Tools | Add cower author's key
@@ -38,3 +40,18 @@
   makepkg:
     name: pacaur
     state: present
+
+- name: CLI Tools | Install fzf
+  pacaur:
+    name: fzf
+    state: present
+  become: true
+
+- name: CLI Tools | Install fzf helper scripts
+  copy:
+    dest: "/usr/local/bin/{{ item | basename }}"
+    src: "{{ item }}"
+    mode: a+x
+  become: true
+  with_fileglob:
+    - files/fzf_helpers/*
