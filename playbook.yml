@@ -53,16 +53,8 @@
   # Install SSH key
 # Security harden
 # KDE
-  # Make resolution higher
   # Make audio switch to displays by default
-  # Fix touch
-  # Window shortcuts
-  # Redshift
-  # Does calise work?
-  # Decrease KDE power usage
   # Integrate disk decryption into SDDM
-# Fix errors from systemd units starting too early
-# Remove psmouse errors from dmesg
 # Printing
 # PLs
   # Ruby
@@ -79,3 +71,8 @@
   # dropbox
   # Littlesnitch replacement
 # Password sync
+# Shell colorscheme
+# Shell prompt
+# Konsole start tmux by default
+# Make plasma bar nicer
+# Get some wallpaper
