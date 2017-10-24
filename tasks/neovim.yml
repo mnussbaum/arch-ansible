@@ -4,7 +4,7 @@
     nvim_config_dir: "/home/{{ user.name }}/.config/nvim"
     nvim_data_dir: "/home/{{ user.name }}/.local/share/nvim"
     vim_plugins:
-      - "'Shougo/deoplete.nvim'"
+      - "'Shougo/deoplete.nvim', {'do': ':UpdateRemotePlugins'}"
       - "'fatih/vim-go', {'do': ':GoInstallBinaries'}"
       - "'jlanzarotta/bufexplorer'"
       - "'junegunn/fzf', {'dir': '/home/{{ user.name }}/.fzf', 'do': './install --all'}"
@@ -15,7 +15,7 @@
       - "'shmay/vim-yaml'"
       - "'tomtom/tcomment_vim'"
       - "'tpope/vim-fugitive'"
-      - "'zchee/deoplete-go', { 'do': 'make'}"
+      - "'zchee/deoplete-go', {'do': 'make'}"
 
 - name: nvim | Ensure nvim config and data dirs exist
   file:
@@ -34,7 +34,7 @@
   become: true
   with_items:
     - neovim-git
-    - python2-neovim
+    - python-neovim
 
 - name: nvim | Download vim-plug installer
   get_url:
