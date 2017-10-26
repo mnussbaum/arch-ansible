@@ -5,6 +5,14 @@ OpenGLIsUnsafe=false
 Number=1
 Rows=1
 
+[Effect-CoverSwitch]
+TabBox=false
+TabBoxAlternative=false
+
+[Effect-FlipSwitch]
+TabBox=false
+TabBoxAlternative=false
+
 [ModifierOnlyShortcuts]
 Meta=
 
@@ -27,11 +35,36 @@ CommandWindow3=Activate and pass click
 CommandWindowWheel=Scroll
 
 [Plugins]
+highlightwindowEnabled=true
 quarter-tilingEnabled=true
 windowgeometryEnabled=false
 
 [Script-quarter-tiling]
 numDesks=1
+
+[TabBox]
+ActivitiesMode=1
+ApplicationsMode=0
+DesktopMode=0
+HighlightWindows=true
+LayoutName=org.kde.breeze.desktop
+MinimizedMode=0
+MultiScreenMode=0
+ShowDesktopMode=1
+ShowTabBox=true
+SwitchingMode=0
+
+[TabBoxAlternative]
+ActivitiesMode=1
+ApplicationsMode=0
+DesktopMode=1
+HighlightWindows=true
+LayoutName=org.kde.breeze.desktop
+MinimizedMode=0
+MultiScreenMode=0
+ShowDesktopMode=0
+ShowTabBox=true
+SwitchingMode=0
 
 [Windows]
 ActiveMouseScreen=true
