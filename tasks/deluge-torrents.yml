@@ -15,10 +15,14 @@
     state: directory
     owner: "{{ user.name }}"
 
-- name: Deluge torrents | Install configs
+- name: Deluge torrents | Install blocklist
   copy:
-    dest: "/home/{{ user.name }}/.config/deluge/{{ item | basename }}"
-    src: "{{ item }}"
+    dest: "/home/{{ user.name }}/.config/deluge/blocklist.conf"
+    src: files/deluge_blocklist.conf
     owner: "{{ user.name }}"
-  with_fileglob:
-    - files/deluge/*
+
+- name: Deluge torrents | Install config
+  template:
+    dest: "/home/{{ user.name }}/.config/deluge/core.conf"
+    src: templates/deluge_core.conf.j2
+    owner: "{{ user.name }}"
