@@ -44,6 +44,7 @@
     - include: tasks/firefox.yml
     - include: tasks/deluge-torrents.yml
     - include: tasks/firejail.yml
+    - include: tasks/docker.yml
 
 # Bootstrap:
   # Convert script to re-entrant ansible

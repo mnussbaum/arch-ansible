@@ -1,0 +1,22 @@
+# vim:ft=ansible:
+---
+- name: Docker | Enable loop kernel module
+  become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  copy:
+    content: loop
+    dest: /etc/modules-load.d/loop.conf
+
+- name: Docker | Install package
+  become: true
+  pacman:
+    name: docker
+    state: present
+
+- name: Docker | Add user to docker group
+  become: true
+  user:
+    name: "{{ user.name }}"
+    groups: docker
+    append: true
