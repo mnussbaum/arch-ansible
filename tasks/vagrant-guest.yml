@@ -11,3 +11,12 @@
   notify:
     - Regenerate grub.cfg
   become: true
+
+- name: vagrant-guest | Blacklist coretemp module
+  when: ansible_bios_version == "VirtualBox"
+  become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  copy:
+    content: "blacklist coretemp"
+    dest: "/etc/modprobe.d/blacklist_coretemp.conf"
