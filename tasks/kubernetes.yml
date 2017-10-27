@@ -1,0 +1,10 @@
+# vim:ft=ansible:
+---
+- name: Kubernetes | Install packages
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  become: yes
+  with_items:
+    - etcd
+    - kubectl-bin
