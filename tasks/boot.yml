@@ -44,6 +44,22 @@
     src: templates/grub.j2
     dest: /etc/default/grub
 
+- name: boot | Create kernel module directory
+  become: true
+  file:
+    path: /etc/modprobe.d
+    state: directory
+
+- name: boot | Configure kernel modules
+  become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/modprobe.d/{{ item | basename }}"
+  with_fileglob:
+    - files/modprobe.d/*
+
 - name: boot | Install grub
   when: bootstrap is defined and bootstrap == "true"
   notify:
