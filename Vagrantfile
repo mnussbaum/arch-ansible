@@ -7,7 +7,7 @@ Vagrant.configure("2") do |config|
   config.vm.provider "virtualbox" do |vb|
     # vb.gui = true
 
-    vb.memory = "4096"
+    vb.memory = "10240"
   end
 
   config.vm.provision "shell", inline: "pacman -Syu --noconfirm wpa_supplicant ansible python python-passlib"
