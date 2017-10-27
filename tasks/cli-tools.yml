@@ -27,6 +27,18 @@
     - ripgrep
   become: true
 
+- name: CLI Tools | Create GPG config dir
+  file:
+    path: "/home/{{ user.name }}/.gnupg"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: CLI Tools | Configure GPG  for PKGBUILD included keys
+  copy:
+    dest: "/home/{{ user.name }}/.gnupg/gpg.conf"
+    src: files/gpg.conf
+    owner: "{{ user.name }}"
+
 - name: CLI Tools | Install pacaur-install script
   copy:
     dest: /usr/local/bin/install-pacaur
