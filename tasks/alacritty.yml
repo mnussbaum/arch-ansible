@@ -1,0 +1,19 @@
+# vim:ft=ansible:
+---
+- name: Alacritty | Install package
+  become: true
+  pacaur:
+    name: alacritty-git
+    state: present
+
+- name: Alacritty | Create config dir
+  file:
+    path: "/home/{{ user.name }}/.config/alacritty"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: Alacritty | Install config
+  copy:
+    dest: "/home/{{ user.name }}/.config/alacritty/alacritty.yml"
+    src: files/alacritty.yml
+    owner: "{{ user.name }}"

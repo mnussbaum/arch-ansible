@@ -31,6 +31,7 @@
     - include: tasks/golang.yml
     - include: tasks/global-environment-configuration.yml
     - include: tasks/gitconfig.yml
+    - include: tasks/alacritty.yml
     - include: tasks/tmux.yml
     - include: tasks/power.yml
     - include: tasks/vagrant-guest.yml
