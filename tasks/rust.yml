@@ -1,0 +1,38 @@
+# vim:ft=ansible:
+---
+- name: rust | Install rustup
+  pacaur:
+    name: rustup
+    state: present
+  become: true
+
+- name: rust | Check if rust stable is installed
+  shell: rustup toolchain list | grep stable
+  register: rust_stable_installed
+  ignore_errors: yes
+  changed_when: false
+
+- name: rust | Install rust stable
+  command: rustup default stable
+  when: rust_stable_installed | failed
+
+- name: rust | Install rust tools
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  become: true
+  with_items:
+    - rust-racer
+    - rustfmt
+
+- name: rust | Find rustc root directory
+  command: rustc --print sysroot
+  register: rustc_root_dir
+  changed_when: false
+
+- name: rust | Download rust-lang source code
+  command: rustup component add rust-src
+  args:
+    creates: "{{ rustc_root_dir.stdout }}/lib/rustlib/src/rust/src"
+
+# Auto-rustfmt in vim

@@ -27,6 +27,7 @@
     - include: tasks/cli-tools.yml
     - include: tasks/package-update.yml
     - include: tasks/python.yml
+    - include: tasks/rust.yml
     - include: tasks/neovim.yml
     - include: tasks/golang.yml
     - include: tasks/global-environment-configuration.yml
