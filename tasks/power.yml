@@ -28,9 +28,9 @@
 
 - name: power | Disable bluetooth
   service:
-    name: rfkill-block@bluetooth.service
-    enabled: yes
-    state: started
+    name: bluetooth.service
+    enabled: no
+    state: stopped
   become: true
   when: ansible_bios_version != "VirtualBox"
 
