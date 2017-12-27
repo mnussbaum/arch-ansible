@@ -61,7 +61,6 @@
 # PLs
   # Ruby
   # Python
-  # Rust
   # Node
   # Java
 # Make ansible only prompt for new-user pw when needed
@@ -75,5 +74,4 @@
 # Password sync
 # Shell colorscheme
 # Shell prompt
-# Make plasma bar nicer
 # Get some wallpaper
