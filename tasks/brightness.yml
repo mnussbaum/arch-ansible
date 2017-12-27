@@ -1,4 +1,5 @@
 # vim:ft=ansible:
+# TODO: fix redshift, illum and calise for wayland
 ---
 - name: Brightness | Install pacakges
   become: true
@@ -22,7 +23,6 @@
     dest: "/etc/udev/rules.d/99-video-systemd.rules"
   become: true
 
-# TODO: Allow this to differ on every machine
 - name: Brightness | Install calise config for screen auto-brightness
   become: true
   copy:
@@ -37,6 +37,7 @@
 
 - name: Brightness | Enable calise service
   become: true
+  when: ansible_virtualization_role != "guest"
   systemd:
     enabled: true
     name: calised.service
@@ -44,6 +45,7 @@
 
 - name: Brightness | Enable illum service for backlight keys
   become: true
+  when: ansible_virtualization_role != "guest"
   systemd:
     enabled: true
     name: illum.service

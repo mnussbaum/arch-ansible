@@ -33,13 +33,14 @@
     - include: tasks/global-environment-configuration.yml
     - include: tasks/gitconfig.yml
     - include: tasks/alacritty.yml
+    - include: tasks/termite.yml
     - include: tasks/tmux.yml
     - include: tasks/power.yml
-    - include: tasks/vagrant-guest.yml
+    - include: tasks/qemu-guest.yml
     - include: tasks/fonts.yml
     - include: tasks/x11.yml
     - include: tasks/libinput.yml
-    - include: tasks/kde.yml
+    - include: tasks/sway.yml
     - include: tasks/gtk.yml
     - include: tasks/brightness.yml
     - include: tasks/audio.yml
@@ -56,9 +57,6 @@
   # Fix Grub not finding Windows
   # Install SSH key
 # Security harden
-# KDE
-  # Make audio switch to displays by default
-  # Integrate disk decryption into SDDM
 # Printing
 # PLs
   # Ruby

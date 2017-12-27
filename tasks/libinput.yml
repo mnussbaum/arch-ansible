@@ -1,4 +1,5 @@
 # vim:ft=ansible:
+# TODO: Replace xdotool for wayland
 ---
 - name: libinput | Install packages
   pacaur:
@@ -38,6 +39,7 @@
 - name: libinput | Enable libinput-gestures service
   become: true
   become_user: "{{ user.name }}"
+  when: ansible_virtualization_role != "guest"
   systemd:
     enabled: true
     name: libinput-gestures.service

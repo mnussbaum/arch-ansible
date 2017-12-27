@@ -1,0 +1,19 @@
+#!/usr/bin/python
+
+import json
+import subprocess
+
+
+def print_sway_mouse_input_ids():
+    sway_inputs = json.loads(subprocess.Popen(
+        ["swaymsg", "--raw", "--type", "get_inputs"],
+        stdout=subprocess.PIPE,
+    ).communicate()[0])
+
+    for sway_input in sway_inputs:
+        if "pointer" in sway_input["capabilities"]:
+            print(sway_input["identifier"])
+
+
+if __name__ == "__main__":
+    print_sway_mouse_input_ids()

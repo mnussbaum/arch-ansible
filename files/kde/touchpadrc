@@ -1,6 +1,0 @@
-[autodisable]
-KeyboardActivityTimeoutMs=290
-
-[parameters]
-InvertVertScroll=true
-Tapping=true

@@ -1,9 +1,0 @@
-[Appearance]
-ColorScheme=WhiteOnBlack
-
-[General]
-Command=/usr/bin/tmux
-Name=Profile 1
-Parent=FALLBACK/
-StartInCurrentSessionDir=false
-TerminalRows=20

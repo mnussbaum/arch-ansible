@@ -1,0 +1,24 @@
+# vim:ft=ansible:
+---
+- name: termite | Install termite
+  pacman:
+    name: termite
+    state: present
+  become: true
+
+- name: termite | Create config dir
+  file:
+    path: "/home/{{ user.name }}/.config/termite"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: termite | Clone base16-termite
+  git:
+    repo: https://github.com/khamer/base16-termite
+    dest: "/home/{{ user.name }}/src/base16-termite"
+
+- name: termite | Install base16-termite config
+  copy:
+    src: "/home/{{ user.name }}/src/base16-termite/themes/base16-default-dark.config"
+    dest: "/home/{{ user.name }}/.config/termite/config"
+    owner: "{{ user.name }}"

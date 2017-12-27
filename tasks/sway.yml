@@ -1,0 +1,31 @@
+# vim:ft=ansible:
+---
+- name: sway | Create config dir
+  file:
+    path: "/home/{{ user.name }}/.config/sway"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: sway | Install sway
+  pacman:
+    name: sway
+    state: present
+  become: true
+
+- name: sway | Install sway-mouse-input-ids script
+  copy:
+    src: files/sway-mouse-input-ids
+    dest: /usr/local/bin/sway-mouse-input-ids
+    mode: a+x
+  become: true
+
+- name: sway | Get mouse input IDs
+  command: sway-mouse-input-ids
+  register: sway_mouse_input_ids
+  changed_when: false
+
+- name: sway | Install config
+  template:
+    src: templates/sway_config.j2
+    dest: "/home/{{ user.name }}/.config/sway/config"
+

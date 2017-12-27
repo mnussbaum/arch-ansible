@@ -12,9 +12,9 @@ done
 
 echo "All network interfaces up"
 
-until ping -c 1 google.com >/dev/null 2>/dev/null; do
-  >&2 echo "Ping google.com failed"
+until curl --silent --fail --max-time 1 https://www.google.com >/dev/null 2>/dev/null; do
+  >&2 echo "Curl https://www.google.com failed"
   sleep 1
 done
 
-echo "Successfully pinged google.com"
+echo "Successfully reached https://www.google.com"
