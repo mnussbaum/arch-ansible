@@ -3,7 +3,7 @@
 set -o errexit
 set -o nounset
 
-ansible-playbook -i localhost playbook.yml -v \
+ansible-playbook -i localhost-inventory playbook.yml -v \
   --ask-become-pass \
   -e root_device=/dev/mapper/vgcrypt-root \
   -e ssd_device=/dev/sda2 \

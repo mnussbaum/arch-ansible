@@ -13,42 +13,42 @@
       command: mkinitcpio -p linux
       become: true
   tasks:
-    - include: tasks/time.yml
-    - include: tasks/packaging.yml
-    - include: tasks/boot.yml
+    - import_tasks: tasks/time.yml
+    - import_tasks: tasks/packaging.yml
+    - include_tasks: tasks/boot.yml
       tags: [bootstrap]
-    - include: tasks/trim.yml
-    - include: tasks/user.yml
+    - import_tasks: tasks/trim.yml
+    - include_tasks: tasks/user.yml
       tags: [bootstrap]
-    - include: tasks/networking-packages.yml
+    - include_tasks: tasks/networking-packages.yml
       tags: [bootstrap]
-    - include: tasks/start-networking.yml
-    - include: tasks/network-online.yml
-    - include: tasks/cli-tools.yml
-    - include: tasks/package-update.yml
-    - include: tasks/python.yml
-    - include: tasks/rust.yml
-    - include: tasks/neovim.yml
-    - include: tasks/golang.yml
-    - include: tasks/global-environment-configuration.yml
-    - include: tasks/gitconfig.yml
-    - include: tasks/alacritty.yml
-    - include: tasks/termite.yml
-    - include: tasks/tmux.yml
-    - include: tasks/power.yml
-    - include: tasks/qemu-guest.yml
-    - include: tasks/fonts.yml
-    - include: tasks/x11.yml
-    - include: tasks/libinput.yml
-    - include: tasks/sway.yml
-    - include: tasks/gtk.yml
-    - include: tasks/brightness.yml
-    - include: tasks/audio.yml
-    - include: tasks/firefox.yml
-    - include: tasks/deluge-torrents.yml
-    - include: tasks/firejail.yml
-    - include: tasks/docker.yml
-    - include: tasks/kubernetes.yml
+    - import_tasks: tasks/start-networking.yml
+    - import_tasks: tasks/network-online.yml
+    - import_tasks: tasks/cli-tools.yml
+    - import_tasks: tasks/package-update.yml
+    - import_tasks: tasks/python.yml
+    - import_tasks: tasks/rust.yml
+    - import_tasks: tasks/neovim.yml
+    - import_tasks: tasks/golang.yml
+    - import_tasks: tasks/global-environment-configuration.yml
+    - import_tasks: tasks/gitconfig.yml
+    - import_tasks: tasks/alacritty.yml
+    - import_tasks: tasks/termite.yml
+    - import_tasks: tasks/tmux.yml
+    - import_tasks: tasks/power.yml
+    - import_tasks: tasks/qemu-guest.yml
+    - import_tasks: tasks/fonts.yml
+    - import_tasks: tasks/x11.yml
+    - import_tasks: tasks/libinput.yml
+    - import_tasks: tasks/sway.yml
+    - import_tasks: tasks/gtk.yml
+    - import_tasks: tasks/brightness.yml
+    - import_tasks: tasks/audio.yml
+    - import_tasks: tasks/firefox.yml
+    - import_tasks: tasks/deluge-torrents.yml
+    - import_tasks: tasks/firejail.yml
+    - import_tasks: tasks/docker.yml
+    - import_tasks: tasks/kubernetes.yml
 
 # Bootstrap:
   # Convert script to re-entrant ansible

@@ -1,2 +1,2 @@
-[localhost]
+[all]
 localhost ansible_connection=local ansible_python_interprester=/usr/bin/python
