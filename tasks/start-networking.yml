@@ -1,5 +1,11 @@
 # vim:ft=ansible:
 ---
+- name: networking | Configure nameservers
+  copy:
+    src: files/resolv.conf
+    dest: /etc/resolv.conf
+  become: true
+
 - name: networking | Configure NetworkManager
   copy:
     src: files/NetworkManager.conf
