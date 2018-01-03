@@ -1,12 +1,13 @@
 # vim:ft=ansible:
 ---
 - name: CLI Tools | Install packages
-  package:
+  pacaur:
     name: "{{ item }}"
     state: present
   with_items:
     - aws-cli
     - bc
+    - bfs
     - curl
     - dstat
     - expac
