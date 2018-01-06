@@ -12,6 +12,7 @@ output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
 
 ### Input configuration
 
+{% if not sway_mouse_input_ids.failed %}
 {% for mouse_input_id in sway_mouse_input_ids.stdout_lines %}
 input "{{ mouse_input_id }}" {
     natural_scroll enabled
@@ -19,6 +20,7 @@ input "{{ mouse_input_id }}" {
     tap enabled
 }
 {% endfor %}
+{% endif %}
 
 ### Key bindings
 

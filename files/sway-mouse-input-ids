@@ -2,13 +2,24 @@
 
 import json
 import subprocess
+import sys
+import time
 
 
 def print_sway_mouse_input_ids():
-    sway_inputs = json.loads(subprocess.Popen(
+    get_inputs = subprocess.Popen(
         ["swaymsg", "--raw", "--type", "get_inputs"],
         stdout=subprocess.PIPE,
-    ).communicate()[0])
+    )
+    time.sleep(1)
+    get_inputs.poll()
+
+    if not get_inputs.returncode or get_inputs.returncode > 0:
+        print("Error getting sway inputs")
+        get_inputs.kill()
+        sys.exit(1)
+
+    sway_inputs = json.loads(get_inputs.communicate()[0])
 
     for sway_input in sway_inputs:
         if "pointer" in sway_input["capabilities"]:

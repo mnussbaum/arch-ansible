@@ -23,9 +23,9 @@
   command: sway-mouse-input-ids
   register: sway_mouse_input_ids
   changed_when: false
+  ignore_errors: true
 
 - name: sway | Install config
   template:
     src: templates/sway_config.j2
     dest: "/home/{{ user.name }}/.config/sway/config"
-
