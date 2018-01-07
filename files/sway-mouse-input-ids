@@ -14,7 +14,7 @@ def print_sway_mouse_input_ids():
     time.sleep(1)
     get_inputs.poll()
 
-    if not get_inputs.returncode or get_inputs.returncode > 0:
+    if get_inputs.returncode > 0:
         print("Error getting sway inputs")
         get_inputs.kill()
         sys.exit(1)

@@ -3,12 +3,20 @@ set $left h
 set $down j
 set $up k
 set $right l
-set $term termite -e tmux
-set $menu dmenu_run
+set $term termite --title termite --exec tmux
+set $menu termite --title launcher --geometry 500x200 --exec /usr/local/bin/launcher
+
+### Window rules
+
+for_window [title="^launcher$"] border pixel 0; floating enable
+for_window [title=".*"] border pixel 0
 
 ### Output configuration
 
+focus_follows_mouse yes
+gaps 2
 output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
+smart_gaps on
 
 ### Input configuration
 

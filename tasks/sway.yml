@@ -12,6 +12,13 @@
     state: present
   become: true
 
+- name: sway | Install application launcher script
+  copy:
+    src: files/launcher
+    dest: /usr/local/bin/launcher
+    mode: a+x
+  become: true
+
 - name: sway | Install sway-mouse-input-ids script
   copy:
     src: files/sway-mouse-input-ids
