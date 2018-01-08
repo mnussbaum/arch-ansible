@@ -15,10 +15,10 @@
 - name: termite | Clone base16-termite
   git:
     repo: https://github.com/khamer/base16-termite
-    dest: "/home/{{ user.name }}/src/base16-termite"
+    dest: "/home/{{ user.name }}/.local/share/base16-termite"
 
-- name: termite | Install base16-termite config
-  copy:
-    src: "/home/{{ user.name }}/src/base16-termite/themes/base16-default-dark.config"
+- name: termite | Link base16-termite config
+  file:
+    src: "/home/{{ user.name }}/.local/share/base16-termite/themes/base16-default-dark.config"
     dest: "/home/{{ user.name }}/.config/termite/config"
-    owner: "{{ user.name }}"
+    state: link
