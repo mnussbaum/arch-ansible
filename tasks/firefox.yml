@@ -6,16 +6,14 @@
     state: present
   with_items:
     - firefox
-    - firefox-pentadactyl-signed
     - firefox-ublock-origin
     - freshplayerplugin
     - pepper-flash
     - google-talkplugin
-    - xorg-server-xvfb
   become: true
 
 - name: Firefox | Make default profile
-  command: xvfb-run firefox -CreateProfile "default /home/{{ user.name }}/.mozilla/firefox/default.profile"
+  shell: firefox -headless -CreateProfile "default /home/{{ user.name }}/.mozilla/firefox/default.profile" 2>&1 | grep -q Success
   args:
     creates: "/home/{{ user.name }}/.mozilla/firefox/default.profile"
   become: true
