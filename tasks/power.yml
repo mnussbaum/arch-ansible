@@ -32,7 +32,7 @@
     enabled: no
     state: stopped
   become: true
-  when: ansible_bios_version != "VirtualBox"
+  when: ansible_virtualization_role != "guest"
 
 - name: power | Configure TLP
   copy:
