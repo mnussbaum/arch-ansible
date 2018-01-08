@@ -23,7 +23,6 @@
     - unzip
     - vim
     - yajl
-    - zsh
     - ruby
     - ripgrep
   become: true

@@ -25,6 +25,7 @@
     - import_tasks: tasks/start-networking.yml
     - import_tasks: tasks/network-online.yml
     - import_tasks: tasks/cli-tools.yml
+    - import_tasks: tasks/zsh.yml
     - import_tasks: tasks/package-update.yml
     - import_tasks: tasks/python.yml
     - import_tasks: tasks/rust.yml
@@ -48,7 +49,6 @@
     - import_tasks: tasks/deluge-torrents.yml
     - import_tasks: tasks/firejail.yml
     - import_tasks: tasks/docker.yml
-    - import_tasks: tasks/kubernetes.yml
 
 # Bootstrap:
   # Convert script to re-entrant ansible
