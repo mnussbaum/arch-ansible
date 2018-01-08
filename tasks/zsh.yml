@@ -1,0 +1,27 @@
+# vim:ft=ansible:
+---
+- name: ZSH | Install package
+  package:
+    name: zsh
+    state: present
+  become: true
+
+- name: ZSH | Install zshrc
+  copy:
+    dest: "/home/{{ user.name }}/.zshrc"
+    src: zshrc
+    owner: "{{ user.name }}"
+
+- name: ZSH | Create zsh config dir
+  file:
+    path: "/home/{{ user.name }}/.config/zsh"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: ZSH | Install zsh configs
+  copy:
+    dest: "/home/{{ user.name }}/.config/zsh/{{ item | basename }}"
+    src: "{{ item }}"
+    owner: "{{ user.name }}"
+  with_fileglob:
+    - files/zsh-configs/*
