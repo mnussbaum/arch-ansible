@@ -28,3 +28,5 @@ user_pref("privacy.donottrackheader.enabled", true);
 
 // Disable password storage
 user_pref("signon.rememberSignons", false);
+
+user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"PersonalToolbar\":[\"personal-bookmarks\"],\"nav-bar\":[\"back-button\",\"forward-button\",\"stop-reload-button\",\"customizableui-special-spring1\",\"urlbar-container\",\"customizableui-special-spring2\",\"downloads-button\",\"ublock0-button\",\"screenshots_mozilla_org-browser-action\"],\"TabsToolbar\":[\"tabbrowser-tabs\",\"new-tab-button\",\"alltabs-button\"],\"toolbar-menubar\":[\"menubar-items\"],\"addon-bar\":[\"addonbar-closebutton\",\"status-bar\"],\"dactyl-addon-bar\":[\"dactyl-status-bar\"]},\"seen\":[\"pocket-button\",\"ublock0-button\",\"developer-button\",\"webide-button\",\"ublock0_raymondhill_net-browser-action\",\"screenshots_mozilla_org-browser-action\"],\"dirtyAreaCache\":[\"PersonalToolbar\",\"nav-bar\",\"TabsToolbar\",\"toolbar-menubar\",\"dactyl-addon-bar\",\"PanelUI-contents\",\"addon-bar\"],\"currentVersion\":12,\"newElementCount\":2}");

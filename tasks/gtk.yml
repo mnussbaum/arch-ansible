@@ -7,9 +7,7 @@
     owner: "{{ user.name }}"
 
 - name: GTK | Install configs
-  copy:
-    dest: "/home/{{ user.name }}/.config/gtk-3.0/{{ item | basename }}"
-    src: "{{ item }}"
+  template:
+    src: templates/gtk_3_0_settings.ini.j2
+    dest: "/home/{{ user.name }}/.config/gtk-3.0/settings.ini"
     owner: "{{ user.name }}"
-  with_fileglob:
-    - files/gtk-3.0/*
