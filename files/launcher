@@ -11,6 +11,7 @@ get_selection() {
 selection=$(get_selection)
 if command -v $selection > /dev/null >&1 ; then
   nohup $selection > /dev/null 2>&1 &
+  sleep 0.1
 else
   xdg-open $selection
 fi
