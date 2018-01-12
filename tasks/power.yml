@@ -26,14 +26,6 @@
     state: stopped
   become: true
 
-- name: power | Disable bluetooth
-  service:
-    name: bluetooth.service
-    enabled: no
-    state: stopped
-  become: true
-  when: ansible_virtualization_role != "guest"
-
 - name: power | Configure TLP
   copy:
     src: tlp
