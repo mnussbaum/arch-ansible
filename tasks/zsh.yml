@@ -1,9 +1,18 @@
 # vim:ft=ansible:
 ---
 - name: ZSH | Install package
-  package:
-    name: zsh
+  pacaur:
+    name: "{{ item }}"
     state: present
+  become: true
+  with_items:
+    - zsh
+    - zsh-syntax-highlighting
+
+- name: ZSH | Clone base16-shell
+  git:
+    repo: https://github.com/chriskempson/base16-shell
+    dest: /usr/share/zsh/plugins/base16-shell
   become: true
 
 - name: ZSH | Install zshrc
