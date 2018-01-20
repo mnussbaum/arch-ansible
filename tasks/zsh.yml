@@ -15,6 +15,12 @@
     dest: /usr/share/zsh/plugins/base16-shell
   become: true
 
+- name: ZSH | Install dircolors config
+  copy:
+    dest: "/home/{{ user.name }}/.config/dircolors"
+    src: dircolors
+    owner: "{{ user.name }}"
+
 - name: ZSH | Install zshrc
   copy:
     dest: "/home/{{ user.name }}/.zshrc"

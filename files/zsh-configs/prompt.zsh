@@ -11,13 +11,12 @@ git_prompt() {
     dirty_rc=$?
 
     if ! [ $dirty_rc -eq 0 ] ; then
-      prompt="${prompt}!"
+      prompt="${prompt}%F{$bright_red}!%f"
     fi
 
-    echo " [$prompt]"
+    echo "%F{$purple}[$prompt%F{$purple}]%f "
   fi
 }
 
-
 setopt prompt_subst
-export PROMPT='$(truncated_pwd)$(git_prompt): '
+export PROMPT='%F{$aqua}$(truncated_pwd)%f $(git_prompt)%F{$bright_yellow}>%F{$bright_green}>%F{$red}>%f '
