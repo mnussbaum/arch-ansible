@@ -11,3 +11,9 @@
     path: "/home/{{ user.name }}/.config/termite"
     owner: "{{ user.name }}"
     state: directory
+
+- name: termite | Install config
+  template:
+    src: templates/termite_config.j2
+    dest: "/home/{{ user.name }}/.config/termite/config"
+    owner: "{{ user.name }}"
