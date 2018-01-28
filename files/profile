@@ -1,5 +1,5 @@
 # vim: filetype=sh
 
 if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]] ; then
-  exec sway
+  systemd-cat -t sway sway
 fi
