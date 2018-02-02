@@ -12,6 +12,8 @@
     - libxft
     - noto-fonts
     - powerline-fonts-git
+    - otf-font-awesome
+    - siji-git
   become: true
 
 - name: Fonts | Enable LCD filter
