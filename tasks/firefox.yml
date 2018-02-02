@@ -7,6 +7,7 @@
   with_items:
     - firefox
     - firefox-ublock-origin
+    - firefox-vim-vixen
     - freshplayerplugin
     - pepper-flash
     - google-talkplugin
@@ -23,6 +24,18 @@
   copy:
     dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/user.js"
     src: firefox-user.js
+    owner: "{{ user.name }}"
+
+- name: Firefox | Create vim-vixen plugin config dir
+  file:
+    path: "/home/{{ user.name }}/.mozilla/firefox/default.profile/browser-extension-data/vim-vixen@i-beam.org"
+    state: directory
+    owner: "{{ user.name }}"
+
+- name: Firefox | Configure vim-vixen plugin
+  copy:
+    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/browser-extension-data/vim-vixen@i-beam.org/storage.js"
+    src: firefox-vim-vixen-settings.js
     owner: "{{ user.name }}"
 
 - name: Firefox | Configure flash plugin
