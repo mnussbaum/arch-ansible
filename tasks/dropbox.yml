@@ -1,0 +1,20 @@
+# vim:ft=ansible:
+---
+- name: Dropbox | Install packages
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - dropbox
+    - dropbox-cli
+  become: true
+
+- name: Dropbox | Enable Dropbox user service
+  become: true
+  become_user: "{{ user.name }}"
+  when: ansible_virtualization_role != "guest"
+  systemd:
+    enabled: true
+    name: dropbox.service
+    user: true
+    daemon-reload: true
