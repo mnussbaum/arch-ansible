@@ -1,0 +1,10 @@
+# SATA active link power management
+#
+# Apparently the min_power mode causes some unspecified problems with some
+# SSDs. The max_power setting prevents the CPU from reaching the lowest power
+# states. The med_power_with_dipm policy is supposed to be almost as good as
+# min but w/o the SSD issues.
+#
+# Source - https://patchwork.kernel.org/patch/9952739/
+
+SUBSYSTEM=="scsi_host", KERNEL=="host*", ATTR{link_power_management_policy}="med_power_with_dipm"
