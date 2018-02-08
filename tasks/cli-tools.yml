@@ -11,6 +11,7 @@
     - curl
     - dstat
     - expac
+    - fwupd
     - git
     - gnupg
     - htop
