@@ -5,6 +5,7 @@
     name: "{{ item }}"
     state: present
   with_items:
+    - ethtool
     - powerstat-git
     - powertop
     - thermald
@@ -53,6 +54,34 @@
     name: suspend-sedation
     enabled: yes
   become: true
+
+- name: power | Create sysctl param directory
+  become: true
+  file:
+    path: /etc/sysctl.d
+    state: directory
+
+- name: power | Configure sysctl params
+  become: true
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/sysctl.d/{{ item | basename }}"
+  with_fileglob:
+    - files/sysctl.d/*
+
+- name: power | Create udev rules directory
+  become: true
+  file:
+    path: /etc/udev/rules.d
+    state: directory
+
+- name: power | Configure udev rules
+  become: true
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/udev/rules.d/{{ item | basename }}"
+  with_fileglob:
+     - files/udev-rules.d/*
 
 # Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120
 # Enable wake on keypress

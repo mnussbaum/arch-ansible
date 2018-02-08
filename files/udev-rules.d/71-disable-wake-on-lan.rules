@@ -1,0 +1,4 @@
+# Disable Wake-on-LAN to save power listening for a packet while
+# suspended
+
+ACTION=="add", SUBSYSTEM=="net", KERNEL=="eth*" RUN+="/usr/bin/ethtool -s %k wol d"

@@ -60,20 +60,6 @@
   with_fileglob:
     - files/modprobe.d/*
 
-- name: boot | Create sysctl param directory
-  become: true
-  file:
-    path: /etc/sysctl.d
-    state: directory
-
-- name: boot | Configure sysctl params
-  become: true
-  copy:
-    src: "{{ item }}"
-    dest: "/etc/sysctl.d/{{ item | basename }}"
-  with_fileglob:
-    - files/sysctl.d/*
-
 - name: boot | Install grub
   when: bootstrap is defined and bootstrap == "true"
   notify:
