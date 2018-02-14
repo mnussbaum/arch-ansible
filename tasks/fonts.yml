@@ -7,6 +7,8 @@
   with_items:
     - cairo
     - fontconfig
+    - fonts-meta-base
+    - fonts-meta-extended-lt # this package is broken as of Feb 13, 2018
     - freetype2
     - gsfonts
     - libxft
@@ -41,6 +43,15 @@
   file:
     src: /etc/fonts/conf.avail/70-no-bitmaps.conf
     dest: /etc/fonts/conf.d/70-no-bitmaps.conf
+    state: link
+  become: true
+
+# Source of below - https://gist.github.com/cryzed/e002e7057435f02cc7894b9e748c5671
+# This is broken as of Feb 13, 2018 since I can't install fonts-meta-extended-lt
+- name: Fonts | Enable infinality-like fonts
+  file:
+    src: /etc/fonts/conf.avail/30-infinality-aliases.conf
+    dest: /etc/fonts/conf.d/30-infinality-aliases.conf
     state: link
   become: true
 
