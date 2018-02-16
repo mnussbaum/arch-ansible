@@ -34,5 +34,5 @@
 
 - name: sway | Install config
   template:
-    src: templates/sway_config.j2
+    src: templates/sway_and_i3_config.j2
     dest: "/home/{{ user.name }}/.config/sway/config"

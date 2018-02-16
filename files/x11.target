@@ -1,0 +1,8 @@
+[Unit]
+Description=X11 target
+
+After=xrdb.service
+Requires=xrdb.service
+
+[Install]
+WantedBy=default.target

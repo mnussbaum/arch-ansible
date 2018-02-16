@@ -14,13 +14,23 @@ for_window [title=".*"] border pixel 0
 ### Output configuration
 
 focus_follows_mouse yes
+font pango:Fira Mono for Powerline
+
+{% if window_manager == "sway" %}
 gaps 2
-output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
+{% elif window_manager == "i3" %}
+gaps inner 2
+{% endif %}
+
 smart_gaps on
+
+{% if window_manager == "sway" %}
+output * bg /usr/share/backgrounds/sway/Sway_Wallpaper_Blue_1920x1080.png fill
+{% endif %}
 
 ### Input configuration
 
-{% if not sway_mouse_input_ids.failed %}
+{% if window_manager == "sway" and not sway_mouse_input_ids.failed %}
 {% for mouse_input_id in sway_mouse_input_ids.stdout_lines %}
 input "{{ mouse_input_id }}" {
     natural_scroll enabled
@@ -41,17 +51,21 @@ bindsym $mod+Shift+q kill
 # start your launcher
 bindsym $mod+d exec $menu
 
+{% if window_manager == "sway" %}
 # Drag floating windows by holding down $mod and left mouse button.
 # Resize them with right mouse button + $mod.
 # Despite the name, also works for non-floating windows.
 # Change normal to inverse to use left mouse button for resizing and right
 # mouse button for dragging.
 floating_modifier $mod normal
+{% elif window_manager == "i3" %}
+floating_modifier $mod
+{% endif %}
 
 # reload the configuration file
 bindsym $mod+Shift+c reload
 
-# exit sway (logs you out of your wayland session)
+# exit window manager (logs you out of your session)
 bindsym $mod+Shift+e exit
 
 ### Moving around:
@@ -167,4 +181,6 @@ bar {
     }
 }
 
+{% if window_manager == "sway" %}
 include /etc/sway/config.d/*
+{% endif %}

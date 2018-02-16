@@ -1,0 +1,13 @@
+[Unit]
+Description=Delay start of xorg
+
+After=xorg.service
+Requires=xorg.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=true
+ExecStart=/usr/bin/sleep 1
+
+[Install]
+WantedBy=default.target

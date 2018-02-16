@@ -1,7 +1,6 @@
 # vim:ft=ansible:
 ---
 - name: vagrant-guest | Blacklist coretemp module
-  when: ansible_virtualization_role == "guest"
   become: true
   notify:
     - Regenerate mkinitcpio ramdisk

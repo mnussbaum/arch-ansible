@@ -1,0 +1,42 @@
+# vim:ft=ansible:
+---
+- name: i3 | Create config dir
+  file:
+    path: "/home/{{ user.name }}/.config/i3"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: i3 | Install i3-gaps
+  pacaur:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - i3-gaps
+    - i3status
+  become: true
+
+- name: i3 | Install application launcher script
+  copy:
+    src: files/launcher
+    dest: /usr/local/bin/launcher
+    mode: a+x
+  become: true
+
+- name: i3 | Install config
+  template:
+    src: templates/sway_and_i3_config.j2
+    dest: "/home/{{ user.name }}/.config/i3/config"
+
+- name: GUI | Install i3 service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/i3.service"
+    src: i3.service
+
+- name: GUI | Enable i3 service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: i3.service
+    user: true
+    daemon-reload: true

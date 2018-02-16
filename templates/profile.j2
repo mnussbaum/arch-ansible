@@ -1,5 +1,7 @@
 # vim: filetype=sh
 
+{% if window_manager == "sway" %}
 if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]] ; then
   systemd-cat -t sway sway
 fi
+{% endif %}

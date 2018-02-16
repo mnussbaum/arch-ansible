@@ -1,0 +1,71 @@
+# vim:ft=ansible:
+---
+- name: X11 socket activation | Install X11 socket activation unit
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/x11.socket"
+    src: x11.socket
+
+- name: X11 socket activation | Install X11 target
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/x11.target"
+    src: x11.target
+
+- name: X11 socket activation | Install xorg-delay service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/xorg-delay.service"
+    src: xorg-delay.service
+
+- name: X11 socket activation | Install xorg service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/xorg.service"
+    src: xorg.service
+
+- name: X11 socket activation | Install xrdb service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/xrdb.service"
+    src: xrdb.service
+
+- name: X11 socket activation | Enable X11 socket
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: x11.socket
+    user: true
+    daemon-reload: true
+
+- name: X11 socket activation | Enable X11 target
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: x11.target
+    user: true
+    daemon-reload: true
+
+- name: X11 socket activation | Enable xorg service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: xorg.service
+    user: true
+    daemon-reload: true
+
+- name: X11 socket activation | Enable xorg-delay service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: xorg-delay.service
+    user: true
+    daemon-reload: true
+
+- name: X11 socket activation | Enable xrdb service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: xrdb.service
+    user: true
+    daemon-reload: true

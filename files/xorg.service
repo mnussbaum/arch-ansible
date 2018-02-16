@@ -1,0 +1,14 @@
+[Unit]
+Description=Xorg server
+Documentation=man:Xorg(1)
+
+After=x11.socket
+Requires=x11.socket
+
+[Service]
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/Xorg $DISPLAY -nolisten tcp -noreset -ardelay 180 -arinterval 35 -verbose 2 "vt1"
+SuccessExitStatus=0 1
+
+[Install]
+WantedBy=default.target

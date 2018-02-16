@@ -1,0 +1,14 @@
+[Unit]
+Description=Redshift color temperature adjustment
+Documentation=http://jonls.dk/redshift/
+
+After=x11.target
+Requires=x11.target
+
+[Service]
+ExecStart=/usr/bin/redshift
+Restart=always
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=default.target

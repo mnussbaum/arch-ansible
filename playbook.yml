@@ -13,6 +13,7 @@
       command: mkinitcpio -p linux
       become: true
   tasks:
+    - import_tasks: tasks/set-window-manager-facts.yml
     - import_tasks: tasks/time.yml
     - import_tasks: tasks/packaging.yml
     - include_tasks: tasks/boot.yml
@@ -38,10 +39,16 @@
     - import_tasks: tasks/tmux.yml
     - import_tasks: tasks/power.yml
     - import_tasks: tasks/qemu-guest.yml
+      when: ansible_virtualization_role == "guest"
     - import_tasks: tasks/fonts.yml
     - import_tasks: tasks/x11.yml
+    - import_tasks: tasks/x11-socket-activation.yml
+      when: window_manager == "i3"
     - import_tasks: tasks/libinput.yml
     - import_tasks: tasks/sway.yml
+      when: window_manager == "sway"
+    - import_tasks: tasks/i3.yml
+      when: window_manager == "i3"
     - import_tasks: tasks/gtk.yml
     - import_tasks: tasks/brightness.yml
     - import_tasks: tasks/audio.yml

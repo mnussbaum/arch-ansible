@@ -17,6 +17,22 @@
     dest: "/home/{{ user.name }}/.config/redshift.conf"
     owner: "{{ user.name }}"
 
+- name: Brightness | Install redshift service
+  copy:
+    src: redshift.service
+    dest: "/home/{{ user.name }}/.config/systemd/user/redshift.service"
+    owner: "{{ user.name }}"
+
+- name: Brightness | Enable redshift service
+  become: true
+  become_user: "{{ user.name }}"
+  when: window_manager == "i3"
+  systemd:
+    enabled: true
+    name: redshift.service
+    user: true
+    daemon-reload: true
+
 - name: Brightness | Install calise config for screen auto-brightness
   become: true
   copy:

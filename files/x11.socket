@@ -1,0 +1,9 @@
+[Unit]
+Description=Socket for xorg
+
+[Socket]
+ListenStream=/tmp/.X11-unix/X
+Service=xorg.service
+
+[Install]
+WantedBy=sockets.target

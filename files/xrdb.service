@@ -1,0 +1,15 @@
+[Unit]
+Description=X resource database (xrdb)
+Documentation=man:xrdb(1)
+
+After=xorg-delay.service
+Requires=xorg-delay.service
+
+[Service]
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/xrdb -display $DISPLAY -merge %h/.Xresources
+RemainAfterExit=true
+Type=oneshot
+
+[Install]
+WantedBy=default.target
