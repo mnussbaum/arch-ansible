@@ -14,3 +14,12 @@
     mode: "u=rwx,g=rx,o=rx"
   with_fileglob:
     - files/profile.d/*
+
+- name: global environment configuration | Install shell profile templates
+  become: true
+  template:
+    dest: "/etc/profile.d/{{ item | basename }}"
+    src: "{{ item }}"
+    mode: "u=rwx,g=rx,o=rx"
+  with_fileglob:
+    - templates/profile.d/*
