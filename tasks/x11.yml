@@ -14,7 +14,6 @@
     - mesa
     - vulkan-intel
     - xdotool
-    - xorg-apps
     - xorg-server
     - xorg-xdpyinfo
     - xorg-xinput
@@ -25,6 +24,12 @@
     dest: /etc/X11/Xwrapper.config
     src: Xwrapper.config
   become: true
+
+- name: X11 | Clone base16-xresources
+  become: true
+  git:
+    repo: https://github.com/chriskempson/base16-xresources
+    dest: /usr/local/share/base16-xresources
 
 - name: X11 | Configure Xresources
   template:

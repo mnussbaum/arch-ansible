@@ -32,6 +32,12 @@
   changed_when: false
   ignore_errors: true
 
+- name: sway | Clone base16-i3
+  become: true
+  git:
+    repo: https://github.com/mnussbaum/base16-i3
+    dest: /usr/local/share/base16-i3
+
 - name: sway | Install config
   template:
     src: templates/sway_and_i3_config.j2

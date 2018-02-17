@@ -169,18 +169,15 @@ mode "resize" {
     bindsym Escape mode "default"
 }
 
+{% set base16_colors = "/usr/local/share/base16-i3/colors/base16-{}.config".format(base16_theme) %}
+{{ lookup("file", base16_colors) }}
 
-### Status Bar:
+{% set base16_client_properties = "/usr/local/share/base16-i3/client-properties/base16-{}.config".format(base16_theme) %}
+{{ lookup("file", base16_client_properties) }}
 
+{% set base16_bar_colors = "/usr/local/share/base16-i3/bar-colors/base16-{}.config".format(base16_theme) %}
 bar {
-    position top
-    colors {
-        statusline #ffffff
-        background #323232
-        inactive_workspace #32323200 #32323200 #5c5c5c
-    }
-}
+  position top
 
-{% if window_manager == "sway" %}
-include /etc/sway/config.d/*
-{% endif %}
+  {{ lookup("file", base16_bar_colors) }}
+}
