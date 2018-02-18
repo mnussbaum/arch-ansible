@@ -13,6 +13,9 @@
       command: mkinitcpio -p linux
       become: true
   tasks:
+    - name: set base16 theme fact
+      set_fact:
+        base16_theme: solarflare
     - import_tasks: tasks/set-window-manager-facts.yml
     - import_tasks: tasks/time.yml
     - import_tasks: tasks/packaging.yml

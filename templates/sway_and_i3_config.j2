@@ -169,25 +169,54 @@ mode "resize" {
     bindsym Escape mode "default"
 }
 
+{% if window_manager == "sway" %}
+# TODO define base16 colors for sway
+include /etc/sway/config.d/*
+{% elif window_manager == "i3" %}
+# Much of this from https://github.com/Airblader/dotfiles-manjaro/blob/master/.i3/config
+
+set_from_resource $darkred     color1  #000000
+set_from_resource $red         color9  #000000
+set_from_resource $darkgreen   color2  #000000
+set_from_resource $green       color10 #000000
+set_from_resource $darkyellow  color3  #000000
+set_from_resource $yellow      color11 #000000
+set_from_resource $darkblue    color4  #000000
+set_from_resource $blue        color12 #000000
+set_from_resource $darkmagenta color5  #000000
+set_from_resource $magenta     color13 #000000
+set_from_resource $darkcyan    color6  #000000
+set_from_resource $cyan        color14 #000000
+set_from_resource $darkwhite   color7  #000000
+set_from_resource $white       color15 #000000
+# Use custom colors for black
+set $black       #282828
+set $darkblack   #1d2021
+set $transparent #00000000
+{% endif %}
+
+#                       BORDER      BACKGROUND  TEXT        INDICATOR   CHILD_BORDER
+client.focused          $blue      $black      $darkwhite  $darkblack  $darkblack
+client.unfocused        $black      $black      $white      $darkblack  $darkblack
+client.focused_inactive $black      $black      $white      $darkblack  $darkblack
+client.urgent           $darkred    $darkred    $black      $darkred    $darkred
+client.background       $black
+
 
 ### Status Bar:
 
 bar {
     position top
     colors {
-        statusline #ffffff
-        background #323232
-        inactive_workspace #32323200 #32323200 #5c5c5c
+        statusline         $white
+        background         $transparent
+        separator          $transparent
+
+#                          BORDER       BACKGROUND   TEXT
+        focused_workspace  $transparent $transparent $blue
+        inactive_workspace $transparent $transparent $white
+        active_workspace   $transparent $transparent $white
+        urgent_workspace   $darkred     $darkred     $transparent
+        binding_mode       $darkred     $darkred     $transparent
     }
 }
-
-{% if window_manager == "sway" %}
-# TODO define base16 colors for sway
-include /etc/sway/config.d/*
-{% elif window_manager == "i3" %}
-# Define colors
-# TODO define the rest of the colors
-set_from_resource $black i3wm.color0 #000000
-{% endif %}
-
-# TODO actually use colors pulled from xresources in bar and client config
