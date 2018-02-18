@@ -3,6 +3,9 @@ set noswapfile
 set nobackup
 set nowritebackup
 
+" Don't nag on leaving an unwritten file
+set hidden
+
 " Persist undo history
 silent !mkdir ~/.local/share/nvim/backups > /dev/null 2>&1
 set undodir=~/.local/share/nvim/backups
