@@ -177,33 +177,34 @@ mode "resize" {
 include /etc/sway/config.d/*
 {% elif window_manager == "i3" %}
 # Much of this from https://github.com/Airblader/dotfiles-manjaro/blob/master/.i3/config
+# These colors are set from Xresources
 
-set_from_resource $darkred     color1  #000000
-set_from_resource $red         color9  #000000
-set_from_resource $darkgreen   color2  #000000
-set_from_resource $green       color10 #000000
-set_from_resource $darkyellow  color3  #000000
-set_from_resource $yellow      color11 #000000
-set_from_resource $darkblue    color4  #000000
-set_from_resource $blue        color12 #000000
-set_from_resource $darkmagenta color5  #000000
-set_from_resource $magenta     color13 #000000
-set_from_resource $darkcyan    color6  #000000
-set_from_resource $cyan        color14 #000000
-set_from_resource $darkwhite   color7  #000000
-set_from_resource $white       color15 #000000
-# Use custom colors for black
-set $black       #282828
-set $darkblack   #1d2021
+set_from_resource $black          color0  #000000
+set_from_resource $red            color1  #000000
+set_from_resource $green          color2  #000000
+set_from_resource $yellow         color3  #000000
+set_from_resource $blue           color4  #000000
+set_from_resource $magenta        color5  #000000
+set_from_resource $cyan           color6  #000000
+set_from_resource $white          color7  #000000
+set_from_resource $bright_black   color8  #000000
+set_from_resource $bright_red     color9  #000000
+set_from_resource $bright_green   color10 #000000
+set_from_resource $bright_yellow  color11 #000000
+set_from_resource $bright_blue    color12 #000000
+set_from_resource $bright_magenta color13 #000000
+set_from_resource $bright_cyan    color14 #000000
+set_from_resource $bright_white   color15 #000000
+
 set $transparent #00000000
 {% endif %}
 
-#                       BORDER      BACKGROUND  TEXT        INDICATOR   CHILD_BORDER
-client.focused          $blue       $black      $darkwhite  $darkblack  $darkblack
-client.unfocused        $black      $black      $white      $darkblack  $darkblack
-client.focused_inactive $black      $black      $white      $darkblack  $darkblack
-client.urgent           $darkred    $darkred    $black      $darkred    $darkred
-client.background       $black
+#                       BORDER             BACKGROUND         TEXT              INDICATOR   CHILD_BORDER
+client.focused          $bright_blue       $bright_black      $white            $black      $black
+client.unfocused        $bright_black      $bright_black      $bright_white     $black      $black
+client.focused_inactive $bright_black      $bright_black      $bright_white     $black      $black
+client.urgent           $red               $red               $bright_black     $red        $red
+client.background       $bright_black
 
 
 ### Status Bar:
