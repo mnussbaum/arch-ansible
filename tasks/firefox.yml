@@ -21,9 +21,9 @@
   become_user: "{{ user.name }}"
 
 - name: Firefox | Configure firefox
-  copy:
+  template:
     dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/user.js"
-    src: firefox-user.js
+    src: templates/firefox-user.js.j2
     owner: "{{ user.name }}"
 
 - name: Firefox | Create vim-vixen plugin config dir

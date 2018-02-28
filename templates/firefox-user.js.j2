@@ -1,5 +1,9 @@
 // High DPI
+{% if monitor.dpi is defined and monitor.dpi > 96 %}
 user_pref("layout.css.devPixelsPerPx", "2");
+{% else %}
+user_pref("layout.css.devPixelsPerPx", "1");
+{% endif %}
 
 // Hardware accelerate with OpenGL
 user_pref("layers.acceleration.force-enabled", true);
