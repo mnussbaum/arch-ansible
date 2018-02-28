@@ -5,6 +5,7 @@ set -o nounset
 
 ansible-playbook -i localhost-inventory playbook.yml -v \
   --ask-become-pass \
+  -e '{"monitor": {"id": "VGA-1", "height": 330, "width": 580, "dpi": 96}}' \
   -e root_device=/dev/mapper/vgcrypt-root \
   -e ssd_device=/dev/sda2 \
   -e '{"user": {"name": "vagrant", "group": "vagrant", "shell": "/usr/bin/zsh", "email": "foo@bar.com"}}'

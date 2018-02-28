@@ -13,7 +13,7 @@
     state: directory
 
 - name: Alacritty | Install config
-  copy:
+  template:
     dest: "/home/{{ user.name }}/.config/alacritty/alacritty.yml"
-    src: files/alacritty.yml
+    src: templates/alacritty.yml.j2
     owner: "{{ user.name }}"
