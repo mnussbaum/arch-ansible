@@ -171,6 +171,9 @@ mode "resize" {
 
 {% if window_manager == "sway" %}
 # TODO define base16 colors for sway
+# looks like there's no base16-sway
+# Looks like all you can do `set $black #000000`
+# Might be worth forking base16-i3 to make base16-sway? Otherwise not sure how I get the raw color codes
 include /etc/sway/config.d/*
 {% elif window_manager == "i3" %}
 # Much of this from https://github.com/Airblader/dotfiles-manjaro/blob/master/.i3/config
@@ -196,7 +199,7 @@ set $transparent #00000000
 {% endif %}
 
 #                       BORDER      BACKGROUND  TEXT        INDICATOR   CHILD_BORDER
-client.focused          $blue      $black      $darkwhite  $darkblack  $darkblack
+client.focused          $blue       $black      $darkwhite  $darkblack  $darkblack
 client.unfocused        $black      $black      $white      $darkblack  $darkblack
 client.focused_inactive $black      $black      $white      $darkblack  $darkblack
 client.urgent           $darkred    $darkred    $black      $darkred    $darkred
