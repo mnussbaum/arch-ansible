@@ -33,12 +33,12 @@
     src: templates/sway_and_i3_config.j2
     dest: "/home/{{ user.name }}/.config/i3/config"
 
-- name: GUI | Install i3 service
+- name: i3 | Install i3 service
   copy:
     dest: "/home/{{ user.name }}/.config/systemd/user/i3.service"
     src: i3.service
 
-- name: GUI | Enable i3 service
+- name: i3 | Enable i3 service
   become: true
   become_user: "{{ user.name }}"
   systemd:

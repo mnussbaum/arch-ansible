@@ -25,6 +25,18 @@
     src: Xwrapper.config
   become: true
 
+- name: X11 | Make xorg config dir
+  become: true
+  file:
+    path: /etc/X11/xorg.conf.d
+    state: directory
+
+- name: X11 | Install xorg monitor config
+  template:
+    dest: /etc/X11/xorg.conf.d/90-monitor.conf
+    src: templates/xorg-monitor.conf.j2
+  become: true
+
 - name: X11 | Clone base16-xresources
   become: true
   git:

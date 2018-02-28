@@ -15,12 +15,12 @@
 - name: libinput | Make config dir
   become: true
   file:
-    path: "/etc/libinput/xorg.conf.d"
+    path: /etc/libinput/xorg.conf.d
     state: directory
 
 - name: libinput | Install xorg multitouch config
   copy:
-    dest: "/etc/libinput/xorg.conf.d/99-multitouch.conf"
+    dest: /etc/libinput/xorg.conf.d/99-multitouch.conf
     src: xorg-multitouch.conf
   become: true
 

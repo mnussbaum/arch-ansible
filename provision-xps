@@ -19,7 +19,7 @@ fi
 
 ansible-playbook -i localhost-inventory playbook.yml -v \
   --ask-become-pass \
-  -e dpi=276 \
+  -e '{"monitor": {"name": "eDP-1", "height": 165, "width": 294, "dpi": 276}}' \
   -e root_device=$root_device \
   -e ssd_device=$ssd_device \
   $@
