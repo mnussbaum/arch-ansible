@@ -12,6 +12,7 @@
     state: present
   with_items:
     - mesa
+    - scrot
     - vulkan-intel
     - xdotool
     - xorg-server
