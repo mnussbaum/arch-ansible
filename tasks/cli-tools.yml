@@ -26,6 +26,7 @@
     - yajl
     - ruby
     - ripgrep
+    - xdg-utils
   become: true
 
 - name: CLI Tools | Create GPG config dir
