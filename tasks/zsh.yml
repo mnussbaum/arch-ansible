@@ -15,6 +15,13 @@
     dest: /usr/share/zsh/plugins/base16-shell
   become: true
 
+- name: ZSH | Install base16 colortest script
+  become: true
+  file:
+    src: /usr/share/zsh/plugins/base16-shell/colortest
+    dest: /usr/local/bin/colortest
+    state: link
+
 - name: ZSH | Install dircolors config
   copy:
     dest: "/home/{{ user.name }}/.config/dircolors"
