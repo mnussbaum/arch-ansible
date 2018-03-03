@@ -6,7 +6,7 @@
     owner: "{{ user.name }}"
     state: directory
 
-- name: i3 | Install i3-gaps
+- name: i3 | Install packages
   pacaur:
     name: "{{ item }}"
     state: present
@@ -21,6 +21,12 @@
     dest: /usr/local/bin/launcher
     mode: a+x
   become: true
+
+- name: i3 | Clone base16-i3
+  become: true
+  git:
+    repo: https://github.com/mnussbaum/base16-i3
+    dest: /usr/local/share/base16-i3
 
 - name: i3 | Install config
   template:

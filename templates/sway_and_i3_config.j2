@@ -169,58 +169,15 @@ mode "resize" {
     bindsym Escape mode "default"
 }
 
-{% if window_manager == "sway" %}
-# TODO define base16 colors for sway
-# looks like there's no base16-sway
-# Looks like all you can do `set $black #000000`
-# Might be worth forking base16-i3 to make base16-sway? Otherwise not sure how I get the raw color codes
-include /etc/sway/config.d/*
-{% elif window_manager == "i3" %}
-# Much of this from https://github.com/Airblader/dotfiles-manjaro/blob/master/.i3/config
-# These colors are set from Xresources
+{% set base16_colors = "/usr/local/share/base16-i3/colors/base16-{}.config".format(base16_theme) %}
+{{ lookup("file", base16_colors) }}
 
-set_from_resource $black          color0  #000000
-set_from_resource $red            color1  #000000
-set_from_resource $green          color2  #000000
-set_from_resource $yellow         color3  #000000
-set_from_resource $blue           color4  #000000
-set_from_resource $magenta        color5  #000000
-set_from_resource $cyan           color6  #000000
-set_from_resource $white          color7  #000000
-set_from_resource $bright_black   color8  #000000
-set_from_resource $bright_red     color9  #000000
-set_from_resource $bright_green   color10 #000000
-set_from_resource $bright_yellow  color11 #000000
-set_from_resource $bright_blue    color12 #000000
-set_from_resource $bright_magenta color13 #000000
-set_from_resource $bright_cyan    color14 #000000
-set_from_resource $bright_white   color15 #000000
+{% set base16_client_properties = "/usr/local/share/base16-i3/client-properties/base16-{}.config".format(base16_theme) %}
+{{ lookup("file", base16_client_properties) }}
 
-set $transparent #00000000
-{% endif %}
-
-#                       BORDER             BACKGROUND         TEXT              INDICATOR   CHILD_BORDER
-client.focused          $bright_blue       $bright_black      $white            $black      $black
-client.unfocused        $bright_black      $bright_black      $bright_white     $black      $black
-client.focused_inactive $bright_black      $bright_black      $bright_white     $black      $black
-client.urgent           $red               $red               $bright_black     $red        $red
-client.background       $bright_black
-
-
-### Status Bar:
-
+{% set base16_bar_colors = "/usr/local/share/base16-i3/bar-colors/base16-{}.config".format(base16_theme) %}
 bar {
-    position top
-    colors {
-        statusline         $white
-        background         $transparent
-        separator          $transparent
+  position top
 
-#                          BORDER       BACKGROUND   TEXT
-        focused_workspace  $transparent $transparent $blue
-        inactive_workspace $transparent $transparent $white
-        active_workspace   $transparent $transparent $white
-        urgent_workspace   $darkred     $darkred     $transparent
-        binding_mode       $darkred     $darkred     $transparent
-    }
+  {{ lookup("file", base16_bar_colors) }}
 }
