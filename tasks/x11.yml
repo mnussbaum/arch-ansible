@@ -11,6 +11,8 @@
     name: "{{ item }}"
     state: present
   with_items:
+    - compton
+    - feh
     - mesa
     - scrot
     - vulkan-intel
@@ -49,3 +51,17 @@
     src: templates/Xresources.j2
     dest: "/home/{{ user.name }}/.Xresources"
     owner: "{{ user.name }}"
+
+- name: X11 | Install compton service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/compton.service"
+    src: compton.service
+
+- name: X11 | Enable compton service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: compton.service
+    user: true
+    daemon-reload: true
