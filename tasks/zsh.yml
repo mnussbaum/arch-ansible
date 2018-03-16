@@ -8,6 +8,7 @@
   with_items:
     - zsh
     - zsh-syntax-highlighting
+    - python-pystache # For base16_builder
 
 - name: ZSH | Clone base16-shell
   git:

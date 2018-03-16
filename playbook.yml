@@ -12,6 +12,8 @@
     - name: Regenerate mkinitcpio ramdisk
       command: mkinitcpio -p linux
       become: true
+  roles:
+    - mnussbaum.base16-builder-ansible
   tasks:
     - name: set base16 theme fact
       set_fact:

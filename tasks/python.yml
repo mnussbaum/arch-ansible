@@ -2,6 +2,9 @@
 ---
 - name: python | Install pip
   pacman:
-    name: python-pip
+    name: "{{ item }}"
     state: present
   become: true
+  with_items:
+    - python-pip
+    - python-pipenv
