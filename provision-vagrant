@@ -3,8 +3,7 @@
 set -o errexit
 set -o nounset
 
-ansible-playbook -i localhost-inventory playbook.yml -v \
-  --ask-become-pass \
+ansible-playbook playbook.yml -v --ask-become-pass \
   -e '{"monitor": {"id": "VGA-1", "height": 660, "width": 1160, "dpi": 96}}' \
   -e root_device=/dev/mapper/vgcrypt-root \
   -e ssd_device=/dev/sda2 \
