@@ -28,10 +28,10 @@
     repo: https://github.com/mnussbaum/base16-i3
     dest: /usr/local/share/base16-i3
 
-- name: i3 | Install config
-  template:
-    src: templates/sway_and_i3_config.j2
-    dest: "/home/{{ user.name }}/.config/i3/config"
+# - name: i3 | Install config
+#   template:
+#     src: templates/sway_and_i3_config.j2
+#     dest: "/home/{{ user.name }}/.config/i3/config"
 
 - name: i3 | Install i3 service
   copy:

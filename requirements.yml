@@ -1,3 +1,1 @@
-- src: https://github.com/kamaln7/ansible-swapfile
-  version: master
 - src: mnussbaum.base16-builder-ansible

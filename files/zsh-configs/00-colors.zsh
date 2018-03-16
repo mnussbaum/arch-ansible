@@ -1,6 +1,6 @@
-export BASE16_SHELL=/usr/share/zsh/plugins/base16-shell
-eval "$($BASE16_SHELL/profile_helper.sh)"
-eval "base16_$MY_BASE16_THEME"
+# export BASE16_SHELL=/usr/share/zsh/plugins/base16-shell
+# eval "$($BASE16_SHELL/profile_helper.sh)"
+# eval "base16_$MY_BASE16_THEME"
 
 autoload -U colors zsh/terminfo
 colors
