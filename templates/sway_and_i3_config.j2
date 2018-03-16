@@ -17,9 +17,10 @@ focus_follows_mouse yes
 font pango:Fira Mono for Powerline
 
 {% if window_manager == "sway" %}
-gaps 2
+gaps 6
 {% elif window_manager == "i3" %}
-gaps inner 2
+gaps inner 6
+gaps inner 6
 {% endif %}
 
 smart_gaps on
@@ -149,20 +150,23 @@ bindsym $mod+a focus parent
 bindsym $mod+r mode "resize"
 
 mode "resize" {
-    # left will shrink the containers width
-    # right will grow the containers width
-    # up will shrink the containers height
-    # down will grow the containers height
+    # Left will shrink the containers width
     bindsym $left resize shrink width 10 px or 10 ppt
+
+    # Down will grow the containers height
     bindsym $down resize grow height 10 px or 10 ppt
+
+    # Up will shrink the containers height
     bindsym $up resize shrink height 10 px or 10 ppt
+
+    # Right will grow the containers width
     bindsym $right resize grow width 10 px or 10 ppt
 
-    # ditto, with arrow keys
-    bindsym Left resize shrink width 10 px or 10 ppt
-    bindsym Down resize grow height 10 px or 10 ppt
-    bindsym Up resize shrink height 10 px or 10 ppt
-    bindsym Right resize grow width 10 px or 10 ppt
+    # Arrow keys the same, but less units
+    bindsym Left  resize shrink width  1 px or 1 ppt
+    bindsym Down  resize grow   height 1 px or 1 ppt
+    bindsym Up    resize shrink height 1 px or 1 ppt
+    bindsym Right resize grow   width  1 px or 1 ppt
 
     # return to default mode
     bindsym Return mode "default"
