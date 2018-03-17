@@ -39,7 +39,6 @@
     - import_tasks: tasks/golang.yml
     - import_tasks: tasks/global-environment-configuration.yml
     - import_tasks: tasks/gitconfig.yml
-    - import_tasks: tasks/alacritty.yml
     - import_tasks: tasks/termite.yml
     - import_tasks: tasks/tmux.yml
     - import_tasks: tasks/power.yml
