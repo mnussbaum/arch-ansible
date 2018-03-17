@@ -173,15 +173,12 @@ mode "resize" {
     bindsym Escape mode "default"
 }
 
-{% set base16_colors = "/usr/local/share/base16-i3/colors/base16-{}.config".format(base16_theme) %}
-{{ lookup("file", base16_colors) }}
+{{ base16_i3['schemes'][base16_theme]['i3']['colors']['base16-' + base16_theme + '.config'] }}
 
-{% set base16_client_properties = "/usr/local/share/base16-i3/client-properties/base16-{}.config".format(base16_theme) %}
-{{ lookup("file", base16_client_properties) }}
+{{ base16_i3['schemes'][base16_theme]['i3']['client-properties']['base16-' + base16_theme + '.config'] }}
 
-{% set base16_bar_colors = "/usr/local/share/base16-i3/bar-colors/base16-{}.config".format(base16_theme) %}
 bar {
   position top
 
-  {{ lookup("file", base16_bar_colors) }}
+  {{ base16_i3['schemes'][base16_theme]['i3']['bar-colors']['base16-' + base16_theme + '.config'] }}
 }

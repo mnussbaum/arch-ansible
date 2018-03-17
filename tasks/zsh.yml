@@ -10,12 +10,6 @@
     - zsh-syntax-highlighting
     - python-pystache # For base16_builder
 
-- name: ZSH | Clone base16-shell
-  git:
-    repo: https://github.com/chriskempson/base16-shell
-    dest: /usr/share/zsh/plugins/base16-shell
-  become: true
-
 - name: ZSH | Install base16 colortest script
   become: true
   file:
@@ -40,6 +34,18 @@
     path: "/home/{{ user.name }}/.config/zsh"
     owner: "{{ user.name }}"
     state: directory
+
+- name: ZSH | Generate base16 configs
+  base16_builder:
+    scheme: "{{ base16_theme }}"
+    template: shell
+    schemes_source: https://github.com/mnussbaum/base16-schemes-source
+  register: base16_shell
+
+- name: ZSH | Install base16 zsh config
+  copy:
+    dest: "/home/{{ user.name }}/.config/zsh/00-base16.zsh"
+    content: "{{ base16_shell['schemes'][base16_theme]['shell']['scripts']['base16-' + base16_theme + '.sh'] }}"
 
 - name: ZSH | Install zsh configs
   copy:

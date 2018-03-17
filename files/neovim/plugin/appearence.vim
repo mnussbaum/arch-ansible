@@ -26,4 +26,3 @@ let &colorcolumn="80,".join(range(120,999), ",")
 highlight ColorColumn ctermbg=235 guibg=#2c2d27
 
 set background=dark
-colorscheme base16-$MY_BASE16_THEME
