@@ -28,11 +28,13 @@
     template: i3
     schemes_source: https://github.com/mnussbaum/base16-schemes-source
   register: base16_i3
+  tags: [base16]
 
 - name: i3 | Install config
   template:
     src: templates/sway_and_i3_config.j2
     dest: "/home/{{ user.name }}/.config/i3/config"
+  tags: [base16]
 
 - name: i3 | Install i3 service
   copy:

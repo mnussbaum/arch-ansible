@@ -46,12 +46,14 @@
     template: xresources
     schemes_source: https://github.com/mnussbaum/base16-schemes-source
   register: base16_xresources
+  tags: [base16]
 
 - name: X11 | Configure Xresources
   template:
     src: templates/Xresources.j2
     dest: "/home/{{ user.name }}/.Xresources"
     owner: "{{ user.name }}"
+  tags: [base16]
 
 - name: X11 | Install compton service
   copy:

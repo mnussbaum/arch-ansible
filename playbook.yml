@@ -15,10 +15,12 @@
   roles:
     - mnussbaum.base16-builder-ansible
   tasks:
-    - name: set base16 theme fact
+    - name: Set base16 theme
       set_fact:
         base16_theme: solarflare
+      tags: [base16]
     - import_tasks: tasks/set-window-manager-facts.yml
+      tags: [base16]
     - import_tasks: tasks/time.yml
     - import_tasks: tasks/packaging.yml
     - include_tasks: tasks/boot.yml

@@ -70,11 +70,13 @@
     template: vim
     schemes_source: https://github.com/mnussbaum/base16-schemes-source
   register: base16_vim
+  tags: [base16]
 
 - name: nvim | Write base16 configs to a file
   copy:
     content: "{{ base16_vim['schemes'][base16_theme]['vim']['colors']['base16-' + base16_theme + '.vim'] }}"
     dest: ~/.config/nvim/plugin/base16.vim
+  tags: [base16]
 
 # TODO:
 # More ctrl-O history

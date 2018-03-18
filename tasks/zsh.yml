@@ -41,11 +41,13 @@
     template: shell
     schemes_source: https://github.com/mnussbaum/base16-schemes-source
   register: base16_shell
+  tags: [base16]
 
 - name: ZSH | Install base16 zsh config
   copy:
     dest: "/home/{{ user.name }}/.config/zsh/00-base16.zsh"
     content: "{{ base16_shell['schemes'][base16_theme]['shell']['scripts']['base16-' + base16_theme + '.sh'] }}"
+  tags: [base16]
 
 - name: ZSH | Install zsh configs
   copy:
