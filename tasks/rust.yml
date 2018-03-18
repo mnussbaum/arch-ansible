@@ -1,36 +1,43 @@
 # vim:ft=ansible:
 ---
-- name: rust | Install rustup
+- name: Rust | Install rustup
   package:
     name: rustup
     state: present
   become: true
 
-- name: rust | Check if rust stable is installed
+- name: Rust | Check if rust stable is installed
   shell: rustup toolchain list | grep stable
   register: rust_stable_installed
   ignore_errors: yes
   changed_when: false
 
-- name: rust | Install rust stable
+- name: Rust | Install rust stable
   command: rustup default stable
   when: rust_stable_installed | failed
 
-- name: rust | Install rust tools
+- name: Rust | Check rustfmt installed
+  shell: rustup component list | grep rustfmt | grep -q installed
+  register: check_rustfmt_installed
+  ignore_errors: true
+  changed_when: false
+
+- name: Rust | Install rustfmt
+  command: rustup component add rustfmt-preview
+  when: check_rustfmt_installed | failed
+
+- name: Rust | Install rust tools
   package:
-    name: "{{ item }}"
+    name: rust-racer
     state: present
   become: true
-  with_items:
-    - rust-racer
-    - rustfmt
 
-- name: rust | Find rustc root directory
+- name: Rust | Find rustc root directory
   command: rustc --print sysroot
   register: rustc_root_dir
   changed_when: false
 
-- name: rust | Download rust-lang source code
+- name: Rust | Download rust-lang source code
   command: rustup component add rust-src
   args:
     creates: "{{ rustc_root_dir.stdout }}/lib/rustlib/src/rust/src"
