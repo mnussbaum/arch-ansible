@@ -70,15 +70,13 @@
   # Convert script to re-entrant ansible
   # Configure wifi for after reboot
   # Automate partitioning or restoring from a partition dump
-  # Fix Grub not finding Windows
   # Install SSH key
 # Security harden
 # Printing
 # PLs
   # Ruby
   # Python
-  # Node
-  # Java
+  # Javascript
 # Make ansible only prompt for new-user pw when needed
 # GUI Apps
   # music
@@ -88,6 +86,4 @@
   # dropbox
   # Littlesnitch replacement
 # Password sync
-# Shell colorscheme
-# Shell prompt
 # Get some wallpaper

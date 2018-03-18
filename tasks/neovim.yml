@@ -77,7 +77,3 @@
     content: "{{ base16_vim['schemes'][base16_theme]['vim']['colors']['base16-' + base16_theme + '.vim'] }}"
     dest: ~/.config/nvim/plugin/base16.vim
   tags: [base16]
-
-# TODO:
-# More ctrl-O history
-# Stop that prompt when leaving an edited file
