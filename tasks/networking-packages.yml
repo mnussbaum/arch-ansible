@@ -1,7 +1,9 @@
 # vim:ft=ansible:
 ---
 - name: Networking Pacakges | Install
-  package: name={{ item }} state=latest
+  package:
+    name: "{{ item }}"
+    state: latest
   with_items:
     - dhclient
     - wireless_tools
