@@ -3,7 +3,7 @@
 ---
 - name: Brightness | Install pacakges
   become: true
-  pacaur:
+  package:
     name: "{{ item }}"
     state: present
   with_items:

@@ -7,7 +7,7 @@
     state: directory
 
 - name: i3 | Install packages
-  pacaur:
+  package:
     name: "{{ item }}"
     state: present
   with_items:

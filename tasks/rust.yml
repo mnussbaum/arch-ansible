@@ -1,7 +1,7 @@
 # vim:ft=ansible:
 ---
 - name: rust | Install rustup
-  pacaur:
+  package:
     name: rustup
     state: present
   become: true
@@ -17,7 +17,7 @@
   when: rust_stable_installed | failed
 
 - name: rust | Install rust tools
-  pacaur:
+  package:
     name: "{{ item }}"
     state: present
   become: true

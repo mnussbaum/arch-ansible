@@ -1,7 +1,7 @@
 # vim:ft=ansible:
 ---
 - name: Firefox | Install packages
-  pacaur:
+  package:
     name: "{{ item }}"
     state: present
   with_items:

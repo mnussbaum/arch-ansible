@@ -1,64 +1,92 @@
 # vim:ft=ansible:
 ---
 # Reflector ranks mirrors
-- name: packaging | Install reflector
+- name: Packaging | Install reflector
   package:
     name: reflector
     state: present
   become: true
 
-- name: packaging | Install reflector service
+- name: Packaging | Install reflector service
   copy:
     src: files/reflector.service
     dest: /etc/systemd/system/reflector.service
   become: true
 
-- name: packaging | Install reflector timer
+- name: Packaging | Install reflector timer
   copy:
     src: files/reflector.timer
     dest: /etc/systemd/system/reflector.timer
   become: true
 
-- name: packaging | Enable reflector service
+- name: Packaging | Enable reflector service
   service:
     name: reflector.service
     enabled: yes
     state: started
   become: true
 
-- name: packaging | Enable reflector timer
+- name: Packaging | Enable reflector timer
   service:
     name: reflector.timer
     enabled: yes
     state: started
   become: true
 
-- name: packaging | Update official packages
+- name: Packaging | Update official packages
   pacman:
     update_cache: yes
     upgrade: yes
   become: true
 
-- name: packaging | Install base-devel
+- name: Packaging | Install packages necessary for AUR installs
   package:
-    name: base-devel
+    name: "{{ item }}"
     state: present
   become: true
+  with_items:
+    - base-devel
+    - ccache
+    - curl
+    - gnupg
+    - lzop
 
-- name: packaging | Install ccache for faster compilation
-  become: true
-  pacman:
-    name: ccache
-    state: present
-
-- name: packaging | Install lzop so we can use lzo compressed packages for faster decompression
-  become: true
-  pacman:
-    name: lzop
-    state: present
-
-- name: packaging | Install makepkg.conf
+- name: Packaging | Install makepkg.conf
   become: true
   template:
     src: templates/makepkg.conf.j2
     dest: /etc/makepkg.conf
+
+- name: Packaging | Create GPG config dir
+  file:
+    path: "/home/{{ user.name }}/.gnupg"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: Packaging | Configure GPG for PKGBUILD included keys
+  copy:
+    dest: "/home/{{ user.name }}/.gnupg/gpg.conf"
+    src: files/gpg.conf
+    owner: "{{ user.name }}"
+
+- name: Packaging | Install pacaur-install script
+  copy:
+    dest: /usr/local/bin/install-pacaur
+    src: install-pacaur
+    mode: a+x
+  become: true
+
+- name: Packaging | Check pacaur installed
+  shell: command -v pacaur >/dev/null
+  register: check_pacaur_installed
+  ignore_errors: true
+  changed_when: false
+
+- name: Packaging | Install pacaur
+  command: /usr/local/bin/install-pacaur
+  when: check_pacaur_installed | failed
+
+- name: Packaging | Update pacaur packages
+  pacaur:
+    update_cache: yes
+    upgrade: yes

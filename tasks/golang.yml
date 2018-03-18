@@ -1,7 +1,7 @@
 # vim:ft=ansible:
 ---
 - name: golang | Install packages
-  pacaur:
+  package:
     name: "{{ item }}"
     state: present
   become: yes

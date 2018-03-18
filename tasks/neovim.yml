@@ -31,7 +31,7 @@
     - "{{ nvim_data_dir }}/site/autoload"
 
 - name: nvim | Install neovim packages
-  pacaur:
+  package:
     name: "{{ item }}"
     state: present
   become: true

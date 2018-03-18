@@ -7,7 +7,7 @@
     state: absent
 
 - name: X11 | Install packages
-  pacaur:
+  package:
     name: "{{ item }}"
     state: present
   with_items:

@@ -1,19 +1,18 @@
 # vim:ft=ansible:
 ---
 - name: CLI Tools | Install packages
-  pacaur:
+  package:
     name: "{{ item }}"
     state: present
   with_items:
     - aws-cli
     - bc
     - bfs
-    - curl
     - dstat
     - expac
     - fwupd
+    - fzf
     - git
-    - gnupg
     - htop
     - imv
     - jq
@@ -28,41 +27,6 @@
     - ruby
     - ripgrep
     - xdg-utils
-  become: true
-
-- name: CLI Tools | Create GPG config dir
-  file:
-    path: "/home/{{ user.name }}/.gnupg"
-    owner: "{{ user.name }}"
-    state: directory
-
-- name: CLI Tools | Configure GPG  for PKGBUILD included keys
-  copy:
-    dest: "/home/{{ user.name }}/.gnupg/gpg.conf"
-    src: files/gpg.conf
-    owner: "{{ user.name }}"
-
-- name: CLI Tools | Install pacaur-install script
-  copy:
-    dest: /usr/local/bin/install-pacaur
-    src: install-pacaur
-    mode: a+x
-  become: true
-
-- name: CLI Tools | Check pacaur installed
-  shell: command -v pacaur >/dev/null
-  register: check_pacaur_installed
-  ignore_errors: true
-  changed_when: false
-
-- name: CLI Tools | Install pacaur
-  command: /usr/local/bin/install-pacaur
-  when: check_pacaur_installed | failed
-
-- name: CLI Tools | Install fzf
-  pacaur:
-    name: fzf
-    state: present
   become: true
 
 - name: CLI Tools | Install fzf helper scripts
