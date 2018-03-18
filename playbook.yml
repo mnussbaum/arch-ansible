@@ -22,10 +22,6 @@
     - import_tasks: tasks/set-window-manager-facts.yml
       tags: [base16]
     - import_tasks: tasks/time.yml
-    - import_tasks: tasks/packaging.yml
-    - name: Set package manager to pacaur
-      set_fact:
-        ansible_pkg_mgr: pacaur
     - include_tasks: tasks/boot.yml
       tags: [bootstrap]
     - import_tasks: tasks/trim.yml
@@ -35,6 +31,10 @@
       tags: [bootstrap]
     - import_tasks: tasks/start-networking.yml
     - import_tasks: tasks/network-online.yml
+    - import_tasks: tasks/packaging.yml
+    - name: Set package manager to pacaur
+      set_fact:
+        ansible_pkg_mgr: pacaur
     - import_tasks: tasks/cli-tools.yml
     - import_tasks: tasks/zsh.yml
     - import_tasks: tasks/python.yml
