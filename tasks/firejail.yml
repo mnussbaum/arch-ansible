@@ -22,4 +22,4 @@
 - name: firejail | Install default profiles
   command: firecfg
   become: true
-  when: need_to_firecfg | failed
+  when: need_to_firecfg is failed

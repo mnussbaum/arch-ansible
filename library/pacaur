@@ -192,11 +192,10 @@ def main():
           default='present',
           choices=['absent', 'present', 'latest'],
       ),
-      recurse      = dict(default='no', choices=BOOLEANS, type='bool'),
-      upgrade      = dict(default='no', choices=BOOLEANS, type='bool'),
+      recurse      = dict(default='no', type='bool'),
+      upgrade      = dict(default='no', type='bool'),
       update_cache = dict(
           default='no',
-          choices=BOOLEANS,
           aliases=['update-cache'],
           type='bool',
       ),

@@ -84,7 +84,7 @@
 
 - name: Packaging | Install pacaur
   command: /usr/local/bin/install-pacaur
-  when: check_pacaur_installed | failed
+  when: check_pacaur_installed is failed
 
 - name: Packaging | Update pacaur packages
   pacaur:

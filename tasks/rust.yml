@@ -14,7 +14,7 @@
 
 - name: Rust | Install rust stable
   command: rustup default stable
-  when: rust_stable_installed | failed
+  when: rust_stable_installed is failed
 
 - name: Rust | Check rustfmt installed
   shell: rustup component list | grep rustfmt | grep -q installed
@@ -24,7 +24,7 @@
 
 - name: Rust | Install rustfmt
   command: rustup component add rustfmt-preview
-  when: check_rustfmt_installed | failed
+  when: check_rustfmt_installed is failed
 
 - name: Rust | Install rust tools
   package:

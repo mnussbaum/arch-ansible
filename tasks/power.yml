@@ -33,12 +33,14 @@
     src: tlp
     dest: /etc/default/tlp
   become: true
+
 - name: power | Enable TLP
   service:
     name: tlp
     enabled: yes
     state: started
   become: true
+
 - name: power | Enable TLP Sleep
   service:
     name: tlp-sleep
@@ -50,6 +52,7 @@
     src: files/suspend-sedation.service
     dest: /etc/systemd/system/suspend-sedation.service
   become: true
+
 - name: power | Enable suspend-sedation service
   service:
     name: suspend-sedation
