@@ -7,7 +7,7 @@ Requires=xorg.service
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/usr/bin/sleep 1
+ExecStart=/usr/bin/sleep 2
 
 [Install]
 WantedBy=default.target
