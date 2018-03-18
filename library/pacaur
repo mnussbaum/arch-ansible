@@ -187,11 +187,19 @@ def remove_packages(module, pkgs, recurse, state):
 def main():
   module = AnsibleModule(
     argument_spec = dict(
-      name         = dict(),
-      state        = dict(default='present', choices=['absent', 'present', 'latest']),
+      name         = dict(type='list'),
+      state        = dict(
+          default='present',
+          choices=['absent', 'present', 'latest'],
+      ),
       recurse      = dict(default='no', choices=BOOLEANS, type='bool'),
       upgrade      = dict(default='no', choices=BOOLEANS, type='bool'),
-      update_cache = dict(default='no', choices=BOOLEANS, aliases=['update-cache'], type='bool'),
+      update_cache = dict(
+          default='no',
+          choices=BOOLEANS,
+          aliases=['update-cache'],
+          type='bool',
+      ),
     ),
     required_one_of = [['name', 'update_cache', 'upgrade']],
     supports_check_mode = True
@@ -204,9 +212,6 @@ def main():
     module.fail_json(msg="could not locate pacman executable")
 
   p = module.params
-
-  if p['name']:
-    pkgs = p['name'].split(',')
 
   changed = False
   messages = []
@@ -225,15 +230,28 @@ def main():
      messages.append(upgrade_message)
 
   if p['name'] and module.check_mode:
-    packages_would_change, check_message = check_packages(module, pkgs, p['state'])
+    packages_would_change, check_message = check_packages(
+        module,
+        p['name'],
+        p['state'],
+    )
     changed = changed or packages_would_change
     messages.append(check_message)
   elif p['name'] and not module.check_mode:
     if p['name']:
       if p['state'] in ['present', 'latest']:
-        packages_changed, package_message = install_packages(module, pkgs, p['state'])
+        packages_changed, package_message = install_packages(
+            module,
+            p['name'],
+            p['state'],
+        )
       elif p['state'] == 'absent':
-        packages_changed, package_message = remove_packages(module, pkgs, p['recurse'], p['state'])
+        packages_changed, package_message = remove_packages(
+            module,
+            p['name'],
+            p['recurse'],
+            p['state'],
+        )
 
       changed = changed or packages_changed
       messages.append(package_message)
