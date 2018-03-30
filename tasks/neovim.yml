@@ -6,7 +6,6 @@
     vim_plugins:
       - "'Shougo/deoplete.nvim', {'do': ':UpdateRemotePlugins'}"
       - "'fatih/vim-go', {'do': ':GoInstallBinaries'}"
-      - "'itchyny/lightline.vim'"
       - "'jlanzarotta/bufexplorer'"
       - "'junegunn/fzf', {'dir': '/home/{{ user.name }}/.fzf', 'do': './install --all'}"
       - "'junegunn/fzf.vim'"
