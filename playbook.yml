@@ -17,7 +17,7 @@
   tasks:
     - name: Set base16 theme
       set_fact:
-        base16_theme: unikitty-dark
+        base16_theme: gruvbox-dark-hard
       tags: [base16]
     - import_tasks: tasks/set-window-manager-facts.yml
       tags: [base16]
