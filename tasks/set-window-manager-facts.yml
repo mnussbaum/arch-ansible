@@ -1,4 +1,4 @@
-# vim:ft=ansible:
+# vim:ft=yaml.ansible:
 ---
 - name: Window manager facts | i3
   set_fact:

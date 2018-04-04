@@ -1,4 +1,4 @@
-# vim:ft=ansible:
+# vim:ft=yaml.ansible:
 ---
 - name: global environment configuration | Install /etc/environment
   copy:

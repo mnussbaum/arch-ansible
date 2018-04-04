@@ -1,4 +1,4 @@
-# vim:ft=ansible:
+# vim:ft=yaml.ansible:
 ---
 - name: X11 socket activation | Install X11 socket activation unit
   copy:

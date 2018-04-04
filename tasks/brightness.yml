@@ -1,4 +1,4 @@
-# vim:ft=ansible:
+# vim:ft=yaml.ansible:
 # TODO: fix redshift, illum and calise for wayland
 ---
 - name: Brightness | Install pacakges

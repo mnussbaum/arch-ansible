@@ -1,4 +1,4 @@
-# vim:ft=ansible:
+# vim:ft=yaml.ansible:
 ---
 - name: vagrant-guest | Blacklist coretemp module
   become: true
