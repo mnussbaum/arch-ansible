@@ -17,7 +17,8 @@
   tasks:
     - name: Set base16 theme
       set_fact:
-        base16_theme: gruvbox-dark-hard
+        base16_scheme: gruvbox-dark-hard
+        base16_schemes_source: "/home/{{ user['name'] }}/src/base16-schemes-source"
       tags: [base16]
     - import_tasks: tasks/set-window-manager-facts.yml
       tags: [base16]

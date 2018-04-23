@@ -173,12 +173,12 @@ mode "resize" {
     bindsym Escape mode "default"
 }
 
-{{ base16_i3['schemes'][base16_theme]['i3']['colors']['base16-' + base16_theme + '.config'] }}
+{{ base16_i3['schemes'][base16_scheme]['i3']['colors']['base16-' + base16_scheme + '.config'] }}
 
-{{ base16_i3['schemes'][base16_theme]['i3']['client-properties']['base16-' + base16_theme + '.config'] }}
+{{ base16_i3['schemes'][base16_scheme]['i3']['client-properties']['base16-' + base16_scheme + '.config'] }}
 
 bar {
   position top
 
-  {{ base16_i3['schemes'][base16_theme]['i3']['bar-colors']['base16-' + base16_theme + '.config'] }}
+  {{ base16_i3['schemes'][base16_scheme]['i3']['bar-colors']['base16-' + base16_scheme + '.config'] }}
 }
