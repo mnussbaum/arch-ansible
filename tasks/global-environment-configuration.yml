@@ -1,8 +1,8 @@
 # vim:ft=yaml.ansible:
 ---
 - name: global environment configuration | Install /etc/environment
-  copy:
-    src: files/etc_environment
+  template:
+    src: templates/etc_environment.j2
     dest: /etc/environment
   become: true
 

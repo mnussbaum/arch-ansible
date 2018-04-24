@@ -16,9 +16,9 @@
     src: xorg-delay.service
 
 - name: X11 socket activation | Install xorg service
-  copy:
+  template:
+    src: templates/xorg.service.j2
     dest: "/home/{{ user.name }}/.config/systemd/user/xorg.service"
-    src: xorg.service
 
 - name: X11 socket activation | Install xrdb service
   copy:

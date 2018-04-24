@@ -19,6 +19,8 @@
       set_fact:
         base16_scheme: gruvbox-dark-hard
         base16_schemes_source: "/home/{{ user['name'] }}/src/base16-schemes-source"
+        key_repeat_delay: 180
+        key_repeat_rate: 35
       tags: [base16]
     - import_tasks: tasks/set-window-manager-facts.yml
       tags: [base16]
