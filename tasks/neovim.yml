@@ -24,6 +24,7 @@
   file:
     path: "{{ item }}"
     state: directory
+    owner: "{{ user.name }}"
   with_items:
     - "{{ nvim_config_dir }}"
     - "{{ nvim_data_dir }}"
@@ -43,16 +44,19 @@
   get_url:
     url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
     dest: "{{ nvim_data_dir }}/site/autoload/plug.vim"
+    owner: "{{ user.name }}"
 
 - name: nvim | Install init.vim config
   copy:
     src: neovim/init.vim
     dest: "{{ nvim_config_dir }}/init.vim"
+    owner: "{{ user.name }}"
 
 - name: nvim | Install vim-plug.vim config
   template:
     src: templates/neovim/vim-plug.vim.j2
     dest: "{{ nvim_config_dir }}/vim-plug.vim"
+    owner: "{{ user.name }}"
   register: vim_plug_config
 
 - name: nvim | Install nvim plugins
@@ -63,6 +67,7 @@
   copy:
     src: files/neovim/plugin/
     dest: "{{ nvim_config_dir }}/plugin"
+    owner: "{{ user.name }}"
 
 - name: nvim | Generate base16 configs
   base16_builder:
@@ -76,4 +81,5 @@
   copy:
     content: "{{ base16_vim['schemes'][base16_scheme]['vim']['colors']['base16-' + base16_scheme + '.vim'] }}"
     dest: ~/.config/nvim/plugin/base16.vim
+    owner: "{{ user.name }}"
   tags: [base16]
