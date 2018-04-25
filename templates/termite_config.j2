@@ -1,9 +1,5 @@
 [options]
-{% if monitor.dpi is defined and monitor.dpi > 96 %}
-font = Monospace 20
-{% else %}
-font = Monospace 9
-{% endif %}
+font = Monospace {{ font_size }}
 
 cursor_blink = off
 cursor_shape = block

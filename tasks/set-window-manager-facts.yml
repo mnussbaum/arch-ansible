@@ -9,3 +9,13 @@
   set_fact:
     window_manager: sway
   when: ansible_virtualization_role != "guest"
+
+- name: Window manager facts | font size
+  set_fact:
+    font_size: 20
+  when: monitor.dpi is defined and monitor.dpi > 96
+
+- name: Window manager facts | font size
+  set_fact:
+    font_size: 9
+  when: monitor.dpi is defined and monitor.dpi <= 96
