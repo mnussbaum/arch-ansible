@@ -63,6 +63,7 @@
 - name: X11 | Enable compton service
   become: true
   become_user: "{{ user.name }}"
+  when: window_manager == "i3"
   systemd:
     enabled: true
     name: compton.service
