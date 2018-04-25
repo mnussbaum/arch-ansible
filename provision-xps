@@ -18,7 +18,7 @@ else
 fi
 
 ansible-playbook playbook.yml -v --ask-become-pass \
-  -e '{"monitor": {"name": "eDP-1", "height": 165, "width": 294, "dpi": 276}}' \
+  -e '{"monitor": {"id": "eDP-1", "height": 165, "width": 294, "dpi": 276}}' \
   -e root_device=$root_device \
   -e ssd_device=$ssd_device \
   $@
