@@ -1,5 +1,11 @@
 # vim:ft=yaml.ansible:
 ---
+- name: Dropbox | Stop auto-upgrading and restart cycle
+  file:
+    path: "/home/{{ user.name }}/.dropbox-dist"
+    state: directory
+    mode: "0000"
+
 - name: Dropbox | Install packages
   package:
     name: "{{ item }}"
