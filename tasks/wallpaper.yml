@@ -1,0 +1,13 @@
+# vim:ft=yaml.ansible:
+---
+- name: Wallpaper | Create wallpaper data dir
+  file:
+    path: "/home/{{ user.name  }}/.local/share/wallpapers"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: Wallpaper | Download wallpaper image
+  get_url:
+    url: https://cookingintongues.files.wordpress.com/2013/05/img_0492.jpg
+    dest: "/home/{{ user.name  }}/.local/share/wallpapers/chefchaouen_dyes.jpg"
+    owner: "{{ user.name }}"

@@ -1,0 +1,14 @@
+[Unit]
+Description=Set wallpaper with feh
+Documentation=man:feh(1)
+
+After=x11.target
+Requires=x11.target
+
+[Service]
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/feh --bg-fill /home/{{ user.name }}/.local/share/wallpapers/chefchaouen_dyes.jpg
+Type=oneshot
+
+[Install]
+WantedBy=default.target

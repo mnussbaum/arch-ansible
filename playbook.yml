@@ -56,6 +56,7 @@
     - import_tasks: tasks/x11-socket-activation.yml
       when: window_manager == "i3"
     - import_tasks: tasks/libinput.yml
+    - import_tasks: tasks/wallpaper.yml
     - import_tasks: tasks/sway.yml
       when: window_manager == "sway"
     - import_tasks: tasks/i3.yml
@@ -89,4 +90,3 @@
   # dropbox
   # Littlesnitch replacement
 # Password sync
-# Get some wallpaper
