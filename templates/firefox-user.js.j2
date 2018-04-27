@@ -5,6 +5,11 @@ user_pref("layout.css.devPixelsPerPx", "2");
 user_pref("layout.css.devPixelsPerPx", "1");
 {% endif %}
 
+// Improve font rendering
+user_pref("gfx.canvas.azure.backends", "cairo");
+user_pref("gfx.content.azure.backends", "cairo");
+user_pref("gfx.font_rendering.fontconfig.max_generic_substitutions", 127);
+
 // Hardware accelerate with OpenGL
 user_pref("layers.acceleration.force-enabled", true);
 
