@@ -1,0 +1,25 @@
+[Unit]
+Description=Sway window manager
+Documentation=man:sway(5)
+
+Wants=dbus.socket
+After=dbus.socket
+Before=graphical.target
+ConditionPathExists=/dev/tty0
+
+
+[Service]
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/sway
+
+# A virtual terminal is needed.
+TTYPath=/dev/tty7
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+
+# Fail to start if not controlling the tty.
+StandardInput=tty-fail
+
+[Install]
+WantedBy=graphical.target

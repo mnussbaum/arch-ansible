@@ -47,9 +47,9 @@
     state: directory
 
 - name: user | Install user profile
-  template:
+  copy:
     dest: "/home/{{ user.name }}/.profile"
-    src: templates/profile.j2
+    content: ""
     owner: "{{ user.name }}"
 
 - name: user | Install user zprofile, sourcing profile
