@@ -5,7 +5,9 @@
     nvim_data_dir: "/home/{{ user.name }}/.local/share/nvim"
     vim_plugins:
       - "'Shougo/deoplete.nvim', {'do': ':UpdateRemotePlugins'}"
+      - "'christoomey/vim-tmux-runner'"
       - "'fatih/vim-go', {'do': ':GoInstallBinaries'}"
+      - "'janko-m/vim-test'"
       - "'jlanzarotta/bufexplorer'"
       - "'junegunn/fzf', {'dir': '/home/{{ user.name }}/.fzf', 'do': './install --all'}"
       - "'junegunn/fzf.vim'"
