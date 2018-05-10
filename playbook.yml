@@ -42,9 +42,10 @@
     - import_tasks: tasks/zsh.yml
     - import_tasks: tasks/python.yml
     - import_tasks: tasks/rust.yml
-    - import_tasks: tasks/neovim.yml
     - import_tasks: tasks/golang.yml
+    - import_tasks: tasks/ruby.yml
     - import_tasks: tasks/global-environment-configuration.yml
+    - import_tasks: tasks/neovim.yml
     - import_tasks: tasks/gitconfig.yml
     - import_tasks: tasks/termite.yml
     - import_tasks: tasks/tmux.yml
@@ -75,10 +76,8 @@
   # Configure wifi for after reboot
   # Automate partitioning or restoring from a partition dump
   # Install SSH key
-# Security harden
 # Printing
 # PLs
-  # Ruby
   # Python
   # Javascript
 # Make ansible only prompt for new-user pw when needed

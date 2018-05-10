@@ -1,0 +1,13 @@
+# vim:ft=yaml.ansible:
+---
+- name: Ruby | Install bundler
+  pacman:
+    name: ruby-bundler
+    state: present
+  become: true
+
+- name: Ruby | Install global gemrc
+  become: true
+  copy:
+    src: files/gemrc
+    dest: /etc/gemrc

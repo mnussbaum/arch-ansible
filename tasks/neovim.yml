@@ -7,6 +7,7 @@
       - "'Shougo/deoplete.nvim', {'do': ':UpdateRemotePlugins'}"
       - "'christoomey/vim-tmux-runner'"
       - "'fatih/vim-go', {'do': ':GoInstallBinaries'}"
+      - "'fishbullet/deoplete-ruby'"
       - "'janko-m/vim-test'"
       - "'jlanzarotta/bufexplorer'"
       - "'junegunn/fzf', {'dir': '/home/{{ user.name }}/.fzf', 'do': './install --all'}"
@@ -20,6 +21,7 @@
       - "'shmay/vim-yaml'"
       - "'tomtom/tcomment_vim'"
       - "'tpope/vim-fugitive'"
+      - "'vim-ruby/vim-ruby'"
       - "'zchee/deoplete-go', {'do': 'make'}"
 
 - name: nvim | Ensure nvim config and data dirs exist

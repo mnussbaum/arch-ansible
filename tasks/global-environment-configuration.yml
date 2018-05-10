@@ -14,3 +14,15 @@
     mode: "u=rwx,g=rx,o=rx"
   with_fileglob:
     - files/profile.d/*
+
+- name: global environment configuration | Find gem path
+  shell: gem environment gempath
+  register: gem_paths
+  changed_when: false
+
+- name: global environment configuration | Install shell path config file
+  become: true
+  template:
+    dest: /etc/profile.d/paths.sh
+    src: templates/paths.sh.j2
+    mode: "u=rwx,g=rx,o=rx"
