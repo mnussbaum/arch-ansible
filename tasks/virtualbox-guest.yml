@@ -1,0 +1,40 @@
+# vim:ft=yaml.ansible:
+---
+- name: Virtualbox guest | Blacklist coretemp module
+  become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  copy:
+    content: "blacklist coretemp"
+    dest: "/etc/modprobe.d/blacklist_coretemp.conf"
+
+- name: Virtualbox guest | Install guest utils
+  package:
+    name: "{{ item }}"
+    state: present
+  become: true
+  with_items:
+    - virtualbox-guest-utils
+    - virtualbox-guest-modules-arch
+
+- name: Virtualbox guest | Enable vboxservice
+  become: true
+  systemd:
+    enabled: true
+    name: vboxservice.service
+    daemon-reload: true
+
+- name: Virtualbox guest | Install VBoxClient service
+  copy:
+    owner: "{{ user.name }}"
+    src: files/vboxclient.service
+    dest: "/home/{{ user.name }}/.config/systemd/user/vboxclient.service"
+
+- name: Virtualbox guest | Enable VBoxClient service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: vboxclient.service
+    user: true
+    daemon-reload: true

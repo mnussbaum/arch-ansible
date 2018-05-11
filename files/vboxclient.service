@@ -1,0 +1,14 @@
+[Unit]
+Description=Run VBoxClient-all
+
+After=x11.target
+Requires=x11.target
+
+[Service]
+Environment=DISPLAY=:0
+ExecStart=/usr/bin/VBoxClient-all
+RemainAfterExit=true
+Type=oneshot
+
+[Install]
+WantedBy=default.target

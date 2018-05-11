@@ -51,7 +51,9 @@
     - import_tasks: tasks/tmux.yml
     - import_tasks: tasks/power.yml
     - import_tasks: tasks/qemu-guest.yml
-      when: ansible_virtualization_role == "guest"
+      when: ansible_virtualization_type == "qemu"
+    - import_tasks: tasks/virtualbox-guest.yml
+      when: ansible_virtualization_type == "virtualbox"
     - import_tasks: tasks/fonts.yml
     - import_tasks: tasks/x11.yml
     - import_tasks: tasks/x11-socket-activation.yml
