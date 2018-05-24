@@ -6,40 +6,17 @@
     state: present
   become: true
 
-- name: Rust | Check if rust stable is installed
-  shell: rustup toolchain list | grep stable
-  register: rust_stable_installed
-  ignore_errors: yes
-  changed_when: false
-
 - name: Rust | Install rust stable
   command: rustup default stable
-  when: rust_stable_installed is failed
-
-- name: Rust | Check rustfmt installed
-  shell: rustup component list | grep rustfmt | grep -q installed
-  register: check_rustfmt_installed
-  ignore_errors: true
-  changed_when: false
-
-- name: Rust | Install rustfmt
-  command: rustup component add rustfmt-preview
-  when: check_rustfmt_installed is failed
-
-- name: Rust | Install rust tools
-  package:
-    name: rust-racer
-    state: present
-  become: true
-
-- name: Rust | Find rustc root directory
-  command: rustc --print sysroot
-  register: rustc_root_dir
-  changed_when: false
-
-- name: Rust | Download rust-lang source code
-  command: rustup component add rust-src
   args:
-    creates: "{{ rustc_root_dir.stdout }}/lib/rustlib/src/rust/src"
+    creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu"
 
-# Auto-rustfmt in vim
+- name: Rust | Install rust nightly
+  command: rustup install nightly
+  args:
+    creates: "/home/{{ user.name }}/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu"
+
+- name: Rust | Install rls
+  command: rustup component add --toolchain nightly rls-preview rust-analysis rust-src
+  args:
+    creates: "/home/{{ user.name }}/.rustup/toolchais/nightly-x86_64-unknown-linux-gnu/bin/rls"

@@ -7,6 +7,10 @@
       - name: "Shougo/deoplete.nvim"
         args:
           do: ":UpdateRemotePlugins"
+      - name: "autozimu/LanguageClient-neovim"
+        args:
+          branch: "next"
+          do: "bash install.sh"
       - name: "christoomey/vim-tmux-runner"
       - name: "fatih/vim-go"
         args:

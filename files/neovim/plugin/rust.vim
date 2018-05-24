@@ -3,7 +3,7 @@ if executable('racer')
 endif
 
 if executable('rustc')
-  " if src installed via rustup, we can get it by running 
+  " if src installed via rustup, we can get it by running
   " rustc --print sysroot then appending the rest of the path
   let rustc_root = systemlist('rustc --print sysroot')[0]
   let rustc_src_dir = rustc_root . '/lib/rustlib/src/rust/src'
@@ -13,3 +13,5 @@ if executable('rustc')
 endif
 
 let g:rustfmt_autosave = 1
+let g:rustfmt_command = "cargo fmt -- "
+let g:LanguageClient_serverCommands.rust = ['rustup', 'run', 'nightly', 'rls']
