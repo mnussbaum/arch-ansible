@@ -1,7 +1,7 @@
 call plug#begin('{{ nvim_data_dir }}/plugged')
 
 {% for plugin in vim_plugins %}
-Plug {{ plugin }}
+Plug '{{ plugin['name'] }}', {{ plugin['args'] | default ({}) | to_json | replace('"', "'") }}
 {% endfor %}
 
 call plug#end()
