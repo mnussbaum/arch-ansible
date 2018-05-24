@@ -1,0 +1,12 @@
+# vim:ft=yaml.ansible:
+---
+- name: Web-dev | Install packages
+  package:
+    name: "{{ item }}"
+    state: present
+    use: pacaur
+  become: true
+  with_items:
+    - npm
+    - vscode-css-languageserver-bin
+    - vscode-html-languageserver-bin
