@@ -19,4 +19,4 @@
 - name: Rust | Install rls
   command: rustup component add --toolchain nightly rls-preview rust-analysis rust-src
   args:
-    creates: "/home/{{ user.name }}/.rustup/toolchais/nightly-x86_64-unknown-linux-gnu/bin/rls"
+    creates: "/home/{{ user.name }}/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rls"
