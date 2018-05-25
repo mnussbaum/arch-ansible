@@ -1,9 +1,10 @@
 # vim:ft=yaml.ansible:
 ---
 - name: python | Install pip
-  pacman:
+  package:
     name: "{{ item }}"
     state: present
+    use: pacaur
   become: true
   with_items:
     - python-pip

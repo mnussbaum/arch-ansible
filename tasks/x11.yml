@@ -2,7 +2,7 @@
 ---
 - name: X11 | Remove bad packages
   become: true
-  pacman:
+  package:
     name: mesa-libgl
     state: absent
 
@@ -10,6 +10,7 @@
   package:
     name: "{{ item }}"
     state: present
+    use: pacaur
   with_items:
     - compton
     - mesa

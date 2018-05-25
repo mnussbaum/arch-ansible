@@ -4,6 +4,7 @@
   package:
     name: "{{ item }}"
     state: present
+    use: pacaur
   with_items:
     - firefox
     - firefox-ublock-origin

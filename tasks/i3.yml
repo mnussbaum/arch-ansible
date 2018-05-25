@@ -10,6 +10,7 @@
   package:
     name: "{{ item }}"
     state: present
+    use: pacaur
   with_items:
     - feh
     - i3-gaps

@@ -7,9 +7,10 @@
     state: directory
 
 - name: sway | Install sway
-  pacman:
+  package:
     name: sway
     state: present
+    use: pacaur
   become: true
 
 - name: sway | Install application launcher script

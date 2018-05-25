@@ -35,9 +35,7 @@
     - import_tasks: tasks/start-networking.yml
     - import_tasks: tasks/network-online.yml
     - import_tasks: tasks/packaging.yml
-    - name: Set package manager to pacaur
-      set_fact:
-        ansible_pkg_mgr: pacaur
+    # From here down all packages should be installed with pacaur
     - import_tasks: tasks/cli-tools.yml
     - import_tasks: tasks/zsh.yml
     - import_tasks: tasks/python.yml

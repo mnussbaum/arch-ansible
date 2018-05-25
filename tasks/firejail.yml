@@ -1,9 +1,10 @@
 # vim:ft=yaml.ansible:
 ---
 - name: firejail | Install firejail
-  pacman:
+  package:
     name: firejail
     state: present
+    use: pacaur
   become: true
 
 - name: firejail | Install script to check firejail status

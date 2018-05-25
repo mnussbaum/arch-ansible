@@ -6,6 +6,7 @@
   package:
     name: "{{ item }}"
     state: present
+    use: pacaur
   with_items:
     - calise-git
     - illum-git

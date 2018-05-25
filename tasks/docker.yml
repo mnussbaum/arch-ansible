@@ -10,9 +10,10 @@
 
 - name: Docker | Install package
   become: true
-  pacman:
+  package:
     name: docker
     state: present
+    use: pacaur
 
 - name: Docker | Add user to docker group
   become: true

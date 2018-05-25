@@ -52,6 +52,7 @@
   package:
     name: "{{ item }}"
     state: present
+    use: pacaur
   become: true
   with_items:
     - neovim-git

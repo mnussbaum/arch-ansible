@@ -5,6 +5,7 @@
   package:
     name: "{{ item }}"
     state: present
+    use: pacaur
   with_items:
     - libinput
     - libinput-gestures

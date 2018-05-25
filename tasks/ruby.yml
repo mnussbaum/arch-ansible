@@ -4,6 +4,7 @@
   pacman:
     name: ruby-bundler
     state: present
+    use: pacaur
   become: true
 
 - name: Ruby | Install global gemrc
