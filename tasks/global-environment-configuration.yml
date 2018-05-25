@@ -20,6 +20,14 @@
   register: gem_paths
   changed_when: false
 
+- name: global environment configuration | Find rust toolchain binary paths
+  find:
+    paths: "/home/{{ user.name }}/.rustup/toolchains/"
+    recurse: no
+    file_type: directory
+  changed_when: false
+  register: rust_toolchain_paths
+
 - name: global environment configuration | Install shell path config file
   become: true
   template:

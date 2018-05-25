@@ -84,12 +84,6 @@
   command: nvim --headless -n -c ":PlugInstall" -c ":qa!"
   when: vim_plug_config.changed
 
-- name: nvim | Install neoformat-cargo-fmt.vim
-  copy:
-    src: neovim/neoformat-cargo-fmt.vim
-    dest: "{{ nvim_data_dir }}/plugged/neoformat/autoload/neoformat/formatters/rs.vim"
-    owner: "{{ user.name }}"
-
 - name: nvim | Install nvim configs
   copy:
     src: files/neovim/plugin/

@@ -6,6 +6,10 @@ export PATH="${PATH}:/usr/lib/ccache/bin"
 export GOPATH="${HOME}/go"
 export PATH="${PATH}:${HOME}/go/bin"
 
-{% for gem_path in gem_paths['stdout'].split(':')  %}
+{% for gem_path in gem_paths['stdout'].split(':') %}
 export PATH="${PATH}:{{ gem_path }}/bin"
+{% endfor %}
+
+{% for rust_toolchain_path in rust_toolchain_paths['files'] %}
+export PATH="${PATH}:{{ rust_toolchain_path['path'] }}/bin"
 {% endfor %}
