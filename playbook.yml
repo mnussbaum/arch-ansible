@@ -42,7 +42,7 @@
     - import_tasks: tasks/rust.yml
     - import_tasks: tasks/golang.yml
     - import_tasks: tasks/ruby.yml
-    - import_tasks: tasks/web-dev.yml
+    - import_tasks: tasks/frontend-dev.yml
     - import_tasks: tasks/global-environment-configuration.yml
     - import_tasks: tasks/neovim.yml
     - import_tasks: tasks/gitconfig.yml

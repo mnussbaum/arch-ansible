@@ -1,0 +1,20 @@
+# vim:ft=yaml.ansible:
+---
+- name: Frontend-dev | Install packages
+  package:
+    name: "{{ item }}"
+    state: present
+    use: pacaur
+  become: true
+  with_items:
+    - javascript-typescript-langserver
+    - js-beautify
+    - npm
+    - vscode-css-languageserver-bin
+    - vscode-html-languageserver-bin
+
+- name: Frontend-dev | Install editorconfig
+  copy:
+    src: files/editorconfig
+    dest: "/home/{{ user.name }}/.editorconfig"
+    owner: "{{ user.name }}"
