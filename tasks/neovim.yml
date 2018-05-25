@@ -27,6 +27,7 @@
       - name: "pearofducks/ansible-vim"
       - name: "racer-rust/vim-racer"
       - name: "rust-lang/rust.vim"
+      - name: "sbdchd/neoformat"
       - name: "scrooloose/nerdtree"
       - name: "sebastianmarkow/deoplete-rust"
       - name: "shmay/vim-yaml"
@@ -80,6 +81,12 @@
 - name: nvim | Install nvim plugins
   command: nvim --headless -n -c ":PlugInstall" -c ":qa!"
   when: vim_plug_config.changed
+
+- name: nvim | Install neoformat-cargo-fmt.vim
+  copy:
+    src: neovim/neoformat-cargo-fmt.vim
+    dest: "{{ nvim_data_dir }}/plugged/neoformat/autoload/neoformat/formatters/rs.vim"
+    owner: "{{ user.name }}"
 
 - name: nvim | Install nvim configs
   copy:

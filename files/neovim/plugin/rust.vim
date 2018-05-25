@@ -12,6 +12,4 @@ if executable('rustc')
   endif
 endif
 
-let g:rustfmt_autosave = 1
-let g:rustfmt_command = "cargo fmt -- "
 let g:LanguageClient_serverCommands.rust = ['rustup', 'run', 'nightly', 'rls']
