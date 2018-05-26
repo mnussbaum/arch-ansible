@@ -1,18 +1,21 @@
+function! s:lang_client_format_sync(...) abort
+  call LanguageClient_runSync('LanguageClient#textDocument_formatting', {
+        \ 'handle': v:true,
+        \ })
+endfunction
+
+set formatexpr=LanguageClient#textDocument_rangeFormatting_sync()
+let g:lang_server_format_filetypes = ['ruby', 'rust']
+
+function! Format()
+  if index(g:lang_server_format_filetypes, &ft) >= 0
+    call s:lang_client_format_sync()
+  else
+    execute 'silent Neoformat'
+  endif
+endfunction
+
 augroup formatting
   autocmd!
-  autocmd BufWritePre * undjoin | Neoformat
+  autocmd BufWritePre * call Format()
 augroup END
-" augroup formatting
-"   autocmd!
-"   autocmd BufWritePre * call Format()<cr>
-" augroup END
-"
-" " This function attempts to autcomplete using the language server client, and
-" " then falls back to Neoformat
-" function! Format()
-"   try
-"     call LanguageClient#textDocument_formatting()
-"   catch
-"     execute 'undojoin Neoformat'
-"   endtry
-" endfunction
