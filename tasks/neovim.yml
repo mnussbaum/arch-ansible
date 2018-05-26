@@ -15,7 +15,6 @@
       - name: "fatih/vim-go"
         args:
           do: ":GoInstallBinaries"
-      - name: "fishbullet/deoplete-ruby"
       - name: "janko-m/vim-test"
       - name: "jlanzarotta/bufexplorer"
       - name: "junegunn/fzf"
