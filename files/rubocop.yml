@@ -18,6 +18,15 @@ Layout/AlignHash:
 Style/HashSyntax:
   EnforcedStyle: ruby19_no_mixed_keys
 
+Style/TrailingCommaInArguments:
+  EnforcedStyleForMultiline: comma
+
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: comma
+
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: comma
+
 Style/FormatString:
   EnforcedStyle: percent
 
