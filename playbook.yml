@@ -17,7 +17,8 @@
   tasks:
     - name: Set base16 theme
       set_fact:
-        base16_scheme: chefchaouen
+        base16_scheme: base16-oceanic-next
+        base16_scheme_family: oceanic-next
         base16_schemes_source: "https://github.com/mnussbaum/base16-schemes-source"
         key_repeat_delay: 325
         key_repeat_rate: 35
