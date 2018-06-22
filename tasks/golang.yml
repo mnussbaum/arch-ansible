@@ -4,7 +4,6 @@
   package:
     name: "{{ item }}"
     state: present
-    use: pacaur
   become: yes
   with_items:
     - go

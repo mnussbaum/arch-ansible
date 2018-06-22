@@ -5,7 +5,6 @@
   package:
     name: "{{ item }}"
     state: present
-    use: pacaur
   with_items:
     - alsa-utils
     - pulseaudio

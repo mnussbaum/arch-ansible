@@ -10,7 +10,6 @@
   package:
     name: "{{ item }}"
     state: present
-    use: pacaur
   with_items:
     - compton
     - mesa

@@ -4,7 +4,6 @@
   package:
     name: termite
     state: present
-    use: pacaur
   become: true
 
 - name: termite | Create config dir

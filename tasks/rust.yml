@@ -4,7 +4,6 @@
   package:
     name: rustup
     state: present
-    use: pacaur
   become: true
 
 - name: Rust | Install rust stable

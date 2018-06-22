@@ -4,7 +4,6 @@
   package:
     name: tmux
     state: present
-    use: pacaur
   become: true
 
 - name: tmux | Install tmux config
