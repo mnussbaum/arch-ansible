@@ -4,12 +4,13 @@
   package:
     name: "{{ item }}"
     state: present
-    use: pacur
+    use: pacaur
   become: true
   with_items:
     - zsh
     - zsh-syntax-highlighting
     - python-pystache # For base16_builder
+    - spaceship-prompt-git
 
 - name: ZSH | Install base16 colortest script
   become: true

@@ -4,7 +4,7 @@
   package:
     name: "{{ item }}"
     state: present
-    use: pacur
+    use: pacaur
   with_items:
     - aws-cli
     - bc
