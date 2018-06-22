@@ -1,15 +1,9 @@
+sudo: required
+services:
+  - docker
+
 language: python
-python:
-  - "2.7"
-  - "3.4"
-  - "3.5"
-  - "3.6"
-
-install:
-  - pip install pipenv
-  - pipenv install --dev
-
-script: pipenv run nose2
+script: ./ci
 
 notifications:
   webhooks: https://galaxy.ansible.com/api/v1/notifications

@@ -20,7 +20,8 @@ the latest version of existing color schemes.
 
 In addition to the examples below, check out the [demo](demo) directory for a
 full Ansible playbook that lets you switch between color schemes for Vim, i3
-and Bash.
+and Bash. You can also [check out a recorded run through of the
+demo](https://youtu.be/MgjApBeqWu4).
 
 ## Example usages
 
@@ -119,6 +120,14 @@ scheme:
   required: false
   type: string
   default: Build all schemes
+scheme_family:
+  description:
+    - Set this to the name of a group of schemes that live in a single repo (i.e. a family) to only build that group of schemes
+    - If this is unset, and a scheme argument is passed, it's expected the scheme name is present in the scheme family name. E.g. Scheme family "tomorrow" is present in scheme names "tomorrow-night" and "tomorrow"
+    - Only set this arg if the scheme family name isn't included in the scheme names. E.g. scheme family "materialtheme" isn't included in scheme name "material-darker"
+  required: false
+  type: string
+  default: Build all schemes
 template:
   description:
     - Set this to the name of a template to only build that one template instead of building all, which is the default
@@ -136,15 +145,15 @@ cache_dir:
   default: First available of $XDG_CACHE_DIR, $HOME/.cache, or platform derived temp dir
 schemes_source:
   description:
-    - Git repo URL to clone for scheme source data
-    - These repos include a list.yaml file that maps scheme names to Git source repos
+    - Git repo URL or local directory path used to find schemes
+    - The source must include a list.yaml file that maps scheme names to scheme repo Git URLs or local directory paths
   required: false
   type: string
   default: https://github.com/chriskempson/base16-schemes-source
 templates_source:
   description:
-    - Git repo URL to clone for template source data
-    - These repos include a list.yaml file that maps template names to Git source repos
+    - Git repo URL or local directory path used to find templates
+    - The source must include a list.yaml file that maps template names to template repo Git URLs or local directory paths
   required: false
   type: string
   default: https://github.com/chriskempson/base16-templates-source
@@ -167,7 +176,7 @@ build:
 
 ## Dependencies
 
-* Python 2.7, or 3.4 or greater
+* Python 2.7, or 3.5 or greater
 * Ansible
 * [Pystache](https://github.com/defunkt/pystache), which you can install with:
 
@@ -213,8 +222,15 @@ dependencies. To run the tests:
 
 ```bash
 pip install --user pipenv
-pipenv install
+pipenv install --dev
 pipenv run nose2
+```
+
+You can also run the tests in a Docker container against all supported Python
+versions with:
+
+```bash
+./ci
 ```
 
 ## License
@@ -224,6 +240,4 @@ pipenv run nose2
 ## To do
 
 * Parallelize git pulls
-* Make the tests use fixtures instead of actually cloning repos
-* Allow schemes and templates to be local file paths to ease developing new ones
 * Allow the Base16 unclaimed schemes to be used too

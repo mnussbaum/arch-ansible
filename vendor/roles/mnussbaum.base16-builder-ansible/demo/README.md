@@ -1,4 +1,5 @@
-In this demo I'll:
+Check out the recorded demo at [https://youtu.be/MgjApBeqWu4](https://youtu.be/MgjApBeqWu4). In this demo
+I'll:
 
   1. Change my Base16 color scheme from `twilight` to `unikitty-dark` with Ansible
   2. Source my `~/.zshrc` to pick up my new shell theme
@@ -13,7 +14,7 @@ If you want to run the demo yourself, kick it off with:
 
     $ ansible-playbook colors.yml
 
-The playbook expects you have `ansible-base16-builder`'s dependencies
+The playbook expects you have `base16-builder-ansible`'s dependencies
 installed, so you'll need `pystache` and Ansible. See the main project README
 for more details.
 

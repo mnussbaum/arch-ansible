@@ -27,6 +27,14 @@ options:
     required: false
     type: string
     default: Build all schemes
+  scheme_family:
+    description:
+      - Set this to the name of a group of schemes that live in a single repo (i.e. a family) to only build that group of schemes
+      - If this is unset, and a scheme argument is passed, it's expected the scheme name is present in the scheme family name. E.g. Scheme family "tomorrow" is present in scheme names "tomorrow-night" and "tomorrow"
+      - Only set this arg if the scheme family name isn't included in the scheme names. E.g. scheme family "materialtheme" isn't included in scheme name "material-darker"
+    required: false
+    type: string
+    default: Build all schemes
   template:
     description:
       - Set this to the name of a template to only build that one template instead of building all, which is the default
@@ -44,15 +52,15 @@ options:
     default: First available of $XDG_CACHE_DIR, $HOME/.cache, or platform derived temp dir
   schemes_source:
     description:
-      - Git repo URL to clone for scheme source data
-      - These repos include a list.yaml file that maps scheme names to Git source repos
+      - Git repo URL or local directory path used to find schemes
+      - The source must include a list.yaml file that maps scheme names to scheme repo Git URLs or local directory paths
     required: false
     type: string
     default: https://github.com/chriskempson/base16-schemes-source
   templates_source:
     description:
-      - Git repo URL to clone for template source data
-      - These repos include a list.yaml file that maps template names to Git source repos
+      - Git repo URL or local directory path used to find templates
+      - The source must include a list.yaml file that maps template names to template repo Git URLs or local directory paths
     required: false
     type: string
     default: https://github.com/chriskempson/base16-templates-source
@@ -182,7 +190,7 @@ schemes:
             base16-gruvbox-dark-medium.colors: "\" vi:syntax=vim\n\n\" base16-vim ..."
 '''
 
-import os 
+import os
 import shutil
 import tempfile
 import yaml
@@ -202,15 +210,25 @@ def open_yaml(path):
 
 
 class GitRepo(object):
-    def __init__(self, builder, repo, path):
+    def __init__(self, builder, url_or_local_path, clone_dest):
         self.builder = builder
         self.module = builder.module
         self.git_path = self.module.get_bin_path('git', True)
-        self.repo = repo
-        self.path = path
+
+        if os.path.exists(url_or_local_path):
+            self.path = url_or_local_path
+            self.local_repo = True
+        else:
+            self.local_repo = False
+            self.url = url_or_local_path
+            self.path = clone_dest
+
         self.git_config_path = os.path.join(self.path, '.git', 'config')
 
     def clone_or_pull(self):
+        if self.local_repo:
+            return
+
         if not self.clone_if_missing():
             self.builder.result['changed'] = True
             if self.module.check_mode:
@@ -224,6 +242,9 @@ class GitRepo(object):
 
 
     def clone_if_missing(self):
+        if self.local_repo:
+            return
+
         if not os.path.exists(os.path.dirname(self.path)):
             self.builder.result['changed'] = True
             if self.module.check_mode:
@@ -243,7 +264,7 @@ class GitRepo(object):
             shutil.rmtree(self.path)
 
         self.module.run_command(
-            [self.git_path, 'clone', self.repo, self.path],
+            [self.git_path, 'clone', self.url, self.path],
             check_rc=True,
         )
 
@@ -251,7 +272,7 @@ class GitRepo(object):
 
     def _repo_at_path(self):
         """
-        This is a very rough heuristic to tell if there's a  git repo at the
+        This is a very rough heuristic to tell if there's a git repo at the
         path that points to the same repo URL we were given. It would be better
         to parse the file, but that would pull in another dependency :/
         """
@@ -259,7 +280,7 @@ class GitRepo(object):
             return False
 
         with open(self.git_config_path) as git_config:
-            if 'url = {}'.format(self.repo) in git_config.read():
+            if 'url = {}'.format(self.url) in git_config.read():
                 return True
 
         return False
@@ -309,7 +330,7 @@ class Base16SourceRepo(object):
     def update(self):
         self.git_repo.clone_or_pull()
         for source_repo in self._source_repos():
-            source_repo.clone_or_pull() 
+            source_repo.clone_or_pull()
 
 
 class Scheme(object):
@@ -374,14 +395,14 @@ class Scheme(object):
 class SchemeRepo(object):
     source_type = 'schemes'
 
-    def __init__(self, builder, name, scheme_url, scheme_path):
+    def __init__(self, builder, name, source_url_or_local_path, clone_dest):
         self.builder = builder
         self.module = builder.module
         self.name = name
         self.git_repo = GitRepo(
             self.builder,
-            scheme_url,
-            scheme_path,
+            source_url_or_local_path,
+            clone_dest,
         )
 
     def sources(self):
@@ -389,7 +410,8 @@ class SchemeRepo(object):
         # scheme. We still need to do an exact comparison with the scheme slug
         # to only yield a single requested scheme though.
         module_scheme_arg = self.module.params.get('scheme')
-        if module_scheme_arg and not self.name in module_scheme_arg:
+        module_scheme_family_arg = self.module.params.get('scheme_family') or module_scheme_arg
+        if module_scheme_family_arg and not self.name in module_scheme_family_arg:
             return
 
         self.git_repo.clone_if_missing()
@@ -440,14 +462,14 @@ class Template(object):
 class TemplateRepo(object):
     source_type = 'templates'
 
-    def __init__(self, builder, name, template_url, template_path):
+    def __init__(self, builder, name, url_or_local_path, clone_dest):
         self.builder = builder
         self.module = builder.module
         self.name = name
         self.git_repo = GitRepo(
             self.builder,
-            template_url,
-            template_path,
+            url_or_local_path,
+            clone_dest,
         )
         self.templates_dir = os.path.join(self.git_repo.path, 'templates')
 
@@ -565,6 +587,7 @@ def main():
             update=dict(type='bool', required=False, default=False),
             build=dict(type='bool', required=False, default=True),
             scheme=dict(type='str', required=False),
+            scheme_family=dict(type='str', required=False),
             template=dict(type='str', required=False),
             cache_dir=dict(type='str', required=False, default=default_cache_dir),
             schemes_source=dict(type='str', required=False, default='https://github.com/chriskempson/base16-schemes-source'),
