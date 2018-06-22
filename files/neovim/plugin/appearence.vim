@@ -2,6 +2,9 @@
 filetype plugin indent on
 syntax enable
 
+" Highlight on save
+let g:highlighter#auto_update = 1
+
 " Show line numbers
 set number
 

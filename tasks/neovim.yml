@@ -22,6 +22,9 @@
          dir: "/home/{{ user.name }}/.fzf"
          do: "./install --all"
       - name: "junegunn/fzf.vim"
+      - name: "KeitaNakamura/highlighter.nvim"
+        args:
+          do: ":UpdateRemotePlugins"
       - name: "leshill/vim-json"
       - name: "neomake/neomake"
       - name: "pangloss/vim-javascript"
@@ -57,6 +60,7 @@
     use: pacaur
   become: true
   with_items:
+    - ctags
     - neovim-git
     - python-neovim
 
