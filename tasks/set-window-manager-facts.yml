@@ -19,3 +19,15 @@
   set_fact:
     font_size: 9
   when: monitor.dpi is defined and monitor.dpi <= 96
+
+- name: Window manager facts | key repeat
+  set_fact:
+    key_repeat_delay: 325
+    key_repeat_rate: 35
+  when: ansible_virtualization_role != "guest"
+
+- name: Window manager facts | key repeat
+  set_fact:
+    key_repeat_delay: 425
+    key_repeat_rate: 35
+  when: ansible_virtualization_role == "guest"
