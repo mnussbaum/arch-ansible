@@ -11,7 +11,7 @@
     - gsfonts
     - libxft
     - noto-fonts
-    - powerline-fonts-git
+    - nerd-fonts-complete
     - otf-font-awesome
     - siji-git
   become: true
