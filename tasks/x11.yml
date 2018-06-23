@@ -1,11 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: X11 | Remove bad packages
-  become: true
-  package:
-    name: mesa-libgl
-    state: absent
-
 - name: X11 | Install packages
   package:
     name: "{{ item }}"

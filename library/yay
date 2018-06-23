@@ -22,8 +22,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-def pacaur_in_path(module):
-  rc, _, _ = module.run_command('which pacaur', check_rc=False)
+def yay_in_path(module):
+  rc, _, _ = module.run_command('which yay', check_rc=False)
   return rc == 0
 
 
@@ -31,9 +31,9 @@ def pacman_in_path(module):
   rc, _, _ = module.run_command('which pacman', check_rc=False)
   return rc == 0
 
-def get_version(pacaur_output):
-    '''Take pacaur -Qi or pacaur -Si output and get the Version'''
-    lines = pacaur_output.split('\n')
+def get_version(yay_output):
+    '''Take yay -Qi or yay -Si output and get the Version'''
+    lines = yay_output.split('\n')
     for line in lines:
         if 'Version' in line:
             return line.split(':')[1].strip()
@@ -47,14 +47,14 @@ def query_package(module, pkg, state):
     * If the package is up-to-date
     * Whether online information was available
   '''
-  local_check_cmd = 'pacaur -Qi %s' % pkg
+  local_check_cmd = 'yay -Qi %s' % pkg
   local_check_rc, local_check_stdout, _ = module.run_command(local_check_cmd, check_rc=False)
   if local_check_rc != 0:
     return False, False, False
 
   local_version = get_version(local_check_stdout)
 
-  repo_check_cmd = 'pacaur -Si %s' % pkg
+  repo_check_cmd = 'yay -Si %s' % pkg
   repo_check_rc, repo_check_stdout, repo_check_stderr = module.run_command(repo_check_cmd, check_rc=False)
   repo_version = get_version(repo_check_stdout)
 
@@ -65,7 +65,7 @@ def query_package(module, pkg, state):
     return True, True, True
 
 def update_package_db(module):
-  rc, _, stderr = module.run_command('pacaur -Sy', check_rc=False)
+  rc, _, stderr = module.run_command('yay -Sy', check_rc=False)
 
   if rc == 0 and stderr == '':
     return False, 'Package DB up-to-date'
@@ -75,13 +75,13 @@ def update_package_db(module):
     module.fail_json(msg='could not update package db: %s' % stderr)
 
 def upgrade(module):
-  check_rc, check_stdout, check_stderr = module.run_command('pacaur -Qqu', check_rc=False)
+  check_rc, check_stdout, check_stderr = module.run_command('yay -Qqu', check_rc=False)
 
   if check_rc == 0 and check_stderr == '' and module.check_mode:
     return True, '%s package(s) would be upgraded' % (len(check_stdout.split('\n')) - 1)
   elif check_rc == 0 and check_stderr == '' and not module.check_mode:
     upgrade_rc, _, upgrade_stderr = module.run_command(
-      'pacaur -Su --noconfirm',
+      'yay -Su --noconfirm',
       check_rc=False,
     )
 
@@ -130,7 +130,7 @@ def install_packages(module, pkgs, state):
   message = ''
 
   sudo_user = get_sudo_user(module)
-  cmd = 'sudo -u %s pacaur --noconfirm --noedit -S %s'
+  cmd = 'sudo -u %s yay --noconfirm -S %s'
 
   for pkg in pkgs:
     installed, updated, latest_error = query_package(module, pkg, state)
@@ -204,8 +204,8 @@ def main():
     supports_check_mode = True
   )
 
-  if not pacaur_in_path(module):
-    module.fail_json(msg="could not locate pacaur executable")
+  if not yay_in_path(module):
+    module.fail_json(msg="could not locate yay executable")
 
   if not pacman_in_path(module):
     module.fail_json(msg="could not locate pacman executable")

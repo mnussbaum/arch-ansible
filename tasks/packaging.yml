@@ -69,24 +69,24 @@
     src: files/gpg.conf
     owner: "{{ user.name }}"
 
-- name: Packaging | Install pacaur-install script
+- name: Packaging | Install install-yay script
   copy:
-    dest: /usr/local/bin/install-pacaur
-    src: install-pacaur
+    dest: /usr/local/bin/install-yay
+    src: install-yay
     mode: a+x
   become: true
 
-- name: Packaging | Check pacaur installed
-  shell: command -v pacaur >/dev/null
-  register: check_pacaur_installed
+- name: Packaging | Check yay installed
+  shell: command -v yay >/dev/null
+  register: check_yay_installed
   ignore_errors: true
   changed_when: false
 
-- name: Packaging | Install pacaur
-  command: /usr/local/bin/install-pacaur
-  when: check_pacaur_installed is failed
+- name: Packaging | Install yay
+  command: /usr/local/bin/install-yay
+  when: check_yay_installed is failed
 
-- name: Packaging | Update pacaur packages
-  pacaur:
+- name: Packaging | Update yay packages
+  yay:
     update_cache: yes
     upgrade: yes

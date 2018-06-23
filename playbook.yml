@@ -38,7 +38,7 @@
     - import_tasks: tasks/packaging.yml
     - set_fact:
         ansible_facts:
-          pkg_mgr: pacaur
+          pkg_mgr: yay
     - import_tasks: tasks/cli-tools.yml
     - import_tasks: tasks/zsh.yml
     - import_tasks: tasks/python.yml
