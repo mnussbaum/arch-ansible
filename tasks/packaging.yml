@@ -90,3 +90,11 @@
   yay:
     update_cache: yes
     upgrade: yes
+
+- name: Packaging | Enable pacman colors
+  become: true
+  lineinfile:
+    dest: /etc/pacman.conf
+    regexp: "^Color$"
+    insertafter: "^#Color$"
+    line: "Color"
