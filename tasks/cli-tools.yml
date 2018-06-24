@@ -16,6 +16,7 @@
     - htop
     - imv
     - jq
+    - ls_extended
     - lsof
     - net-tools
     - openssh
