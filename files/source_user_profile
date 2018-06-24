@@ -1,4 +1,1 @@
-if [[ -z $SOURCED_USER_PROFILE ]] ; then
-  emulate sh -c 'source ~/.profile'
-  export SOURCED_USER_PROFILE=1
-fi
+emulate sh -c 'source ~/.profile'
