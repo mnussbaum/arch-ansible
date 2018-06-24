@@ -1,0 +1,4 @@
+if [[ -z $SOURCED_ETC_PROFILE ]] ; then
+  emulate sh -c 'source /etc/profile'
+  export SOURCED_ETC_PROFILE=1
+fi

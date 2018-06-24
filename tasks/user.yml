@@ -55,5 +55,5 @@
 - name: user | Install user zprofile, sourcing profile
   copy:
     dest: "/home/{{ user.name }}/.zprofile"
-    src: zprofile
+    src: source_user_profile
     owner: "{{ user.name }}"

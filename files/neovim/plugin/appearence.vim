@@ -20,4 +20,8 @@ set ruler
 " Highlight 80th column
 let &colorcolumn="80,".join(range(120,999), ",")
 
+" Work in conjunction with base16-shell
 let base16colorspace=256
+
+" Enable true color support
+set termguicolors

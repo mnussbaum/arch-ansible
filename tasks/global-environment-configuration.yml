@@ -34,3 +34,12 @@
     dest: /etc/profile.d/paths.sh
     src: templates/paths.sh.j2
     mode: "u=rwx,g=rx,o=rx"
+
+- name: global environment configuration | Install global ZSH configs sourcing /etc/profile
+  become: true
+  copy:
+    dest: "{{ item }}"
+    src: source_etc_profile
+  with_items:
+    - /etc/zsh/zprofile
+    - /etc/zsh/zshrc

@@ -2,7 +2,3 @@ if [[ -z $SOURCED_USER_PROFILE ]] ; then
   emulate sh -c 'source ~/.profile'
   export SOURCED_USER_PROFILE=1
 fi
-
-for config in ~/.config/zsh/*.zsh ; do
-  source $config
-done
