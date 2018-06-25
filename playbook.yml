@@ -72,6 +72,7 @@
     - import_tasks: tasks/firejail.yml
     - import_tasks: tasks/docker.yml
     - import_tasks: tasks/dropbox.yml
+    - import_tasks: tasks/secrets.yml
 
 # Bootstrap:
   # Convert script to re-entrant ansible
