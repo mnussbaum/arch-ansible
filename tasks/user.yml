@@ -22,7 +22,10 @@
   user:
     name: "{{ user.name }}"
     group: "{{ user.group }}"
-    groups: "{{ user.group }},input,wheel"
+    groups:
+      - "{{ user.group }}"
+      - input
+      - wheel
     password: "{{ user_password | password_hash('sha512') }}"
     shell: "{{ user.shell }}"
     update_password: on_create
