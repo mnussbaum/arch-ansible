@@ -25,7 +25,10 @@ def jailed():
 def installed():
     installed = set()
     for path_dir in os.getenv("PATH").split(":"):
-        installed.update(os.listdir(path_dir))
+        try:
+            installed.update(os.listdir(path_dir))
+        except FileNotFoundError:
+            continue
 
     return installed
 
