@@ -23,7 +23,6 @@
   service:
     name: reflector.service
     enabled: yes
-    state: started
   become: true
 
 - name: Packaging | Enable reflector timer

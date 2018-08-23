@@ -3,7 +3,7 @@ Description=Run reflector weekly
 
 [Timer]
 OnCalendar=weekly
-RandomizedDelaySec=12h
+RandomizedDelaySec=1h
 Persistent=true
 
 [Install]
