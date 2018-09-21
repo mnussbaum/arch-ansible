@@ -14,16 +14,30 @@ partition_for() {
 start_wpa_wifi() {
   local wireless_card=$1
   local ssid="$2"
-  local passphrase="$3"
+  local wifi_passphrase="$3"
 
   ip link set dev $wireless_card up
-  wpa_supplicant -B -i $wireless_card -c <(wpa_passphrase "$ssid" "$passphrase")
+  wpa_supplicant -B -i $wireless_card -c <(wpa_passphrase "$ssid" "$wifi_passphrase")
   dhcpcd $wireless_card
 }
 
-check_network() {
-  if ! curl --silent --fail --output /dev/null google.com ; then
+network_down() {
+  return ! curl --silent --fail --output /dev/null google.com ; then
+    return 0
+  fi
+
+  return 1
+}
+
+setup_network() {
+  if network_down ; then
+    read -s -p "WPA passphrase:" wifi_passphrase
+    start_wpa_wifi $wireless_card "$ssid" "$wifi_passphrase"
+  fi
+
+  if network_down ; then
     >&2 echo "No internet. If over wifi probably use wpa_passphrase, wpa_supplicant and dhcpd"
+    exit 1
   fi
 }
 
@@ -91,10 +105,8 @@ username="mnussbaum"
 
 wireless_card="wlp60s0"
 ssid="BAM"
-read -s -p "WPA passphrase:" wpa_passphrase
 
-start_wpa_wifi $wireless_card "$ssid" "$wpa_passphrase"
-check_network
+setup_network
 mkdir -p /mnt
 create_encrypted_root_partition $root_device $ssd_device
 create_boot_partition $boot_device $efi_partition
@@ -103,6 +115,7 @@ Server = https://mirrors.kernel.org/archlinux/$repo/os/$arch
 Server = https://mirrors.ocf.berkeley.edu/archlinux/$repo/os/$arch
 Server = https://mirror.grig.io/archlinux/$repo/os/$arch
 LIST
+pacman-key --refresh-keys
 pacstrap /mnt base base-devel
 genfstab -U -p /mnt >> /mnt/etc/fstab
 ansible_bootstrap $root_device $ssd_device

@@ -17,5 +17,6 @@ export LANG=en_US.UTF-8
 ln -sf /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
 
 hwclock --systohc --utc
+pacman-key --refresh-keys
 
 pacman -Syu --noconfirm ansible python python-passlib vim zsh
