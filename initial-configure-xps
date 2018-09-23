@@ -19,4 +19,4 @@ ln -sf /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
 hwclock --systohc --utc
 pacman-key --refresh-keys
 
-pacman -Syu --noconfirm ansible python python-passlib vim zsh
+pacman -Syu --noconfirm archlinux-keyring ansible python python-passlib vim zsh
