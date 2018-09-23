@@ -22,7 +22,7 @@ start_wpa_wifi() {
 }
 
 network_down() {
-  return ! curl --silent --fail --output /dev/null google.com ; then
+  if ! curl --silent --fail --output /dev/null google.com ; then
     return 0
   fi
 
@@ -89,9 +89,9 @@ ansible_bootstrap() {
 
 # cp -r /run/archiso/bootmnt/arch-ansible .
 # parted --align optimal /dev/nvme0n1
-# > mkpart primary ext4 END_OF_A_PART END_OF_A_PART+512MB
+# > mkpart primary ext4 END_OF_A_PART (aka 81174MB) END_OF_A_PART+512MB (aka 81686MB)
 # > name 7 "Grub"
-# > mkpart primary ext4 END_OF_A_PART+512MB BEGINNING_OF_NEXT_PART_OR_EOF
+# > mkpart primary ext4 END_OF_A_PART+512MB (aka 81686MB) BEGINNING_OF_NEXT_PART_OR_EOF (aka 499968MB I think)
 # > name 8 "Arch Root"
 
 disk="/dev/nvme0n1"
@@ -123,8 +123,11 @@ ansible_bootstrap $root_device $ssd_device
 # After rebooting:
 # sudo systemctl start NetworkManager
 # nmtui
-# sudo mkdir /mnt/usb
-# sudo mount /dev/sda1 /mnt/usb
-# cp -r /mnt/usb/arch-ansible .
+# sudo cp -r /root/arch-ansible ~/src
 # cd arch-ansible
 # ./provision-xps
+
+# TODO
+# * Copy network setup into chroot
+# * Automate partitioning
+# * Copy keys into chroot
