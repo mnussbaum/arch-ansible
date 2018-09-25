@@ -13,6 +13,7 @@
     - xorg-server
     - xorg-xdpyinfo
     - xorg-xinput
+    - xorg-xrdb
   become: true
 
 - name: X11 | Configure xorg to run with root privileges
