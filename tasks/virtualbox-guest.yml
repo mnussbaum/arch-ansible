@@ -8,6 +8,12 @@
     content: "blacklist coretemp"
     dest: "/etc/modprobe.d/blacklist_coretemp.conf"
 
+- name: Virtualbox guest | Remove no-X guest utils to prevent conflict
+  package:
+    name: virtualbox-guest-utils-nox
+    state: absent
+  become: true
+
 - name: Virtualbox guest | Install guest utils
   package:
     name: "{{ item }}"
