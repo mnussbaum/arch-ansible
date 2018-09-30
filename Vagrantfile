@@ -21,10 +21,5 @@ EOF
   config.vm.provision :shell, inline: "chmod 600 ~/.ssh/id_rsa", privileged: false
   config.vm.provision :shell, inline: "chmod 600 ~/.ssh/id_rsa.pub", privileged: false
 
-  config.vm.provision :file, source: "~/.gnupg/gpg.conf", destination: "~/.gnupg/gpg.conf"
-  config.vm.provision :file, source: "~/.gnupg/pubring.gpg", destination: "~/.gnupg/pubring.gpg"
-  config.vm.provision :file, source: "~/.gnupg/secring.gpg", destination: "~/.gnupg/secring.gpg"
-  config.vm.provision :file, source: "~/.gnupg/trustdb.gpg", destination: "~/.gnupg/trustdb.gpg"
-
   # config.vm.provision "shell", inline: "cd /vagrant && ./provision-vagrant", privileged: true
 end
