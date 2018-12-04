@@ -16,13 +16,7 @@ for_window [title=".*"] border pixel 0
 focus_follows_mouse yes
 font pango:FuraMono Nerd Font Mono {{ font_size }}
 
-{% if window_manager == "sway" %}
-gaps 6
-{% elif window_manager == "i3" %}
 gaps inner 6
-gaps inner 6
-{% endif %}
-
 smart_gaps on
 
 {% if window_manager == "sway" %}
@@ -177,8 +171,10 @@ mode "resize" {
 
 {{ base16_i3['schemes'][base16_scheme]['i3']['client-properties']['base16-' + base16_scheme + '.config'] }}
 
+{% if window_manager == "i3" %}
 bar {
   position top
 
   {{ base16_i3['schemes'][base16_scheme]['i3']['bar-colors']['base16-' + base16_scheme + '.config'] }}
 }
+{% endif %}

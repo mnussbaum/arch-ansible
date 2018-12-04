@@ -6,10 +6,14 @@
     owner: "{{ user.name }}"
     state: directory
 
-- name: sway | Install sway
+- name: sway | Install sway packages
   package:
-    name: sway
+    name: "{{ item }}"
     state: present
+  with_items:
+    - sway-git
+    - wlroots-git
+    - waybar-git
   become: true
 
 - name: sway | Install application launcher script
@@ -45,4 +49,22 @@
   template:
     src: templates/sway_and_i3_config.j2
     dest: "/home/{{ user.name }}/.config/sway/config"
+  tags: [base16]
+
+- name: sway | Create waybar config dir
+  file:
+    path: "/home/{{ user.name }}/.config/waybar"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: sway | Install waybar config
+  copy:
+    src: files/waybar-config.json
+    dest: "/home/{{ user.name }}/.config/waybar/config"
+  tags: [base16]
+
+- name: sway | Install waybar styling
+  copy:
+    src: files/waybar-style.css
+    dest: "/home/{{ user.name }}/.config/waybar/style.css"
   tags: [base16]
