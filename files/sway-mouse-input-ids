@@ -22,7 +22,7 @@ def print_sway_mouse_input_ids():
     sway_inputs = json.loads(get_inputs.communicate()[0])
 
     for sway_input in sway_inputs:
-        if "pointer" in sway_input["capabilities"]:
+        if sway_input["type"] == "pointer":
             print(sway_input["identifier"])
 
 
