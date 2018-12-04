@@ -15,6 +15,7 @@
     - git
     - htop
     - imv
+    - iotop
     - jq
     - ls_extended
     - lsof
@@ -27,6 +28,7 @@
     - yajl
     - ruby
     - ripgrep
+    - zip
     - xdg-utils
   become: true
 
