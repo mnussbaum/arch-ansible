@@ -4,16 +4,14 @@
     "sway/workspaces",
     "sway/mode"
   ],
-  "modules-center": [
-    "sway/window"
-  ],
   "modules-right": [
     "battery",
-    "clock"
+    "network",
+    "cpu",
+    "memory",
+    "clock",
+    "tray"
   ],
-  "sway/window": {
-    "max-length": 50
-  },
   "battery": {
     "format": "{capacity}% {icon}",
     "format-icons": [
@@ -24,7 +22,21 @@
       ""
     ]
   },
+  "cpu": {
+    "format": "{usage}% "
+  },
+  "memory": {
+    "format": "{}% "
+  },
+  "network": {
+    "format-wifi": "{essid} ({signalStrength}%) ",
+    "format-ethernet": "{ifname}: {ipaddr}/{cidr} ",
+    "format-disconnected": "Disconnected ⚠"
+  },
   "clock": {
     "format-alt": "{:%a, %d. %b  %H:%M}"
+  },
+  "tray": {
+    "spacing": 10
   }
 }
