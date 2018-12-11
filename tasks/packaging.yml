@@ -60,7 +60,7 @@
   file:
     path: "/home/{{ user.name }}/.gnupg"
     owner: "{{ user.name }}"
-    chmod: 0700
+    mode: 0700
     state: directory
 
 - name: Packaging | Configure GPG for PKGBUILD included keys
@@ -68,7 +68,7 @@
     dest: "/home/{{ user.name }}/.gnupg/gpg.conf"
     src: files/gpg.conf
     owner: "{{ user.name }}"
-    chown: 0600
+    mode: 0600
 
 - name: Packaging | Install install-yay script
   copy:
