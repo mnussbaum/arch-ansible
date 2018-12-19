@@ -3,12 +3,12 @@
 - name: Window manager facts | i3
   set_fact:
     window_manager: i3
-  when: ansible_virtualization_role == "guest"
+  when: ansible_virtualization_type == "vagrant"
 
 - name: Window manager facts | sway
   set_fact:
     window_manager: sway
-  when: ansible_virtualization_role != "guest"
+  when: ansible_virtualization_type != "vagrant"
 
 - name: Window manager facts | font size and key repeat
   set_fact:
