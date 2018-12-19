@@ -13,5 +13,5 @@
 - name: Window manager facts | font size and key repeat
   set_fact:
     font_size: 20
-    key_repeat_delay: 325
+    key_repeat_delay: 290
     key_repeat_rate: 35
