@@ -25,14 +25,18 @@ output * bg /home/{{ user.name }}/.local/share/wallpapers/chefchaouen_dyes.jpg f
 
 ### Input configuration
 
-{% if window_manager == "sway" and not sway_mouse_input_ids.failed %}
-{% for mouse_input_id in sway_mouse_input_ids.stdout_lines %}
-input "{{ mouse_input_id }}" {
+{% if window_manager == "sway" %}
+input * {
+    # Keyboard configs
+    repeat_delay {{ key_repeat_delay }}
+    repeat_rate {{ key_repeat_rate }}
+    xkb_options caps:escape
+
+    # Mouse configs
     natural_scroll enabled
     scroll_method two_finger
     tap enabled
 }
-{% endfor %}
 {% endif %}
 
 ### Key bindings
