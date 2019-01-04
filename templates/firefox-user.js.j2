@@ -1,3 +1,6 @@
+// Enable Webrender, remove this once it's on by default!
+user_pref("gfx.webrender.all", true);
+
 // High DPI
 {% if monitor.dpi is defined and monitor.dpi > 96 %}
 user_pref("layout.css.devPixelsPerPx", "2");

@@ -5,7 +5,7 @@
     name: "{{ item }}"
     state: present
   with_items:
-    - firefox
+    - firefox-nightly
     - firefox-ublock-origin
     - firefox-vim-vixen
     - freshplayerplugin
