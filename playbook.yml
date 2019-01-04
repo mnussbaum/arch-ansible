@@ -1,10 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
 - hosts: all
-  vars_prompt:
-    - name: user_password
-      prompt: "Enter desired user password"
-      default: "password"
   handlers:
     - name: Regenerate grub.cfg
       command: grub-mkconfig -o /boot/grub/grub.cfg
