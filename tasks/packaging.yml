@@ -47,7 +47,6 @@
     - base-devel
     - ccache
     - curl
-    - gnupg
     - lzop
 
 - name: Packaging | Install makepkg.conf
@@ -55,20 +54,6 @@
   template:
     src: templates/makepkg.conf.j2
     dest: /etc/makepkg.conf
-
-- name: Packaging | Create GPG config dir
-  file:
-    path: "/home/{{ user.name }}/.gnupg"
-    owner: "{{ user.name }}"
-    mode: 0700
-    state: directory
-
-- name: Packaging | Configure GPG for PKGBUILD included keys
-  copy:
-    dest: "/home/{{ user.name }}/.gnupg/gpg.conf"
-    src: files/gpg.conf
-    owner: "{{ user.name }}"
-    mode: 0600
 
 - name: Packaging | Install install-yay script
   copy:

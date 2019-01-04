@@ -33,6 +33,7 @@
       tags: [bootstrap]
     - import_tasks: tasks/start-networking.yml
     - import_tasks: tasks/network-online.yml
+    - import_tasks: tasks/gpg.yml
     - import_tasks: tasks/packaging.yml
     - set_fact:
         ansible_facts:

@@ -1,0 +1,58 @@
+# vim:ft=yaml.ansible:
+---
+- name: GPP | Install packages
+  package:
+    name: "{{ item }}"
+    state: present
+  become: true
+  with_items:
+    - gnupg
+    - pcsclite
+
+- name: GPG | Create config dir
+  file:
+    path: "/home/{{ user.name }}/.gnupg"
+    owner: "{{ user.name }}"
+    mode: 0700
+    state: directory
+
+- name: GPG | Install config
+  copy:
+    dest: "/home/{{ user.name }}/.gnupg/gpg.conf"
+    src: files/gpg.conf
+    owner: "{{ user.name }}"
+    mode: 0600
+
+# This value is derived from my SSH key. If rotating keys rederive this value
+# by empying the sshcontrol file and letting GPG repopulate it after `ssh-add`
+- name: GPG | Install sshcontrol config
+  copy:
+    dest: "/home/{{ user.name }}/.gnupg/sshcontrol"
+    content: "B72091CA763D99BC9A060A220F08763AC1836687 0\n\n"
+    owner: "{{ user.name }}"
+    mode: 0600
+
+- name: GPG | Find gpg-agent user service configs
+  find:
+    paths: "/usr/share/doc/gnupg/examples/systemd-user"
+    excludes: "README"
+    recurse: no
+  changed_when: false
+  register: gpg_agent_service_configs
+
+- name: GPG | Install gpg-agent user service configs
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item.path | basename }}"
+    src: "{{ item.path }}"
+    owner: "{{ user.name }}"
+  with_items: "{{ gpg_agent_service_configs.files }}"
+
+- name: GPG | Enable gpg-agent user services
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: "{{ item.path | basename }}"
+    user: true
+    daemon-reload: true
+  with_items: "{{ gpg_agent_service_configs.files }}"
