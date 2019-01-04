@@ -15,6 +15,8 @@
   command: os-prober
   become: true
   changed_when: false
+  notify:
+    - Regenerate grub.cfg
 
 - name: boot | Get power_image size
   command: cat /sys/power/image_size
