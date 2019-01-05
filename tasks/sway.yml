@@ -16,13 +16,6 @@
     - waybar-git
   become: true
 
-- name: sway | Install application launcher script
-  copy:
-    src: files/launcher
-    dest: /usr/local/bin/launcher
-    mode: a+x
-  become: true
-
 - name: sway | Generate base16 configs
   base16_builder:
     scheme: "{{ base16_scheme }}"

@@ -4,11 +4,11 @@ set $down j
 set $up k
 set $right l
 set $term termite --title termite --exec tmux
-set $menu termite --title launcher --geometry 500x200 --exec /usr/local/bin/launcher
+set $menu rofi -show run
+set $passmenu rofi-pass
 
 ### Window rules
 
-for_window [title="^launcher$"] border pixel 0; floating enable
 for_window [title=".*"] border pixel 0
 
 ### Output configuration
@@ -42,13 +42,14 @@ input * {
 ### Key bindings
 
 # start a terminal
-bindsym $mod+Return exec $term
+bindsym $mod+return exec $term
 
 # kill focused window
-bindsym $mod+Shift+q kill
+bindsym $mod+shift+q kill
 
 # start your launcher
-bindsym $mod+d exec $menu
+bindsym $mod+space exec $menu
+bindsym $mod+slash exec $passmenu
 
 {% if window_manager == "sway" %}
 # Drag floating windows by holding down $mod and left mouse button.
@@ -62,10 +63,10 @@ floating_modifier $mod
 {% endif %}
 
 # reload the configuration file
-bindsym $mod+Shift+c reload
+bindsym $mod+shift+c reload
 
 # exit window manager (logs you out of your session)
-bindsym $mod+Shift+e exit
+bindsym $mod+shift+e exit
 
 ### Moving around:
 
@@ -75,21 +76,21 @@ bindsym $mod+$down focus down
 bindsym $mod+$up focus up
 bindsym $mod+$right focus right
 # or use $mod+[up|down|left|right]
-bindsym $mod+Left focus left
-bindsym $mod+Down focus down
-bindsym $mod+Up focus up
-bindsym $mod+Right focus right
+bindsym $mod+left focus left
+bindsym $mod+down focus down
+bindsym $mod+up focus up
+bindsym $mod+right focus right
 
 # _move_ the focused window with the same, but add Shift
-bindsym $mod+Shift+$left move left
-bindsym $mod+Shift+$down move down
-bindsym $mod+Shift+$up move up
-bindsym $mod+Shift+$right move right
+bindsym $mod+shift+$left move left
+bindsym $mod+shift+$down move down
+bindsym $mod+shift+$up move up
+bindsym $mod+shift+$right move right
 # ditto, with arrow keys
-bindsym $mod+Shift+Left move left
-bindsym $mod+Shift+Down move down
-bindsym $mod+Shift+Up move up
-bindsym $mod+Shift+Right move right
+bindsym $mod+shift+Left move left
+bindsym $mod+shift+Down move down
+bindsym $mod+shift+Up move up
+bindsym $mod+shift+Right move right
 
 
 ### Workspaces:
@@ -106,16 +107,16 @@ bindsym $mod+8 workspace 8
 bindsym $mod+9 workspace 9
 bindsym $mod+0 workspace 10
 # move focused container to workspace
-bindsym $mod+Shift+1 move container to workspace 1
-bindsym $mod+Shift+2 move container to workspace 2
-bindsym $mod+Shift+3 move container to workspace 3
-bindsym $mod+Shift+4 move container to workspace 4
-bindsym $mod+Shift+5 move container to workspace 5
-bindsym $mod+Shift+6 move container to workspace 6
-bindsym $mod+Shift+7 move container to workspace 7
-bindsym $mod+Shift+8 move container to workspace 8
-bindsym $mod+Shift+9 move container to workspace 9
-bindsym $mod+Shift+0 move container to workspace 10
+bindsym $mod+shift+1 move container to workspace 1
+bindsym $mod+shift+2 move container to workspace 2
+bindsym $mod+shift+3 move container to workspace 3
+bindsym $mod+shift+4 move container to workspace 4
+bindsym $mod+shift+5 move container to workspace 5
+bindsym $mod+shift+6 move container to workspace 6
+bindsym $mod+shift+7 move container to workspace 7
+bindsym $mod+shift+8 move container to workspace 8
+bindsym $mod+shift+9 move container to workspace 9
+bindsym $mod+shift+0 move container to workspace 10
 
 
 ### Layout stuff:
@@ -138,7 +139,7 @@ bindsym $mod+f fullscreen
 bindsym $mod+Shift+space floating toggle
 
 # Swap focus between the tiling area and the floating area
-bindsym $mod+space focus mode_toggle
+bindsym $mod+t focus mode_toggle
 
 # move focus to the parent container
 bindsym $mod+a focus parent

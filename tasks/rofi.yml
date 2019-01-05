@@ -1,0 +1,10 @@
+# vim:ft=yaml.ansible:
+---
+- name: Rofi | Install packages
+  package:
+    name: "{{ item }}"
+    state: present
+  become: true
+  with_items:
+    - rofi
+    - rofi-pass-git
