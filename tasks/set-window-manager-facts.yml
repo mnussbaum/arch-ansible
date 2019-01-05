@@ -3,17 +3,18 @@
 - name: Window manager facts | font size and key repeat
   set_fact:
     font_size: 20
-    key_repeat_delay: 250
     key_repeat_rate: 35
 
 - name: Window manager facts | i3
   set_fact:
     window_manager: i3
+    key_repeat_delay: 350
   when: ansible_virtualization_type == "virtualbox"
 
 - name: Window manager facts | sway
   set_fact:
     window_manager: sway
+    key_repeat_delay: 250
   when: ansible_virtualization_type != "virtualbox"
 
 - name: Window manager facts | sway in VM font size
