@@ -78,10 +78,6 @@
   # Automate partitioning or restoring from a partition dump
   # Install SSH key
 # Printing
-# PLs
-  # Python
-  # Javascript
-# Make ansible only prompt for new-user pw when needed
 # GUI Apps
   # music
   # video
