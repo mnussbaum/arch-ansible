@@ -9,12 +9,12 @@
 - name: Window manager facts | i3
   set_fact:
     window_manager: i3
-  when: ansible_virtualization_type == "vagrant"
+  when: ansible_virtualization_type == "virtualbox"
 
 - name: Window manager facts | sway
   set_fact:
     window_manager: sway
-  when: ansible_virtualization_type != "vagrant"
+  when: ansible_virtualization_type != "virtualbox"
 
 - name: Window manager facts | sway in VM font size
   set_fact:
