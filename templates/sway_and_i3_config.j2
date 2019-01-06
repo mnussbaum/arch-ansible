@@ -183,3 +183,8 @@ bar {
   {{ base16_i3['schemes'][base16_scheme]['i3']['bar-colors']['base16-' + base16_scheme + '.config'] }}
 }
 {% endif %}
+{% if window_manager == "sway" %}
+bar {
+  status_command waybar
+}
+{% endif %}

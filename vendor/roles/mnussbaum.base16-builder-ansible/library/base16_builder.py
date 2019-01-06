@@ -206,7 +206,7 @@ except (ImportError, ModuleNotFoundError) as err:
 
 def open_yaml(path):
     with open(path) as yaml_file:
-        return yaml.load(yaml_file)
+        return yaml.safe_load(yaml_file)
 
 
 class GitRepo(object):
@@ -379,12 +379,12 @@ class Scheme(object):
                 '{}-b'.format(base_hex_key): self._data()[base_key][4:6],
             })
             self.base16_vars.update({
-                '{}-rgb-r'.format(base_hex_key): str(int(self.base16_vars[base_hex_key + '-r'],  16)),
-                '{}-rgb-g'.format(base_hex_key): str(int(self.base16_vars[base_hex_key + '-g'], 16)),
-                '{}-rgb-b'.format(base_hex_key): str(int(self.base16_vars[base_hex_key + '-b'], 16)),
-                '{}-dec-r'.format(base_hex_key): str(int(self.base16_vars[base_hex_key + '-r'], 16) / 255),
-                '{}-dec-g'.format(base_hex_key): str(int(self.base16_vars[base_hex_key + '-g'], 16) / 255),
-                '{}-dec-b'.format(base_hex_key): str(int(self.base16_vars[base_hex_key + '-b'], 16) / 255),
+                '{}-rgb-r'.format(base_key): str(int(self.base16_vars[base_hex_key + '-r'],  16)),
+                '{}-rgb-g'.format(base_key): str(int(self.base16_vars[base_hex_key + '-g'], 16)),
+                '{}-rgb-b'.format(base_key): str(int(self.base16_vars[base_hex_key + '-b'], 16)),
+                '{}-dec-r'.format(base_key): str(int(self.base16_vars[base_hex_key + '-r'], 16) / 255),
+                '{}-dec-g'.format(base_key): str(int(self.base16_vars[base_hex_key + '-g'], 16) / 255),
+                '{}-dec-b'.format(base_key): str(int(self.base16_vars[base_hex_key + '-b'], 16) / 255),
             })
 
         self.computed_bases = True
