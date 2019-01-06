@@ -13,4 +13,4 @@
 - name: Time | Enable timedatectl NTP
   command: timedatectl set-ntp true
   become: true
-  when: "'Network time on: no' in timedatectl_ntp_status.stdout"
+  when: "'System clock synchronized: no' in timedatectl_ntp_status.stdout"
