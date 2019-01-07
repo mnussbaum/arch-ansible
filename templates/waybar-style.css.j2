@@ -1,0 +1,116 @@
+{{ base16_waybar['schemes'][base16_scheme]['waybar']['colors']['base16-'+base16_scheme+'.css'] }}
+
+* {
+  border: none;
+  border-radius: 0;
+  font-family: FuraMono Nerd Font Mono, Helvetica, Arial, sans-serif;
+  font-size: 30px;
+}
+
+window#waybar {
+  background: rgba(43, 48, 59, 0.8);
+  border-bottom: 3px solid transparent;
+  color: @base04;
+}
+
+#workspaces button {
+  padding: 0 15px;
+  background: rgba(43, 48, 59, 0.8);
+  color: @base04;
+  border-bottom: 3px solid transparent;
+}
+
+#workspaces button.focused {
+  background: rgba(100, 114, 125, 0.2);
+  border-bottom: 3px solid @base09;
+}
+
+#mode {
+  background: transparent;
+  border-bottom: 3px solid @base09;
+}
+
+#clock,
+#battery,
+#cpu,
+#memory,
+#network,
+#pulseaudio,
+#custom-spotify,
+#tray,
+#mode {
+  padding: 0 6px;
+  margin: 0 3px;
+}
+
+#clock {
+  background-color: transparent;
+  border-bottom: 3px solid @base09;
+  color: @base04;
+}
+
+#battery {
+  background-color: transparent;
+  border-bottom: 3px solid @base09;
+  color: @base04;
+}
+
+@keyframes blink {
+  to {
+    background-color: #ffffff;
+    color: black;
+  }
+}
+
+#battery.warning:not(.charging) {
+  border-bottom: 3px solid @base0A;
+  animation-name: blink;
+  animation-duration: 0.5s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+#battery.critical:not(.charging) {
+  border-bottom: 3px solid @base08;
+  color: white;
+  animation-name: blink;
+  animation-duration: 0.5s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+#cpu {
+  background: transparent;
+  border-bottom: 3px solid @base09;
+  color: @base04;
+}
+
+#memory {
+  background: transparent;
+  border-bottom: 3px solid @base09;
+  color: @base04;
+}
+
+#network {
+  background: transparent;
+  border-bottom: 3px solid @base09;
+  color: @base04;
+}
+
+#network.disconnected {
+  background: transparent;
+  color: @base08;
+}
+
+#pulseaudio {
+  background: transparent;
+  border-bottom: 3px solid @base09;
+  color: @base04;
+}
+
+#tray {
+  background-color: transparent;
+  border-bottom: 3px solid @base09;
+}

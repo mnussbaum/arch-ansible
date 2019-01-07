@@ -16,8 +16,9 @@ for_window [title=".*"] border pixel 0
 focus_follows_mouse yes
 font pango:FuraMono Nerd Font Mono {{ font_size }}
 
-gaps inner 6
-smart_gaps on
+gaps inner 7
+gaps outer 2
+gaps top 15
 
 {% if window_manager == "sway" %}
 output * bg /home/{{ user.name }}/.local/share/wallpapers/chefchaouen_dyes.jpg fill
@@ -176,15 +177,13 @@ mode "resize" {
 
 {{ base16_i3['schemes'][base16_scheme]['i3']['client-properties']['base16-' + base16_scheme + '.config'] }}
 
-{% if window_manager == "i3" %}
 bar {
   position top
 
+  {% if window_manager == "i3" -%}
   {{ base16_i3['schemes'][base16_scheme]['i3']['bar-colors']['base16-' + base16_scheme + '.config'] }}
+  {% endif -%}
+
+  {% if window_manager == "sway" %}swaybar_command waybar-wrapper{% endif %}
+
 }
-{% endif %}
-{% if window_manager == "sway" %}
-bar {
-  status_command waybar
-}
-{% endif %}

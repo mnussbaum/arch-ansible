@@ -13,7 +13,6 @@
   with_items:
     - sway-git
     - wlroots-git
-    - waybar-git
   become: true
 
 - name: sway | Generate base16 configs
@@ -22,6 +21,7 @@
     scheme_family: "{{ base16_scheme_family }}"
     template: i3
     schemes_source: "{{ base16_schemes_source }}"
+    templates_source: "{{ base16_templates_source }}"
   register: base16_i3
   tags: [base16]
 
@@ -29,22 +29,4 @@
   template:
     src: templates/sway_and_i3_config.j2
     dest: "/home/{{ user.name }}/.config/sway/config"
-  tags: [base16]
-
-- name: sway | Create waybar config dir
-  file:
-    path: "/home/{{ user.name }}/.config/waybar"
-    owner: "{{ user.name }}"
-    state: directory
-
-- name: sway | Install waybar config
-  copy:
-    src: files/waybar-config.json
-    dest: "/home/{{ user.name }}/.config/waybar/config"
-  tags: [base16]
-
-- name: sway | Install waybar styling
-  copy:
-    src: files/waybar-style.css
-    dest: "/home/{{ user.name }}/.config/waybar/style.css"
   tags: [base16]

@@ -35,6 +35,7 @@
     scheme_family: "{{ base16_scheme_family }}"
     template: shell
     schemes_source: "{{ base16_schemes_source }}"
+    templates_source: "{{ base16_templates_source }}"
   register: base16_shell
   tags: [base16]
 

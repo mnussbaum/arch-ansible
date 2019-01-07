@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# This script just ignores the waybar-incompatible arguments that sway
+# invokes the swaybar_command with
+
+exec waybar

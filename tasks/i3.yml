@@ -22,6 +22,7 @@
     scheme_family: "{{ base16_scheme_family }}"
     template: i3
     schemes_source: "{{ base16_schemes_source }}"
+    templates_source: "{{ base16_templates_source }}"
   register: base16_i3
   tags: [base16]
 

@@ -16,6 +16,7 @@
         base16_scheme: base16-oceanic-next
         base16_scheme_family: oceanic-next
         base16_schemes_source: "https://github.com/mnussbaum/base16-schemes-source"
+        base16_templates_source: "https://github.com/mnussbaum/base16-templates-source"
       tags: [base16, bootstrap]
     - import_tasks: tasks/set-window-manager-facts.yml
       tags: [base16, bootstrap]
@@ -58,6 +59,8 @@
     - import_tasks: tasks/libinput.yml
     - import_tasks: tasks/wallpaper.yml
     - import_tasks: tasks/rofi.yml
+    - import_tasks: tasks/waybar.yml
+      when: window_manager == "sway"
     - import_tasks: tasks/sway.yml
       when: window_manager == "sway"
     - import_tasks: tasks/i3.yml

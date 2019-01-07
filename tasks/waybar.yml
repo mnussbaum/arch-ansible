@@ -1,0 +1,41 @@
+# vim:ft=yaml.ansible:
+---
+- name: Waybar | Install package
+  package:
+    name: "waybar-git"
+    state: present
+  become: true
+
+- name: sway | Install waybar wrapper script
+  copy:
+    src: files/waybar-wrapper
+    dest: /usr/local/bin/waybar-wrapper
+    mode: a+x
+  become: true
+
+- name: Waybar | Create waybar config dir
+  file:
+    path: "/home/{{ user.name }}/.config/waybar"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: Waybar | Install waybar config
+  copy:
+    src: files/waybar-config.json
+    dest: "/home/{{ user.name }}/.config/waybar/config"
+
+- name: Waybar | Generate base16 waybar CSS configs
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: waybar
+    schemes_source: "{{ base16_schemes_source }}"
+    templates_source: "{{ base16_templates_source }}"
+  register: base16_waybar
+  tags: [base16]
+
+- name: Waybar | Install waybar styling
+  template:
+    src: templates/waybar-style.css.j2
+    dest: "/home/{{ user.name }}/.config/waybar/style.css"
+  tags: [base16]
