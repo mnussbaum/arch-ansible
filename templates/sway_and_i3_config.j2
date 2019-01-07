@@ -57,6 +57,15 @@ bindsym $mod+slash exec $passmenu
 {% if window_manager == "i3" %}bindsym $mod+Print exec i3lock{% endif %}
 
 {% if window_manager == "sway" %}
+# Lock screen after 10min and put after 15min
+exec swayidle \
+    timeout 600 'swaylock' \
+    timeout 900 'swaymsg "output * dpms off"' \
+       resume 'swaymsg "output * dpms on"' \
+    before-sleep 'swaylock'
+{% endif %}
+
+{% if window_manager == "sway" %}
 # Drag floating windows by holding down $mod and left mouse button.
 # Resize them with right mouse button + $mod.
 # Despite the name, also works for non-floating windows.
