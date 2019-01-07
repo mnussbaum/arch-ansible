@@ -2,8 +2,8 @@
 ---
 - name: networking | Configure nameservers
   copy:
-    src: files/resolv.conf
-    dest: /etc/resolv.conf
+    src: files/resolvconf.conf
+    dest: /etc/resolvconf.conf
   become: true
 
 - name: networking | Configure NetworkManager
