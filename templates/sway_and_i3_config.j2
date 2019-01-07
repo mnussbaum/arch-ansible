@@ -42,15 +42,19 @@ input * {
 
 ### Key bindings
 
-# start a terminal
+# Start terminal
 bindsym $mod+return exec $term
 
-# kill focused window
+# Kill focused window
 bindsym $mod+shift+q kill
 
-# start your launcher
+# Launchers
 bindsym $mod+space exec $menu
 bindsym $mod+slash exec $passmenu
+
+# Lockscreen
+{% if window_manager == "sway" %}bindsym $mod+Print exec swaylock{% endif %}
+{% if window_manager == "i3" %}bindsym $mod+Print exec i3lock{% endif %}
 
 {% if window_manager == "sway" %}
 # Drag floating windows by holding down $mod and left mouse button.
@@ -187,3 +191,7 @@ bar {
   {% if window_manager == "sway" %}swaybar_command waybar-wrapper{% endif %}
 
 }
+
+bindsym XF86AudioRaiseVolume exec pactl set-sink-volume $(pacmd list-sinks |awk '/* index:/{print $3}') +5%
+bindsym XF86AudioLowerVolume exec pactl set-sink-volume $(pacmd list-sinks |awk '/* index:/{print $3}') -5%
+bindsym XF86AudioMute exec pactl set-sink-mute $(pacmd list-sinks |awk '/* index:/{print $3}') toggle
