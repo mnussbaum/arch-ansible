@@ -55,9 +55,9 @@ window#waybar {
   color: @base04;
 }
 
-@keyframes blink {
+@keyframes critical-blink {
   to {
-    background-color: #ffffff;
+    background-color: rgba(@base08-rgb-r, @base08-rgb-g, @base08-rgb-b, 0.8)
     color: black;
   }
 }
@@ -69,8 +69,8 @@ window#waybar {
 #battery.critical:not(.charging) {
   border-bottom: 3px solid @base08;
   color: white;
-  animation-name: blink;
-  animation-duration: 1s;
+  animation-name: critical-blink;
+  animation-duration: 3s;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
   animation-direction: alternate;
