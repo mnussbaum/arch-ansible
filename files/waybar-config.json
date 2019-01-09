@@ -40,8 +40,8 @@
       ""
     ],
     "states": {
-      "warning": 30,
-      "critical": 20
+      "warning": 20,
+      "critical": 5
     }
   },
   "clock": {

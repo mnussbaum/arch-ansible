@@ -63,19 +63,14 @@ window#waybar {
 }
 
 #battery.warning:not(.charging) {
-  border-bottom: 3px solid @base0A;
-  animation-name: blink;
-  animation-duration: 0.5s;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
+  border-bottom: 3px solid @base08;
 }
 
 #battery.critical:not(.charging) {
   border-bottom: 3px solid @base08;
   color: white;
   animation-name: blink;
-  animation-duration: 0.5s;
+  animation-duration: 1s;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
   animation-direction: alternate;
