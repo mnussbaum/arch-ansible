@@ -1,2 +1,4 @@
 .vagrant/
+gpg-keys
 playbook.retry
+ssh-keys

@@ -85,6 +85,13 @@ ansible_bootstrap() {
   arch-chroot /mnt /root/arch-ansible/initial-configure-xps $hostname $username
   arch-chroot /mnt sh -c "cd /root/arch-ansible && ./provision-xps \
     $root_device $ssd_device -e bootstrap='true' --tags bootstrap"
+  cp -r . /mnt/home/$username/src/arch-ansible
+  arch-chroot /mnt chown -R $username:$username /home/$username/src/arch-ansible
+  cp -r gpg-keys /mnt/home/$username/gpg-keys
+  arch-chroot /mnt chown -R $username:$username /home/$username/gpg-keys
+  arch-chroot /mnt mkdir /home/$username/.ssh
+  cp -r ssh-keys/* /mnt/home/$username/.ssh
+  arch-chroot /mnt chown -R $username:$username /home/$username/.ssh
 }
 
 # cp -r /run/archiso/bootmnt/arch-ansible .
