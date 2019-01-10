@@ -1,0 +1,9 @@
+# vim:ft=yaml.ansible:
+---
+- name: Archiso | Install packages
+  package:
+    name:
+      - archiso
+      - udisks2
+    state: present
+  become: true
