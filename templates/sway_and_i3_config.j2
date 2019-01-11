@@ -18,7 +18,10 @@ font pango:FuraMono Nerd Font Mono {{ font_size }}
 
 gaps inner 7
 gaps outer 2
+
+{% if window_manager == "sway" %}
 gaps top 15
+{% endif %}
 
 {% if window_manager == "sway" %}
 output * bg /home/{{ user.name }}/.local/share/wallpapers/chefchaouen_dyes.jpg fill
@@ -43,10 +46,10 @@ input * {
 ### Key bindings
 
 # Start terminal
-bindsym $mod+return exec $term
+bindsym $mod+Return exec $term
 
 # Kill focused window
-bindsym $mod+shift+q kill
+bindsym $mod+Shift+q kill
 
 # Launchers
 bindsym $mod+space exec $menu
@@ -77,10 +80,10 @@ floating_modifier $mod
 {% endif %}
 
 # reload the configuration file
-bindsym $mod+shift+c reload
+bindsym $mod+Shift+c reload
 
 # exit window manager (logs you out of your session)
-bindsym $mod+shift+e exit
+bindsym $mod+Shift+e exit
 
 ### Moving around:
 
@@ -89,22 +92,21 @@ bindsym $mod+$left focus left
 bindsym $mod+$down focus down
 bindsym $mod+$up focus up
 bindsym $mod+$right focus right
-# or use $mod+[up|down|left|right]
-bindsym $mod+left focus left
-bindsym $mod+down focus down
-bindsym $mod+up focus up
-bindsym $mod+right focus right
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
 
 # _move_ the focused window with the same, but add Shift
-bindsym $mod+shift+$left move left
-bindsym $mod+shift+$down move down
-bindsym $mod+shift+$up move up
-bindsym $mod+shift+$right move right
+bindsym $mod+Shift+$left move left
+bindsym $mod+Shift+$down move down
+bindsym $mod+Shift+$up move up
+bindsym $mod+Shift+$right move right
 # ditto, with arrow keys
-bindsym $mod+shift+Left move left
-bindsym $mod+shift+Down move down
-bindsym $mod+shift+Up move up
-bindsym $mod+shift+Right move right
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
 
 
 ### Workspaces:
@@ -121,16 +123,16 @@ bindsym $mod+8 workspace 8
 bindsym $mod+9 workspace 9
 bindsym $mod+0 workspace 10
 # move focused container to workspace
-bindsym $mod+shift+1 move container to workspace 1
-bindsym $mod+shift+2 move container to workspace 2
-bindsym $mod+shift+3 move container to workspace 3
-bindsym $mod+shift+4 move container to workspace 4
-bindsym $mod+shift+5 move container to workspace 5
-bindsym $mod+shift+6 move container to workspace 6
-bindsym $mod+shift+7 move container to workspace 7
-bindsym $mod+shift+8 move container to workspace 8
-bindsym $mod+shift+9 move container to workspace 9
-bindsym $mod+shift+0 move container to workspace 10
+bindsym $mod+Shift+1 move container to workspace 1
+bindsym $mod+Shift+2 move container to workspace 2
+bindsym $mod+Shift+3 move container to workspace 3
+bindsym $mod+Shift+4 move container to workspace 4
+bindsym $mod+Shift+5 move container to workspace 5
+bindsym $mod+Shift+6 move container to workspace 6
+bindsym $mod+Shift+7 move container to workspace 7
+bindsym $mod+Shift+8 move container to workspace 8
+bindsym $mod+Shift+9 move container to workspace 9
+bindsym $mod+Shift+0 move container to workspace 10
 
 
 ### Layout stuff:
