@@ -3,11 +3,13 @@
 - name: Window manager facts | font size and key repeat
   set_fact:
     font_size: 20
+    rofi_font_size: 20
     key_repeat_rate: 35
 
 - name: Window manager facts | i3
   set_fact:
     window_manager: i3
+    rofi_font_size: 10
     key_repeat_delay: 350
   when: ansible_virtualization_type == "virtualbox"
 
