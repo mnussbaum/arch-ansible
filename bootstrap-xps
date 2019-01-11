@@ -96,9 +96,9 @@ ansible_bootstrap() {
 
 # cp -r /run/archiso/bootmnt/arch-ansible .
 # parted --align optimal /dev/nvme0n1
-# > mkpart primary ext4 END_OF_A_PART (aka 81174MB) END_OF_A_PART+512MB (aka 81686MB)
+# > mkpart primary ext4 END_OF_A_PART (81174MB) END_OF_A_PART+512MB (81686MB)
 # > name 7 "Grub"
-# > mkpart primary ext4 END_OF_A_PART+512MB (aka 81686MB) BEGINNING_OF_NEXT_PART_OR_EOF (aka 499968MB I think)
+# > mkpart primary ext4 END_OF_A_PART+512MB (81686MB) BEGINNING_OF_NEXT_PART_OR_EOF (499984MB)
 # > name 8 "Arch Root"
 
 disk="/dev/nvme0n1"
@@ -137,4 +137,3 @@ ansible_bootstrap $root_device $ssd_device
 # TODO
 # * Copy network setup into chroot
 # * Automate partitioning
-# * Copy keys into chroot
