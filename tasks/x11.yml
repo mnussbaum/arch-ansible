@@ -62,5 +62,5 @@
   systemd:
     enabled: true
     name: compton.service
-    user: true
+    scope: user
     daemon-reload: true

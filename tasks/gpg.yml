@@ -52,6 +52,6 @@
   systemd:
     enabled: true
     name: "{{ item.path | basename }}"
-    user: true
+    scope: user
     daemon-reload: true
   with_items: "{{ gpg_agent_service_configs.files }}"

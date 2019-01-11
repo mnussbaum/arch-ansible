@@ -43,7 +43,7 @@
   systemd:
     enabled: true
     name: i3.service
-    user: true
+    scope: user
     daemon-reload: true
 
 - name: i3 | Install wallpaper service
@@ -58,5 +58,5 @@
   systemd:
     enabled: true
     name: wallpaper.service
-    user: true
+    scope: user
     daemon-reload: true

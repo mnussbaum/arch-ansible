@@ -42,5 +42,5 @@
   systemd:
     enabled: true
     name: libinput-gestures.service
-    user: true
+    scope: user
     daemon-reload: true

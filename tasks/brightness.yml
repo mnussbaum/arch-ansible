@@ -29,7 +29,7 @@
   systemd:
     enabled: true
     name: redshift.service
-    user: true
+    scope: user
     daemon-reload: true
 
 - name: Brightness | Install calise config for screen auto-brightness

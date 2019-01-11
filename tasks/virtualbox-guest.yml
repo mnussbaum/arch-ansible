@@ -41,5 +41,5 @@
   systemd:
     enabled: true
     name: vboxclient.service
-    user: true
+    scope: user
     daemon-reload: true
