@@ -2,13 +2,12 @@
 ---
 - name: Ruby | Install packages
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - ruby-bundler
+      - ruby-rubocop
+      - ruby-solargraph
   become: true
-  with_items:
-    - ruby-bundler
-    - ruby-rubocop
-    - ruby-solargraph
 
 - name: Ruby | Install global gemrc
   become: true

@@ -2,15 +2,14 @@
 ---
 - name: power | Install packages
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - ethtool
-    - powerstat-git
-    - powertop
-    - thermald
-    - tlp
-    - tlp-rdw
+    name:
+      - ethtool
+      - powerstat-git
+      - powertop
+      - thermald
+      - tlp
+      - tlp-rdw
   become: true
 
 - name: power | Enable thermald

@@ -3,13 +3,12 @@
 - name: boot | Install packages
   become: true
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - efibootmgr
-    - grub
-    - intel-ucode
-    - os-prober
+    name:
+      - efibootmgr
+      - grub
+      - intel-ucode
+      - os-prober
 
 - name: boot | Run os-prober to find other OS
   command: os-prober

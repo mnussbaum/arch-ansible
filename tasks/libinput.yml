@@ -3,13 +3,12 @@
 ---
 - name: libinput | Install packages
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - libinput
-    - libinput-gestures
-    - xdotool
-    - xf86-input-libinput
+    name:
+      - libinput
+      - libinput-gestures
+      - xdotool
+      - xf86-input-libinput
   become: true
 
 - name: libinput | Make config dir

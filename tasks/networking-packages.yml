@@ -2,11 +2,10 @@
 ---
 - name: Networking Pacakges | Install
   package:
-    name: "{{ item }}"
     state: latest
-  with_items:
-    - dhclient
-    - wireless_tools
-    - wpa_supplicant
-    - networkmanager
+    name:
+      - dhclient
+      - wireless_tools
+      - wpa_supplicant
+      - networkmanager
   become: true

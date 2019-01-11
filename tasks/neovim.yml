@@ -56,13 +56,12 @@
 
 - name: nvim | Install neovim packages
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - ctags
+      - neovim-git
+      - python-neovim
   become: true
-  with_items:
-    - ctags
-    - neovim-git
-    - python-neovim
 
 - name: nvim | Download vim-plug installer
   get_url:

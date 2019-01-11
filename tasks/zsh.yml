@@ -2,14 +2,13 @@
 ---
 - name: ZSH | Install package
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - zsh
+      - zsh-syntax-highlighting
+      - python-pystache # For base16_builder
+      - spaceship-prompt-git
   become: true
-  with_items:
-    - zsh
-    - zsh-syntax-highlighting
-    - python-pystache # For base16_builder
-    - spaceship-prompt-git
 
 - name: ZSH | Install dircolors config
   copy:

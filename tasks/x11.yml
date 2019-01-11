@@ -2,18 +2,17 @@
 ---
 - name: X11 | Install packages
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - compton
-    - mesa
-    - scrot
-    - vulkan-intel
-    - xdotool
-    - xorg-server
-    - xorg-xdpyinfo
-    - xorg-xinput
-    - xorg-xrdb
+    name:
+      - compton
+      - mesa
+      - scrot
+      - vulkan-intel
+      - xdotool
+      - xorg-server
+      - xorg-xdpyinfo
+      - xorg-xinput
+      - xorg-xrdb
   become: true
 
 - name: X11 | Configure xorg to run with root privileges

@@ -2,9 +2,8 @@
 ---
 - name: Kubernetes | Install packages
   package:
-    name: "{{ item }}"
     state: present
-  become: yes
-  with_items:
-    - etcd
-    - kubectl-bin
+    name:
+      - etcd
+      - kubectl-bin
+    become: yes

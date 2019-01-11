@@ -2,19 +2,18 @@
 ---
 - name: Fonts | Install packages
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - cairo
-    - fontconfig
-    - freetype2
-    - gsfonts
-    - libxft
-    - noto-fonts
-    - nerd-fonts-complete
-    - otf-font-awesome
-    - siji-git
-    - gucharmap
+    name:
+      - cairo
+      - fontconfig
+      - freetype2
+      - gsfonts
+      - libxft
+      - noto-fonts
+      - nerd-fonts-complete
+      - otf-font-awesome
+      - siji-git
+      - gucharmap
   become: true
 
 - name: Fonts | Enable LCD filter

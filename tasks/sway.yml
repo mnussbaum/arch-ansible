@@ -8,11 +8,10 @@
 
 - name: sway | Install sway packages
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - sway-git
-    - wlroots-git
+    name:
+      - sway-git
+      - wlroots-git
   become: true
 
 - name: sway | Generate base16 configs

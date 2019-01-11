@@ -4,12 +4,11 @@
 - name: Brightness | Install pacakges
   become: true
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - calise-git
-    - illum-git
-    - redshift
+    name:
+      - calise-git
+      - illum-git
+      - redshift
 
 - name: Brightness | Install redshift config
   copy:

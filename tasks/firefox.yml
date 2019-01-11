@@ -2,15 +2,14 @@
 ---
 - name: Firefox | Install packages
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - firefox-nightly
-    - firefox-ublock-origin
-    - firefox-vim-vixen
-    - freshplayerplugin
-    - pepper-flash
-    - google-talkplugin
+    name:
+      - firefox-nightly
+      - firefox-ublock-origin
+      - firefox-vim-vixen
+      - freshplayerplugin
+      - pepper-flash
+      - google-talkplugin
   become: true
 
 - name: Firefox | Make default profile

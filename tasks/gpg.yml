@@ -2,12 +2,11 @@
 ---
 - name: GPP | Install packages
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - gnupg
+      - pcsclite
   become: true
-  with_items:
-    - gnupg
-    - pcsclite
 
 - name: GPG | Create config dir
   file:

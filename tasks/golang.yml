@@ -2,13 +2,12 @@
 ---
 - name: golang | Install packages
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - go
+      - go-langserver-git
+      - vim-gocode
   become: yes
-  with_items:
-    - go
-    - go-langserver-git
-    - vim-gocode
 
 - name: golang | Create gopath dirs
   file:

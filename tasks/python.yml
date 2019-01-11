@@ -2,9 +2,8 @@
 ---
 - name: python | Install pip
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - python-pip
+      - python-pipenv
   become: true
-  with_items:
-    - python-pip
-    - python-pipenv

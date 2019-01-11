@@ -2,12 +2,11 @@
 ---
 - name: Rofi | Install packages
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - rofi
+      - rofi-pass-git
   become: true
-  with_items:
-    - rofi
-    - rofi-pass-git
 
 - name: Rofi | Generate base16 configs
   base16_builder:

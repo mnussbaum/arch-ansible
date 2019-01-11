@@ -2,15 +2,14 @@
 ---
 - name: Frontend-dev | Install packages
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - javascript-typescript-langserver
+      - js-beautify
+      - npm
+      - vscode-css-languageserver-bin
+      - vscode-html-languageserver-bin
   become: true
-  with_items:
-    - javascript-typescript-langserver
-    - js-beautify
-    - npm
-    - vscode-css-languageserver-bin
-    - vscode-html-languageserver-bin
 
 - name: Frontend-dev | Install editorconfig
   copy:

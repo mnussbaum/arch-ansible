@@ -3,10 +3,9 @@
 - name: Audio | Install pacakges
   become: true
   package:
-    name: "{{ item }}"
+    name:
+      - alsa-utils
+      - pulseaudio
+      - pulseaudio-alsa
+      - pavucontrol
     state: present
-  with_items:
-    - alsa-utils
-    - pulseaudio
-    - pulseaudio-alsa
-    - pavucontrol

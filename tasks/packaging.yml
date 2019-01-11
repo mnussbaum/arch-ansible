@@ -40,14 +40,13 @@
 
 - name: Packaging | Install packages necessary for AUR installs
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - base-devel
+      - ccache
+      - curl
+      - lzop
   become: true
-  with_items:
-    - base-devel
-    - ccache
-    - curl
-    - lzop
 
 - name: Packaging | Install makepkg.conf
   become: true

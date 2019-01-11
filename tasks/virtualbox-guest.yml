@@ -16,12 +16,11 @@
 
 - name: Virtualbox guest | Install guest utils
   package:
-    name: "{{ item }}"
     state: present
+    name:
+      - virtualbox-guest-utils
+      - virtualbox-guest-modules-arch
   become: true
-  with_items:
-    - virtualbox-guest-utils
-    - virtualbox-guest-modules-arch
 
 - name: Virtualbox guest | Enable vboxservice
   become: true

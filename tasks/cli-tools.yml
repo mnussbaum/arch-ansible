@@ -2,35 +2,34 @@
 ---
 - name: CLI Tools | Install packages
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - aws-cli
-    - bc
-    - bfs
-    - dstat
-    - expac
-    - fwupd
-    - fzf
-    - git
-    - htop
-    - imv
-    - iotop
-    - jq
-    - ls_extended
-    - lsof
-    - net-tools
-    - openssh
-    - rsync
-    - strace
-    - tig
-    - unzip
-    - vim
-    - yajl
-    - ruby
-    - ripgrep
-    - zip
-    - xdg-utils
+    name:
+      - aws-cli
+      - bc
+      - bfs
+      - dstat
+      - expac
+      - fwupd
+      - fzf
+      - git
+      - htop
+      - imv
+      - iotop
+      - jq
+      - ls_extended
+      - lsof
+      - net-tools
+      - openssh
+      - rsync
+      - strace
+      - tig
+      - unzip
+      - vim
+      - yajl
+      - ruby
+      - ripgrep
+      - zip
+      - xdg-utils
   become: true
 
 - name: CLI Tools | Install fzf helper scripts

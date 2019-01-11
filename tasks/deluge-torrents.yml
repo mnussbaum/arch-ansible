@@ -3,11 +3,10 @@
 - name: Deluge torrents | Install pacakges
   become: true
   package:
-    name: "{{ item }}"
     state: present
-  with_items:
-    - pygtk
-    - deluge
+    name:
+      - pygtk
+      - deluge
 
 - name: Deluge torrents | Create config dir
   file:
