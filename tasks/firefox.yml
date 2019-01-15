@@ -13,7 +13,7 @@
   become: true
 
 - name: Firefox | Make default profile
-  shell: firefox -headless -CreateProfile "default /home/{{ user.name }}/.mozilla/firefox/default.profile" 2>&1 | grep -q Success
+  shell: firefox-nightly -headless -CreateProfile "default /home/{{ user.name }}/.mozilla/firefox/default.profile" 2>&1 | grep -q Success
   args:
     creates: "/home/{{ user.name }}/.mozilla/firefox/default.profile"
   become: true
