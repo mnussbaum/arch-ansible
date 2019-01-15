@@ -82,6 +82,12 @@ ansible_bootstrap() {
 
   cp -r . /mnt/root/arch-ansible
 
+  # Fix lvm daemon socket to speed up Grub
+  mkdir /mnt/hostlvm
+  mount --bind /run/lvm /mnt/hostlvm
+  arch-chroot /mnt mkdir /run
+  arch-chroot /mnt ln -s /hostlvm /run/lvm
+
   arch-chroot /mnt /root/arch-ansible/initial-configure-xps $hostname $username
   arch-chroot /mnt sh -c "cd /root/arch-ansible && ./provision-xps \
     $root_device $ssd_device -e bootstrap='true' --tags bootstrap"
