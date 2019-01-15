@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: GPP | Install packages
+- name: GPG | Install packages
   package:
     state: present
     name:
