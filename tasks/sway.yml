@@ -10,8 +10,10 @@
   package:
     state: present
     name:
-      - sway-git
       - wlroots-git
+      - sway-git
+      - swayidle-git
+      - swaylock-git
   become: true
 
 - name: sway | Generate base16 configs

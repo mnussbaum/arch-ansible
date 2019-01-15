@@ -61,11 +61,11 @@ bindsym $mod+slash exec $passmenu
 
 {% if window_manager == "sway" %}
 # Lock screen after 10min and put after 15min
-exec swayidle \
-    timeout 600 'swaylock' \
+exec swayidle -w \
+    timeout 600 'swaylock -f' \
     timeout 900 'swaymsg "output * dpms off"' \
        resume 'swaymsg "output * dpms on"' \
-    before-sleep 'swaylock'
+    before-sleep 'swaylock -f'
 {% endif %}
 
 {% if window_manager == "sway" %}
