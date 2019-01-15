@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+
+ansible-playbook build-live-usb.yml -v --ask-become-pass \
+  -e usb_device=/dev/sdb \
+  -e pass_gpg_key="mnussbaum (Password Store)" \
+  $@
