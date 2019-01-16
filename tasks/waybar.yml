@@ -39,3 +39,9 @@
     src: templates/waybar-style.css.j2
     dest: "/home/{{ user.name }}/.config/waybar/style.css"
   tags: [base16]
+
+# Top left, workspaces. Terminal and browser assigned, rest numbered
+# Top right, laptop status. Battery, failing systemd unit count, memory, cpu, wifi, time
+# Bottom bar only show on hover
+# Bottom left, notifications. Email count, SMS count, maybe tray?
+# Bottom right, real world info. Weather, music, volume, maybe displays?

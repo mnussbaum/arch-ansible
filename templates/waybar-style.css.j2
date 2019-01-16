@@ -1,3 +1,5 @@
+{% set bar_opacity = '0.7' -%}
+{% set scheme_vars = base16_waybar['schemes'][base16_scheme]['scheme-variables'] -%}
 {{ base16_waybar['schemes'][base16_scheme]['waybar']['colors']['base16-'+base16_scheme+'.css'] }}
 
 * {
@@ -8,20 +10,25 @@
 }
 
 window#waybar {
-  background: rgba(43, 48, 59, 0.8);
+  /* base01 */
+  background: rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, {{ bar_opacity }});
+
   border-bottom: 3px solid transparent;
   color: @base04;
 }
 
 #workspaces button {
+  /* base01 */
+  background: rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, {{ bar_opacity }});
+
   padding: 0 15px;
-  background: rgba(43, 48, 59, 0.8);
   color: @base04;
   border-bottom: 3px solid transparent;
 }
 
 #workspaces button.focused {
-  background: rgba(100, 114, 125, 0.2);
+  /* base01 */
+  background: rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, {{ bar_opacity }});
   border-bottom: 3px solid @base09;
 }
 
@@ -57,8 +64,8 @@ window#waybar {
 
 @keyframes critical-blink {
   to {
-    background-color: rgba(@base08-rgb-r, @base08-rgb-g, @base08-rgb-b, 0.8)
-    color: black;
+    background-color: @base08;
+    opacity: 0.4
   }
 }
 

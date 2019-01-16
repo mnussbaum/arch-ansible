@@ -41,7 +41,7 @@
     ],
     "states": {
       "warning": 20,
-      "critical": 5
+      "critical": 15
     }
   },
   "clock": {
