@@ -21,7 +21,7 @@
   },
   "network": {
     "format-wifi": "{essid} {signalStrength}% ",
-    "format-ethernet": "{ifname}: {ipaddr}/{cidr} ",
+    "format-ethernet": "{ifname} ",
     "format-disconnected": "Disconnected ⚠"
   },
   "pulseaudio": {

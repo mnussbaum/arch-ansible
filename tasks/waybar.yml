@@ -6,7 +6,7 @@
     state: present
   become: true
 
-- name: sway | Install waybar wrapper script
+- name: Waybar | Install waybar wrapper script
   copy:
     src: files/waybar-wrapper
     dest: /usr/local/bin/waybar-wrapper
