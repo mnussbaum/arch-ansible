@@ -1,3 +1,6 @@
+# vim: ft=dosini cms=#%s
+
+{% set scheme_vars = base16_termite['schemes'][base16_scheme]['scheme-variables'] -%}
 [options]
 font = Monospace {{ font_size }}
 
@@ -5,7 +8,8 @@ cursor_blink = off
 cursor_shape = block
 
 [colors]
-background = rgba(63, 63, 63, 0.85)
-cursor = #DCDCCC
-
-# vim: ft=dosini cms=#%s
+foreground          = #{{ scheme_vars['base05-hex'] }}
+foreground_bold     = #{{ scheme_vars['base06-hex'] }}
+cursor              = #{{ scheme_vars['base06-hex'] }}
+cursor_foreground   = #{{ scheme_vars['base00-hex'] }}
+background          = rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, 0.8)
