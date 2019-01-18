@@ -1,0 +1,52 @@
+{% set scheme_vars = base16_waybar['schemes'][base16_scheme_family]['scheme-variables'] -%}
+{
+  "layer": "top",
+  "modules-left": [
+    "sway/workspaces",
+    "sway/mode"
+  ],
+  "modules-right": [
+    "battery",
+    "cpu",
+    "memory",
+    "network",
+    "pulseaudio",
+    "clock",
+    "tray"
+  ],
+  "battery": {
+    "format-charging": "{{ scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% ', first_block=True)  }}",
+    "format": "{{ scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% {icon}', first_block=True)  }}",
+    "format-icons": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "states": {
+      "warning": 20,
+      "critical": 12
+    }
+  },
+  "cpu": {
+    "format": "{{ scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{usage}% ') }}"
+  },
+  "memory": {
+    "format": "{{ scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{}% ') }}"
+  },
+  "network": {
+    "format-wifi": "{{ scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{essid} {signalStrength}% ') }}",
+    "format-ethernet": "{{ scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{ifname} ') }}",
+    "format-disconnected": "{{ scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', 'Disconnected ⚠') }}"
+  },
+  "pulseaudio": {
+    "format": "{{ scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{volume}% ') }}",
+    "format-muted": "{{ scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '0% ') }}",
+    "on-click": "pavucontrol"
+  },
+  "clock": {
+    "format-alt": "{{ scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{:%a, %d %b %I:%M:%S}', last_block=True) }}",
+    "format": "{{ scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{:%I:%M}', last_block=True) }}"
+  }
+}

@@ -19,11 +19,6 @@
     owner: "{{ user.name }}"
     state: directory
 
-- name: Waybar | Install waybar config
-  copy:
-    src: files/waybar-config.json
-    dest: "/home/{{ user.name }}/.config/waybar/config"
-
 - name: Waybar | Generate base16 waybar CSS configs
   base16_builder:
     scheme: "{{ base16_scheme }}"
@@ -33,6 +28,11 @@
     templates_source: "{{ base16_templates_source }}"
   register: base16_waybar
   tags: [base16]
+
+- name: Waybar | Install waybar config
+  template:
+    src: templates/waybar-config.json.j2
+    dest: "/home/{{ user.name }}/.config/waybar/config"
 
 - name: Waybar | Install waybar styling
   template:
