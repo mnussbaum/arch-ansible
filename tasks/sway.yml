@@ -14,6 +14,9 @@
       - sway-git
       - swayidle-git
       - swaylock-git
+      - grim-git
+      - slurp-git
+      - wl-clipboard-git
   become: true
 
 - name: sway | Generate base16 configs
