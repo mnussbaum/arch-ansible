@@ -1,0 +1,43 @@
+#!/usr/bin/env ruby
+
+require "json"
+
+COLORS = [
+  "#C594C5", # Base0E
+  "#6699CC", # Base0D
+  "#5FB3B3", # Base0C
+  "#99C794", # Base0B
+  "#FAC863", # Base0A
+  "#F99157", # Base09
+]
+
+workspace_to_manage = ARGV[0]
+
+workspaces = JSON.parse(`swaymsg --raw -t get_workspaces`)
+
+left_color = COLORS[-1]
+workspaces.each do |workspace|
+  color = COLORS[(workspace["num"]-1) % COLORS.size]
+  if workspace["num"].to_s != workspace_to_manage
+    left_color = color
+    next
+  end
+
+  text = workspace['num']
+  if workspace["focused"]
+    # Base08
+    text = "<span color=\"#EC5f67\">#{text}</span>"
+  end
+
+  if workspace["num"] == 1
+    puts "<span background=\"#{color}\"> #{text}</span>"
+  elsif workspace["num"] >= workspaces.size
+    puts "<span background=\"#{left_color}\" color=\"#{left_color}\"></span><span background=\"#{left_color}\" color=\"#{color}\"></span><span background=\"#{color}\"> #{text} </span><span color=\"#{color}\"></span>"
+  else
+    puts "<span background=\"#{left_color}\" color=\"#{left_color}\"></span><span background=\"#{left_color}\" color=\"#{color}\"></span><span background=\"#{color}\"> #{text}</span>"
+  end
+
+  puts "\n\n"
+
+  left_color = color
+end
