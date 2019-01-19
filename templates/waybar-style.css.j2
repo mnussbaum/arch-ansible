@@ -50,15 +50,15 @@ window#waybar {
 
 #battery.warning:not(.charging) {
   animation-name: critical-blink;
-  animation-duration: 1s;
-  animation-timing-function: ease;
+  animation-duration: 2.5s;
+  animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
 }
 
 #battery.critical:not(.charging) {
   animation-name: critical-blink;
-  animation-duration: 2.5s;
+  animation-duration: 1s;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
