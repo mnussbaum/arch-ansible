@@ -4,6 +4,7 @@
   package:
     state: present
     name:
+      - ruby-irb
       - ruby-bundler
       - ruby-rubocop
       - ruby-solargraph
