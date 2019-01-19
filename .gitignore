@@ -1,4 +1,5 @@
+*.pyc
+*.retry
 .vagrant/
 gpg-keys
-*.retry
 ssh-keys
