@@ -29,7 +29,9 @@ workspaces.each do |workspace|
     text = "<span color=\"#EC5f67\">#{text}</span>"
   end
 
-  if workspace["num"] == 1
+  if workspace["num"] >= workspaces.size && workspace["num"] == 1
+    puts "<span background=\"#{color}\"> #{text} </span><span color=\"#{color}\"></span>"
+  elsif workspace["num"] == 1
     puts "<span background=\"#{color}\"> #{text}</span>"
   elsif workspace["num"] >= workspaces.size
     puts "<span background=\"#{left_color}\" color=\"#{left_color}\"></span><span background=\"#{left_color}\" color=\"#{color}\"></span><span background=\"#{color}\"> #{text} </span><span color=\"#{color}\"></span>"
