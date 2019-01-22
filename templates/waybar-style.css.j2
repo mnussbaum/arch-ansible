@@ -1,111 +1,78 @@
+{% set bar_opacity = '0.7' -%}
+{% set scheme_vars = base16_waybar['schemes'][base16_scheme]['scheme-variables'] -%}
 {{ base16_waybar['schemes'][base16_scheme]['waybar']['colors']['base16-'+base16_scheme+'.css'] }}
 
 * {
   border: none;
   border-radius: 0;
+  margin: 0px 0px 0px 0px;
+
+  background: transparent;
+  color: white;
+
   font-family: FuraMono Nerd Font Mono, Helvetica, Arial, sans-serif;
   font-size: 30px;
+  font-weight: bold;
 }
 
 window#waybar {
-  background: rgba(43, 48, 59, 0.8);
-  border-bottom: 3px solid transparent;
+  /* base01 */
+  background: rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, {{ bar_opacity }});
+
   color: @base04;
 }
 
 #workspaces button {
+  /* base01 */
+  background: rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, {{ bar_opacity }});
+
   padding: 0 15px;
-  background: rgba(43, 48, 59, 0.8);
   color: @base04;
   border-bottom: 3px solid transparent;
 }
 
+#workspaces button:hover {
+  box-shadow: inherit;
+  text-shadow: inherit;
+}
+
 #workspaces button.focused {
-  background: rgba(100, 114, 125, 0.2);
+  /* base01 */
+  background: rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, {{ bar_opacity }});
   border-bottom: 3px solid @base09;
-}
-
-#mode {
-  background: transparent;
-  border-bottom: 3px solid @base09;
-}
-
-#clock,
-#battery,
-#cpu,
-#memory,
-#network,
-#pulseaudio,
-#custom-spotify,
-#tray,
-#mode {
-  padding: 0 6px;
-  margin: 0 3px;
-}
-
-#clock {
-  background-color: transparent;
-  border-bottom: 3px solid @base09;
-  color: @base04;
-}
-
-#battery {
-  background-color: transparent;
-  border-bottom: 3px solid @base09;
-  color: @base04;
 }
 
 @keyframes critical-blink {
   to {
-    background-color: rgba(@base08-rgb-r, @base08-rgb-g, @base08-rgb-b, 0.8)
-    color: black;
+    color: @base08;
   }
 }
 
 #battery.warning:not(.charging) {
-  border-bottom: 3px solid @base08;
-}
-
-#battery.critical:not(.charging) {
-  border-bottom: 3px solid @base08;
-  color: white;
   animation-name: critical-blink;
-  animation-duration: 3s;
-  animation-timing-function: linear;
+  animation-duration: 2.5s;
+  animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
 }
 
-#cpu {
-  background: transparent;
-  border-bottom: 3px solid @base09;
-  color: @base04;
+#battery.critical:not(.charging) {
+  animation-name: critical-blink;
+  animation-duration: 1s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
 }
 
-#memory {
-  background: transparent;
-  border-bottom: 3px solid @base09;
-  color: @base04;
+{% for scheme_var, scheme_value in scheme_vars.items() %}
+{% if scheme_var is match("^.+-hex$") %}
+{% set base_name = scheme_var.replace("-hex", "") %}
+.background-{{ base_name }} {
+  background-color: #{{ scheme_value }};
 }
 
-#network {
-  background: transparent;
-  border-bottom: 3px solid @base09;
-  color: @base04;
+.foreground-{{ base_name }} {
+  color: #{{ scheme_value }};
 }
-
-#network.disconnected {
-  background: transparent;
-  color: @base08;
-}
-
-#pulseaudio {
-  background: transparent;
-  border-bottom: 3px solid @base09;
-  color: @base04;
-}
-
-#tray {
-  background-color: transparent;
-  border-bottom: 3px solid @base09;
-}
+{% endif %}
+{% endfor %}

@@ -1,0 +1,12 @@
+# vim:ft=yaml
+{% set scheme_vars = base16_waybar['schemes'][base16_scheme]['scheme-variables'] -%}
+---
+version: 0.1
+focused_foreground_color: "#{{ scheme_vars['base08-hex'] }}" # Base08
+background_colors:
+  - "#{{ scheme_vars['base0E-hex'] }}" # Base0E
+  - "#{{ scheme_vars['base0D-hex'] }}" # Base0D
+  - "#{{ scheme_vars['base0C-hex'] }}" # Base0C
+  - "#{{ scheme_vars['base0B-hex'] }}" # Base0B
+  - "#{{ scheme_vars['base0A-hex'] }}" # Base0A
+  - "#{{ scheme_vars['base09-hex'] }}" # Base09
