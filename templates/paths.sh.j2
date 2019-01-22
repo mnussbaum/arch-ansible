@@ -10,6 +10,7 @@ export PATH="${PATH}:${HOME}/go/bin"
 export PATH="${PATH}:{{ gem_path }}/bin"
 {% endfor %}
 
+export PATH="${PATH}:${HOME}/.cargo/bin"
 {% for rust_toolchain_path in rust_toolchain_paths['files'] %}
 export PATH="${PATH}:{{ rust_toolchain_path['path'] }}/bin"
 {% endfor %}

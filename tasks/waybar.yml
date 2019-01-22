@@ -40,6 +40,23 @@
     dest: "/home/{{ user.name }}/.config/waybar/style.css"
   tags: [base16]
 
+- name: Install waybar-sway-workspace-output-manager
+  command: cargo install --git=https://github.com/mnussbaum/waybar-sway-workspace-output-manager
+  args:
+    creates: "/home/{{ user.name }}/.cargo/bin/waybar-sway-workspace-output-manager"
+
+- name: Waybar | Create waybar-sway-workspace-output-manager config dir
+  file:
+    path: "/home/{{ user.name }}/.config/waybar-sway-workspace-output-manager"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: Waybar | Install waybar-sway-workspace-output-manager config file
+  template:
+    src: templates/waybar-sway-workspace-output-manager-config.j2
+    dest: "/home/{{ user.name }}/.config/waybar-sway-workspace-output-manager/config"
+  tags: [base16]
+
 # Top left, workspaces. Terminal and browser assigned, rest numbered
 # Top right, laptop status. Battery, failing systemd unit count, memory, cpu, wifi, time
 # Bottom bar only show on hover

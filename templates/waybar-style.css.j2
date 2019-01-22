@@ -63,3 +63,16 @@ window#waybar {
   animation-iteration-count: infinite;
   animation-direction: alternate;
 }
+
+{% for scheme_var, scheme_value in scheme_vars.items() %}
+{% if scheme_var is match("^.+-hex$") %}
+{% set base_name = scheme_var.replace("-hex", "") %}
+.background-{{ base_name }} {
+  background-color: #{{ scheme_value }};
+}
+
+.foreground-{{ base_name }} {
+  color: #{{ scheme_value }};
+}
+{% endif %}
+{% endfor %}
