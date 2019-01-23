@@ -19,16 +19,6 @@
     owner: "{{ user.name }}"
     state: directory
 
-- name: Waybar | Generate base16 waybar CSS configs
-  base16_builder:
-    scheme: "{{ base16_scheme }}"
-    scheme_family: "{{ base16_scheme_family }}"
-    template: waybar
-    schemes_source: "{{ base16_schemes_source }}"
-    templates_source: "{{ base16_templates_source }}"
-  register: base16_waybar
-  tags: [base16]
-
 - name: Waybar | Install waybar config
   template:
     src: templates/waybar-config.json.j2

@@ -12,16 +12,6 @@
     owner: "{{ user.name }}"
     state: directory
 
-- name: Termite | Generate base16 colors
-  base16_builder:
-    scheme: "{{ base16_scheme }}"
-    scheme_family: "{{ base16_scheme_family }}"
-    template: termite
-    schemes_source: "{{ base16_schemes_source }}"
-    templates_source: "{{ base16_templates_source }}"
-  register: base16_termite
-  tags: [base16]
-
 - name: termite | Install config
   template:
     src: templates/termite_config.j2

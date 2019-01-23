@@ -35,6 +35,19 @@
     - set_fact:
         ansible_facts:
           pkg_mgr: yay
+    - name: Base16 | Generate color scheme vars
+      base16_builder:
+        scheme: "{{ base16_scheme }}"
+        scheme_family: "{{ base16_scheme_family }}"
+        template: ""
+        schemes_source: "{{ base16_schemes_source }}"
+      register: generated_base16_scheme
+      tags: [base16]
+    - set_fact:
+        color_scheme_vars: "{{ generated_base16_scheme['schemes'][base16_scheme]['scheme-variables'] }}"
+        color_scheme_opacity: "0.7"
+      tags: [base16]
+
     - import_tasks: tasks/cli-tools.yml
     - import_tasks: tasks/zsh.yml
     - import_tasks: tasks/python.yml

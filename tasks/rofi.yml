@@ -31,12 +31,6 @@
     owner: "{{ user.name }}"
     state: directory
 
-- name: Rofi | Install base16 theme
-  copy:
-    dest: "/home/{{ user.name }}/.local/share/rofi/themes/{{ base16_scheme }}.rasi"
-    content: "{{ base16_rofi['schemes'][base16_scheme]['rofi']['themes']['base16-' + base16_scheme + '.rasi'] }}"
-  tags: [base16]
-
 - name: Rofi | Create config dir
   file:
     path: "/home/{{ user.name }}/.config/rofi"
@@ -47,4 +41,9 @@
   template:
     src: "templates/rofi-config.j2"
     dest: "/home/{{ user.name }}/.config/rofi/config"
+
+- name: Rofi | Install theme
+  template:
+    src: "templates/rofi-theme.rasi.j2"
+    dest: "/home/{{ user.name }}/.config/rofi/theme.rasi"
   tags: [base16]

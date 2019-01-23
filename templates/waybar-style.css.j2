@@ -1,7 +1,3 @@
-{% set bar_opacity = '0.7' -%}
-{% set scheme_vars = base16_waybar['schemes'][base16_scheme]['scheme-variables'] -%}
-{{ base16_waybar['schemes'][base16_scheme]['waybar']['colors']['base16-'+base16_scheme+'.css'] }}
-
 * {
   border: none;
   border-radius: 0;
@@ -17,17 +13,17 @@
 
 window#waybar {
   /* base01 */
-  background: rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, {{ bar_opacity }});
+  background: rgba({{ color_scheme_vars['base01-rgb-r'] }}, {{ color_scheme_vars['base01-rgb-g'] }}, {{ color_scheme_vars['base01-rgb-b'] }}, {{ color_scheme_opacity }});
 
-  color: @base04;
+  color: #{{ color_scheme_vars['base04-hex'] }};
 }
 
 #workspaces button {
   /* base01 */
-  background: rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, {{ bar_opacity }});
+  background: rgba({{ color_scheme_vars['base01-rgb-r'] }}, {{ color_scheme_vars['base01-rgb-g'] }}, {{ color_scheme_vars['base01-rgb-b'] }}, {{ color_scheme_opacity }});
 
   padding: 0 15px;
-  color: @base04;
+  color: #{{ color_scheme_vars['base04-hex'] }};
   border-bottom: 3px solid transparent;
 }
 
@@ -38,13 +34,13 @@ window#waybar {
 
 #workspaces button.focused {
   /* base01 */
-  background: rgba({{ scheme_vars['base01-rgb-r'] }}, {{ scheme_vars['base01-rgb-g'] }}, {{ scheme_vars['base01-rgb-b'] }}, {{ bar_opacity }});
-  border-bottom: 3px solid @base09;
+  background: rgba({{ color_scheme_vars['base01-rgb-r'] }}, {{ color_scheme_vars['base01-rgb-g'] }}, {{ color_scheme_vars['base01-rgb-b'] }}, {{ color_scheme_opacity }});
+  border-bottom: 3px solid #{{ color_scheme_vars['base09-hex'] }};
 }
 
 @keyframes critical-blink {
   to {
-    color: @base08;
+    color: #{{ color_scheme_vars['base08-hex'] }};
   }
 }
 
