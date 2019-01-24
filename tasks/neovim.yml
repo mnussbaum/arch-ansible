@@ -4,13 +4,7 @@
     nvim_config_dir: "/home/{{ user.name }}/.config/nvim"
     nvim_data_dir: "/home/{{ user.name }}/.local/share/nvim"
     vim_plugins:
-      - name: "Shougo/deoplete.nvim"
-        args:
-          do: ":UpdateRemotePlugins"
-      - name: "autozimu/LanguageClient-neovim"
-        args:
-          branch: "next"
-          do: "bash install.sh"
+      - name: "w0rp/ale"
       - name: "christoomey/vim-tmux-runner"
       - name: "fatih/vim-go"
         args:
@@ -26,20 +20,15 @@
         args:
           do: ":UpdateRemotePlugins"
       - name: "leshill/vim-json"
-      - name: "neomake/neomake"
       - name: "pangloss/vim-javascript"
       - name: "pearofducks/ansible-vim"
-      - name: "racer-rust/vim-racer"
       - name: "rust-lang/rust.vim"
       - name: "ryanoasis/vim-devicons"
-      - name: "sbdchd/neoformat"
       - name: "scrooloose/nerdtree"
-      - name: "sebastianmarkow/deoplete-rust"
       - name: "shmay/vim-yaml"
       - name: "tomtom/tcomment_vim"
       - name: "tpope/vim-fugitive"
       - name: "vim-ruby/vim-ruby"
-      - name: "zchee/deoplete-go"
         args:
           do: "make"
 
@@ -61,6 +50,7 @@
       - ctags
       - neovim-git
       - python-neovim
+      - ansible-lint
   become: true
 
 - name: nvim | Download vim-plug installer

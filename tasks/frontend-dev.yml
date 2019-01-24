@@ -4,9 +4,12 @@
   package:
     state: present
     name:
+      - npm
       - javascript-typescript-langserver
       - js-beautify
-      - npm
+      - prettier
+      - stylelint
+      - stylelint-config-standard
       - vscode-css-languageserver-bin
       - vscode-html-languageserver-bin
   become: true

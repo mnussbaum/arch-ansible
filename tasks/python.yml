@@ -6,4 +6,6 @@
     name:
       - python-pip
       - python-pipenv
+      - python-black-git
+      - python-language-server
   become: true
