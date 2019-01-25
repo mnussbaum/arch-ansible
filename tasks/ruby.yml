@@ -16,6 +16,12 @@
     src: files/gemrc
     dest: /etc/gemrc
 
+- name: Ruby | Install irb config
+  copy:
+    src: files/irbrc
+    dest: "/home/{{ user.name }}/.irbrc"
+    owner: "{{ user.name }}"
+
 - name: Ruby | Install rubocop config
   become: true
   copy:
