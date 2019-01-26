@@ -22,6 +22,9 @@
       - name: "leshill/vim-json"
       - name: "pangloss/vim-javascript"
       - name: "pearofducks/ansible-vim"
+      - name: "python-mode/python-mode"
+        args:
+          branch: develop
       - name: "rust-lang/rust.vim"
       - name: "ryanoasis/vim-devicons"
       - name: "scrooloose/nerdtree"
