@@ -5,7 +5,9 @@ temp-night=3500
 ; Disable transitions on app startup/shutdown
 transition=0
 
+{% if window_manager == "i3" %}
 adjustment-method=randr
+{% endif %}
 location-provider=manual
 
 [manual]

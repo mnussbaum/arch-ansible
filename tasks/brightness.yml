@@ -1,5 +1,4 @@
 # vim:ft=yaml.ansible:
-# TODO: fix redshift, illum and calise for wayland
 ---
 - name: Brightness | Install pacakges
   become: true
@@ -8,17 +7,17 @@
     name:
       - calise-git
       - illum-git
-      - redshift
+      - redshift-wlr-gamma-control-git
 
 - name: Brightness | Install redshift config
-  copy:
-    src: redshift.conf
+  template:
+    src: templates/redshift.conf.j2
     dest: "/home/{{ user.name }}/.config/redshift.conf"
     owner: "{{ user.name }}"
 
 - name: Brightness | Install redshift service
   copy:
-    src: redshift.service
+    src: files/redshift.service
     dest: "/home/{{ user.name }}/.config/systemd/user/redshift.service"
     owner: "{{ user.name }}"
 
@@ -35,7 +34,7 @@
 - name: Brightness | Install calise config for screen auto-brightness
   become: true
   copy:
-    src: calise.conf
+    src: files/calise.conf
     dest: /etc/calise.conf
 
 - name: Brightness | Install calised.service config
