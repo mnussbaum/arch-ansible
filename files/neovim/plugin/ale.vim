@@ -26,13 +26,16 @@ highlight link ALEWarningLine WarningMsg
 let g:ale_fixers = {
 \  'css': ['prettier'],
 \  'go': ['goimports', 'gofmt'],
+\  'graphql': ['prettier'],
 \  'html': ['prettier'],
 \  'javascript': ['prettier'],
-\  'json': ['jq'],
+\  'json': ['prettier'],
+\  'markdown': ['prettier'],
 \  'python': ['black'],
 \  'ruby': ['rubocop'],
 \  'rust': ['rustfmt'],
-\  'scss': ['prettier']
+\  'scss': ['prettier'],
+\  'yaml': ['prettier']
 \}
 
 let g:ale_linters = {
