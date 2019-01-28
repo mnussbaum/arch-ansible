@@ -88,6 +88,7 @@
     - import_tasks: tasks/docker.yml
     - import_tasks: tasks/dropbox.yml
     - import_tasks: tasks/archiso.yml
+    - import_tasks: tasks/zathura.yml
 
 # Bootstrap:
   # Convert script to re-entrant ansible
@@ -98,7 +99,5 @@
 # GUI Apps
   # music
   # video
-  # PDF
   # notepad
-  # dropbox
   # Littlesnitch replacement
