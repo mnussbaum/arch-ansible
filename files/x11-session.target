@@ -1,0 +1,7 @@
+[Unit]
+Description=x11 session
+
+After=graphical-session-pre.target
+BindsTo=graphical-session.target
+Conflicts=wayland-session.target
+Wants=graphical-session-pre.target

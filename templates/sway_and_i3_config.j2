@@ -19,17 +19,17 @@ font pango:FuraMono Nerd Font Mono {{ font_size }}
 gaps inner 7
 gaps outer 2
 
-{% if window_manager == "sway" %}
+{% if item == "sway" %}
 gaps top 15
 {% endif %}
 
-{% if window_manager == "sway" %}
+{% if item == "sway" %}
 output * bg /home/{{ user.name }}/.local/share/wallpapers/current.jpg fill
 {% endif %}
 
 ### Input configuration
 
-{% if window_manager == "sway" %}
+{% if item == "sway" %}
 input * {
     # Keyboard configs
     repeat_delay {{ key_repeat_delay }}
@@ -56,28 +56,17 @@ bindsym $mod+space exec $menu
 bindsym $mod+slash exec $passmenu
 
 # Lockscreen
-{% if window_manager == "sway" %}bindsym $mod+Print exec swaylock{% endif %}
-{% if window_manager == "i3" %}bindsym $mod+Print exec i3lock{% endif %}
+{% if item == "sway" %}bindsym $mod+Print exec swaylock{% endif %}
+{% if item == "i3" %}bindsym $mod+Print exec i3lock{% endif %}
 
-{% if window_manager == "sway" %}
-# Lock screen after 10min and put after 15min
-exec swayidle -w \
-    timeout 600 'swaylock -f' \
-    timeout 900 'swaymsg "output * dpms off"' \
-       resume 'swaymsg "output * dpms on"' \
-    before-sleep 'swaylock -f'
-
-exec redshift
-{% endif %}
-
-{% if window_manager == "sway" %}
+{% if item == "sway" %}
 # Drag floating windows by holding down $mod and left mouse button.
 # Resize them with right mouse button + $mod.
 # Despite the name, also works for non-floating windows.
 # Change normal to inverse to use left mouse button for resizing and right
 # mouse button for dragging.
 floating_modifier $mod normal
-{% elif window_manager == "i3" %}
+{% elif item == "i3" %}
 floating_modifier $mod
 {% endif %}
 
@@ -194,27 +183,27 @@ mode "resize" {
 
 {{ base16_i3['schemes'][base16_scheme]['i3']['client-properties']['base16-' + base16_scheme + '.config'] }}
 
+{% if item == "i3" -%}
 bar {
   position top
 
-  {% if window_manager == "i3" -%}
   {{ base16_i3['schemes'][base16_scheme]['i3']['bar-colors']['base16-' + base16_scheme + '.config'] }}
-  {% endif -%}
-
-  {% if window_manager == "sway" %}swaybar_command waybar-wrapper{% endif %}
-
 }
+{% endif -%}
 
-{% if window_manager == "sway" %}exec waybar-sway-workspace-output-manager{% endif %}
 
 bindsym XF86AudioRaiseVolume exec pactl set-sink-volume $(pacmd list-sinks |awk '/* index:/{print $3}') +5%
 bindsym XF86AudioLowerVolume exec pactl set-sink-volume $(pacmd list-sinks |awk '/* index:/{print $3}') -5%
 bindsym XF86AudioMute exec pactl set-sink-mute $(pacmd list-sinks |awk '/* index:/{print $3}') toggle
 
-{% if window_manager == "sway" %}
+{% if item == "sway" %}
 # Screenshot a selectable region
 bindsym $mod+Shift+Ctrl+1 exec grim -g "$(slurp)" - | wl-copy
 
 # Screenshot the current active monitor
 bindsym $mod+Shift+Ctrl+2 exec grim -o $(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') - | wl-copy
+
+exec systemctl --user import-environment SWAYSOCK
 {% endif %}
+
+exec systemctl --user import-environment I3SOCK

@@ -6,13 +6,6 @@
     state: present
   become: true
 
-- name: Waybar | Install waybar wrapper script
-  copy:
-    src: files/waybar-wrapper
-    dest: /usr/local/bin/waybar-wrapper
-    mode: a+x
-  become: true
-
 - name: Waybar | Create waybar config dir
   file:
     path: "/home/{{ user.name }}/.config/waybar"
@@ -29,6 +22,21 @@
     src: templates/waybar-style.css.j2
     dest: "/home/{{ user.name }}/.config/waybar/style.css"
   tags: [base16]
+
+- name: Waybar | Install service
+  copy:
+    src: files/waybar.service
+    dest: "/home/{{ user.name }}/.config/systemd/user/waybar.service"
+    owner: "{{ user.name }}"
+
+- name: Waybar | Enable service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: waybar.service
+    scope: user
+    daemon-reload: true
 
 - name: Install waybar-sway-workspace-output-manager
   command: cargo install --git=https://github.com/mnussbaum/waybar-sway-workspace-output-manager
@@ -47,8 +55,24 @@
     dest: "/home/{{ user.name }}/.config/waybar-sway-workspace-output-manager/config"
   tags: [base16]
 
+# Goal:
 # Top left, workspaces. Terminal and browser assigned, rest numbered
 # Top right, laptop status. Battery, failing systemd unit count, memory, cpu, wifi, time
 # Bottom bar only show on hover
 # Bottom left, notifications. Email count, SMS count, maybe tray?
 # Bottom right, real world info. Weather, music, volume, maybe displays?
+
+- name: Waybar | Install waybar-sway-workspace-output-manager service
+  copy:
+    src: files/waybar-sway-workspace-output-manager.service
+    dest: "/home/{{ user.name }}/.config/systemd/user/waybar-sway-workspace-output-manager.service"
+    owner: "{{ user.name }}"
+
+- name: Waybar | Enable waybar-sway-workspace-output-manager service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: waybar-sway-workspace-output-manager.service
+    scope: user
+    daemon-reload: true

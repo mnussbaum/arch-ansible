@@ -10,9 +10,11 @@
   package:
     state: present
     name:
+      - compton
       - feh
       - i3-gaps
       - i3status
+      - scrot
   become: true
 
 - name: i3 | Generate base16 configs
@@ -29,7 +31,10 @@
   template:
     src: templates/sway_and_i3_config.j2
     dest: "/home/{{ user.name }}/.config/i3/config"
+    owner: "{{ user.name }}"
   tags: [base16]
+  with_items:
+    - i3
 
 - name: i3 | Install i3 service
   copy:
@@ -47,9 +52,9 @@
     daemon-reload: true
 
 - name: i3 | Install wallpaper service
-  template:
+  copy:
     owner: "{{ user.name }}"
-    src: templates/wallpaper.service.j2
+    src: files/wallpaper.service
     dest: "/home/{{ user.name }}/.config/systemd/user/wallpaper.service"
 
 - name: i3 | Enable wallpaper service
@@ -58,5 +63,19 @@
   systemd:
     enabled: true
     name: wallpaper.service
+    scope: user
+    daemon-reload: true
+
+- name: i3 | Install compton service
+  copy:
+    dest: "/home/{{ user.name }}/.config/systemd/user/compton.service"
+    src: compton.service
+
+- name: i3 | Enable compton service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: compton.service
     scope: user
     daemon-reload: true

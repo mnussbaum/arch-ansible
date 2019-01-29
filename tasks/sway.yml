@@ -1,5 +1,11 @@
 # vim:ft=yaml.ansible:
 ---
+- name: sway | Install Wayland env file
+  become: true
+  copy:
+    src: files/wayland-env
+    dest: /etc/wayland-env
+
 - name: sway | Create config dir
   file:
     path: "/home/{{ user.name }}/.config/sway"
@@ -33,4 +39,28 @@
   template:
     src: templates/sway_and_i3_config.j2
     dest: "/home/{{ user.name }}/.config/sway/config"
+    owner: "{{ user.name }}"
   tags: [base16]
+  with_items:
+    - sway
+
+- name: Sway | Install services
+  copy:
+    src: "files/{{ item }}"
+    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+    owner: "{{ user.name }}"
+  with_items:
+    - sway.service
+    - swayidle.service
+
+- name: Sway | Enable services
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: "{{ item }}"
+    scope: user
+    daemon-reload: true
+  with_items:
+    - sway.service
+    - swayidle.service

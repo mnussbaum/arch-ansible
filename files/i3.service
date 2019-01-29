@@ -2,14 +2,15 @@
 Description=Run i3
 Documentation=man:i3(1)
 
-After=x11.target
-Requires=x11.target
+After=graphical-session-ready.target
+PartOf=x11-session.target
+Requires=graphical-session-ready.target
 
 [Service]
-Environment=DISPLAY=:0
 ExecStart=/usr/bin/i3
-Restart=always
+Restart=on-failure
 RestartSec=1
+TimeoutStopSec=10
 
 [Install]
-WantedBy=default.target
+WantedBy=x11-session.target

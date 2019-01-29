@@ -1,0 +1,44 @@
+# vim:ft=yaml.ansible:
+---
+- name: Graphical session | Install services
+  copy:
+    src: "files/{{ item }}"
+    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+    owner: "{{ user.name }}"
+  with_items:
+    - graphical-session-delay.service
+    - graphical-session-ready.target
+    - wayland-session.target
+    - x11-session.target
+
+- name: Graphical session | Enable x11-session
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: x11-session.target
+    scope: user
+    daemon-reload: true
+  when: windowing_system == "x11"
+
+- name: Graphical session | Enable wayland-session
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: wayland-session.target
+    scope: user
+    daemon-reload: true
+  when: windowing_system == "wayland"
+
+- name: Graphical session | Enable services
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: "{{ item }}"
+    scope: user
+    daemon-reload: true
+  with_items:
+    - graphical-session-delay.service
+    - graphical-session-ready.target

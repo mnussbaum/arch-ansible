@@ -1,15 +1,14 @@
 [Unit]
-Description=Run Compton X11 compositor
-Documentation=man:compton(1)
+Description=Set wallpaper with feh
+Documentation=man:feh(1)
 
 After=graphical-session-ready.target
 PartOf=x11-session.target
 Requires=graphical-session-ready.target
 
 [Service]
-ExecStart=/usr/bin/compton -f
-Restart=always
-RestartSec=2s
+ExecStart=/usr/bin/feh --bg-fill %h/.local/share/wallpapers/current.jpg
+Type=oneshot
 
 [Install]
 WantedBy=x11-session.target

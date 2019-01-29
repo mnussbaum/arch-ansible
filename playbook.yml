@@ -66,18 +66,14 @@
     - import_tasks: tasks/virtualbox-guest.yml
       when: ansible_virtualization_type == "virtualbox"
     - import_tasks: tasks/fonts.yml
-    - import_tasks: tasks/x11.yml
-    - import_tasks: tasks/x11-socket-activation.yml
-      when: window_manager == "i3"
+    - import_tasks: tasks/xorg.yml
     - import_tasks: tasks/libinput.yml
     - import_tasks: tasks/wallpaper.yml
     - import_tasks: tasks/rofi.yml
-    - import_tasks: tasks/waybar.yml
-      when: window_manager == "sway"
     - import_tasks: tasks/sway.yml
-      when: window_manager == "sway"
+    - import_tasks: tasks/waybar.yml
     - import_tasks: tasks/i3.yml
-      when: window_manager == "i3"
+    - import_tasks: tasks/graphical-session.yml
     - import_tasks: tasks/gtk.yml
     - import_tasks: tasks/brightness.yml
     - import_tasks: tasks/audio.yml
@@ -89,15 +85,14 @@
     - import_tasks: tasks/dropbox.yml
     - import_tasks: tasks/archiso.yml
     - import_tasks: tasks/zathura.yml
-
 # Bootstrap:
-  # Convert script to re-entrant ansible
-  # Configure wifi for after reboot
-  # Automate partitioning or restoring from a partition dump
-  # Install SSH key
+# Convert script to re-entrant ansible
+# Configure wifi for after reboot
+# Automate partitioning or restoring from a partition dump
+# Install SSH key
 # Printing
 # GUI Apps
-  # music
-  # video
-  # notepad
-  # Littlesnitch replacement
+# music
+# video
+# notepad
+# Littlesnitch replacement

@@ -2,13 +2,14 @@
 Description=Redshift color temperature adjustment
 Documentation=http://jonls.dk/redshift/
 
-After=x11.target
-Requires=x11.target
+After=graphical-session-ready.target
+PartOf=graphical-session.target
+Requires=graphical-session-ready.target
 
 [Service]
 ExecStart=/usr/bin/redshift
 Restart=always
-Environment=DISPLAY=:0
+RestartSec=2s
 
 [Install]
-WantedBy=default.target
+WantedBy=graphical-session.target

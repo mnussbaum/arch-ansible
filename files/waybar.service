@@ -1,0 +1,15 @@
+[Unit]
+Description=Wayland bar for sway and wlroots based compositors
+Documentation=https://github.com/Alexays/Waybar/wiki/
+
+After=graphical-session-ready.target
+PartOf=wayland-session.target
+Requires=graphical-session-ready.target
+
+[Service]
+ExecStart=/usr/bin/waybar
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=wayland-session.target

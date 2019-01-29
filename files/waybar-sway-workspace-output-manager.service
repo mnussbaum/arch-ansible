@@ -1,0 +1,13 @@
+[Unit]
+Description=Manages files read by custom Waybar outputs that uniquely color Sway workspaces
+Documentation=https://github.com/mnussbaum/waybar-sway-workspace-output-manager/README.md
+PartOf=wayland-session.target
+After=graphical-session-ready.target
+
+[Service]
+ExecStart=%h/.cargo/bin/waybar-sway-workspace-output-manager
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=wayland-session.target

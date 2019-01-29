@@ -1,0 +1,7 @@
+[Unit]
+Description=Wayland compositor session
+
+After=graphical-session-pre.target
+BindsTo=graphical-session.target
+Conflicts=x11-session.target
+Wants=graphical-session-pre.target

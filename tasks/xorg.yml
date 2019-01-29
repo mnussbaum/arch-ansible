@@ -1,12 +1,10 @@
 # vim:ft=yaml.ansible:
 ---
-- name: X11 | Install packages
+- name: Xorg | Install packages
   package:
     state: present
     name:
-      - compton
       - mesa
-      - scrot
       - vulkan-intel
       - xdotool
       - xorg-server
@@ -15,25 +13,25 @@
       - xorg-xrdb
   become: true
 
-- name: X11 | Configure xorg to run with root privileges
+- name: Xorg | Configure xorg to run with root privileges
   copy:
     dest: /etc/X11/Xwrapper.config
     src: Xwrapper.config
   become: true
 
-- name: X11 | Make xorg config dir
+- name: Xorg | Make xorg config dir
   become: true
   file:
     path: /etc/X11/xorg.conf.d
     state: directory
 
-- name: X11 | Install xorg monitor config
+- name: Xorg | Install xorg monitor config
   template:
     dest: /etc/X11/xorg.conf.d/90-monitor.conf
     src: templates/xorg-monitor.conf.j2
   become: true
 
-- name: X11 | Generate base16 configs
+- name: Xorg | Generate base16 configs
   base16_builder:
     scheme: "{{ base16_scheme }}"
     scheme_family: "{{ base16_scheme_family }}"
@@ -43,24 +41,37 @@
   register: base16_xresources
   tags: [base16]
 
-- name: X11 | Configure Xresources
+- name: Xorg | Install Xresources
   template:
     src: templates/Xresources.j2
     dest: "/home/{{ user.name }}/.Xresources"
     owner: "{{ user.name }}"
   tags: [base16]
 
-- name: X11 | Install compton service
-  copy:
-    dest: "/home/{{ user.name }}/.config/systemd/user/compton.service"
-    src: compton.service
+- name: Xorg | Install templated services
+  template:
+    src: "templates/{{ item }}.j2"
+    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+    owner: "{{ user.name }}"
+  with_items:
+    - xorg.service
 
-- name: X11 | Enable compton service
+- name: Xorg | Install services
+  copy:
+    src: "files/{{ item }}"
+    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+    owner: "{{ user.name }}"
+  with_items:
+    - xrdb.service
+
+- name: Xorg | Enable systemd servicea
   become: true
   become_user: "{{ user.name }}"
-  when: window_manager == "i3"
   systemd:
     enabled: true
-    name: compton.service
+    name: "{{ item }}"
     scope: user
     daemon-reload: true
+  with_items:
+    - xorg.service
+    - xrdb.service

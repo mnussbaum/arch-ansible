@@ -1,7 +1,10 @@
 # vim: filetype=sh
 
-{% if window_manager == "sway" %}
-if [[ -z $DISPLAY ]] && [[ $(tty) = /dev/tty1 ]] ; then
-  systemd-cat -t sway sway
+set -o errexit
+set -o nounset
+
+if [[ -z "${DISPLAY:-}" ]] && [[ $(tty) = /dev/tty1 ]] ; then
+  export DISPLAY=:0
+  systemctl --user import-environment
+  systemctl --user start --no-block {{ windowing_system }}-session.target
 fi
-{% endif %}

@@ -1,0 +1,19 @@
+[Unit]
+Description=Lock screen after 10 min idle and sleep after 15 min idle
+Documentation=man:swayidle(1) man:swaylock(1)
+
+After=graphical-session-ready.target
+PartOf=wayland-session.target
+Requires=graphical-session-ready.target
+
+[Service]
+ExecStart=swayidle -w \
+    timeout 600 'swaylock -f' \
+    timeout 900 'swaymsg "output * dpms off"' \
+       resume 'swaymsg "output * dpms on"' \
+    before-sleep 'swaylock -f'
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=wayland-session.target

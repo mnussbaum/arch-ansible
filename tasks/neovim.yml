@@ -13,13 +13,14 @@
       - name: "jlanzarotta/bufexplorer"
       - name: "junegunn/fzf"
         args:
-         dir: "/home/{{ user.name }}/.fzf"
-         do: "./install --all"
+          dir: "/home/{{ user.name }}/.fzf"
+          do: "./install --all"
       - name: "junegunn/fzf.vim"
       - name: "KeitaNakamura/highlighter.nvim"
         args:
           do: ":UpdateRemotePlugins"
       - name: "leshill/vim-json"
+      - name: "Matt-Deacalion/vim-systemd-syntax"
       - name: "pangloss/vim-javascript"
       - name: "pearofducks/ansible-vim"
       - name: "python-mode/python-mode"

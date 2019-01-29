@@ -9,6 +9,8 @@
 - name: Window manager facts | i3
   set_fact:
     window_manager: i3
+    windowing_system: x11
+    display_system: wayland
     rofi_font_size: 10
     key_repeat_delay: 350
   when: ansible_virtualization_type == "virtualbox"
@@ -16,6 +18,7 @@
 - name: Window manager facts | sway
   set_fact:
     window_manager: sway
+    windowing_system: wayland
     key_repeat_delay: 250
   when: ansible_virtualization_type != "virtualbox"
 
