@@ -51,10 +51,11 @@
   package:
     state: present
     name:
+      - ansible-lint
+      - clang
       - ctags
       - neovim-git
       - python-neovim
-      - ansible-lint
   become: true
 
 - name: nvim | Download vim-plug installer

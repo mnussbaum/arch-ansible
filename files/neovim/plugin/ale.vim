@@ -24,6 +24,7 @@ highlight link ALEVirtualTextWarning WarningMsg
 highlight link ALEWarningLine WarningMsg
 
 let g:ale_fixers = {
+\  'c': ['clang-format'],
 \  'css': ['prettier'],
 \  'go': ['goimports', 'gofmt'],
 \  'graphql': ['prettier'],
