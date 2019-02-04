@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Deluge torrents | Install pacakges
+- name: Deluge torrents | Install packages
   become: true
   package:
     state: present

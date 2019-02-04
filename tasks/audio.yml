@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Audio | Install pacakges
+- name: Audio | Install packages
   become: true
   package:
     name:
