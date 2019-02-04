@@ -26,10 +26,22 @@
     force: true
     state: link
 
-- name: Firefox | Configure firefox
+- name: Firefox | Configure firefox user.js
   template:
     dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/user.js"
     src: templates/firefox-user.js.j2
+    owner: "{{ user.name }}"
+
+- name: Firefox | Create chrome config dir
+  file:
+    path: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome
+    state: directory
+    owner: "{{ user.name }}"
+
+- name: Firefox | Configure firefox userChrome.css
+  template:
+    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome/userChrome.css"
+    src: templates/firefox-user-chrome.css.j2
     owner: "{{ user.name }}"
 
 - name: Firefox | Create vim-vixen plugin config dir
