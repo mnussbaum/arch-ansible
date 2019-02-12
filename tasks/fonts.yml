@@ -9,9 +9,7 @@
       - freetype2
       - gsfonts
       - libxft
-      - noto-fonts
       - nerd-fonts-complete
-      - otf-font-awesome
       - siji-git
       - gucharmap
   become: true
