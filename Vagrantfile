@@ -5,9 +5,10 @@ Vagrant.configure("2") do |config|
   config.vm.box = "archlinux/archlinux"
 
   config.vm.provider "virtualbox" do |vb|
-    vb.memory = "10240"
+    vb.memory = 10240
+    vb.cpus = 4
   end
-  config.disksize.size = "50GB"
+  config.disksize.size = "80GB"
 
   config.vm.provision "shell", inline: <<-EOF
 pacman -Syu --noconfirm --needed wpa_supplicant ansible python python-passlib
