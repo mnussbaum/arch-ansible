@@ -1,10 +1,10 @@
 # vim:ft=yaml.ansible:
 ---
-# - name: termite | Install termite
-#   package:
-#     name: termite
-#     state: present
-#   become: true
+- name: termite | Install termite
+  package:
+    name: termite
+    state: present
+  become: true
 
 - name: termite | Create config dir
   file:
