@@ -1,7 +1,7 @@
 [Unit]
-Description=Wayland compositor session
+Description=i3 session
 
 After=graphical-session-pre.target
 BindsTo=graphical-session.target
-Conflicts=x11-session.target
+Conflicts=sway-session.target
 Wants=graphical-session-pre.target

@@ -1,16 +1,17 @@
 # vim:ft=yaml.ansible:
 ---
-- name: sway | Install Wayland env file
-  become: true
-  copy:
-    src: files/wayland-env
-    dest: /etc/wayland-env
-
 - name: sway | Create config dir
   file:
     path: "/home/{{ user.name }}/.config/sway"
     owner: "{{ user.name }}"
     state: directory
+
+- name: sway | Install sway env file
+  become: true
+  copy:
+    src: files/sway-env
+    dest: "/home/{{ user.name }}/.config/sway/env"
+    owner: "{{ user.name }}"
 
 - name: sway | Install sway packages
   package:
@@ -50,6 +51,7 @@
     dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
     owner: "{{ user.name }}"
   with_items:
+    - sway-session.target
     - sway.service
     - swayidle.service
 

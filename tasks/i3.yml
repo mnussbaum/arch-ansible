@@ -36,46 +36,26 @@
   with_items:
     - i3
 
-- name: i3 | Install i3 service
+- name: i3 | Install services
   copy:
     owner: "{{ user.name }}"
-    src: i3.service
-    dest: "/home/{{ user.name }}/.config/systemd/user/i3.service"
+    src: "files/{{ item }}"
+    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+  with_items:
+    - compton.service
+    - feh.service
+    - i3-session.target
+    - i3.service
 
-- name: i3 | Enable i3 service
+- name: i3 | Enable services
   become: true
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
-    name: i3.service
+    name: "{{ item }}"
     scope: user
     daemon-reload: true
-
-- name: i3 | Install wallpaper service
-  copy:
-    owner: "{{ user.name }}"
-    src: files/wallpaper.service
-    dest: "/home/{{ user.name }}/.config/systemd/user/wallpaper.service"
-
-- name: i3 | Enable wallpaper service
-  become: true
-  become_user: "{{ user.name }}"
-  systemd:
-    enabled: true
-    name: wallpaper.service
-    scope: user
-    daemon-reload: true
-
-- name: i3 | Install compton service
-  copy:
-    dest: "/home/{{ user.name }}/.config/systemd/user/compton.service"
-    src: compton.service
-
-- name: i3 | Enable compton service
-  become: true
-  become_user: "{{ user.name }}"
-  systemd:
-    enabled: true
-    name: compton.service
-    scope: user
-    daemon-reload: true
+  with_items:
+    - compton.service
+    - feh.service
+    - i3.service

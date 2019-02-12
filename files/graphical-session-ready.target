@@ -1,9 +1,0 @@
-[Unit]
-Description=Graphical session is ready for applications
-
-After=xrdb.service
-Requires=xrdb.service
-PartOf=graphical-session.target
-
-[Install]
-WantedBy=graphical-session.target

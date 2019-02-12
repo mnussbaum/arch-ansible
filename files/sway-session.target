@@ -1,7 +1,7 @@
 [Unit]
-Description=x11 session
+Description=Sway session
 
 After=graphical-session-pre.target
 BindsTo=graphical-session.target
-Conflicts=wayland-session.target
+Conflicts=i3-session.target
 Wants=graphical-session-pre.target

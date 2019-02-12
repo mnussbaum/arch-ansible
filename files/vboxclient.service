@@ -1,10 +1,7 @@
 [Unit]
 Description=Run VBoxClient-all
 Documentation=man:VBoxClient(1)
-
-After=graphical-session-ready.target
-PartOf=x11-session.target
-Requires=graphical-session-ready.target
+PartOf=graphical-session.target
 
 [Service]
 ExecStart=/usr/bin/VBoxClient-all
@@ -12,4 +9,4 @@ RemainAfterExit=true
 Type=oneshot
 
 [Install]
-WantedBy=x11-session.target
+WantedBy=i3-session.target

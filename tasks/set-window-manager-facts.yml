@@ -10,7 +10,6 @@
   set_fact:
     window_manager: i3
     windowing_system: x11
-    display_system: wayland
     rofi_font_size: 10
     key_repeat_delay: 350
   when: ansible_virtualization_type == "virtualbox"

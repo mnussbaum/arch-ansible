@@ -2,14 +2,13 @@
 Description=X resource database (xrdb)
 Documentation=man:xrdb(1)
 
-After=graphical-session-delay.service
-PartOf=graphical-session-delay.service
-Requires=graphical-session-delay.service
+After=xorg.service sway.service
+PartOf=graphical-session-pre.target
 
 [Service]
 ExecStart=/usr/bin/xrdb -display $DISPLAY -merge %h/.Xresources
-RemainAfterExit=true
-Type=oneshot
+Restart=on-failure
+TimeoutStopSec=10
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=graphical-session-pre.target

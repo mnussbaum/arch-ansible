@@ -202,8 +202,7 @@ bindsym $mod+Shift+Ctrl+1 exec grim -g "$(slurp)" - | wl-copy
 
 # Screenshot the current active monitor
 bindsym $mod+Shift+Ctrl+2 exec grim -o $(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') - | wl-copy
-
-exec systemctl --user import-environment SWAYSOCK
 {% endif %}
 
-exec systemctl --user import-environment I3SOCK
+exec systemctl --user import-environment
+exec systemctl --user start --no-block {{ item }}-session.target
