@@ -35,6 +35,7 @@
     - set_fact:
         ansible_facts:
           pkg_mgr: yay
+    - import_tasks: tasks/zsh.yml
     - name: Base16 | Generate color scheme vars
       base16_builder:
         scheme: "{{ base16_scheme }}"
@@ -49,7 +50,6 @@
       tags: [base16]
 
     - import_tasks: tasks/cli-tools.yml
-    - import_tasks: tasks/zsh.yml
     - import_tasks: tasks/python.yml
     - import_tasks: tasks/rust.yml
     - import_tasks: tasks/golang.yml
