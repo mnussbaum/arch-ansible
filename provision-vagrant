@@ -4,7 +4,7 @@ set -o errexit
 set -o nounset
 
 ansible-playbook playbook.yml -v --ask-become-pass \
-  -e '{"monitor": {"id": "VGA-1", "height": 660, "width": 1160, "dpi": 48}}' \
+  -e '{"monitor": {"id": "VGA-1", "height": 660, "width": 1160}}' \
   -e root_device=/dev/mapper/vgcrypt-root \
   -e ssd_device=/dev/sda2 \
   -e '{"user": {"name": "vagrant", "group": "vagrant", "shell": "/usr/bin/zsh", "email": "foo@bar.com"}}' \
