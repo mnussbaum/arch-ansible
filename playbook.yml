@@ -77,9 +77,9 @@
     - import_tasks: tasks/brightness.yml
     - import_tasks: tasks/audio.yml
     - import_tasks: tasks/secrets.yml
+    - import_tasks: tasks/firejail.yml
     - import_tasks: tasks/firefox.yml
     - import_tasks: tasks/deluge-torrents.yml
-    - import_tasks: tasks/firejail.yml
     - import_tasks: tasks/docker.yml
     - import_tasks: tasks/dropbox.yml
     - import_tasks: tasks/archiso.yml
