@@ -33,8 +33,6 @@
       - name: "tomtom/tcomment_vim"
       - name: "tpope/vim-fugitive"
       - name: "vim-ruby/vim-ruby"
-        args:
-          do: "make"
 
 - name: nvim | Ensure nvim config and data dirs exist
   file:
