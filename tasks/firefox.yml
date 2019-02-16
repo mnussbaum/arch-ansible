@@ -5,6 +5,7 @@
     state: present
     name:
       - firefox-nightly
+      - firefox-color
       - firefox-ublock-origin
       - firefox-vim-vixen
       - freshplayerplugin
