@@ -45,6 +45,12 @@
     src: templates/firefox-userChrome.css.j2
     owner: "{{ user.name }}"
 
+- name: Firefox | Configure firefox userContent.css
+  template:
+    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome/userContent.css"
+    src: templates/firefox-userContent.css.j2
+    owner: "{{ user.name }}"
+
 - name: Firefox | Create vim-vixen plugin config dir
   file:
     path: "/home/{{ user.name }}/.mozilla/firefox/default.profile/browser-extension-data/vim-vixen@i-beam.org"

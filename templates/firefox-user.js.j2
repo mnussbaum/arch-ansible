@@ -1,6 +1,3 @@
-// Enable Webrender, remove this once it's on by default!
-user_pref("gfx.webrender.all", true);
-
 // High DPI
 {% if monitor.dpi is defined and monitor.dpi > 96 %}
 user_pref("layout.css.devPixelsPerPx", "2");
@@ -18,6 +15,71 @@ user_pref("font.name.serif.x-western", "FuraMono Nerd Font Mono");
 user_pref("font.name.sans-serif.x-western", "FuraMono Nerd Font Mono");
 user_pref("font.default.x-western", "sans-serif");
 
+// Appearence
+user_pref("browser.uiCustomization.state", `{
+  "placements": {
+    "widget-overflow-fixed-list": [],
+    "PersonalToolbar": ["personal-bookmarks"],
+    "nav-bar": [
+      "back-button",
+      "forward-button",
+      "stop-reload-button",
+      "customizableui-special-spring1",
+      "urlbar-container",
+      "customizableui-special-spring2",
+      "downloads-button",
+      "ublock0-button",
+      "screenshots_mozilla_org-browser-action",
+      "browserpass_maximbaz_com-browser-action"
+    ],
+    "toolbar-menubar": ["menubar-items"],
+    "TabsToolbar": ["tabbrowser-tabs", "new-tab-button", "alltabs-button"]
+  },
+  "seen": [
+    "pocket-button",
+    "ublock0-button",
+    "developer-button",
+    "webide-button",
+    "ublock0_raymondhill_net-browser-action",
+    "screenshots_mozilla_org-browser-action",
+    "browserpass_maximbaz_com-browser-action",
+    "vim-vixen_i-beam_org-browser-action"
+  ],
+  "dirtyAreaCache": [
+    "PersonalToolbar",
+    "nav-bar",
+    "TabsToolbar",
+    "toolbar-menubar",
+    "dactyl-addon-bar",
+    "PanelUI-contents",
+    "addon-bar"
+  ],
+  "currentVersion": 14,
+  "newElementCount": 2
+}`);
+user_pref("browser.urlbar.oneOffSearches", false);
+user_pref("lightweightThemes.persisted.footerURL", false);
+user_pref("lightweightThemes.persisted.headerURL", false);
+user_pref("reader.parse-on-load.enabled", false);
+user_pref("ui.textSelectBackground", "#{{ color_scheme_vars["base0C-hex"] }}");
+
+// Don't upload data to mozilla
+user_pref("app.shield.optoutstudies.enabled", false);
+user_pref("datareporting.healthreport.uploadEnabled", false);
+user_pref("privacy.donottrackheader.enabled", true);
+
+// Remove nags
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("browser.uitour.enabled", false);
+user_pref("general.warnOnAboutConfig", false);
+user_pref("signon.rememberSignons", false);
+
+// Restore session at startup
+user_pref("browser.startup.page", 3);
+
+// Enable Webrender, remove this once it's on by default!
+user_pref("gfx.webrender.all", true);
+
 // Hardware accelerate with OpenGL
 user_pref("layers.acceleration.force-enabled", true);
 
@@ -26,30 +88,11 @@ user_pref("network.http.pipelining", true);
 user_pref("network.http.pipelining.ssl", true);
 user_pref("network.http.proxy.pipelining", true);
 
-// Enable HTTP cache
+// Enable HTTP caching
 user_pref("browser.cache.use_new_backend", 1);
 
-// Make pages render immediately
+// Render pages immediately
 user_pref("nglayout.initialpaint.delay", 0);
 
 // Decrease disk writes, less frequent session restore writes
 user_pref("browser.sessionstore.interval", 300000);
-
-// Restore session at startup
-user_pref("browser.startup.page", 3);
-
-// Don't upload data to mozilla
-user_pref("app.shield.optoutstudies.enabled", false);
-user_pref("datareporting.healthreport.uploadEnabled", false);
-user_pref("privacy.donottrackheader.enabled", true);
-
-// Disable password storage
-user_pref("signon.rememberSignons", false);
-
-// Hide some buttons
-user_pref("browser.uiCustomization.state", "{\"placements\":{\"widget-overflow-fixed-list\":[],\"PersonalToolbar\":[\"personal-bookmarks\"],\"nav-bar\":[\"back-button\",\"forward-button\",\"stop-reload-button\",\"customizableui-special-spring1\",\"urlbar-container\",\"customizableui-special-spring2\",\"downloads-button\",\"ublock0-button\",\"screenshots_mozilla_org-browser-action\",\"browserpass_maximbaz_com-browser-action\"],\"toolbar-menubar\":[\"menubar-items\"],\"TabsToolbar\":[\"tabbrowser-tabs\",\"new-tab-button\",\"alltabs-button\"]},\"seen\":[\"pocket-button\",\"ublock0-button\",\"developer-button\",\"webide-button\",\"ublock0_raymondhill_net-browser-action\",\"screenshots_mozilla_org-browser-action\",\"browserpass_maximbaz_com-browser-action\",\"vim-vixen_i-beam_org-browser-action\"],\"dirtyAreaCache\":[\"PersonalToolbar\",\"nav-bar\",\"TabsToolbar\",\"toolbar-menubar\",\"dactyl-addon-bar\",\"PanelUI-contents\",\"addon-bar\"],\"currentVersion\":14,\"newElementCount\":2}");
-
-// Dark theme
-user_pref("lightweightThemes.persisted.footerURL", false);
-user_pref("lightweightThemes.persisted.headerURL", false);
-user_pref("lightweightThemes.selectedThemeID", "firefox-compact-dark@mozilla.org");

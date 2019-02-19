@@ -1,4 +1,142 @@
-* {
-  font-family: FuraMono Nerd Font Mono, Helvetica, Arial, sans-serif;
-  font-size: {{ font_size }}px;
+:root {
+  --panel-separator-color: #{{ color_scheme_vars["base01-hex"] }} !important;
+  --toolbar-bgcolor: #{{ color_scheme_vars["base01-hex"] }} !important;
+  --toolbar-color: #{{ color_scheme_vars["base06-hex"] }} !important;
+  --toolbarbutton-hover-background: #{{ color_scheme_vars["base0C-hex"] }} !important;
+
+  font-family: FuraMono Nerd Font Mono, Helvetica, Arial, sans-serif !important;
+  font-size: {{ font_size }}px !important;
+}
+
+::-moz-selection {
+  color: #{{ color_scheme_vars["base06-hex"] }} !important;
+  background: #{{ color_scheme_vars["base0C-hex"] }} !important;
+}
+
+/* Remove border between toolbars and content */
+#navigator-toolbox::after {
+  display: none !important;
+}
+
+/* Selected tab and toolbar */
+toolbar,
+.tab-background[selected],
+.tabbrowser-tab[selected] {
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+  color: #{{ color_scheme_vars["base09-hex"] }} !important;
+}
+.tab-line[selected] {
+  background: #{{ color_scheme_vars["base09-hex"] }} !important;
+}
+
+/* Unselected tabs */
+#navigator-toolbox,
+.tabbrowser-tab:not([selected]) {
+  background: rgba({{ color_scheme_vars["base01-rgb-r"] }}, {{ color_scheme_vars["base01-rgb-g"] }}, {{ color_scheme_vars["base01-rgb-g"] }}, 0.8) !important;
+  color: #{{ color_scheme_vars["base06-hex"] }} !important;
+}
+.tabbrowser-tab:not([selected]):not([pinned]) .tab-close-button {
+  display: none !important;
+}
+
+/* URL bar appearence */
+#urlbar,
+#urlbar-results,
+.searchbar-textbox {
+  color: #{{ color_scheme_vars["base0E-hex"] }} !important;
+  background: rgba({{ color_scheme_vars["base07-rgb-r"] }}, {{ color_scheme_vars["base07-rgb-g"] }}, {{ color_scheme_vars["base07-rgb-g"] }}, 0.2) !important;
+  border: 0px !important;
+}
+
+/* URL bar autocomplete menu */
+#PopupAutoCompleteRichResult {
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+  color: #{{ color_scheme_vars["base06-hex"] }} !important;
+}
+.autocomplete-richlistitem[selected] {
+  background: #{{ color_scheme_vars["base0C-hex"] }} !important;
+  color: #{{ color_scheme_vars["base06-hex"] }} !important;
+}
+
+/* Hide buttons in URL bar */
+#star-button,
+#pageActionButton {
+  display: none !important;
+}
+
+/* Hamburger menu */
+.panel-arrow {
+  fill: #{{ color_scheme_vars["base01-hex"] }} !important;
+}
+.panel-subview-body {
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+}
+.panel-subview-body,
+#appMenu-zoomReset-button {
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+  border: 0px !important;
+  color: #{{ color_scheme_vars["base06-hex"] }} !important;
+}
+.subviewbutton.panel-subview-footer {
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+  border: 0px !important;
+}
+.panel-header {
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+  border: 0px !important;
+}
+.panel-subview-footer,
+[class^="PanelUI-"] {
+  color: #{{ color_scheme_vars["base06-hex"] }} !important;
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+}
+.subviewbutton.panel-subview-footer {
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+  border: 0px !important;
+}
+
+/* Toolbar buttons */
+#PanelUI-menu-button,
+#PlacesChevron,
+#back-button,
+#forward-button,
+#nav-bar-overflow-button,
+#panic-button,
+#reload-button {
+  color: #{{ color_scheme_vars["base09-hex"] }} !important;
+}
+
+/* Customization menu */
+#customization-container,
+#customization-panel-container,
+#customization-header,
+#customization-footer,
+#customization-footer-spacer {
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+  color: #{{ color_scheme_vars["base06-hex"] }} !important;
+}
+
+/* Pop-up menus */
+menuitem {
+  -moz-appearance: none !important;
+}
+menupopup > menu,
+menupopup > menuitem,
+popup > menu,
+popup > menuitem,
+.popup-internal-box {
+  -moz-appearance: none !important;
+  background: #{{ color_scheme_vars["base01-hex"] }} !important;
+  color: #{{ color_scheme_vars["base06-hex"] }} !important;
+}
+menuitem[disabled="true"],
+ menuitem[disabled="true"] > .menu-text {
+  color: gray !important;
+}
+menuitem:hover,
+menu:hover,
+menu[open="true"],
+menuitem[_moz-menuactive="true"]  {
+  -moz-appearance: none !important;
+  background: #{{ color_scheme_vars["base0C-hex"] }} !important;
 }
