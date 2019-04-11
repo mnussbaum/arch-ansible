@@ -6,6 +6,12 @@
     dest: /etc/environment
   become: true
 
+- name: global environment configuration | Install /etc/locale.conf
+  copy:
+    src: files/etc_locale.conf
+    dest: /etc/locale.conf
+  become: true
+
 - name: global environment configuration | Install shell profile files
   become: true
   copy:
