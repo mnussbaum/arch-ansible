@@ -17,16 +17,11 @@ set history=500
 " Preserve jump history
 set shada='100,\"100,:20,%,n~/.local/share/nvim/shada/main.shada
 
-" This function and augroup restore cursor position on file reopen
-" Pulled from vim.wikia.com/wiki/Restore_cursor_to_file_position_in_previous_editing_session
-function! ResCur()
-  if line("'\"") <= line("$")
-    normal! g`"
-    return 1
-  endif
-endfunction
-
+" Restore cursor position on file reopen
+" Pulled from https://stackoverflow.com/questions/8854371/vim-how-to-restore-the-cursors-logical-and-physical-positions
 augroup resCur
   autocmd!
-  autocmd BufWinEnter * call ResCur()
+  autocmd BufWinLeave * silent! mkview
+  autocmd VimEnter * silent! loadview
 augroup END
+set viewdir=~/.local/share/nvim/view
