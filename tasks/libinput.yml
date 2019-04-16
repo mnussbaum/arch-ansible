@@ -1,5 +1,4 @@
 # vim:ft=yaml.ansible:
-# TODO: Replace xdotool for wayland
 ---
 - name: libinput | Install packages
   package:
@@ -23,24 +22,22 @@
     src: xorg-multitouch.conf
   become: true
 
-- name: libinput | Install libinput-gestures user service
+- name: libinput | Install libinput-gestures service
+  become: true
   copy:
-    dest: "/home/{{ user.name }}/.config/systemd/user/libinput-gestures.service"
+    dest: /etc/systemd/system/libinput-gestures.service
     src: libinput-gestures.service
-    owner: "{{ user.name }}"
 
 - name: libinput | Install libinput-gestures.conf
+  become: true
   copy:
-    dest: "/home/{{ user.name }}/.config/libinput-gestures.conf"
+    dest: /etc/libinput-gestures.conf
     src: libinput-gestures.conf
-    owner: "{{ user.name }}"
 
 - name: libinput | Enable libinput-gestures service
   become: true
-  become_user: "{{ user.name }}"
   when: ansible_virtualization_role != "guest"
   systemd:
     enabled: true
     name: libinput-gestures.service
-    scope: user
     daemon-reload: true
