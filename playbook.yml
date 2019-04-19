@@ -42,6 +42,7 @@
         scheme_family: "{{ base16_scheme_family }}"
         template: ""
         schemes_source: "{{ base16_schemes_source }}"
+        templates_source: "{{ base16_templates_source }}"
       register: generated_base16_scheme
       tags: [base16]
     - set_fact:
