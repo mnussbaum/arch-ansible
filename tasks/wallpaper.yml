@@ -8,13 +8,13 @@
 
 - name: Wallpaper | Download wallpaper image
   get_url:
-    url: https://upload.wikimedia.org/wikipedia/commons/8/89/%D0%9C%D1%8B%D1%81_%D0%A1%D1%82%D0%BE%D0%BB%D0%B1%D1%87%D0%B0%D1%82%D1%8B%D0%B9._%D0%9F%D0%BE%D1%81%D0%BB%D0%B5_%D0%B7%D0%B0%D0%BA%D0%B0%D1%82%D0%B0.jpg
-    dest: "/home/{{ user.name  }}/.local/share/wallpapers/columnar_basalt.jpg"
+    url: https://www.dl.dropboxusercontent.com/s/v4owwbevhtgs7ys/2019-04-28%2014.26.44.jpg
+    dest: "/home/{{ user.name  }}/.local/share/wallpapers/lost_coast_golden_path.jpg"
     owner: "{{ user.name }}"
 
 - name: Wallpaper | Symlink current wallpaper in place
   file:
-    src: "/home/{{ user.name  }}/.local/share/wallpapers/columnar_basalt.jpg"
+    src: "/home/{{ user.name  }}/.local/share/wallpapers/lost_coast_golden_path.jpg"
     path: "/home/{{ user.name  }}/.local/share/wallpapers/current.jpg"
     force: true
     state: link
