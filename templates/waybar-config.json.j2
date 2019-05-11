@@ -21,8 +21,8 @@
     "memory",
     "network",
     "pulseaudio",
-    "clock",
-    "tray"
+    "idle_inhibitor",
+    "clock"
   ],
 
   "battery": {
@@ -62,8 +62,16 @@
     "on-click": "pavucontrol"
   },
 
+  "idle_inhibitor": {
+    "format": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{icon}') }}",
+    "format-icons": {
+      "activated": "☕",
+      "deactivated": "💤"
+    }
+  },
+
   "clock": {
-    "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{:%a, %d %b %I:%M:%S}', last_block=True) }}",
-    "format": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{:%I:%M}', last_block=True) }}"
+    "format-alt": "{{ color_scheme_vars | waybar_colored_block('base09-hex', 'base08-hex', '{:%a, %d %b %I:%M:%S}', last_block=True) }}",
+    "format": "{{ color_scheme_vars | waybar_colored_block('base09-hex', 'base08-hex', '{:%I:%M}', last_block=True) }}"
   }
 }
