@@ -19,6 +19,7 @@
     window_manager: sway
     windowing_system: wayland
     key_repeat_delay: 250
+    minimum_workspace_count: 5
   when: ansible_virtualization_type != "virtualbox"
 
 - name: Window manager facts | sway in VM font size
