@@ -19,12 +19,6 @@
     dest: /etc/systemd/system/reflector.timer
   become: true
 
-- name: Packaging | Enable reflector service
-  service:
-    name: reflector.service
-    enabled: yes
-  become: true
-
 - name: Packaging | Enable reflector timer
   service:
     name: reflector.timer
