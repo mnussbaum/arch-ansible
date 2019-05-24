@@ -20,8 +20,8 @@
   package:
     state: present
     name:
-      - wlroots-git
-      - sway-git
+      - wlroots
+      - sway
       - swayidle-git
       - swaylock-git
       - grim-git
