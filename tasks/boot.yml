@@ -31,8 +31,10 @@
     mode: 0600
 
 - name: boot | Configure swapfile
-  become: true
-  include_role: name="ansible-swapfile"
+  include_role:
+    name: ansible-swapfile
+    apply:
+      become: true
   vars:
     ansible_become: true
     swapfile_location: /swapfile
