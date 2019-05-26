@@ -28,7 +28,13 @@
     state: link
   become: true
 
-- name: Fonts | Enable crisper fonts with hinting
+- name: Fonts | Disable slight hinting default
+  file:
+    path: /etc/fonts/conf.d/10-hinting-slight.conf
+    state: absent
+  become: true
+
+- name: Fonts | Enable crisper fonts with full hinting
   file:
     src: /etc/fonts/conf.avail/10-hinting-full.conf
     dest: /etc/fonts/conf.d/10-hinting-full.conf
