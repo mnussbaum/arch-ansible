@@ -1,6 +1,7 @@
 nnoremap <silent> K :ALEHover<CR>
 nnoremap <silent> gd :ALEGoToDefinition<CR>
 nnoremap <silent> gr  :ALEFindReferences<CR>
+nnoremap <silent> <leader>at :ALEToggle<CR>
 
 let g:ale_completion_enabled = 1
 let g:ale_enabled = 1
