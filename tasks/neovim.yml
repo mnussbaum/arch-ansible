@@ -9,6 +9,7 @@
       - name: "fatih/vim-go"
         args:
           do: ":GoInstallBinaries"
+      - name: "itchyny/lightline.vim"
       - name: "janko-m/vim-test"
       - name: "jlanzarotta/bufexplorer"
       - name: "junegunn/fzf"
@@ -85,7 +86,7 @@
     dest: "{{ nvim_config_dir }}/plugin"
     owner: "{{ user.name }}"
 
-- name: nvim | Generate base16 configs
+- name: nvim | Generate base16-vim configs
   base16_builder:
     scheme: "{{ base16_scheme }}"
     scheme_family: "{{ base16_scheme_family }}"
@@ -95,9 +96,26 @@
   register: base16_vim
   tags: [base16]
 
-- name: nvim | Write base16 configs to a file
+- name: nvim | Write base16-vim config to a file
   copy:
     content: "{{ base16_vim['schemes'][base16_scheme]['vim']['colors']['base16-' + base16_scheme + '.vim'] }}"
     dest: ~/.config/nvim/plugin/base16.vim
+    owner: "{{ user.name }}"
+  tags: [base16]
+
+- name: nvim | Generate base16-vim-lightline configs
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: vim-lightline
+    schemes_source: "{{ base16_schemes_source }}"
+    templates_source: "{{ base16_templates_source }}"
+  register: base16_vim
+  tags: [base16]
+
+- name: nvim | Write base16-vim-lightline config to a file
+  copy:
+    content: "{{ base16_vim['schemes'][base16_scheme]['vim-lightline']['autoload/lightline/colorscheme']['base16-' + base16_scheme + '.vim'] }}"
+    dest: ~/.config/nvim/plugin/base16-lightline.vim
     owner: "{{ user.name }}"
   tags: [base16]
