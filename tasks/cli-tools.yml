@@ -9,6 +9,7 @@
       - bfs
       - dstat
       - expac
+      - figlet
       - fwupd
       - fzf
       - git
@@ -16,20 +17,21 @@
       - imv
       - iotop
       - jq
+      - lolcat
       - ls_extended
       - lsof
       - net-tools
       - openssh
+      - ripgrep
       - rsync
+      - ruby
       - strace
       - tig
       - unzip
       - vim
-      - yajl
-      - ruby
-      - ripgrep
-      - zip
       - xdg-utils
+      - yajl
+      - zip
   become: true
 
 - name: CLI Tools | Install fzf helper scripts
