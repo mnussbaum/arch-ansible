@@ -36,6 +36,7 @@
       - name: "tpope/vim-fugitive"
       - name: "tyru/caw.vim"
       - name: "vim-ruby/vim-ruby"
+      - name: "yuttie/comfortable-motion.vim"
 
 - name: nvim | Ensure nvim config and data dirs exist
   file:
