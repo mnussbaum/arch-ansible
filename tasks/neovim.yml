@@ -55,7 +55,7 @@
       - ansible-lint
       - clang
       - ctags
-      - neovim-git
+      - neovim
       - python-neovim
   become: true
 
