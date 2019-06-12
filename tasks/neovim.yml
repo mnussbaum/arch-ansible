@@ -21,6 +21,7 @@
         args:
           do: ":UpdateRemotePlugins"
       - name: "leshill/vim-json"
+      - name: "machakann/vim-sandwich"
       - name: "Matt-Deacalion/vim-systemd-syntax"
       - name: "mhinz/vim-startify"
       - name: "pangloss/vim-javascript"
