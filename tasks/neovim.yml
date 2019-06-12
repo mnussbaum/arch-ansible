@@ -31,9 +31,10 @@
       - name: "rust-lang/rust.vim"
       - name: "ryanoasis/vim-devicons"
       - name: "scrooloose/nerdtree"
+      - name: "Shougo/context_filetype.vim"
       - name: "shmay/vim-yaml"
-      - name: "tomtom/tcomment_vim"
       - name: "tpope/vim-fugitive"
+      - name: "tyru/caw.vim"
       - name: "vim-ruby/vim-ruby"
 
 - name: nvim | Ensure nvim config and data dirs exist
