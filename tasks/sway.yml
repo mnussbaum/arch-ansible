@@ -22,9 +22,9 @@
     name:
       - wlroots
       - sway
-      - swaybg-git
-      - swayidle-git
-      - swaylock-git
+      - swaybg
+      - swayidle
+      - swaylock
       - grim-git
       - slurp-git
       - wl-clipboard-git
