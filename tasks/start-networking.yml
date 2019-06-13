@@ -32,11 +32,3 @@
     enabled: yes
     state: started
   become: true
-
-# Do I need to start the dispatcher? If so, should it set remain after exit?
-- name: networking | Enable NetworkManager dispatcher
-  service:
-    name: NetworkManager-dispatcher
-    enabled: yes
-    state: started
-  become: true
