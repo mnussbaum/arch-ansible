@@ -115,7 +115,7 @@
 - name: nvim | Write base16-vim config to a file
   copy:
     content: "{{ base16_vim['schemes'][base16_scheme]['vim']['colors']['base16-' + base16_scheme + '.vim'] }}"
-    dest: ~/.config/nvim/plugin/base16.vim
+    dest: "/home/{{ user.name }}/.config/nvim/plugin/base16.vim"
     owner: "{{ user.name }}"
   tags: [base16]
 
@@ -132,6 +132,6 @@
 - name: nvim | Write base16-vim-lightline config to a file
   copy:
     content: "{{ base16_vim['schemes'][base16_scheme]['vim-lightline']['autoload/lightline/colorscheme']['base16-' + base16_scheme + '.vim'] }}"
-    dest: ~/.config/nvim/plugin/base16-lightline.vim
+    dest: "/home/{{ user.name }}/.config/nvim/plugin/base16-lightline.vim"
     owner: "{{ user.name }}"
   tags: [base16]
