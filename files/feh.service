@@ -4,7 +4,7 @@ Documentation=man:feh(1)
 PartOf=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/feh --bg-fill %h/.local/share/wallpapers/current.jpg
+ExecStart=/usr/bin/feh --bg-scale %h/.local/share/wallpapers/current.jpg
 Restart=on-failure
 RestartSec=1
 
