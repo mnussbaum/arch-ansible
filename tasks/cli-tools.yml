@@ -42,3 +42,20 @@
   become: true
   with_fileglob:
     - files/fzf_helpers/*
+
+- name: CLI Tools | Generate base16-fzf config
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: fzf
+    schemes_source: "{{ base16_schemes_source }}"
+    templates_source: "{{ base16_templates_source }}"
+  register: base16_fzf
+  tags: [base16]
+
+- name: CLI Tools | Write base16-fzf config to a file
+  copy:
+    content: "{{ base16_fzf['schemes'][base16_scheme]['fzf']['bash']['base16-' + base16_scheme + '.config'] }}"
+    dest: "/home/{{ user.name }}/.config/zsh/fzf-base16.zsh"
+    owner: "{{ user.name }}"
+  tags: [base16]
