@@ -20,13 +20,6 @@
   become: true
   when: ansible_virtualization_role != "guest"
 
-- name: power | Disable systemd-rfkill to avoid TLP conflicts
-  service:
-    name: systemd-rfkill
-    enabled: no
-    state: stopped
-  become: true
-
 - name: power | Configure TLP
   copy:
     src: tlp
@@ -84,8 +77,7 @@
     src: "{{ item }}"
     dest: "/etc/udev/rules.d/{{ item | basename }}"
   with_fileglob:
-     - files/udev-rules.d/*
-
+    - files/udev-rules.d/*
 # Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120
 # Enable wake on keypress
 # Enable wake on mouse
