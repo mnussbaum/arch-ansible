@@ -11,13 +11,8 @@
   roles:
     - mnussbaum.base16-builder-ansible
   tasks:
-    - name: Set base16 theme
-      set_fact:
-        base16_scheme: base16-oceanic-next
-        base16_scheme_family: oceanic-next
-        base16_schemes_source: "https://github.com/mnussbaum/base16-schemes-source"
-        base16_templates_source: "https://github.com/mnussbaum/base16-templates-source"
-      tags: [base16, bootstrap]
+    - import_tasks: tasks/set-appearance-facts.yml
+      tags: [base16]
     - import_tasks: tasks/set-window-manager-facts.yml
       tags: [base16, bootstrap]
     - import_tasks: tasks/time.yml

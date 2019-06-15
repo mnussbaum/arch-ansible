@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+import os
+import re
+import socket
+import subprocess
+import sys
+
+
+def _appearance():
+    print("Getting period from redshift")
+    redshift_print_result = subprocess.run(
+        ["redshift", "-p"], check=True, capture_output=True, encoding="utf-8"
+    )
+
+    period_match = re.search(r"Period: (.*)", redshift_print_result.stdout)
+    if period_match is None:
+        raise RuntimeError(
+            "No period found in redshift print output: {}".format(
+                redshift_print_result.stdout
+            )
+        )
+
+    if period_match.group(1) in ["None", "Transition"]:
+        return None
+
+    return period_match.group(1).lower()
+
+
+def _reload_wayland():
+    for service in ["waybar.service", "waybar-sway-workspace-output-manager.service"]:
+        subprocess.run(["systemctl", "--user", "restart", service], check=True)
+
+    subprocess.run(["swaymsg", "reload"], check=True)
+
+
+def _reload_xorg():
+    subprocess.run(["systemctl", "--user", "restart", "feh.service"], check=True)
+    subprocess.run(["i3-msg", "reload"], check=True)
+
+
+def main():
+    appearance = _appearance()
+    if appearance is None:
+        return
+
+    print("Running ansible with appearance: {}".format(appearance))
+    arch_ansible_path = os.path.join(os.path.expanduser("~"), "src", "arch-ansible")
+    ansible_result = subprocess.run(
+        [
+            "nice",
+            "ansible-playbook",
+            os.path.join(arch_ansible_path, "playbook.yml"),
+            "--verbose",
+            "--inventory",
+            os.path.join(arch_ansible_path, "hosts.yml"),
+            "--limit",
+            socket.gethostname(),
+            "--tags",
+            "base16",
+            "--extra-vars",
+            "=".join(["appearance", appearance]),
+        ],
+        capture_output=True,
+        cwd=arch_ansible_path,
+        encoding="utf-8",
+    )
+
+    if ansible_result.returncode != 0:
+        print("Ansible run failed: {}".format(ansible_result.stderr))
+        sys.exit(ansible_result.returncode)
+
+    if "changed=0" in ansible_result.stdout:
+        print("No change from ansible run, exiting")
+        return
+
+    print("Running reloads")
+    # TODO: Reload running tmuxen
+    # TODO: Realod running nvims
+    if os.environ["XDG_SESSION_TYPE"] == "wayland":
+        _reload_wayland()
+    else:
+        _reload_xorg()
+
+
+if __name__ == "__main__":
+    main()

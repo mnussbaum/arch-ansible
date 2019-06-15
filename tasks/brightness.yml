@@ -15,6 +15,35 @@
     dest: "/home/{{ user.name }}/.config/redshift.conf"
     owner: "{{ user.name }}"
 
+- name: Brightness | Install redshift colorscheme change hook
+  become: true
+  copy:
+    src: files/colorscheme-changer
+    dest: /usr/local/bin/colorscheme-changer
+    mode: a+x
+
+- name: Brightness | Install colorscheme-changer service
+  copy:
+    src: files/colorscheme-changer.service
+    dest: "/home/{{ user.name }}/.config/systemd/user/colorscheme-changer.service"
+    owner: "{{ user.name }}"
+
+- name: Brightness | Install colorscheme-changer timer
+  copy:
+    src: files/colorscheme-changer.timer
+    dest: "/home/{{ user.name }}/.config/systemd/user/colorscheme-changer.timer"
+    owner: "{{ user.name }}"
+
+- name: Brightness | Enable colorscheme-changer timer
+  service:
+    name: colorscheme-changer.timer
+    enabled: yes
+    state: started
+    scope: user
+    daemon-reload: true
+  become: true
+  become_user: "{{ user.name }}"
+
 - name: Brightness | Install redshift service
   copy:
     src: files/redshift.service

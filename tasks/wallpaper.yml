@@ -6,15 +6,28 @@
     owner: "{{ user.name }}"
     state: directory
 
-- name: Wallpaper | Download wallpaper image
+- name: Wallpaper | Download daytime wallpaper image
   get_url:
     url: https://www.dl.dropboxusercontent.com/s/v4owwbevhtgs7ys/2019-04-28%2014.26.44.jpg
     dest: "/home/{{ user.name  }}/.local/share/wallpapers/lost_coast_golden_path.jpg"
     owner: "{{ user.name }}"
 
-- name: Wallpaper | Symlink current wallpaper in place
+- name: Wallpaper | Symlink daytime wallpaper in place
   file:
     src: "/home/{{ user.name  }}/.local/share/wallpapers/lost_coast_golden_path.jpg"
-    path: "/home/{{ user.name  }}/.local/share/wallpapers/current.jpg"
+    path: "/home/{{ user.name  }}/.local/share/wallpapers/daytime.jpg"
+    force: true
+    state: link
+
+- name: Wallpaper | Download night wallpaper image
+  get_url:
+    url: https://www.schoolphotoproject.com/_picture-of-transportation/evening-train-photo1-l.jpg
+    dest: "/home/{{ user.name  }}/.local/share/wallpapers/evening_train.jpg"
+    owner: "{{ user.name }}"
+
+- name: Wallpaper | Symlink night wallpaper in place
+  file:
+    src: "/home/{{ user.name  }}/.local/share/wallpapers/evening_train.jpg"
+    path: "/home/{{ user.name  }}/.local/share/wallpapers/night.jpg"
     force: true
     state: link
