@@ -38,6 +38,7 @@
       - name: "tpope/vim-fugitive"
       - name: "tyru/caw.vim"
       - name: "vim-ruby/vim-ruby"
+  tags: [base16]
 
 - name: nvim | Ensure nvim config and data dirs exist
   file:
@@ -99,6 +100,7 @@
     src: "{{ item }}"
     dest: "{{ nvim_config_dir }}/plugin/{{ item | basename | replace('.j2', '') }}"
     owner: "{{ user.name }}"
+  tags: [base16]
   with_fileglob:
     - templates/nvim/plugin/*
 

@@ -16,6 +16,7 @@
   template:
     src: templates/waybar-config.json.j2
     dest: "/home/{{ user.name }}/.config/waybar/config"
+  tags: [base16]
 
 - name: Waybar | Install waybar styling
   template:
