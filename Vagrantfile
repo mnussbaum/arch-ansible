@@ -3,6 +3,7 @@
 
 Vagrant.configure("2") do |config|
   config.vm.box = "archlinux/archlinux"
+  config.vm.hostname = "vagrant"
 
   config.vm.provider "virtualbox" do |vb|
     vb.memory = 10240
