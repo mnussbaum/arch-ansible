@@ -1,0 +1,17 @@
+---
+boot_device:
+  name: /dev/nvme0n1
+  encrypted_root: true
+  root_partition_name: Arch Root
+
+monitor:
+  id: eDP-1
+  height: 165
+  width: 294
+  dpi: 276
+
+user:
+  name: mnussbaum
+  group: mnussbaum
+  shell: /usr/bin/zsh
+  email: michaelnussbaum08@gmail.com

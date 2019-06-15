@@ -54,9 +54,19 @@ DEFAULT_TIMEOUT=30
 GRUB_ENABLE_CRYPTODISK=y
 
 # These params are passed to the kernel at boot
-GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ ssd_device }}:vgcrypt"
-GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume={{ root_device }}"
-GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"
 
+{% if boot_device["encrypted_root"] %}
+{% set root_partition_number = (
+    partition_info["partitions"] |
+    selectattr("name", "equalto", boot_device["root_partition_name"]) |
+    list | first
+).num %}
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ boot_device['name'] }}p{{ root_partition_number }}:vgcrypt"
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume=/dev/mapper/vgcrypt-root"
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"
+{% endif %}
+
+{% if "nvme" in boot_device["name"] %}
 # Save power, force necessary for NVMe
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} pcie_aspm=force"
+{% endif %}

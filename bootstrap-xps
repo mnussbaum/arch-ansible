@@ -88,7 +88,7 @@ ansible_bootstrap() {
 
   arch-chroot /mnt /root/arch-ansible/initial-configure-xps $hostname $username
   arch-chroot /mnt sh -c "ln -s /hostlvm /run/lvm && cd /root/arch-ansible && ./provision-xps \
-    $root_device $ssd_device -e bootstrap='true' --tags bootstrap"
+    -e bootstrap='true' --tags bootstrap"
   cp -r . /mnt/home/$username/src/arch-ansible
   arch-chroot /mnt chown -R $username:$username /home/$username/src/arch-ansible
   cp -r gpg-keys /mnt/home/$username/gpg-keys
@@ -113,7 +113,7 @@ root_device="/dev/mapper/vgcrypt-root"
 ssd_device=$(partition_for "Arch Root" $disk)
 efi_partition=$(partition_for "EFI" $disk)
 
-hostname="fred"
+hostname="tecopa"
 username="mnussbaum"
 
 wireless_card="wlp60s0"

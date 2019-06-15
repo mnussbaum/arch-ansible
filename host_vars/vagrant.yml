@@ -1,0 +1,15 @@
+---
+boot_device:
+  name: /dev/sda2
+  encrypted_root: false
+
+monitor:
+  id: VGA-1
+  height: 660
+  width: 1160
+
+user:
+  name: vagrant
+  group: vagrant
+  shell: /usr/bin/zsh
+  email: foo@bar.com
