@@ -13,7 +13,14 @@ def _appearance():
         ["redshift", "-p"], check=True, capture_output=True, encoding="utf-8"
     )
 
-    period_match = re.search(r"Period: (.*)", redshift_print_result.stdout)
+    # String looks like one of the following:
+    #  * Period: Daytime
+    #  * Period: Night
+    #  * Period: Transition (2.05% day)
+    #  * Period: None
+    period_match = re.search(
+        r"Period: ([a-zA-Z]+)( \((.*)% .*\))*", redshift_print_result.stdout
+    )
     if period_match is None:
         raise RuntimeError(
             "No period found in redshift print output: {}".format(
@@ -21,22 +28,29 @@ def _appearance():
             )
         )
 
-    if period_match.group(1) in ["None", "Transition"]:
+    if period_match.group(1) == "None":
         return None
 
-    return period_match.group(1).lower()
+    if period_match.group(1) != "Transition":
+        return period_match.group(1).lower()
+
+    percent_daytime = float(period_match.group(3))
+    if percent_daytime >= 50:
+        return "daytime"
+    else:
+        return "night"
 
 
 def _reload_wayland():
     for service in ["waybar.service", "waybar-sway-workspace-output-manager.service"]:
         subprocess.run(["systemctl", "--user", "restart", service], check=True)
 
-    subprocess.run(["swaymsg", "reload"], check=True)
+    subprocess.run(["swaymsg", "reload"])
 
 
 def _reload_xorg():
     subprocess.run(["systemctl", "--user", "restart", "feh.service"], check=True)
-    subprocess.run(["i3-msg", "reload"], check=True)
+    subprocess.run(["i3-msg", "reload"])
 
 
 def main():
