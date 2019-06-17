@@ -20,11 +20,11 @@
   package:
     state: present
     name:
-      - wlroots
-      - sway
-      - swaybg
-      - swayidle
-      - swaylock
+      - wlroots-git
+      - sway-git
+      - swaybg-git
+      - swayidle-git
+      - swaylock-git
       - grim-git
       - slurp-git
       - wl-clipboard-git
