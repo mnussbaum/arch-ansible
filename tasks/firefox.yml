@@ -44,12 +44,14 @@
     dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome/userChrome.css"
     src: templates/firefox-userChrome.css.j2
     owner: "{{ user.name }}"
+  tags: [base16]
 
 - name: Firefox | Configure firefox userContent.css
   template:
     dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome/userContent.css"
     src: templates/firefox-userContent.css.j2
     owner: "{{ user.name }}"
+  tags: [base16]
 
 - name: Firefox | Create vim-vixen plugin config dir
   file:

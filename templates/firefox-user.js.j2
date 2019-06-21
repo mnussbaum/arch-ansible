@@ -16,7 +16,7 @@ user_pref("font.name.sans-serif.x-western", "FuraMono Nerd Font Mono");
 user_pref("font.default.x-western", "sans-serif");
 
 // Appearence
-user_pref("browser.uiCustomization.state", `{
+{% set browser_ui_customization_state = {
   "placements": {
     "widget-overflow-fixed-list": [],
     "PersonalToolbar": ["personal-bookmarks"],
@@ -43,7 +43,7 @@ user_pref("browser.uiCustomization.state", `{
     "ublock0_raymondhill_net-browser-action",
     "screenshots_mozilla_org-browser-action",
     "browserpass_maximbaz_com-browser-action",
-    "vim-vixen_i-beam_org-browser-action"
+    "vim-vixen_i-beam_org-browser-action",
   ],
   "dirtyAreaCache": [
     "PersonalToolbar",
@@ -52,11 +52,12 @@ user_pref("browser.uiCustomization.state", `{
     "toolbar-menubar",
     "dactyl-addon-bar",
     "PanelUI-contents",
-    "addon-bar"
+    "addon-bar",
   ],
   "currentVersion": 14,
-  "newElementCount": 2
-}`);
+  "newElementCount": 2,
+} %}
+user_pref("browser.uiCustomization.state", '{{ browser_ui_customization_state | to_json }}');
 user_pref("browser.urlbar.oneOffSearches", false);
 user_pref("lightweightThemes.persisted.footerURL", false);
 user_pref("lightweightThemes.persisted.headerURL", false);
