@@ -1,0 +1,13 @@
+#! /bin/bash
+
+set -o errexit
+set -o nounset
+
+if command -v redshift-period > /dev/null ; then
+  appearance=$(redshift-period)
+else
+  appearance="night"
+fi
+
+exec ansible-playbook playbook.yml -v --ask-become-pass --inventory hosts.yml \
+  --extra-vars "appearance=$appearance" --limit $(hostname) $@

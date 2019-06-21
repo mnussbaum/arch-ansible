@@ -1,44 +1,9 @@
 #!/usr/bin/env python
 
 import os
-import re
 import socket
 import subprocess
 import sys
-
-
-def _appearance():
-    print("Getting period from redshift")
-    redshift_print_result = subprocess.run(
-        ["redshift", "-p"], check=True, capture_output=True, encoding="utf-8"
-    )
-
-    # String looks like one of the following:
-    #  * Period: Daytime
-    #  * Period: Night
-    #  * Period: Transition (2.05% day)
-    #  * Period: None
-    period_match = re.search(
-        r"Period: ([a-zA-Z]+)( \((.*)% .*\))*", redshift_print_result.stdout
-    )
-    if period_match is None:
-        raise RuntimeError(
-            "No period found in redshift print output: {}".format(
-                redshift_print_result.stdout
-            )
-        )
-
-    if period_match.group(1) == "None":
-        return None
-
-    if period_match.group(1) != "Transition":
-        return period_match.group(1).lower()
-
-    percent_daytime = float(period_match.group(3))
-    if percent_daytime >= 50:
-        return "daytime"
-    else:
-        return "night"
 
 
 def _reload_wayland():
@@ -54,9 +19,11 @@ def _reload_xorg():
 
 
 def main():
-    appearance = _appearance()
-    if appearance is None:
-        return
+    print("Getting period from redshift")
+    redshift_print_result = subprocess.run(
+        ["redshift-period"], check=True, capture_output=True, encoding="utf-8"
+    )
+    appearance = redshift_print_result.stdout
 
     print("Running ansible with appearance: {}".format(appearance))
     arch_ansible_path = os.path.join(os.path.expanduser("~"), "src", "arch-ansible")

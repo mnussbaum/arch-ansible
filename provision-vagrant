@@ -1,4 +1,0 @@
-#! /bin/bash
-
-exec ansible-playbook playbook.yml -v --ask-become-pass --inventory hosts.yml \
-    --limit "vagrant" $@

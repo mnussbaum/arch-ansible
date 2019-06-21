@@ -15,7 +15,14 @@
     dest: "/home/{{ user.name }}/.config/redshift.conf"
     owner: "{{ user.name }}"
 
-- name: Brightness | Install redshift colorscheme change hook
+- name: Brightness | Install redshift-period binary
+  become: true
+  copy:
+    src: files/redshift-period
+    dest: /usr/local/bin/redshift-period
+    mode: a+x
+
+- name: Brightness | Install redshift colorscheme-changer binary
   become: true
   copy:
     src: files/colorscheme-changer
