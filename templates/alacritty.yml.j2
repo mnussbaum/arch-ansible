@@ -1,0 +1,15 @@
+font:
+  size: {{ font_size }}
+  normal:
+    family: FuraMono Nerd Font Mono
+  bold:
+    family: FuraMono Nerd Font Mono
+  italic:
+    family: FuraMono Nerd Font Mono
+
+env:
+  TERM: alacritty
+
+background_opacity: 0.8
+
+{{ base16_alacritty["schemes"][base16_scheme]["alacritty"]["colors"]["base16-" + base16_scheme + ".yml"] }}

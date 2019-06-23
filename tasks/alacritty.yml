@@ -1,0 +1,30 @@
+# vim:ft=yaml.ansible:
+---
+- name: alacritty | Install alacritty
+  package:
+    name: alacritty-terminfo-git
+    state: present
+  become: true
+
+- name: alacritty | Create config dir
+  file:
+    path: "/home/{{ user.name }}/.config/alacritty"
+    owner: "{{ user.name }}"
+    state: directory
+
+- name: alacritty | Generate base16 colors
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: alacritty
+    schemes_source: "{{ base16_schemes_source }}"
+    templates_source: "{{ base16_templates_source }}"
+  register: base16_alacritty
+  tags: [base16]
+
+- name: alacritty | Install config
+  template:
+    src: templates/alacritty.yml.j2
+    dest: "/home/{{ user.name }}/.config/alacritty/alacritty.yml"
+    owner: "{{ user.name }}"
+  tags: [base16]
