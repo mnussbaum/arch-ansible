@@ -36,6 +36,14 @@
   with_items:
     - i3
 
+- name: i3 | Install templated services
+  template:
+    owner: "{{ user.name }}"
+    src: "templates/{{ item }}"
+    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+  with_items:
+    - feh.service.j2
+
 - name: i3 | Install services
   copy:
     owner: "{{ user.name }}"
@@ -43,7 +51,6 @@
     dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
   with_items:
     - compton.service
-    - feh.service
     - i3-session.target
     - i3.service
 
