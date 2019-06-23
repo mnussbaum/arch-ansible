@@ -22,8 +22,6 @@
           do: ":UpdateRemotePlugins"
       - name: "leshill/vim-json"
       - name: "liuchengxu/vista.vim"
-        args:
-          branch: "support-ale"
       - name: "Matt-Deacalion/vim-systemd-syntax"
       - name: "m-pilia/vim-ccls"
       - name: "machakann/vim-sandwich"
