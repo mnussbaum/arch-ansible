@@ -14,11 +14,11 @@
   set_fact:
     base16_scheme: "{{ night_base16_scheme }}"
     base16_scheme_family: "{{ night_base16_scheme_family }}"
-    desktop_backgound: "/home/{{ user.name }}/.local/share/wallpapers/night.jpg"
+    desktop_backgound: "{{ user_data_dir }}/wallpapers/night.jpg"
 
 - name: Appearance facts | Set daytime appearance
   when: appearance is defined and appearance == "daytime"
   set_fact:
     base16_scheme: "{{ daytime_base16_scheme }}"
     base16_scheme_family: "{{ daytime_base16_scheme_family }}"
-    desktop_backgound: "/home/{{ user.name }}/.local/share/wallpapers/daytime.jpg"
+    desktop_backgound: "{{ user_data_dir }}/wallpapers/daytime.jpg"

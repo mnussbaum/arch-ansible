@@ -2,7 +2,7 @@
 ---
 - name: sway | Create config dirs
   file:
-    path: "/home/{{ user.name }}/.config/{{ item }}"
+    path: "{{ user_config_dir }}/{{ item }}"
     owner: "{{ user.name }}"
     state: directory
   with_items:
@@ -13,7 +13,7 @@
   become: true
   copy:
     src: files/sway-env
-    dest: "/home/{{ user.name }}/.config/sway/env"
+    dest: "{{ user_config_dir }}/sway/env"
     owner: "{{ user.name }}"
 
 - name: sway | Install sway packages
@@ -43,7 +43,7 @@
 - name: sway | Install config
   template:
     src: templates/sway_and_i3_config.j2
-    dest: "/home/{{ user.name }}/.config/sway/config"
+    dest: "{{ user_config_dir }}/sway/config"
     owner: "{{ user.name }}"
   tags: [base16]
   with_items:
@@ -52,7 +52,7 @@
 - name: sway | Install swaylock config
   template:
     src: templates/swaylock_config.j2
-    dest: "/home/{{ user.name }}/.config/swaylock/config"
+    dest: "{{ user_config_dir }}/swaylock/config"
     owner: "{{ user.name }}"
   tags: [base16]
   with_items:
@@ -61,7 +61,7 @@
 - name: Sway | Install services
   copy:
     src: "files/{{ item }}"
-    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+    dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
     owner: "{{ user.name }}"
   with_items:
     - sway-session.target

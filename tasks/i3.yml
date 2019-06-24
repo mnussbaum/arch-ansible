@@ -2,7 +2,7 @@
 ---
 - name: i3 | Create config dir
   file:
-    path: "/home/{{ user.name }}/.config/i3"
+    path: "{{ user_config_dir }}/i3"
     owner: "{{ user.name }}"
     state: directory
 
@@ -30,7 +30,7 @@
 - name: i3 | Install config
   template:
     src: templates/sway_and_i3_config.j2
-    dest: "/home/{{ user.name }}/.config/i3/config"
+    dest: "{{ user_config_dir }}/i3/config"
     owner: "{{ user.name }}"
   tags: [base16]
   with_items:
@@ -40,7 +40,7 @@
   template:
     owner: "{{ user.name }}"
     src: "templates/{{ item }}"
-    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+    dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
   with_items:
     - feh.service.j2
 
@@ -48,7 +48,7 @@
   copy:
     owner: "{{ user.name }}"
     src: "files/{{ item }}"
-    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+    dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
   with_items:
     - compton.service
     - i3-session.target

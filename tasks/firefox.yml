@@ -69,12 +69,12 @@
   copy:
     remote_src: true
     src: /usr/share/freshplayerplugin/freshwrapper.conf.example
-    dest: "/home/{{ user.name }}/.config/freshwrapper.conf"
+    dest: "{{ user_config_dir }}/freshwrapper.conf"
     force: no
     owner: "{{ user.name }}"
 
 - name: Firefox | Enable hardware acceleration for flash plugin
   lineinfile:
-    dest: "/home/{{ user.name }}/.config/freshwrapper.conf"
+    dest: "{{ user_config_dir }}/freshwrapper.conf"
     regexp: "^enable_hwdec ="
     line: "enable_hwdec = 1"

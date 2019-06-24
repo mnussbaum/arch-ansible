@@ -56,6 +56,6 @@
 - name: CLI Tools | Write base16-fzf config to a file
   copy:
     content: "{{ base16_fzf['schemes'][base16_scheme]['fzf']['bash']['base16-' + base16_scheme + '.config'] }}"
-    dest: "/home/{{ user.name }}/.config/zsh/fzf-base16.zsh"
+    dest: "{{ user_config_dir }}/zsh/fzf-base16.zsh"
     owner: "{{ user.name }}"
   tags: [base16]

@@ -2,32 +2,32 @@
 ---
 - name: Wallpaper | Create wallpaper data dir
   file:
-    path: "/home/{{ user.name  }}/.local/share/wallpapers"
+    path: "{{ user_data_dir }}/wallpapers"
     owner: "{{ user.name }}"
     state: directory
 
 - name: Wallpaper | Download daytime wallpaper image
   get_url:
     url: https://www.dl.dropboxusercontent.com/s/v4owwbevhtgs7ys/2019-04-28%2014.26.44.jpg
-    dest: "/home/{{ user.name  }}/.local/share/wallpapers/lost_coast_golden_path.jpg"
+    dest: "{{ user_data_dir }}/wallpapers/lost_coast_golden_path.jpg"
     owner: "{{ user.name }}"
 
 - name: Wallpaper | Symlink daytime wallpaper in place
   file:
-    src: "/home/{{ user.name  }}/.local/share/wallpapers/lost_coast_golden_path.jpg"
-    path: "/home/{{ user.name  }}/.local/share/wallpapers/daytime.jpg"
+    src: "{{ user_data_dir }}/wallpapers/lost_coast_golden_path.jpg"
+    path: "{{ user_data_dir }}/wallpapers/daytime.jpg"
     force: true
     state: link
 
 - name: Wallpaper | Download night wallpaper image
   get_url:
     url: https://www.schoolphotoproject.com/_picture-of-transportation/evening-train-photo1-l.jpg
-    dest: "/home/{{ user.name  }}/.local/share/wallpapers/evening_train.jpg"
+    dest: "{{ user_data_dir }}/wallpapers/evening_train.jpg"
     owner: "{{ user.name }}"
 
 - name: Wallpaper | Symlink night wallpaper in place
   file:
-    src: "/home/{{ user.name  }}/.local/share/wallpapers/evening_train.jpg"
-    path: "/home/{{ user.name  }}/.local/share/wallpapers/night.jpg"
+    src: "{{ user_data_dir }}/wallpapers/evening_train.jpg"
+    path: "{{ user_data_dir }}/wallpapers/night.jpg"
     force: true
     state: link

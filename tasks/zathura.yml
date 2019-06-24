@@ -11,7 +11,7 @@
 
 - name: zathura | Create config dir
   file:
-    path: "/home/{{ user.name }}/.config/zathura"
+    path: "{{ user_config_dir }}/zathura"
     owner: "{{ user.name }}"
     state: directory
 
@@ -28,5 +28,5 @@
 - name: zathura | Install config
   template:
     src: templates/zathurarc.j2
-    dest: "/home/{{ user.name }}/.config/zathura/zathurarc"
+    dest: "{{ user_config_dir }}/zathura/zathurarc"
   tags: [base16]

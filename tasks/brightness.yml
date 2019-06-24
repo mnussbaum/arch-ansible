@@ -12,7 +12,7 @@
 - name: Brightness | Install redshift config
   template:
     src: templates/redshift.conf.j2
-    dest: "/home/{{ user.name }}/.config/redshift.conf"
+    dest: "{{ user_config_dir }}/redshift.conf"
     owner: "{{ user.name }}"
 
 - name: Brightness | Install redshift-period binary
@@ -32,13 +32,13 @@
 - name: Brightness | Install colorscheme-changer service
   copy:
     src: files/colorscheme-changer.service
-    dest: "/home/{{ user.name }}/.config/systemd/user/colorscheme-changer.service"
+    dest: "{{ user_config_dir }}/systemd/user/colorscheme-changer.service"
     owner: "{{ user.name }}"
 
 - name: Brightness | Install colorscheme-changer timer
   copy:
     src: files/colorscheme-changer.timer
-    dest: "/home/{{ user.name }}/.config/systemd/user/colorscheme-changer.timer"
+    dest: "{{ user_config_dir }}/systemd/user/colorscheme-changer.timer"
     owner: "{{ user.name }}"
 
 - name: Brightness | Enable colorscheme-changer timer
@@ -54,7 +54,7 @@
 - name: Brightness | Install redshift service
   copy:
     src: files/redshift.service
-    dest: "/home/{{ user.name }}/.config/systemd/user/redshift.service"
+    dest: "{{ user_config_dir }}/systemd/user/redshift.service"
     owner: "{{ user.name }}"
 
 - name: Brightness | Enable redshift service

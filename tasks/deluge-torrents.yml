@@ -10,18 +10,18 @@
 
 - name: Deluge torrents | Create config dir
   file:
-    path: "/home/{{ user.name }}/.config/deluge"
+    path: "{{ user_config_dir }}/deluge"
     state: directory
     owner: "{{ user.name }}"
 
 - name: Deluge torrents | Install blocklist
   copy:
-    dest: "/home/{{ user.name }}/.config/deluge/blocklist.conf"
+    dest: "{{ user_config_dir }}/deluge/blocklist.conf"
     src: files/deluge_blocklist.conf
     owner: "{{ user.name }}"
 
 - name: Deluge torrents | Install config
   template:
-    dest: "/home/{{ user.name }}/.config/deluge/core.conf"
+    dest: "{{ user_config_dir }}/deluge/core.conf"
     src: templates/deluge_core.conf.j2
     owner: "{{ user.name }}"

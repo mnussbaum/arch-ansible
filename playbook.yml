@@ -11,6 +11,9 @@
   roles:
     - mnussbaum.base16-builder-ansible
   tasks:
+    - set_fact:
+        user_config_dir: "/home/{{ user.name }}/.config"
+        user_data_dir: "/home/{{ user.name }}/.local/share"
     - import_tasks: tasks/set-appearance-facts.yml
       tags: [base16]
     - import_tasks: tasks/set-window-manager-facts.yml

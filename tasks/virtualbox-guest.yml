@@ -33,7 +33,7 @@
   copy:
     owner: "{{ user.name }}"
     src: files/vboxclient.service
-    dest: "/home/{{ user.name }}/.config/systemd/user/vboxclient.service"
+    dest: "{{ user_config_dir }}/systemd/user/vboxclient.service"
 
 - name: Virtualbox guest | Enable VBoxClient service
   become: true

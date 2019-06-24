@@ -51,7 +51,7 @@
 - name: Xorg | Install templated services
   template:
     src: "templates/{{ item }}.j2"
-    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+    dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
     owner: "{{ user.name }}"
   with_items:
     - xorg.service
@@ -59,7 +59,7 @@
 - name: Xorg | Install services
   copy:
     src: "files/{{ item }}"
-    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item }}"
+    dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
     owner: "{{ user.name }}"
   with_items:
     - xrdb.service

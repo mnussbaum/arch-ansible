@@ -12,7 +12,7 @@
 
 - name: ZSH | Install dircolors config
   copy:
-    dest: "/home/{{ user.name }}/.config/dircolors"
+    dest: "{{ user_config_dir }}/dircolors"
     src: dircolors
     owner: "{{ user.name }}"
 
@@ -24,7 +24,7 @@
 
 - name: ZSH | Create zsh config dir
   file:
-    path: "/home/{{ user.name }}/.config/zsh"
+    path: "{{ user_config_dir }}/zsh"
     owner: "{{ user.name }}"
     state: directory
 
@@ -40,13 +40,13 @@
 
 - name: ZSH | Install base16 zsh config
   copy:
-    dest: "/home/{{ user.name }}/.config/zsh/00-base16.zsh"
+    dest: "{{ user_config_dir }}/zsh/00-base16.zsh"
     content: "{{ base16_shell['schemes'][base16_scheme]['shell']['scripts']['base16-' + base16_scheme + '.sh'] }}"
   tags: [base16]
 
 - name: ZSH | Install zsh configs
   copy:
-    dest: "/home/{{ user.name }}/.config/zsh/{{ item | basename }}"
+    dest: "{{ user_config_dir }}/zsh/{{ item | basename }}"
     src: "{{ item }}"
     owner: "{{ user.name }}"
   with_fileglob:

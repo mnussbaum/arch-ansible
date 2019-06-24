@@ -1,8 +1,8 @@
 # vim:ft=yaml.ansible:
 ---
 - set_fact:
-    nvim_config_dir: "/home/{{ user.name }}/.config/nvim"
-    nvim_data_dir: "/home/{{ user.name }}/.local/share/nvim"
+    nvim_config_dir: "{{ user_config_dir }}/nvim"
+    nvim_data_dir: "{{ user_data_dir }}/nvim"
     vim_plugins:
       - name: "w0rp/ale"
       - name: "christoomey/vim-tmux-runner"
@@ -118,7 +118,7 @@
 - name: nvim | Write base16-vim config to a file
   copy:
     content: "{{ base16_vim['schemes'][base16_scheme]['vim']['colors']['base16-' + base16_scheme + '.vim'] }}"
-    dest: "/home/{{ user.name }}/.config/nvim/plugin/base16.vim"
+    dest: "{{ user_config_dir }}/nvim/plugin/base16.vim"
     owner: "{{ user.name }}"
   tags: [base16]
 
@@ -135,6 +135,6 @@
 - name: nvim | Write base16-vim-lightline config to a file
   copy:
     content: "{{ base16_vim['schemes'][base16_scheme]['vim-lightline']['autoload/lightline/colorscheme']['base16-' + base16_scheme + '.vim'] }}"
-    dest: "/home/{{ user.name }}/.config/nvim/plugin/base16-lightline.vim"
+    dest: "{{ user_config_dir }}/nvim/plugin/base16-lightline.vim"
     owner: "{{ user.name }}"
   tags: [base16]

@@ -41,7 +41,7 @@
 
 - name: GPG | Install gpg-agent user service configs
   copy:
-    dest: "/home/{{ user.name }}/.config/systemd/user/{{ item.path | basename }}"
+    dest: "{{ user_config_dir }}/systemd/user/{{ item.path | basename }}"
     src: "{{ item.path }}"
     owner: "{{ user.name }}"
   with_items: "{{ gpg_agent_service_configs.files }}"
