@@ -6,7 +6,7 @@
     name:
       - libinput
       - libinput-gestures
-      - xdotool
+      - ydotool
       - xf86-input-libinput
   become: true
 

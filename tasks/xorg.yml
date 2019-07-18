@@ -6,7 +6,6 @@
     name:
       - mesa
       - vulkan-intel
-      - xdotool
       - xorg-server
       - xorg-xdpyinfo
       - xorg-xinput
