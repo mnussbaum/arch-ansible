@@ -6,6 +6,7 @@
     state: present
     name:
       - pygtk
+      - python-cairo
       - deluge
 
 - name: Deluge torrents | Create config dir
