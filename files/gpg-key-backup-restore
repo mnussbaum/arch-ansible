@@ -7,10 +7,18 @@ set -o pipefail
 backup() {
   gpg --export-secret-keys --armor "$1" > secret-key.gpg
   split -b 1000 secret-key.gpg split-private-key-
+
+  # Annotate QR code image with filename
   for file in split-private-key-??; do
     qrencode -s 3 -d 150 -o "$file".png < "$file"
     rm "$file"
+    mogrify \
+      -gravity South \
+      -append \
+      -annotate +0-1 "$file".png \
+      "$file".png
   done
+
   rm secret-key.gpg
 }
 
