@@ -5,7 +5,7 @@
     state: present
     name:
       - gnupg
-      - imagemagick-full
+      - imagemagick
       - pcsclite
       - qrencode
       - zbar
