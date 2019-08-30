@@ -1,0 +1,10 @@
+#!/bin/bash
+
+printf "🖵"
+if systemctl status --user rot8 > /dev/null ; then
+  printf "↻"
+else
+  printf "🔒"
+fi
+
+printf "\n"
