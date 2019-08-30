@@ -1,0 +1,21 @@
+# vim:ft=yaml.ansible:
+---
+- name: Screen rotation | Install rot8 package
+  package:
+    state: present
+    name: rot8-git
+
+- name: Screen rotation | Install rot8 service
+  copy:
+    src: "files/rot8.service"
+    dest: "{{ user_config_dir }}/systemd/user/rot8.service"
+    owner: "{{ user.name }}"
+
+- name: Screen rotation | Enable rot8 service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: "rot8"
+    scope: user
+    daemon-reload: true
