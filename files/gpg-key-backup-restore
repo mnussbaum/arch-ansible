@@ -1,0 +1,61 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+backup() {
+  gpg --export-secret-keys --armor "$1" > secret-key.gpg
+  split -b 1000 secret-key.gpg split-private-key-
+  for file in split-private-key-??; do
+    qrencode -s 3 -d 150 -o "$file".png < "$file"
+    rm "$file"
+  done
+  rm secret-key.gpg
+}
+
+# The restore script expects a series of split-private-key-*.png files
+# containing QR codes of chunks of an ASCII armored private GPG key. The PNG
+# file names need to be alpha sorted properly to rebuild the key
+restore() {
+  # The split key's newlines are all messed up, so strip them out along with
+  # headers and then reformat the text properly at the end
+  rm -f staging-private-key
+  for file in split-private-key-*.png; do
+    zbarimg -q --raw "$file" | grep -v "BLOCK" >> staging-private-key
+  done
+
+  rm -f private-key-combined.gpg
+
+  printf -- "-----BEGIN PGP PRIVATE KEY BLOCK-----\n\n" > private-key-combined.gpg
+  cat staging-private-key | tr -d "\n" | fold -w 64 >> private-key-combined.gpg
+  printf -- "\n-----END PGP PRIVATE KEY BLOCK-----" >> private-key-combined.gpg
+  rm -f staging-private-key
+
+  # Test that the restored key is valid, remove output of test
+  gpg --dearmor private-key-combined.gpg > /dev/null
+  rm private-key-combined.gpg.gpg
+}
+
+print_help() {
+  echo "
+  Script to backup and restore all GPG private keys to/from QR codes in PNG files.
+
+  The restore script expects a series of split-private-key-<aa>.png files
+  containing QR codes of chunks of an ASCII armored private GPG key. The PNG
+  file names need to be alpha sorted properly to rebuild the key
+
+  Options:
+    --backup "key-ID"    Generate split-private-key-<aa>.png files from GPG private key
+    --restore            Generate ASCII armored GPG private key from split-private-key-<aa>.png files
+    --help               Print this message
+  " >&2
+}
+
+if [[ "$1" == "--backup" ]] ; then
+  backup "$2"
+elif [[ "$1" == "--restore" ]] ; then
+  restore
+else
+  print_help
+fi

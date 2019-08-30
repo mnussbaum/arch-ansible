@@ -6,6 +6,8 @@
     name:
       - gnupg
       - pcsclite
+      - qrencode
+      - zbar
   become: true
 
 - name: GPG | Create config dir
@@ -55,3 +57,10 @@
     scope: user
     daemon-reload: true
   with_items: "{{ gpg_agent_service_configs.files }}"
+
+- name: GPG | Add backup/restore script
+  copy:
+    src: files/gpg-key-backup-restore
+    dest: /usr/local/bin/gpg-key-backup-restore
+    mode: a+x
+  become: true
