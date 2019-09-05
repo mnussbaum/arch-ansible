@@ -1,0 +1,10 @@
+#!/bin/bash
+
+printf "🖮 "
+if systemctl status --user virtboard > /dev/null ; then
+  printf "▼"
+else
+  printf "▲"
+fi
+
+printf "\n"

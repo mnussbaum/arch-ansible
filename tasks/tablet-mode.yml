@@ -1,0 +1,38 @@
+# vim:ft=yaml.ansible:
+---
+- name: Tablet mode | Install packages
+  package:
+    state: present
+    name:
+      - rot8-git
+      - virtboard-git
+
+- name: Tablet mode | Install systemd services
+  copy:
+    src: "files/{{ item }}.service"
+    dest: "{{ user_config_dir }}/systemd/user/{{ item }}.service"
+    owner: "{{ user.name }}"
+  with_items:
+    - rot8
+    - virtboard
+
+- name: Tablet mode | Enable rot8 service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: "rot8"
+    scope: user
+    daemon-reload: true
+
+- name: Tablet mode | Install toggle module scripts
+  copy:
+    src: "files/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    mode: a+x
+  become: true
+  with_items:
+    - rot8-rotation-lock-status
+    - toggle-rot8
+    - virtboard-open-status
+    - toggle-virtboard

@@ -1,93 +1,114 @@
-{
-  "layer": "top",
-  "modules-left": [
-{% for workspace in range(1, minimum_workspace_count+1) %}
-    "custom/sway-workspaces-{{ workspace }}",
-{% endfor %}
-    "sway/mode"
-  ],
-
-{% for workspace in range(1, minimum_workspace_count+1) %}
-  "custom/sway-workspaces-{{ workspace }}": {
-    "exec": "tail --sleep-interval 0.6 -F ~/.cache/waybar-sway-workspace-output-manager/{{ workspace }} 2>/dev/null",
-    "on-click": "swaymsg workspace {{ workspace }}",
-    "tooltip": false
-  },
-
-{% endfor %}
-  "modules-right": [
-    "battery",
-    "cpu",
-    "memory",
-    "network",
-    "pulseaudio",
-    "idle_inhibitor",
-    "custom/rotation-lock",
-    "clock"
-  ],
-
-  "battery": {
-    "bat": "BAT0",
-    "format-charging": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% ', first_block=True)  }}",
-    "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% {icon}', first_block=True)  }}",
-    "format-icons": [
-      "",
-      "",
-      "",
-      "",
-      ""
+[
+  {
+    "layer": "top",
+    "position": "top",
+    "modules-left": [
+  {% for workspace in range(1, minimum_workspace_count+1) %}
+      "custom/sway-workspaces-{{ workspace }}",
+  {% endfor %}
+      "sway/mode"
     ],
-    "states": {
-      "warning": 20,
-      "critical": 10
+
+  {% for workspace in range(1, minimum_workspace_count+1) %}
+    "custom/sway-workspaces-{{ workspace }}": {
+      "exec": "tail --sleep-interval 0.6 -F ~/.cache/waybar-sway-workspace-output-manager/{{ workspace }} 2>/dev/null",
+      "on-click": "swaymsg workspace {{ workspace }}",
+      "tooltip": false
     },
-    "tooltip": false
-  },
 
-  "cpu": {
-    "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{usage}% ') }}",
-    "tooltip": false
-  },
+  {% endfor %}
+    "modules-right": [
+      "battery",
+      "cpu",
+      "memory",
+      "network",
+      "pulseaudio",
+      "clock"
+    ],
 
-  "memory": {
-    "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{}% ') }}",
-    "tooltip": false
-  },
-
-  "network": {
-    "format-wifi": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{essid} {signalStrength}% ') }}",
-    "format-ethernet": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{ifname} ') }}",
-    "format-disconnected": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', 'Disconnected ⚠') }}",
-    "tooltip": false
-  },
-
-  "pulseaudio": {
-    "format": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{volume}% ') }}",
-    "format-muted": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '0% ') }}",
-    "on-click": "pavucontrol",
-    "tooltip": false
-  },
-
-  "idle_inhibitor": {
-    "format": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{icon}') }}",
-    "format-icons": {
-      "activated": "☕",
-      "deactivated": "💤"
+    "battery": {
+      "bat": "BAT0",
+      "format-charging": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% ', first_block=True, position='right')  }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% {icon}', first_block=True, position='right')  }}",
+      "format-icons": [
+	"",
+	"",
+	"",
+	"",
+	""
+      ],
+      "states": {
+	"warning": 20,
+	"critical": 10
+      },
+      "tooltip": false
     },
-    "tooltip": false
-  },
 
-  "custom/rotation-lock": {
-    "exec": "rot8-rotation-lock-status",
-    "format": "{{ color_scheme_vars | waybar_colored_block('base09-hex', 'base0E-hex', '{}') }}",
-    "interval": 1,
-    "on-click": "toggle-rot8",
-    "tooltip": false
-  },
+    "cpu": {
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{usage}% ') }}",
+      "tooltip": false
+    },
 
-  "clock": {
-    "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{:%a, %d %b %I:%M:%S}', last_block=True) }}",
-    "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{:%I:%M}', last_block=True) }}",
-    "tooltip": false
+    "memory": {
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{}% ') }}",
+      "tooltip": false
+    },
+
+    "network": {
+      "format-wifi": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{essid} {signalStrength}% ') }}",
+      "format-ethernet": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{ifname} ') }}",
+      "format-disconnected": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', 'Disconnected ⚠') }}",
+      "tooltip": false
+    },
+
+    "pulseaudio": {
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{volume}% ') }}",
+      "format-muted": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '0% ') }}",
+      "on-click": "pavucontrol",
+      "tooltip": false
+    },
+
+    "clock": {
+      "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{:%a, %d %b %I:%M:%S}', last_block=True, position='right') }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{:%I:%M}', last_block=True, position='right') }}",
+      "tooltip": false
+    }
+  },
+  {
+    "layer": "top",
+    "position": "bottom",
+    "modules-left": [
+      "idle_inhibitor",
+      "custom/rotation-toggle",
+      "custom/virtual-keyboard-toggle"
+    ],
+
+    "modules-right": [],
+
+    "idle_inhibitor": {
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{icon}', first_block=True, position='left') }}",
+      "format-icons": {
+	"activated": "☕",
+	"deactivated": "💤"
+      },
+      "tooltip": false
+    },
+
+    "custom/rotation-toggle": {
+      "exec": "rot8-rotation-lock-status",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}') }}",
+      "interval": 1,
+      "on-click": "toggle-rot8",
+      "tooltip": false
+    },
+
+    "custom/virtual-keyboard-toggle": {
+      "exec": "virtboard-open-status",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{}', last_block=True, position='left') }}",
+      "tooltip": false,
+      "interval": 1,
+      "on-click": "toggle-virtboard",
+      "tooltip": false
+    }
   }
-}
+]
