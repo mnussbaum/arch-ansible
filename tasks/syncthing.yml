@@ -1,0 +1,18 @@
+# vim:ft=yaml.ansible:
+---
+- name: syncthing | Install packages
+  package:
+    state: present
+    name:
+      - syncthing
+  become: true
+
+- name: syncthing | Enable syncthing user service
+  become: true
+  become_user: "{{ user.name }}"
+  when: ansible_virtualization_role != "guest"
+  systemd:
+    enabled: true
+    name: syncthing.service
+    scope: user
+    daemon-reload: true

@@ -82,9 +82,9 @@
     - import_tasks: tasks/firefox.yml
     - import_tasks: tasks/deluge-torrents.yml
     - import_tasks: tasks/docker.yml
-    - import_tasks: tasks/dropbox.yml
     - import_tasks: tasks/archiso.yml
     - import_tasks: tasks/zathura.yml
+    - import_tasks: tasks/syncthing.yml
 # Bootstrap:
 # Convert script to re-entrant ansible
 # Configure wifi for after reboot
