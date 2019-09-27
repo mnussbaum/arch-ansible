@@ -39,16 +39,24 @@
     enabled: yes
   become: true
 
-- name: power | Install suspend-sedation service
+- name: power | Install logind config
   copy:
-    src: files/suspend-sedation.service
-    dest: /etc/systemd/system/suspend-sedation.service
+    src: files/logind.conf
+    dest: /etc/systemd/logind.conf
   become: true
 
-- name: power | Enable suspend-sedation service
-  service:
-    name: suspend-sedation
-    enabled: yes
+- name: power | Install systemd sleep config
+  template:
+    src: templates/systemd-sleep.conf.j2
+    dest: /etc/systemd/sleep.conf
+  become: true
+
+- name: power | Replace systemctl suspend with suspend-then-hibernate
+  file:
+    src: /usr/lib/systemd/system/systemd-suspend-then-hibernate.service
+    path: /etc/systemd/system/systemd-suspend.service
+    force: true
+    state: link
   become: true
 
 - name: power | Create sysctl param directory

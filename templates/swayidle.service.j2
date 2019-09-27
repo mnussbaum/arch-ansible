@@ -5,9 +5,8 @@ PartOf=graphical-session.target
 
 [Service]
 ExecStart=swayidle -w \
-    timeout 600 'swaylock -f' \
-    timeout 900 'swaymsg "output * dpms off"' \
-       resume 'swaymsg "output * dpms on"' \
+    timeout {{ idle_thresholds["lock_screen_delay_minutes"] * 60 }} 'swaylock -f' \
+    timeout {{ idle_thresholds["suspend_delay_minutes"] * 60 }} 'systemctl suspend-then-hibernate' \
     before-sleep 'swaylock -f'
 Restart=on-failure
 RestartSec=1

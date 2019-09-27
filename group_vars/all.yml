@@ -8,3 +8,8 @@ key_repeat:
 
 window_manager:
   waybar_minimum_workspace_count: 5
+
+idle_thresholds:
+  lock_screen_delay_minutes: 5
+  suspend_delay_minutes: 10
+  hibernate_delay_minutes: 45

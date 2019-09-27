@@ -66,7 +66,12 @@
   with_items:
     - sway-session.target
     - sway.service
-    - swayidle.service
+
+- name: Sway | Install swayidle service
+  template:
+    src: templates/swayidle.service.j2
+    dest: "{{ user_config_dir }}/systemd/user/swayidle.service"
+    owner: "{{ user.name }}"
 
 - name: Sway | Enable services
   become: true
