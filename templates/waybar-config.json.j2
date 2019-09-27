@@ -3,13 +3,13 @@
     "layer": "top",
     "position": "top",
     "modules-left": [
-  {% for workspace in range(1, minimum_workspace_count+1) %}
+  {% for workspace in range(1, window_manager["waybar_minimum_workspace_count"]+1) %}
       "custom/sway-workspaces-{{ workspace }}",
   {% endfor %}
       "sway/mode"
     ],
 
-  {% for workspace in range(1, minimum_workspace_count+1) %}
+  {% for workspace in range(1, window_manager["waybar_minimum_workspace_count"]+1) %}
     "custom/sway-workspaces-{{ workspace }}": {
       "exec": "tail --sleep-interval 0.6 -F ~/.cache/waybar-sway-workspace-output-manager/{{ workspace }} 2>/dev/null",
       "on-click": "swaymsg workspace {{ workspace }}",

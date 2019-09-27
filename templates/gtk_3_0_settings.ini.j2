@@ -1,7 +1,5 @@
 [Settings]
-{% if monitor.dpi is defined and monitor.dpi > 96 %}
-gtk-font-name=Noto Sans Regular 20
-{% endif %}
+gtk-font-name=Noto Sans Regular {{ font.size }}
 gtk-theme-name=Breeze-Dark
 gtk-icon-theme-name=breeze
 gtk-fallback-icon-theme=hicolor

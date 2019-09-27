@@ -4,8 +4,8 @@
   --toolbar-color: #{{ color_scheme_vars["base06-hex"] }} !important;
   --toolbarbutton-hover-background: #{{ color_scheme_vars["base0E-hex"] }} !important;
 
-  font-family: FuraMono Nerd Font Mono, Helvetica, Arial, sans-serif !important;
-  font-size: {{ font_size }}px !important;
+  font-family: {{ font.monospace_family }}, Helvetica, Arial, sans-serif !important;
+  font-size: {{ font.size }}px !important;
 }
 
 ::-moz-selection {

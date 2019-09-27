@@ -14,7 +14,7 @@ for_window [title=".*"] border pixel 0
 ### Output configuration
 
 focus_follows_mouse yes
-font pango:FuraMono Nerd Font Mono {{ font_size }}
+font pango:{{ font.monospace_family }} {{ font.size }}
 
 gaps inner 7
 gaps outer 2
@@ -32,8 +32,8 @@ output * bg {{ desktop_backgound }} fill
 {% if item == "sway" %}
 input * {
     # Keyboard configs
-    repeat_delay {{ key_repeat_delay }}
-    repeat_rate {{ key_repeat_rate }}
+    repeat_delay {{ key_repeat.delay }}
+    repeat_rate {{ key_repeat.rate }}
     xkb_options caps:escape
 
     # Mouse configs

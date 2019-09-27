@@ -17,8 +17,6 @@
       tags: [base16]
     - import_tasks: tasks/set-appearance-facts.yml
       tags: [base16]
-    - import_tasks: tasks/set-window-manager-facts.yml
-      tags: [base16, bootstrap]
     - import_tasks: tasks/time.yml
     - import_tasks: tasks/boot.yml
       tags: [bootstrap]
@@ -48,7 +46,6 @@
         color_scheme_vars: "{{ generated_base16_scheme['schemes'][base16_scheme]['scheme-variables'] }}"
         color_scheme_opacity: "0.7"
       tags: [base16]
-
     - import_tasks: tasks/cli-tools.yml
     - import_tasks: tasks/python.yml
     - import_tasks: tasks/rust.yml
@@ -74,6 +71,7 @@
     - import_tasks: tasks/waybar.yml
     - import_tasks: tasks/i3.yml
     - import_tasks: tasks/tablet-mode.yml
+      when: enable_tablet_mode
     - import_tasks: tasks/gtk.yml
     - import_tasks: tasks/brightness.yml
     - import_tasks: tasks/audio.yml

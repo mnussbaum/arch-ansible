@@ -80,7 +80,7 @@
 
 - name: Brightness | Enable calise service
   become: true
-  when: ansible_virtualization_role != "guest"
+  when: optional_daemons.calised
   systemd:
     enabled: true
     name: calised.service
@@ -88,7 +88,7 @@
 
 - name: Brightness | Enable illum service for backlight keys
   become: true
-  when: ansible_virtualization_role != "guest"
+  when: optional_daemons.illum
   systemd:
     enabled: true
     name: illum.service

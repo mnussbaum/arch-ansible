@@ -1,0 +1,10 @@
+---
+font:
+  monospace_family: "FuraMono Nerd Font Mono"
+  size: 20
+
+key_repeat:
+  rate: 35
+
+window_manager:
+  waybar_minimum_workspace_count: 5

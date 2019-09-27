@@ -36,7 +36,7 @@
 
 - name: libinput | Enable libinput-gestures service
   become: true
-  when: ansible_virtualization_role != "guest"
+  when: optional_daemons.libinput_gestures
   systemd:
     enabled: true
     name: libinput-gestures.service

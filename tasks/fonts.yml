@@ -57,8 +57,8 @@
 
 - name: Fonts | Set font family choices
   become: true
-  copy:
-    src: fonts-local.conf
+  template:
+    src: templates/fonts-local.conf.j2
     dest: /etc/fonts/local.conf
 
 - name: Fonts | Fix console font setting
