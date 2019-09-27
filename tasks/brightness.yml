@@ -22,7 +22,7 @@
     dest: /usr/local/bin/redshift-period
     mode: a+x
 
-- name: Brightness | Install redshift colorscheme-changer binary
+- name: Brightness | Install colorscheme-changer binary
   become: true
   copy:
     src: files/colorscheme-changer
@@ -60,7 +60,6 @@
 - name: Brightness | Enable redshift service
   become: true
   become_user: "{{ user.name }}"
-  when: window_manager == "i3"
   systemd:
     enabled: true
     name: redshift.service
