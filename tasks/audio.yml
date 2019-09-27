@@ -8,4 +8,6 @@
       - pulseaudio
       - pulseaudio-alsa
       - pavucontrol
+      - spotify
+      - playerctl
     state: present
