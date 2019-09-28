@@ -15,8 +15,9 @@
 - name: power | Enable thermald
   service:
     name: thermald
-    enabled: yes
+    enabled: true
     state: started
+    daemon_reload: true
   become: true
   when: ansible_virtualization_role != "guest"
 
@@ -27,16 +28,32 @@
   become: true
 
 - name: power | Enable TLP
-  service:
+  systemd:
     name: tlp
-    enabled: yes
+    enabled: true
     state: started
+    daemon-reload: true
   become: true
 
 - name: power | Enable TLP Sleep
-  service:
+  systemd:
     name: tlp-sleep
-    enabled: yes
+    enabled: true
+    daemon-reload: true
+  become: true
+
+- name: power | Install service to disable wake-up from spurious USB3 signals
+  copy:
+    src: files/disable-xhc-wakeup.service
+    dest: /etc/systemd/system/disable-xhc-wakeup.service
+  become: true
+
+- name: power | Enable service to disable wake-up from spurious USB3 signals
+  systemd:
+    name: disable-xhc-wakeup.service
+    enabled: true
+    state: started
+    daemon-reload: true
   become: true
 
 - name: power | Install logind config
@@ -86,6 +103,3 @@
     dest: "/etc/udev/rules.d/{{ item | basename }}"
   with_fileglob:
     - files/udev-rules.d/*
-# Lock screen on suspend https://gist.github.com/raphiz/d69859645a9da08a0cf0778f42932120
-# Enable wake on keypress
-# Enable wake on mouse
