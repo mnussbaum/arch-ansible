@@ -1,0 +1,2 @@
+# From https://wiki.archlinux.org/index.php/Improving_performance
+ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="bfq"
