@@ -15,9 +15,10 @@ start_wpa_wifi() {
   local wireless_card=$1
   local ssid="$2"
   local wifi_passphrase="$3"
+  wpa_passphrase "$ssid" "$wifi_passphrase" > "/etc/wpa_supplicant/$ssid.conf"
 
   ip link set dev $wireless_card up
-  wpa_supplicant -B -i $wireless_card -c <(wpa_passphrase "$ssid" "$wifi_passphrase")
+  wpa_supplicant -B -i $wireless_card -c "/etc/wpa_supplicant/$ssid.conf"
   dhcpcd $wireless_card
 }
 
@@ -89,6 +90,7 @@ ansible_bootstrap() {
   arch-chroot /mnt /root/arch-ansible/initial-configure-xps $hostname $username
   arch-chroot /mnt sh -c "ln -s /hostlvm /run/lvm && cd /root/arch-ansible && ./ansible \
     -e bootstrap='true' --tags bootstrap"
+  cp -r /etc/wpa_supplicant/*.conf /mnt/etc/wpa_supplicant/*.conf
   cp -r . /mnt/home/$username/src/arch-ansible
   arch-chroot /mnt chown -R $username:$username /home/$username/src/arch-ansible
   cp -r gpg-keys /mnt/home/$username/gpg-keys
