@@ -2,218 +2,188 @@
 ---
 - hosts: all
   tasks:
-    - name: Read SD card device info
-      parted:
-        device: "/dev/{{ sd_card_device }}"
-        unit: MiB
-      register: sd_card_device_info
-      when: wipe_card is defined and wipe_card == "true"
-    - name: Remove all partitions from disk
-      parted:
-        device: "/dev/{{ sd_card_device }}"
-        number: "{{ item.num }}"
-        state: absent
-      loop: "{{ sd_card_device_info.partitions }}"
-      when: wipe_card is defined and wipe_card == "true"
+    - block:
+        - name: Read SD card device info
+          parted:
+            device: "/dev/{{ sd_device }}"
+            unit: MiB
+          register: sd_device_info
+          when: wipe_card is defined and wipe_card == "true"
+        - name: Remove all partitions from disk
+          parted:
+            device: "/dev/{{ sd_device }}"
+            number: "{{ item.num }}"
+            state: absent
+          loop: "{{ sd_device_info.partitions }}"
+          when: wipe_card is defined and wipe_card == "true"
 
-    - name: Create boot partition
-      parted:
-        device: "/dev/{{ sd_card_device }}"
-        number: 1
-        state: present
-        part_type: primary
-        part_end: 100MiB
+        - name: Create boot partition
+          parted:
+            device: "/dev/{{ sd_device }}"
+            number: 1
+            state: present
+            part_type: primary
+            part_end: 100MiB
 
-    - name: Create boot filesystem
-      filesystem:
-        fstype: vfat
-        dev: "/dev/{{ sd_card_device }}1"
+        - name: Create boot filesystem
+          filesystem:
+            fstype: vfat
+            dev: "/dev/{{ sd_device }}1"
 
-    - name: Create temp boot dir
-      tempfile:
-        state: directory
-        suffix: arch-pi-boot
-      register: arch_pi_boot_temp_dir
+        - name: Create temp boot dir mount point
+          tempfile:
+            state: directory
+            suffix: arch-pi-boot
+          register: arch_pi_boot_temp_dir
+          when: boot_dir_mnt is not defined
 
-    - name: Mount boot filesystem
-      mount:
-        fstype: vfat
-        src: "/dev/{{ sd_card_device }}1"
-        path: "{{ arch_pi_boot_temp_dir.path }}"
-        state: mounted
+        - name: Set boot_dir_mnt
+          set_fact:
+            boot_dir_mnt: "{{ arch_pi_boot_temp_dir.path }}"
+          when: boot_dir_mnt is not defined
 
-    - name: Create root partition
-      parted:
-        device: "/dev/{{ sd_card_device }}"
-        number: 2
-        state: present
-        part_type: primary
-        part_start: 100MiB
+        - name: Mount boot filesystem
+          mount:
+            fstype: vfat
+            src: "/dev/{{ sd_device }}1"
+            path: "{{ boot_dir_mnt }}"
+            state: mounted
 
-    - name: Create root filesystem
-      filesystem:
-        fstype: ext4
+        - name: Create root partition
+          parted:
+            device: "/dev/{{ sd_device }}"
+            number: 2
+            state: present
+            part_type: primary
+            part_start: 100MiB
 
-    - name: Create temp root dir
-      tempfile:
-        state: directory
-        suffix: arch-pi-root
-      register: arch_pi_root_temp_dir
+        - name: Create root filesystem
+          filesystem:
+            fstype: ext4
 
-    - name: Mount root filesystem
-      mount:
-        fstype: ext4
-        src: "/dev/{{ sd_card_device }}2"
-        path: "{{ arch_pi_root_temp_dir.path }}"
-        state: mounted
+        - name: Create temp root dir mount point
+          tempfile:
+            state: directory
+            suffix: arch-pi-root
+          register: arch_pi_root_temp_dir
+          when: root_dir_mnt is not defined
 
-    - name: Download and extract root filesystem
-      unarchive:
-        src: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz
-        dest: "{{ arch_pi_root_temp_dir.path }}"
+        - name: Set root_dir_mnt
+          set_fact:
+            root_dir_mnt: "{{ arch_pi_root_temp_dir.path }}"
+          when: root_dir_mnt is not defined
 
-    - name: Copy boot files to boot partition
-      copy:
-        src: "{{ item }}"
-        dest: "{{ arch_pi_boot_temp_dir.path }}/{{ item }}"
-      with_fileglob:
-        - "{{ arch_pi_root_temp_dir.path }}/boot/*"
+        - name: Mount root filesystem
+          mount:
+            fstype: ext4
+            src: "/dev/{{ sd_device }}2"
+            path: "{{ root_dir_mnt }}"
+            state: mounted
 
-    - name: Unmount filesystems
-      mount:
-        path: "{{ item }}"
-        state: unmounted
-      with_items:
-        - "{{ arch_pi_boot_temp_dir.path }}"
-        - "{{ arch_pi_root_temp_dir.path }}"
+        - name: Download and extract root filesystem
+          unarchive:
+            src: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz
+            dest: "{{ root_dir_mnt }}"
+
+        - name: Copy boot files to boot partition
+          copy:
+            src: "{{ item }}"
+            dest: "{{ boot_dir_mnt }}/{{ item }}"
+          with_fileglob:
+            - "{{ root_dir_mnt }}/boot/*"
+
+        - name: Set ansible and key dirs
+          set_fact:
+            ansible_dir: "{{ root_dir_mnt }}/arch-ansible"
+            gpg_keys_dir: "{{ root_dir_mnt }}/arch-ansible/gpg-keys"
+            ssh_keys_dir: "{{ root_dir_mnt }}/arch-ansible/ssh-keys"
+
+        - name: Copy arch-ansible to root
+          become: true
+          synchronize:
+            src: "{{ playbook_dir }}/"
+            dest: "{{ ansible_dir }}"
+
+        - name: Add tmux config to root
+          become: true
+          copy:
+            src: files/tmux.conf
+            dest: "{{ root_dir_mnt }}/.tmux.conf"
+
+        - name: Create gpg-keys dir
+          become: true
+          file:
+            path: "{{ gpg_keys_dir }}"
+            state: directory
+
+        - name: Export gpg private key
+          command: gpg --armor --export-secret-key '{{ pass_gpg_key }}'
+          args:
+            creates: "{{ gpg_keys_dir }}/private-key.asc"
+          register: gpg_private_export_cmd
+          no_log: true
+        - name: Write gpg private key
+          copy:
+            dest: "{{ gpg_keys_dir }}/private-key.asc"
+            content: "{{ gpg_private_export_cmd.stdout }}"
+          become: true
+          no_log: true
+          when: gpg_private_export_cmd.changed
+
+        - name: Export gpg public key
+          command: gpg --armor --export '{{ pass_gpg_key }}'
+          no_log: true
+          register: gpg_public_export_cmd
+          args:
+            creates: "{{ gpg_keys_dir }}/public-key.asc"
+        - name: Write gpg public key
+          become: true
+          no_log: true
+          when: gpg_public_export_cmd.changed
+          copy:
+            dest: "{{ gpg_keys_dir }}/public-key.asc"
+            content: "{{ gpg_public_export_cmd.stdout }}"
+
+        - name: Create ssh-keys dir
+          become: true
+          file:
+            path: "{{ ssh_keys_dir }}"
+            state: directory
+        - name: Copy SSH private key
+          become: true
+          copy:
+            src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
+            dest: "{{ ssh_keys_dir }}/id_rsa"
+            owner: root
+        - name: Copy SSH public key
+          become: true
+          copy:
+            src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
+            dest: "{{ ssh_keys_dir }}/id_rsa.pub"
+
+      always:
+        - name: Unmount temp boot dir
+          mount:
+            path: "{{ arch_pi_boot_temp_dir.path }}"
+            state: unmounted
+          when: arch_pi_boot_temp_dir is defined
+
+        - name: Remove temp boot dir mount point
+          when: arch_pi_boot_temp_dir is defined
+          file:
+            path: "{{ arch_pi_boot_temp_dir.path }}"
+            state: absent
+
+        - name: Unmount temp root dir
+          mount:
+            path: "{{ arch_pi_root_temp_dir.path }}"
+            state: unmounted
+          when: arch_pi_root_temp_dir is defined
+
+        - name: Remove temp root dir mount point
+          when: arch_pi_root_temp_dir is defined
+          file:
+            path: "{{ arch_pi_root_temp_dir.path }}"
+            state: absent
     # All the above still needs testing
     # Next comes the booted or maybe QEMU setup
-    # Then figure out how to get custom stuff into new root vol
-    #
-    #
-    #
-    # - set_fact:
-    #     skel_dir: "{{ iso_build_dir }}/airootfs/etc/skel"
-    #     ansible_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible"
-    #     gpg_keys_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible/gpg-keys"
-    #     ssh_keys_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible/ssh-keys"
-    # - name: Populate temp dir
-    #   become: true
-    #   synchronize:
-    #     src: /usr/share/archiso/configs/releng/
-    #     dest: "{{ iso_build_dir }}"
-    #
-    # - block:
-    #     - name: Create skel dir
-    #       become: true
-    #       file:
-    #         path: "{{ skel_dir }}"
-    #         state: directory
-    #     - name: Copy arch-ansible to skel
-    #       become: true
-    #       synchronize:
-    #         src: "{{ playbook_dir }}/"
-    #         dest: "{{ ansible_dir }}"
-    #
-    #     - name: Add tmux package
-    #       become: true
-    #       lineinfile:
-    #         dest: "{{ iso_build_dir }}/packages.x86_64"
-    #         line: tmux
-    #     - name: Add tmux config to skel
-    #       become: true
-    #       copy:
-    #         src: files/tmux.conf
-    #         dest: "{{ skel_dir }}/.tmux.conf"
-    #
-    #     - name: Create gpg-keys dir
-    #       become: true
-    #       file:
-    #         path: "{{ gpg_keys_dir }}"
-    #         state: directory
-    #
-    #     - name: Export gpg private key
-    #       command: gpg --armor --export-secret-key '{{ pass_gpg_key }}'
-    #       args:
-    #         creates: "{{ gpg_keys_dir }}/private-key.asc"
-    #       register: gpg_private_export_cmd
-    #       no_log: true
-    #     - name: Write gpg private key
-    #       copy:
-    #         dest: "{{ gpg_keys_dir }}/private-key.asc"
-    #         content: "{{ gpg_private_export_cmd.stdout }}"
-    #       become: true
-    #       no_log: true
-    #       when: gpg_private_export_cmd.changed
-    #
-    #     - name: Export gpg public key
-    #       command: gpg --armor --export '{{ pass_gpg_key }}'
-    #       no_log: true
-    #       register: gpg_public_export_cmd
-    #       args:
-    #         creates: "{{ gpg_keys_dir }}/public-key.asc"
-    #     - name: Write gpg public key
-    #       become: true
-    #       no_log: true
-    #       when: gpg_public_export_cmd.changed
-    #       copy:
-    #         dest: "{{ gpg_keys_dir }}/public-key.asc"
-    #         content: "{{ gpg_public_export_cmd.stdout }}"
-    #
-    #     - name: Create ssh-keys dir
-    #       become: true
-    #       file:
-    #         path: "{{ ssh_keys_dir }}"
-    #         state: directory
-    #     - name: Copy SSH private key
-    #       become: true
-    #       copy:
-    #         src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
-    #         dest: "{{ ssh_keys_dir }}/id_rsa"
-    #         owner: root
-    #     - name: Copy SSH public key
-    #       become: true
-    #       copy:
-    #         src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
-    #         dest: "{{ ssh_keys_dir }}/id_rsa.pub"
-    #
-    #     - name: Make ISO build.sh executable
-    #       become: true
-    #       file:
-    #         dest: "{{ iso_build_dir  }}/build.sh"
-    #         mode: "a+x"
-    #     - name: Make ISO customize_airootfs.sh executable
-    #       become: true
-    #       file:
-    #         dest: "{{ iso_build_dir  }}/airootfs/root/customize_airootfs.sh"
-    #         mode: "a+x"
-    #
-    #     - name: Build ISO
-    #       become: true
-    #       command: "{{ iso_build_dir  }}/build.sh -v"
-    #       args:
-    #         creates: "{{ iso_build_dir }}/out/*.iso"
-    #         chdir: "{{ iso_build_dir }}"
-    #
-    #     - name: Inspect built images
-    #       register: built_images
-    #       find:
-    #         paths: "{{ iso_build_dir }}/out"
-    #         patterns: "*.iso"
-    #
-    #     - name: Fail if there isn't exactly one image found
-    #       when: built_images.matched != 1
-    #       fail:
-    #         msg: "Incorrect image file count in {{ iso_build_dir }}/out"
-    #
-    #     - name: Write ISO to USB
-    #       become: true
-    #       command: "dd bs=4M if={{ item.path }} of={{ usb_device }} oflag=sync"
-    #       loop: "{{ built_images.files }}"
-    #
-    #   always:
-    #     - name: Cleanup
-    #       become: true
-    #       file:
-    #         path: "{{ iso_build_dir }}"
-    #         state: absent
