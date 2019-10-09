@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+
+extra_ansible_args="-e wipe_card='true'"
+
+if [[ "${1:-}" -eq "--incremental" ]] || [[ "${1:-}" -eq "-i" ]] ; then
+  shift
+  mkdir -p /tmp/arch-pi-mnt-dir/boot
+  mkdir -p /tmp/arch-pi-mnt-dir/root
+  extra_ansible_args="-e boot_dir_mnt=/tmp/arch-pi-mnt-dir/boot -e root_dir_mnt=/tmp/arch-pi-mnt-dir/root"
+fi
+
+ansible-playbook build-pi-sd.yml -v --ask-become-pass \
+  -e sd_device=/dev/sdb \
+  -e pass_gpg_key="mnussbaum (Password Store)" \
+  "$extra_ansible_args" \
+  $@
