@@ -1,5 +1,7 @@
 # vim:ft=yaml.ansible:
 ---
+# TODO: Make waybars reveal over full screen when screen is touched or mouse is moved
+
 - name: Waybar | Install package
   package:
     name: waybar-git

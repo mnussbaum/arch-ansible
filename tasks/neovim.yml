@@ -1,5 +1,8 @@
 # vim:ft=yaml.ansible:
 ---
+# TODO:
+# * Ansible LSP show docs in vim
+# * Make fzf results unique
 - set_fact:
     nvim_config_dir: "{{ user_config_dir }}/nvim"
     nvim_data_dir: "{{ user_data_dir }}/nvim"
