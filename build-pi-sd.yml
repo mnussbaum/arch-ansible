@@ -5,30 +5,33 @@
     - block:
         - name: Read SD card device info
           parted:
-            device: "/dev/{{ sd_device }}"
+            device: "{{ sd_device }}"
             unit: MiB
           register: sd_device_info
-          when: wipe_card is defined and wipe_card == "true"
-        - name: Remove all partitions from disk
+          become: true
+        - name: Remove extra partitions from disk
           parted:
-            device: "/dev/{{ sd_device }}"
+            device: "{{ sd_device }}"
             number: "{{ item.num }}"
             state: absent
           loop: "{{ sd_device_info.partitions }}"
-          when: wipe_card is defined and wipe_card == "true"
+          when: item.num > 2 or (wipe_card is defined and wipe_card == "true")
+          become: true
 
         - name: Create boot partition
           parted:
-            device: "/dev/{{ sd_device }}"
+            device: "{{ sd_device }}"
             number: 1
             state: present
             part_type: primary
             part_end: 100MiB
+          become: true
 
         - name: Create boot filesystem
           filesystem:
             fstype: vfat
-            dev: "/dev/{{ sd_device }}1"
+            dev: "{{ sd_device }}p1"
+          become: true
 
         - name: Create temp boot dir mount point
           tempfile:
@@ -45,21 +48,25 @@
         - name: Mount boot filesystem
           mount:
             fstype: vfat
-            src: "/dev/{{ sd_device }}1"
+            src: "{{ sd_device }}p1"
             path: "{{ boot_dir_mnt }}"
             state: mounted
+          become: true
 
         - name: Create root partition
           parted:
-            device: "/dev/{{ sd_device }}"
+            device: "{{ sd_device }}"
             number: 2
             state: present
             part_type: primary
             part_start: 100MiB
+          become: true
 
         - name: Create root filesystem
           filesystem:
             fstype: ext4
+            dev: "{{ sd_device }}p2"
+          become: true
 
         - name: Create temp root dir mount point
           tempfile:
@@ -76,27 +83,41 @@
         - name: Mount root filesystem
           mount:
             fstype: ext4
-            src: "/dev/{{ sd_device }}2"
+            src: "{{ sd_device }}p2"
             path: "{{ root_dir_mnt }}"
             state: mounted
+          become: true
+
+        - name: Check if root filesystem downloaded
+          find:
+            paths: "{{ root_dir_mnt }}"
+            file_type: directory
+            patterns: "*"
+          register: root_filesystem_files
 
         - name: Download and extract root filesystem
           unarchive:
-            src: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz
+            src: http://archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz
+            remote_src: true
             dest: "{{ root_dir_mnt }}"
+          become: true
+          when: root_filesystem_files.matched | int == 0
 
         - name: Copy boot files to boot partition
           copy:
-            src: "{{ item }}"
-            dest: "{{ boot_dir_mnt }}/{{ item }}"
-          with_fileglob:
-            - "{{ root_dir_mnt }}/boot/*"
+            src: "{{ root_dir_mnt }}/boot/"
+            dest: "{{ boot_dir_mnt }}"
+          become: true
 
         - name: Set ansible and key dirs
           set_fact:
-            ansible_dir: "{{ root_dir_mnt }}/arch-ansible"
-            gpg_keys_dir: "{{ root_dir_mnt }}/arch-ansible/gpg-keys"
-            ssh_keys_dir: "{{ root_dir_mnt }}/arch-ansible/ssh-keys"
+            alarm_home_dir: "{{ root_dir_mnt }}/home/alarm"
+
+        - name: Set ansible and key dirs
+          set_fact:
+            ansible_dir: "{{ alarm_home_dir }}/arch-ansible"
+            gpg_keys_dir: "{{ alarm_home_dir }}/arch-ansible/gpg-keys"
+            ssh_keys_dir: "{{ alarm_home_dir }}/arch-ansible/ssh-keys"
 
         - name: Copy arch-ansible to root
           become: true
@@ -108,7 +129,7 @@
           become: true
           copy:
             src: files/tmux.conf
-            dest: "{{ root_dir_mnt }}/.tmux.conf"
+            dest: "{{ alarm_home_dir }}/.tmux.conf"
 
         - name: Create gpg-keys dir
           become: true
@@ -166,10 +187,11 @@
           mount:
             path: "{{ arch_pi_boot_temp_dir.path }}"
             state: unmounted
-          when: arch_pi_boot_temp_dir is defined
+          when: arch_pi_boot_temp_dir is defined and arch_pi_boot_temp_dir.skipped is not defined
+          become: true
 
         - name: Remove temp boot dir mount point
-          when: arch_pi_boot_temp_dir is defined
+          when: arch_pi_boot_temp_dir is defined and arch_pi_boot_temp_dir.skipped is not defined
           file:
             path: "{{ arch_pi_boot_temp_dir.path }}"
             state: absent
@@ -178,12 +200,12 @@
           mount:
             path: "{{ arch_pi_root_temp_dir.path }}"
             state: unmounted
-          when: arch_pi_root_temp_dir is defined
+          when: arch_pi_root_temp_dir is defined and arch_pi_root_temp_dir.skipped is not defined
+          become: true
 
         - name: Remove temp root dir mount point
-          when: arch_pi_root_temp_dir is defined
+          when: arch_pi_root_temp_dir is defined and arch_pi_root_temp_dir.skipped is not defined
           file:
             path: "{{ arch_pi_root_temp_dir.path }}"
             state: absent
-    # All the above still needs testing
-    # Next comes the booted or maybe QEMU setup
+    # # Next comes the booted or maybe QEMU setup

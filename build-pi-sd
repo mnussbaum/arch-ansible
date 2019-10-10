@@ -3,17 +3,33 @@
 set -o errexit
 set -o nounset
 
-extra_ansible_args="-e wipe_card='true'"
+if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]] ; then
+  echo "Builds an SD card to provision a Raspberry Pi B+" >&2
+  echo "" >&2
+  echo "--incremental, -i    Build in a static dir, leave mounts attached after completion" >&2
+  echo "--wipe-card, -w      Wipe all SD card partitions clean" >&2
+  exit
+else
+  set -o xtrace
+fi
 
-if [[ "${1:-}" -eq "--incremental" ]] || [[ "${1:-}" -eq "-i" ]] ; then
+extra_ansible_args=""
+
+if [[ "${1:-}" == "--incremental" ]] || [[ "${1:-}" == "-i" ]] ; then
   shift
   mkdir -p /tmp/arch-pi-mnt-dir/boot
   mkdir -p /tmp/arch-pi-mnt-dir/root
-  extra_ansible_args="-e boot_dir_mnt=/tmp/arch-pi-mnt-dir/boot -e root_dir_mnt=/tmp/arch-pi-mnt-dir/root"
+  extra_ansible_args="$extra_ansible_args -e boot_dir_mnt=/tmp/arch-pi-mnt-dir/boot -e root_dir_mnt=/tmp/arch-pi-mnt-dir/root"
 fi
 
+if [[ "${1:-}" == "--wipe-card" ]] || [[ "${1:-}" == "-w" ]] ; then
+  extra_ansible_args="$extra_ansible_args -e wipe_card='true'"
+  shift
+fi
+
+
 ansible-playbook build-pi-sd.yml -v --ask-become-pass \
-  -e sd_device=/dev/sdb \
+  -e sd_device=/dev/mmcblk0 \
   -e pass_gpg_key="mnussbaum (Password Store)" \
-  "$extra_ansible_args" \
+  $extra_ansible_args \
   $@
