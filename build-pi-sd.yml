@@ -2,6 +2,46 @@
 ---
 - hosts: all
   tasks:
+    - name: Create temp boot dir mount point
+      tempfile:
+        state: directory
+        suffix: arch-pi-boot
+      register: arch_pi_boot_temp_dir
+      when: boot_dir_mnt is not defined
+
+    - name: Set boot_dir_mnt
+      set_fact:
+        boot_dir_mnt: "{{ arch_pi_boot_temp_dir.path }}"
+      when: boot_dir_mnt is not defined
+
+    - name: Create temp root dir mount point
+      tempfile:
+        state: directory
+        suffix: arch-pi-root
+      register: arch_pi_root_temp_dir
+      when: root_dir_mnt is not defined
+
+    - name: Set root_dir_mnt
+      set_fact:
+        root_dir_mnt: "{{ arch_pi_root_temp_dir.path }}"
+      when: root_dir_mnt is not defined
+
+    - name: Set partition facts
+      set_fact:
+        desired_partitions:
+          - number: 1
+            name: boot
+            start: 0%
+            end: 300MiB
+            fstype: vfat
+            mount_point: "{{ boot_dir_mnt }}"
+          - number: 2
+            name: root
+            start: 300MiB
+            end: 8000MiB
+            fstype: ext4
+            mount_point: "{{ root_dir_mnt }}"
+
     - block:
         - name: Read SD card device info
           parted:
@@ -15,84 +55,44 @@
             number: "{{ item.num }}"
             state: absent
           loop: "{{ sd_device_info.partitions }}"
-          when: item.num > 2 or (wipe_card is defined and wipe_card == "true")
+          when: (item.num > (desired_partitions | length)) or (wipe_card is defined and wipe_card == "true")
           become: true
 
-        - name: Create boot partition
+        - name: Create partitions
           parted:
             device: "{{ sd_device }}"
-            number: 1
+            number: "{{ item.number }}"
             state: present
             part_type: primary
-            part_end: 100MiB
+            part_start: "{{ item.start }}"
+            part_end: "{{ item.end }}"
+            unit: MiB
           become: true
+          loop: "{{ desired_partitions }}"
 
-        - name: Create boot filesystem
+        - name: Create partition filesystems
           filesystem:
-            fstype: vfat
-            dev: "{{ sd_device }}p1"
+            fstype: "{{ item.fstype }}"
+            dev: "{{ sd_device }}p{{ item.number }}"
           become: true
+          loop: "{{ desired_partitions }}"
 
-        - name: Create temp boot dir mount point
-          tempfile:
-            state: directory
-            suffix: arch-pi-boot
-          register: arch_pi_boot_temp_dir
-          when: boot_dir_mnt is not defined
-
-        - name: Set boot_dir_mnt
-          set_fact:
-            boot_dir_mnt: "{{ arch_pi_boot_temp_dir.path }}"
-          when: boot_dir_mnt is not defined
-
-        - name: Mount boot filesystem
+        - name: Mount partition filesystem
           mount:
-            fstype: vfat
-            src: "{{ sd_device }}p1"
-            path: "{{ boot_dir_mnt }}"
+            fstype: "{{ item.fstype }}"
+            src: "{{ sd_device }}p{{ item.number }}"
+            path: "{{ item.mount_point }}"
             state: mounted
           become: true
-
-        - name: Create root partition
-          parted:
-            device: "{{ sd_device }}"
-            number: 2
-            state: present
-            part_type: primary
-            part_start: 100MiB
-          become: true
-
-        - name: Create root filesystem
-          filesystem:
-            fstype: ext4
-            dev: "{{ sd_device }}p2"
-          become: true
-
-        - name: Create temp root dir mount point
-          tempfile:
-            state: directory
-            suffix: arch-pi-root
-          register: arch_pi_root_temp_dir
-          when: root_dir_mnt is not defined
-
-        - name: Set root_dir_mnt
-          set_fact:
-            root_dir_mnt: "{{ arch_pi_root_temp_dir.path }}"
-          when: root_dir_mnt is not defined
-
-        - name: Mount root filesystem
-          mount:
-            fstype: ext4
-            src: "{{ sd_device }}p2"
-            path: "{{ root_dir_mnt }}"
-            state: mounted
-          become: true
+          loop: "{{ desired_partitions }}"
 
         - name: Check if root filesystem downloaded
           find:
             paths: "{{ root_dir_mnt }}"
             file_type: directory
-            patterns: "*"
+            patterns: ".*"
+            excludes: '^lost\+found'
+            use_regex: true
           register: root_filesystem_files
 
         - name: Download and extract root filesystem
