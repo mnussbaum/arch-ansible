@@ -3,7 +3,7 @@ boot_device:
   name: /dev/sda2
   encrypted_root: false
 
-enable_tablet_mode: false
+configure_for_tablet_mode: false
 
 font:
   rofi_size: 10

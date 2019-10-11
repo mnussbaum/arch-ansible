@@ -4,7 +4,7 @@ boot_device:
   encrypted_root: true
   root_partition_name: Arch Root
 
-enable_tablet_mode: true
+configure_for_tablet_mode: true
 
 font:
   rofi_size: 20
