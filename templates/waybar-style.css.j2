@@ -53,8 +53,16 @@ window#waybar {
   animation-direction: alternate;
 }
 
-#custom-rotation-lock {
-  font-size: 27px;
+/* The unicode characters used by the toggle modules     */
+/* are taller then everything else in the bar. Shrinking */
+/* them leads to a bit better alignment                  */
+
+#custom-virtual-keyboard-toggle {
+  font-size: 85%;
+}
+
+#custom-rotation-toggle {
+  font-size: 85%;
 }
 
 #battery.critical:not(.charging) {
