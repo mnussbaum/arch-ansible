@@ -19,32 +19,14 @@ def _reload_xorg():
 
 
 def main():
-    print("Getting period from redshift")
-    redshift_print_result = subprocess.run(
-        ["redshift-period"], check=True, capture_output=True, encoding="utf-8"
-    )
-    appearance = redshift_print_result.stdout
-
-    print("Running ansible with appearance: {}".format(appearance))
-    arch_ansible_path = os.path.join(os.path.expanduser("~"), "src", "arch-ansible")
+    env = dict(os.environ)
+    env["NO_ASK_BECOME_PASS"] = "1"
     ansible_result = subprocess.run(
-        [
-            "nice",
-            "ansible-playbook",
-            os.path.join(arch_ansible_path, "playbook.yml"),
-            "--verbose",
-            "--inventory",
-            os.path.join(arch_ansible_path, "hosts.yml"),
-            "--limit",
-            socket.gethostname(),
-            "--tags",
-            "base16",
-            "--extra-vars",
-            "=".join(["appearance", appearance]),
-        ],
+        ["nice", "./ansible", "--tags", "base16"],
         capture_output=True,
-        cwd=arch_ansible_path,
+        cwd=os.path.join(os.path.expanduser("~"), "src", "arch-ansible"),
         encoding="utf-8",
+        env=env,
     )
 
     if ansible_result.returncode != 0:
