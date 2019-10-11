@@ -58,18 +58,6 @@
     dest: "{{ user_config_dir }}/waybar-sway-workspace-output-manager/config"
   tags: [base16]
 
-- name: Waybar | Install toggle module scripts
-  copy:
-    src: "files/{{ item }}"
-    dest: "/usr/local/bin/{{ item }}"
-    mode: a+x
-  become: true
-  with_items:
-    - rot8-rotation-lock-status
-    - toggle-rot8
-    - virtboard-open-status
-    - toggle-virtboard
-
 # Goal:
 # Top left, workspaces. Terminal and browser assigned, rest numbered
 # Top right, laptop status. Battery, failing systemd unit count, hw temp, memory, cpu, wifi, time
