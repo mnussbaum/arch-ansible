@@ -9,5 +9,11 @@ else
   appearance="night"
 fi
 
-exec ansible-playbook playbook.yml -v --ask-become-pass --inventory hosts.yml \
-  --extra-vars "appearance=$appearance" --limit $(hostname) $@
+ansible_args=$@
+if [[ -z "${NO_ASK_BECOME_PASS:-}" ]] ; then
+  ansible_args="$ansible_args --ask-become-pass"
+fi
+
+
+exec ansible-playbook playbook.yml --verbose --inventory hosts.yml \
+  --limit $(hostname) --extra-vars "appearance=$appearance" $ansible_args

@@ -8,7 +8,7 @@
   color: white;
 
   font-family: {{ font.monospace_family }}, Helvetica, Arial, sans-serif;
-  font-size: 30px;
+  font-size: {{ (font.waybar_font_size | int) * (waybar_tablet_mode_font_modifier | int) }}px;
   font-weight: bold;
 }
 

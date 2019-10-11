@@ -2,6 +2,7 @@
 font:
   monospace_family: "FuraMono Nerd Font Mono"
   size: 20
+  waybar_font_size: 30
 
 key_repeat:
   rate: 35

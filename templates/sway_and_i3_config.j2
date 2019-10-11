@@ -7,6 +7,12 @@ set $term alacritty --command tmux
 set $menu rofi-toggle 'rofi -show run'
 set $passmenu rofi-toggle 'rofi-pass'
 
+{% if item == "sway" %}
+### Toggle tablet mode resizing
+bindswitch --locked tablet:off exec bash -c "echo 1 > {{ waybar_tablet_mode_font_modifier_file }} && /usr/local/bin/toggle-tablet-mode"
+bindswitch --locked tablet:on exec bash -c "echo 2 > {{ waybar_tablet_mode_font_modifier_file }} && /usr/local/bin/toggle-tablet-mode"
+{% endif %}
+
 ### Window rules
 
 for_window [title=".*"] border pixel 0

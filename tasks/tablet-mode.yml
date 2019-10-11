@@ -1,7 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-# TODO: Make tablet mode make waybars big
-
 - name: Tablet mode | Install packages
   package:
     state: present
@@ -38,3 +36,4 @@
     - toggle-rot8
     - virtboard-open-status
     - toggle-virtboard
+    - toggle-tablet-mode

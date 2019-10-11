@@ -14,9 +14,9 @@
     - set_fact:
         user_config_dir: "/home/{{ user.name }}/.config"
         user_data_dir: "/home/{{ user.name }}/.local/share"
-      tags: [base16]
+      tags: [base16, tablet_toggle]
     - import_tasks: tasks/set-appearance-facts.yml
-      tags: [base16]
+      tags: [base16, tablet_toggle]
     - import_tasks: tasks/time.yml
     - import_tasks: tasks/boot.yml
       tags: [bootstrap]
@@ -41,11 +41,11 @@
         schemes_source: "{{ base16_schemes_source }}"
         templates_source: "{{ base16_templates_source }}"
       register: generated_base16_scheme
-      tags: [base16]
+      tags: [base16, tablet_toggle]
     - set_fact:
         color_scheme_vars: "{{ generated_base16_scheme['schemes'][base16_scheme]['scheme-variables'] }}"
         color_scheme_opacity: "0.7"
-      tags: [base16]
+      tags: [base16, tablet_toggle]
     - import_tasks: tasks/cli-tools.yml
     - import_tasks: tasks/python.yml
     - import_tasks: tasks/rust.yml

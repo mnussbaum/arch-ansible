@@ -1,0 +1,35 @@
+#!/usr/bin/env python
+
+import os
+import socket
+import subprocess
+import sys
+
+
+def main():
+    print("Running ansible")
+
+    env = dict(os.environ)
+    env["NO_ASK_BECOME_PASS"] = "1"
+    ansible_result = subprocess.run(
+        ["nice", "./ansible", "--tags", "tablet_toggle"],
+        capture_output=True,
+        cwd=os.path.join(os.path.expanduser("~"), "src", "arch-ansible"),
+        encoding="utf-8",
+        env=env,
+    )
+
+    if ansible_result.returncode != 0:
+        print("Ansible run failed: {}".format(ansible_result.stderr))
+        sys.exit(ansible_result.returncode)
+
+    if "changed=0" in ansible_result.stdout:
+        print("No change from ansible run, exiting")
+        return
+
+    print("Running reloads")
+    subprocess.run(["systemctl", "--user", "restart", "waybar"], check=True)
+
+
+if __name__ == "__main__":
+    main()
