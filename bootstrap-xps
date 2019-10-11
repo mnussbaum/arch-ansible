@@ -15,7 +15,13 @@ start_wpa_wifi() {
   local wireless_card=$1
   local ssid="$2"
   local wifi_passphrase="$3"
-  wpa_passphrase "$ssid" "$wifi_passphrase" > "/etc/wpa_supplicant/$ssid.conf"
+
+  echo "ctrl_interface=/run/wpa_supplicant" > "/etc/wpa_supplicant/$ssid.conf"
+  echo "ctrl_interface_group=wheel" >> "/etc/wpa_supplicant/$ssid.conf"
+  echo "update_config=1" >> "/etc/wpa_supplicant/$ssid.conf"
+  echo "country=US" >> "/etc/wpa_supplicant/$ssid.conf"
+  wpa_passphrase "$ssid" "$wifi_passphrase" >> "/etc/wpa_supplicant/$ssid.conf"
+  chmod 600 "/etc/wpa_supplicant/$ssid.conf"
 
   ip link set dev $wireless_card up
   wpa_supplicant -B -i $wireless_card -c "/etc/wpa_supplicant/$ssid.conf"
