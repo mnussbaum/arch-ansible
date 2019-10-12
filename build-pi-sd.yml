@@ -30,17 +30,23 @@
       set_fact:
         desired_partitions:
           - number: 1
+            raw_device: "{{ sd_device }}p1"
+            logical_device: "{{ sd_device }}p1"
             name: boot
             start: 0%
             end: 300MiB
             fstype: vfat
             mount_point: "{{ boot_dir_mnt }}"
+            encrypted: false
           - number: 2
+            raw_device: "{{ sd_device }}p2"
+            logical_device: "/dev/mapper/pi-sd-root"
             name: root
             start: 300MiB
-            end: 8000MiB
+            end: 100%
             fstype: ext4
             mount_point: "{{ root_dir_mnt }}"
+            encrypted: true
 
     - block:
         - name: Read SD card device info
@@ -70,17 +76,27 @@
           become: true
           loop: "{{ desired_partitions }}"
 
+        - name: LUKS format device and cryptopen it
+          luks_device:
+            device: "{{ item.raw_device }}"
+            state: "opened"
+            name: "{{ item.logical_device | basename }}"
+            keyfile: "luks-keyfile"
+          become: true
+          loop: "{{ desired_partitions }}"
+          when: item.encrypted
+
         - name: Create partition filesystems
           filesystem:
             fstype: "{{ item.fstype }}"
-            dev: "{{ sd_device }}p{{ item.number }}"
+            dev: "{{ item.logical_device }}"
           become: true
           loop: "{{ desired_partitions }}"
 
         - name: Mount partition filesystem
           mount:
             fstype: "{{ item.fstype }}"
-            src: "{{ sd_device }}p{{ item.number }}"
+            src: "{{ item.logical_device }}"
             path: "{{ item.mount_point }}"
             state: mounted
           become: true
@@ -208,4 +224,4 @@
           file:
             path: "{{ arch_pi_root_temp_dir.path }}"
             state: absent
-    # # Next comes the booted or maybe QEMU setup
+    # Next comes the booted or maybe QEMU setup
