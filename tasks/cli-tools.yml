@@ -23,6 +23,8 @@
       - lsof
       - net-tools
       - openssh
+      - qemu
+      - qemu-arm-static
       - ripgrep
       - rsync
       - ruby
