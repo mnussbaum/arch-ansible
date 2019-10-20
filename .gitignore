@@ -2,4 +2,5 @@
 *.retry
 .vagrant/
 gpg-keys
+luks-keyfile
 ssh-keys
