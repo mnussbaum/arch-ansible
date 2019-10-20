@@ -40,9 +40,18 @@
             encrypted: false
           - number: 2
             raw_device: "{{ sd_device }}p2"
+            logical_device: "{{ sd_device }}p2"
+            name: installation
+            start: 300MiB
+            end: 3372MiB
+            fstype: ext4
+            mount_point: "{{ root_dir_mnt }}"
+            encrypted: false
+          - number: 3
+            raw_device: "{{ sd_device }}p3"
             logical_device: "/dev/mapper/pi-sd-root"
             name: root
-            start: 300MiB
+            start: 3372MiB
             end: 100%
             fstype: ext4
             mount_point: "{{ root_dir_mnt }}"
@@ -85,6 +94,7 @@
           become: true
           loop: "{{ desired_partitions }}"
           when: item.encrypted
+          register: luks_format_result
 
         - name: Create partition filesystems
           filesystem:
@@ -224,4 +234,13 @@
           file:
             path: "{{ arch_pi_root_temp_dir.path }}"
             state: absent
+
+        - name: Close LUKS devices
+          luks_device:
+            device: "{{ item.raw_device }}"
+            state: "closed"
+            name: "{{ item.logical_device | basename }}"
+          become: true
+          loop: "{{ desired_partitions }}"
+          when: luks_format_result is succeeded and item.encrypted
     # Next comes the booted or maybe QEMU setup
