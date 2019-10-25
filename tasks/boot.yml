@@ -1,6 +1,38 @@
 # vim:ft=yaml.ansible:
 ---
+# Hmm, hostname, set before ansible for targeting or provide as var?
+- name: boot | Set locale
+  locale_gen:
+    name: en_US.UTF-8
+    state: present
+# Finish localectl set
+
+- name: boot | Set timezone
+  timezone:
+    name: America/Los_Angeles
+
+- name: boot | Set hardware clock timezone to UTC
+  timezone:
+    hwclock: UTC
+
 - name: boot | Install packages
+  become: true
+  package:
+    state: present
+    name:
+      - ansible
+      - archlinux-keyring
+      - python
+      - python-passlib
+      - vim
+      - zsh
+
+- name: boot | Refresh pacman keys
+  command: pacman-key --refresh-keys
+  become: true
+  when: bootstrap is defined and bootstrap == "true"
+
+- name: boot | Install Grub packages
   become: true
   package:
     state: present

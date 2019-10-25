@@ -19,7 +19,8 @@ if [[ "${1:-}" == "--incremental" ]] || [[ "${1:-}" == "-i" ]] ; then
   shift
   mkdir -p /tmp/arch-pi-mnt-dir/boot
   mkdir -p /tmp/arch-pi-mnt-dir/installation
-  extra_ansible_args="$extra_ansible_args -e boot_dir_mnt=/tmp/arch-pi-mnt-dir/boot -e installation_dir_mnt=/tmp/arch-pi-mnt-dir/installation"
+  mkdir -p /tmp/arch-pi-mnt-dir/root
+  extra_ansible_args="$extra_ansible_args -e boot_dir_mnt=/tmp/arch-pi-mnt-dir/boot -e installation_dir_mnt=/tmp/arch-pi-mnt-dir/installation -e root_dir_mnt=/tmp/arch-pi-mnt-dir/root"
 fi
 
 if [[ "${1:-}" == "--wipe-card" ]] || [[ "${1:-}" == "-w" ]] ; then

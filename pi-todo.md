@@ -1,4 +1,39 @@
 1. Move existing scripting into ansible
+
+- Bootstrapping XPS from live env only
+
+  - partitioning
+  - Make partitions come from host specific data
+  - network setup
+    - Make wireless device host specific
+    - Make SSID come from data
+  - Configure mirror list
+  - pacman refresh keys
+  - pacstrap the chroot
+  - genfstab the chroot
+
+- Shared across all runs of boot.yml
+
+  - Copy network setup from host if not present
+  - Set hostname
+  - Set locale
+  - Set system clock timezone
+  - Set hwclock timezone to utc
+  - Sync hwclock to match sysclock
+    - Ideally only do this if they're some threshold out of sync
+  - pacman refresh - on initial bootstrapping only
+  - pacman install boostrapping packages
+
+- Bootrapping module generizications
+  - Make kernel modules in mkinitcpio host specific
+  - Make kernel modules modprobe.d host specific
+  - Make swap setup host specific
+  - Make grub installation host specific
+  - Copy into target wpa_supplicant config
+  - Copy into target repo itself
+  - Copy into target gpg keys - import them
+  - Copy into target ssh keys - ssh-add them
+
 2. Distill existing guides into ansible
 
 - Official installation guide - https://archlinuxarm.org/platforms/armv8/broadcom/raspberry-pi-3
