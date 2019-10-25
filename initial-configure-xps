@@ -5,8 +5,6 @@ set -o nounset
 
 hostname=$1
 shift
-username=$1
-shift
 
 hostnamectl set-hostname $hostname
 

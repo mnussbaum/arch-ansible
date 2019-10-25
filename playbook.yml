@@ -84,14 +84,5 @@
     - import_tasks: tasks/archiso.yml
     - import_tasks: tasks/zathura.yml
     - import_tasks: tasks/syncthing.yml
-# Bootstrap:
-# Convert script to re-entrant ansible
-# Configure wifi for after reboot
-# Automate partitioning or restoring from a partition dump
-# Install SSH key
-# Printing
-# GUI Apps
-# music
-# video
-# notepad
+# AV
 # Littlesnitch replacement

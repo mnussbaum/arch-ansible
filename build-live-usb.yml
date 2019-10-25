@@ -33,6 +33,12 @@
             src: "{{ playbook_dir }}/"
             dest: "{{ ansible_dir }}"
 
+        - name: Add ansible package
+          become: true
+          lineinfile:
+            dest: "{{ iso_build_dir }}/packages.x86_64"
+            line: ansible
+
         - name: Add tmux package
           become: true
           lineinfile:
