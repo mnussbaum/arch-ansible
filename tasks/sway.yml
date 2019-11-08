@@ -28,6 +28,7 @@
       - grim-git
       - slurp-git
       - wl-clipboard-git
+      - wdisplays-git
   become: true
 
 - name: sway | Generate base16 configs
