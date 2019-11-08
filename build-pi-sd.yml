@@ -14,18 +14,6 @@
         boot_dir_mnt: "{{ arch_pi_boot_temp_dir.path }}"
       when: boot_dir_mnt is not defined
 
-    - name: Create temp installation dir mount point
-      tempfile:
-        state: directory
-        suffix: arch-pi-root
-      register: arch_pi_root_temp_dir
-      when: installation_dir_mnt is not defined
-
-    - name: Set installation_dir_mnt
-      set_fact:
-        installation_dir_mnt: "{{ arch_pi_installation_temp_dir.path }}"
-      when: installation_dir_mnt is not defined
-
     - name: Create temp root dir mount point
       tempfile:
         state: directory
@@ -38,6 +26,7 @@
         root_dir_mnt: "{{ arch_pi_root_temp_dir.path }}"
       when: root_dir_mnt is not defined
 
+    # TODO: Make this a key value pair so I can lookup the boot part by name
     - name: Set partition facts
       set_fact:
         desired_partitions:
@@ -50,24 +39,19 @@
             fstype: vfat
             mount_point: "{{ boot_dir_mnt }}"
             encrypted: false
+            flags:
+              - lba
+              - boot
           - number: 2
             raw_device: "{{ sd_device }}p2"
-            logical_device: "{{ sd_device }}p2"
-            name: installation
-            start: 300MiB
-            end: 3372MiB
-            fstype: ext4
-            mount_point: "{{ installation_dir_mnt }}"
-            encrypted: false
-          - number: 3
-            raw_device: "{{ sd_device }}p3"
             logical_device: "/dev/mapper/pi-sd-root"
             name: root
-            start: 3372MiB
+            start: 300MiB
             end: 100%
             fstype: ext4
             mount_point: "{{ root_dir_mnt }}"
             encrypted: true
+            flags: []
 
     - block:
         - name: Read SD card device info
@@ -94,6 +78,7 @@
             part_start: "{{ item.start }}"
             part_end: "{{ item.end }}"
             unit: MiB
+            flags: "{{ item.flags }}"
           become: true
           loop: "{{ desired_partitions }}"
 
@@ -125,32 +110,40 @@
           become: true
           loop: "{{ desired_partitions }}"
 
-        - name: Check if root filesystem downloaded
-          find:
-            paths: "{{ root_dir_mnt }}"
-            file_type: directory
-            patterns: ".*"
-            excludes: '^lost\+found'
-            use_regex: true
-          register: root_filesystem_files
+        - name: Download root filesystem
+          get_url:
+            url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz
+            # url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-2-latest.tar.gz
+            dest: /tmp/ArchLinuxARM-rpi-3-latest.tar.gz
+          register: downloaded_root_fs
 
-        - name: Download and extract root filesystem
+        - name: Extract root filesystem
           unarchive:
-            src: http://archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz
-            remote_src: true
+            src: "{{ downloaded_root_fs.dest }}"
             dest: "{{ root_dir_mnt }}"
           become: true
-          when: root_filesystem_files.matched | int == 0
 
-        - name: Copy boot files to boot partition
-          copy:
-            src: "{{ root_dir_mnt }}/boot/"
-            dest: "{{ boot_dir_mnt }}"
+        - name: Move boot files to boot partition
+          shell: "mv {{ root_dir_mnt }}/boot/* {{ boot_dir_mnt }}"
+          become: true
+
+        - name: Unmount boot dir
+          mount:
+            path: "{{ boot_dir_mnt }}"
+            state: unmounted
+          become: true
+
+        - name: Mount boot dir under root dir
+          mount:
+            path: "{{ root_dir_mnt }}/boot"
+            src: "{{ sd_device }}p1"
+            state: mounted
+            fstype: vfat
           become: true
 
         - name: Set ansible and key dirs
           set_fact:
-            alarm_home_dir: "{{ installation_dir_mnt }}"
+            alarm_home_dir: "{{ root_dir_mnt }}/home/alarm/"
 
         - name: Set ansible and key dirs
           set_fact:
