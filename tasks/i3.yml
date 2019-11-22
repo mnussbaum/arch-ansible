@@ -10,7 +10,7 @@
   package:
     state: present
     name:
-      - compton
+      - picom
       - feh
       - i3-gaps
       - i3status
@@ -50,7 +50,7 @@
     src: "files/{{ item }}"
     dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
   with_items:
-    - compton.service
+    - picom.service
     - i3-session.target
     - i3.service
 
@@ -63,6 +63,6 @@
     scope: user
     daemon-reload: true
   with_items:
-    - compton.service
+    - picom.service
     - feh.service
     - i3.service
