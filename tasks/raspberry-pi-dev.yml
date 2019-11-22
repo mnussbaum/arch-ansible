@@ -1,0 +1,8 @@
+---
+- name: Pi Dev | Install packages
+  package:
+    state: present
+    name:
+      - qemu
+      - qemu-arm-static
+  become: true
