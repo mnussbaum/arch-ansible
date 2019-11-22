@@ -1,11 +1,27 @@
 # vim:ft=yaml.ansible:
 ---
 # Hmm, hostname, set before ansible for targeting or provide as var?
-- name: boot | Set locale
+- name: boot | Generate locales
   locale_gen:
     name: en_US.UTF-8
     state: present
-# Finish localectl set
+
+- name: boot | Get current locale and language configuration
+  command: localectl status
+  register: localectl_status
+  changed_when: false
+
+- name: boot | Parse 'LANG' from current locale and language configuration
+  set_fact:
+    locale_lang: "{{ localectl_status.stdout | regex_search('LANG=([^\n]+)', '\\1') | first }}"
+
+- name: boot | Parse 'LANGUAGE' from current locale and language configuration
+  set_fact:
+    locale_language: "{{ localectl_status.stdout | regex_search('LANGUAGE=([^\n]+)', '\\1') | default([locale_lang], true) | first }}"
+
+- name: boot | Set locale and language
+  command: localectl set-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8
+  when: locale_lang != "en_US.UTF-8" or locale_language != "en_US.UTF-8"
 
 - name: boot | Set timezone
   timezone:
