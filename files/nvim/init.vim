@@ -12,9 +12,6 @@ set wildmode=longest,list
 " Stop some commands from moving the cursor
 set nostartofline
 
-" Hide some prompts
-set shortmess=atI
-
 " Make Y work like other capitals, copy to end of line
 noremap Y y$
 
