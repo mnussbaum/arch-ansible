@@ -42,6 +42,7 @@
       - name: "tpope/vim-fugitive"
       - name: "tyru/caw.vim"
       - name: "vim-ruby/vim-ruby"
+      - name: "arrufat/vala.vim"
   tags: [base16]
 
 - name: nvim | Ensure nvim config and data dirs exist
