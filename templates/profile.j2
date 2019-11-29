@@ -4,7 +4,6 @@ set -o errexit
 set -o nounset
 
 if [[ -z "${DISPLAY:-}" ]] && [[ $(tty) = /dev/tty1 ]] ; then
-  export DISPLAY=:0
   systemctl --user import-environment
   systemctl --user start --no-block {{ window_manager.window_manager }}.service
 fi
