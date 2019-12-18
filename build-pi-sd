@@ -14,19 +14,17 @@ else
 fi
 
 extra_ansible_args=""
-
-if [[ "${1:-}" == "--incremental" ]] || [[ "${1:-}" == "-i" ]] ; then
-  shift
-  mkdir -p /tmp/arch-pi-mnt-dir/boot
-  mkdir -p /tmp/arch-pi-mnt-dir/root
-  extra_ansible_args="$extra_ansible_args -e boot_dir_mnt=/tmp/arch-pi-mnt-dir/boot -e root_dir_mnt=/tmp/arch-pi-mnt-dir/root"
-fi
+boot_dir=/tmp/arch-pi-boot
+root_dir=/var/lib/machines/arch-pi
 
 if [[ "${1:-}" == "--wipe-card" ]] || [[ "${1:-}" == "-w" ]] ; then
+  rm -rf "$boot_dir"
+  sudo rm -rf "$root_dir"
   extra_ansible_args="$extra_ansible_args -e wipe_card='true'"
   shift
 fi
 
+extra_ansible_args="$extra_ansible_args -e boot_dir_mnt=$boot_dir -e root_dir_mnt=$root_dir"
 
 ansible-playbook build-pi-sd.yml -v --ask-become-pass \
   -e sd_device=/dev/mmcblk0 \

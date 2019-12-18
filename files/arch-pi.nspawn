@@ -1,0 +1,7 @@
+[Exec]
+Boot=true
+ResolvConf=off
+Timezone=off
+
+[Files]
+Bind=/usr/bin/qemu-arm-static
