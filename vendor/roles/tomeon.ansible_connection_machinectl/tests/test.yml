@@ -1,0 +1,21 @@
+---
+- hosts: all
+  tasks:
+    - name: create a directory
+      file:
+        path: '/etc/foo/bar/baz'
+        state: directory
+    - name: run a command
+      command: date
+      changed_when: no
+    - name: read a file
+      slurp:
+        path: /etc/machine-id
+    - name: transfer a file
+      copy:
+        src: hello
+        dest: /tmp/hello
+    - name: remove a file
+      file:
+        dest: /tmp/hello
+        state: absent
