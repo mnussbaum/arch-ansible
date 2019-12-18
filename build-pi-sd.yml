@@ -2,33 +2,20 @@
 ---
 - hosts: all
   tasks:
-    - name: Create temp boot dir mount point
-      tempfile:
+    - name: Create root and boot dir mount points
+      file:
+        path: "{{ item }}"
         state: directory
-        suffix: arch-pi-boot
-      register: arch_pi_boot_temp_dir
-      when: boot_dir_mnt is not defined
+      become: true
+      loop:
+        - "{{ boot_dir_mnt }}"
+        - "{{ root_dir_mnt }}"
 
-    - name: Set boot_dir_mnt
-      set_fact:
-        boot_dir_mnt: "{{ arch_pi_boot_temp_dir.path }}"
-      when: boot_dir_mnt is not defined
-
-    - name: Create temp root dir mount point
-      tempfile:
-        state: directory
-        suffix: arch-pi-root
-      register: arch_pi_root_temp_dir
-      when: root_dir_mnt is not defined
-
-    - name: Set root_dir_mnt
-      set_fact:
-        root_dir_mnt: "{{ arch_pi_root_temp_dir.path }}"
-      when: root_dir_mnt is not defined
-
-    # TODO: Make this a key value pair so I can lookup the boot part by name
     - name: Set partition facts
       set_fact:
+        alarm_home_dir: "{{ root_dir_mnt }}/home/alarm/"
+        root_filesystem_download_path: "{{ lookup('env', 'HOME') }}/.cache/ArchLinuxARM-rpi-3-latest.tar.gz"
+        # TODO: Make this a key value pair so I can lookup the boot part by name
         desired_partitions:
           - number: 1
             raw_device: "{{ sd_device }}p1"
@@ -52,6 +39,11 @@
             mount_point: "{{ root_dir_mnt }}"
             encrypted: true
             flags: []
+    - name: Set secondary facts
+      set_fact:
+        ansible_dir: "{{ alarm_home_dir }}/arch-ansible"
+        gpg_keys_dir: "{{ alarm_home_dir }}/arch-ansible/gpg-keys"
+        ssh_keys_dir: "{{ alarm_home_dir }}/arch-ansible/ssh-keys"
 
     - block:
         - name: Read SD card device info
@@ -93,6 +85,7 @@
           when: item.encrypted
           register: luks_format_result
 
+        # TODO: Make this idempotent
         - name: Create partition filesystems
           filesystem:
             fstype: "{{ item.fstype }}"
@@ -110,21 +103,27 @@
           become: true
           loop: "{{ desired_partitions }}"
 
+        - name: Check for root filesystem download
+          stat:
+            path: "{{ root_filesystem_download_path }}"
+          register: root_filesystem_download_check_result
+
         - name: Download root filesystem
           get_url:
             url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz
-            # url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-2-latest.tar.gz
-            dest: /tmp/ArchLinuxARM-rpi-3-latest.tar.gz
-          register: downloaded_root_fs
+            dest: "{{ root_filesystem_download_path }}"
+          when: not root_filesystem_download_check_result.stat.exists
 
+        # # TODO: Make this idempotent
         - name: Extract root filesystem
           unarchive:
-            src: "{{ downloaded_root_fs.dest }}"
+            src: "{{ root_filesystem_download_path }}"
             dest: "{{ root_dir_mnt }}"
           become: true
 
+        # TODO: Make this idempotent
         - name: Move boot files to boot partition
-          shell: "mv {{ root_dir_mnt }}/boot/* {{ boot_dir_mnt }}"
+          shell: "mv {{ root_dir_mnt }}/boot/* {{ boot_dir_mnt }}/"
           become: true
 
         - name: Unmount boot dir
@@ -140,16 +139,6 @@
             state: mounted
             fstype: vfat
           become: true
-
-        - name: Set ansible and key dirs
-          set_fact:
-            alarm_home_dir: "{{ root_dir_mnt }}/home/alarm/"
-
-        - name: Set ansible and key dirs
-          set_fact:
-            ansible_dir: "{{ alarm_home_dir }}/arch-ansible"
-            gpg_keys_dir: "{{ alarm_home_dir }}/arch-ansible/gpg-keys"
-            ssh_keys_dir: "{{ alarm_home_dir }}/arch-ansible/ssh-keys"
 
         - name: Copy arch-ansible to root
           become: true
@@ -169,13 +158,14 @@
             path: "{{ gpg_keys_dir }}"
             state: directory
 
-        - name: Export gpg private key
+        # TODO: Make this idempotent
+        - name: export gpg private key
           command: gpg --armor --export-secret-key '{{ pass_gpg_key }}'
           args:
             creates: "{{ gpg_keys_dir }}/private-key.asc"
           register: gpg_private_export_cmd
           no_log: true
-        - name: Write gpg private key
+        - name: write gpg private key
           copy:
             dest: "{{ gpg_keys_dir }}/private-key.asc"
             content: "{{ gpg_private_export_cmd.stdout }}"
@@ -183,13 +173,13 @@
           no_log: true
           when: gpg_private_export_cmd.changed
 
-        - name: Export gpg public key
+        - name: export gpg public key
           command: gpg --armor --export '{{ pass_gpg_key }}'
           no_log: true
           register: gpg_public_export_cmd
           args:
             creates: "{{ gpg_keys_dir }}/public-key.asc"
-        - name: Write gpg public key
+        - name: write gpg public key
           become: true
           no_log: true
           when: gpg_public_export_cmd.changed
@@ -197,23 +187,79 @@
             dest: "{{ gpg_keys_dir }}/public-key.asc"
             content: "{{ gpg_public_export_cmd.stdout }}"
 
-        - name: Create ssh-keys dir
+        - name: create ssh-keys dir
           become: true
           file:
             path: "{{ ssh_keys_dir }}"
             state: directory
-        - name: Copy SSH private key
+        - name: copy ssh private key
           become: true
           copy:
             src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
             dest: "{{ ssh_keys_dir }}/id_rsa"
             owner: root
-        - name: Copy SSH public key
+        - name: copy ssh public key
           become: true
           copy:
             src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
             dest: "{{ ssh_keys_dir }}/id_rsa.pub"
 
+        - name: install resolvconf.conf
+          become: true
+          copy:
+            src: files/resolvconf.conf
+            dest: "{{ root_dir_mnt }}/resolvconf.conf"
+
+        - name: create systemd-nspawn service file directory
+          become: true
+          file:
+            path: /etc/systemd/nspawn
+            state: directory
+
+        - name: Install nspawn config for arch-pi
+          become: true
+          copy:
+            src: files/arch-pi.nspawn
+            dest: "/etc/systemd/nspawn/arch-pi.nspawn"
+
+        - name: Ensure root dir permissions
+          become: true
+          file:
+            path: "{{ root_dir_mnt }}"
+            owner: root
+            group: root
+
+        - name: Start arch-pi container
+          become: true
+          systemd:
+            state: started
+            name: systemd-nspawn@arch-pi.service
+            daemon-reload: true
+        # Replace below with machinectl connection plugin
+        # Maybe allow alarm user to log in without pw?
+        # - name: Init pacman keys in nspawn container
+        #   become: true
+        #   command: "systemd-nspawn --bind /usr/bin/qemu-arm-static -b -D {{ root_dir_mnt }} pacman-key --init"
+        #
+        # - name: Populate ARM pacman keys in nspawn container
+        #   become: true
+        #   command: "systemd-nspawn --bind /usr/bin/qemu-arm-static -b -D {{ root_dir_mnt }} pacman-key --populate archlinuxarm"
+        #
+        # - name: Update and install pacakges in nspawn container
+        #   become: true
+        #   command: "systemd-nspawn --bind /usr/bin/qemu-arm-static -b -D {{ root_dir_mnt }} pacman -Suy lvm2 cryptsetup sudo git rsync base base-devel uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear"
+        #
+        # - name: Set hostname nspawn container
+        #   become: true
+        #   command: "systemd-nspawn --bind /usr/bin/qemu-arm-static -b -D {{ root_dir_mnt }} hostnamectl set-hostname panamint"
+        #
+        # - name: Add alarm user to sudoers
+        #   become: true
+        #   lineinfile:
+        #     dest: "{{ root_dir_mnt }}/etc/sudoers"
+        #     line: "alarm ALL=(ALL)"
+        #     state: present
+        #     create: yes
       always:
         - name: Unmount temp boot dir
           mount:
@@ -249,4 +295,3 @@
           become: true
           loop: "{{ desired_partitions }}"
           when: luks_format_result is succeeded and item.encrypted
-    # Next comes the booted or maybe QEMU setup
