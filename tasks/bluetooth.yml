@@ -1,0 +1,52 @@
+# vim:ft=yaml.ansible:
+---
+- name: Bluetooth | Install packages
+  package:
+    state: present
+    name:
+      - bluez
+      - bluez-utils
+      - pulseaudio-bluetooth
+
+- name: Bluetooth | Enable pulseaudio over bluetooth
+  become: true
+  lineinfile:
+    dest: "/etc/pulse/system.pa"
+    line: "{{ item }}"
+  loop:
+    - "load-module module-bluetooth-policy"
+    - "load-module module-bluetooth-discover"
+
+- name: Bluetooth | Switch audio to new paired headsets on connect
+  become: true
+  lineinfile:
+    dest: "/etc/pulse/default.pa"
+    line: "load-module module-switch-on-connect"
+
+- name: Bluetooth | Power on afer reboot
+  become: true
+  lineinfile:
+    dest: /etc/bluetooth/main.conf
+    regexp: ".*AutoEnable.*"
+    line: "AutoEnable=true"
+
+- name: Bluetooth | Always be discoverable
+  become: true
+  lineinfile:
+    dest: /etc/bluetooth/main.conf
+    regexp: ".*DiscoverableTimeout.*"
+    line: "DiscoverableTimeout=0"
+
+- name: Bluetooth | Enable service
+  become: true
+  systemd:
+    enabled: true
+    name: bluetooth
+# To add a bluetooth device:
+# bluetoothctl
+# power on
+# agent on
+# default-agent
+# scan on
+# pair <MAC address>
+# connect <MAC address>
