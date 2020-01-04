@@ -103,3 +103,9 @@
     dest: "/etc/udev/rules.d/{{ item | basename }}"
   with_fileglob:
     - files/udev-rules.d/*
+
+- name: power | Enable audio codec power management
+  become: true
+  copy:
+    content: "1"
+    dest: "/sys/module/snd_hda_intel/parameters/power_save"
