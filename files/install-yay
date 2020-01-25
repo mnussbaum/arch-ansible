@@ -11,10 +11,9 @@ if ! command -v yay >/dev/null; then
   trap finish EXIT
 
   pushd $tmp
-  for pkg in cower yay; do
-    curl -o PKGBUILD https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=$pkg && \
-      makepkg --needed --noconfirm --skippgpcheck -sri
-  done
+  git clone https://aur.archlinux.org/yay.git
+  cd yay
+  makepkg --needed --noconfirm --skippgpcheck -sri
   popd
 
   if ! command -v yay >/dev/null; then
