@@ -6,7 +6,6 @@
     name:
       - firefox-nightly
       - firefox-color
-      - firefox-dark-reader
       - firefox-ublock-origin
       - firefox-vim-vixen
       - freshplayerplugin
