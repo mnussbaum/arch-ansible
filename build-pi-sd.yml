@@ -235,6 +235,7 @@
             state: started
             name: systemd-nspawn@arch-pi.service
             daemon-reload: true
+        # Right now pi dies at "unknown filesystem type 'crypto_LUKS'"
         # Replace below with machinectl connection plugin
         # Maybe allow alarm user to log in without pw?
         # - name: Init pacman keys in nspawn container
