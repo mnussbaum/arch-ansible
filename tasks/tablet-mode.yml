@@ -16,15 +16,6 @@
     - rot8
     - virtboard
 
-- name: Tablet mode | Enable rot8 service
-  become: true
-  become_user: "{{ user.name }}"
-  systemd:
-    enabled: true
-    name: "rot8"
-    scope: user
-    daemon-reload: true
-
 - name: Tablet mode | Install toggle module scripts
   copy:
     src: "files/{{ item }}"
