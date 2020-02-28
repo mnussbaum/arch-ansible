@@ -59,12 +59,6 @@
     state: directory
     owner: "{{ user.name }}"
 
-- name: Firefox | Configure vim-vixen plugin
-  copy:
-    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/browser-extension-data/vim-vixen@i-beam.org/storage.js"
-    src: firefox-vim-vixen-settings.js
-    owner: "{{ user.name }}"
-
 - name: Firefox | Configure flash plugin
   copy:
     remote_src: true
