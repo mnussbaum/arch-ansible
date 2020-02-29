@@ -36,6 +36,11 @@
   package:
     state: present
     name:
+      - base
+      - lvm2
+      - linux
+      - linux-firmware
+      - linux-headers
       - ansible
       - archlinux-keyring
       - python
