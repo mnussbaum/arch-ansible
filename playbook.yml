@@ -14,7 +14,7 @@
     - set_fact:
         user_config_dir: "/home/{{ user.name }}/.config"
         user_data_dir: "/home/{{ user.name }}/.local/share"
-      tags: [base16, tablet_toggle]
+      tags: [bootstrap, base16, tablet_toggle]
     - import_tasks: tasks/set-appearance-facts.yml
       tags: [base16, tablet_toggle]
     - import_tasks: tasks/time.yml

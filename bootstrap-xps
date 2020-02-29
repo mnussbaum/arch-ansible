@@ -100,11 +100,11 @@ ansible_bootstrap() {
   arch-chroot /mnt chown -R $username:$username /home/$username/src/arch-ansible
   cp -r gpg-keys /mnt/home/$username/gpg-keys
   arch-chroot /mnt chown -R $username:$username /home/$username/gpg-keys
-  arch-chroot /mnt chmod -R 0600 /home/$username/gpg-keys/*
+  arch-chroot /mnt bash -c "chmod -R 0600 /home/$username/gpg-keys/*"
   arch-chroot /mnt mkdir /home/$username/.ssh
   cp -r ssh-keys/* /mnt/home/$username/.ssh
   arch-chroot /mnt chown -R $username:$username /home/$username/.ssh
-  arch-chroot /mnt chmod -R 0600 /home/$username/.ssh/*
+  arch-chroot /mnt bash -c "chmod -R 0600 /home/$username/.ssh/*"
 }
 
 # cp -r /run/archiso/bootmnt/arch-ansible .
