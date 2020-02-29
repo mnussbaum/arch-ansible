@@ -3,10 +3,10 @@
 set -o errexit
 set -o nounset
 
-hostname=$1
+hostname="$1"
 shift
 
-hostnamectl set-hostname $hostname
+hostnamectl set-hostname "$hostname"
 
 sed -i "/en_US.UTF-8/ s/# *//" /etc/locale.gen
 locale-gen

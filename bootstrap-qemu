@@ -6,17 +6,23 @@ set -o nounset
 source _bootstrap.sh
 
 # cp -r /run/archiso/bootmnt/arch-ansible .
-# parted --align optimal /dev/nvme0n1
-# > mkpart primary ext4 END_OF_A_PART (81174MB) END_OF_A_PART+512MB (81686MB)
-# > name 7 "Grub"
-# > mkpart primary ext4 END_OF_A_PART+512MB (81686MB) BEGINNING_OF_NEXT_PART_OR_EOF (499984MB)
-# > name 8 "Arch Root"
+# parted --align optimal /dev/sda
+# > unit MiB
+# > mklabel gpt
+# > mkpart primary fat32 1MiB 261MiB
+# > set 1 esp on
+# > name 1 "EFI"
+# > mkpart primary ext4 261MiB 773MiB
+# > name 2 "Grub"
+# > mkpart primary ext4 773MiB 100%
+# > name 3 "Arch Root"
+# mkfs.vfat -F32 /dev/sda1
 
-hostname="tecopa"
+hostname="qemu"
 username="mnussbaum"
-disk="/dev/nvme0n1"
-ssid="BAM"
-wireless_card="wlp60s0"
+disk="/dev/sda"
+ssid=""
+wireless_card=""
 
 bootstrap "$hostname" "$username" "$disk" "$ssid" "$wireless_card"
 
@@ -31,6 +37,3 @@ bootstrap "$hostname" "$username" "$disk" "$ssid" "$wireless_card"
 # shutdown -r now # Amongst other reasons this activates gpg-agent
 # ssh-add  # Adds SSH key to gpg-agent
 # ./ansible
-
-# TODO
-# * Automate partitioning

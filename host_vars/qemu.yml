@@ -1,0 +1,34 @@
+---
+boot_device:
+  name: /dev/sda
+  encrypted_root: true
+  root_partition_name: Arch Root
+
+configure_for_tablet_mode: true
+
+font:
+  rofi_size: 20
+
+key_repeat:
+  delay: 250
+
+monitor:
+  id: eDP-1
+  height: 165
+  width: 294
+  dpi: 276
+
+optional_daemons:
+  calised: true
+  illum: true
+  libinput_gestures: true
+
+user:
+  name: mnussbaum
+  group: mnussbaum
+  shell: /usr/bin/zsh
+  email: michaelnussbaum08@gmail.com
+
+window_manager:
+  window_manager: sway
+  windowing_system: wayland
