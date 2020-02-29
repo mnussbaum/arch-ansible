@@ -36,15 +36,17 @@
   package:
     state: present
     name:
+      - ansible
+      - archlinux-keyring
       - base
-      - lvm2
+      - inetutils
       - linux
       - linux-firmware
       - linux-headers
-      - ansible
-      - archlinux-keyring
+      - lvm2
       - python
       - python-passlib
+      - sudo
       - vim
       - zsh
 
