@@ -76,20 +76,28 @@ format_and_mount_boot_partition() {
 
 create_and_mount_encrypted_root_volume() {
   local root_partition="$1"
-  local root_device="/dev/mapper/vgcrypt-root"
+  local encrypted_volume_group_name="vgcrypt"
+  local root_logical_volume_name="root"
+  local root_device="/dev/mapper/$encrypted_volume_group_name-$root_logical_volume_name"
 
-  cryptsetup -v --cipher aes-xts-plain64 --hash sha512 --key-size 512 -y luksFormat "$root_partition"
+  cryptsetup \
+    --cipher aes-xts-plain64 \
+    --hash sha512 \
+    --key-size 512 \
+    --verify-passphrase \
+    --verbose \
+    luksFormat "$root_partition"
   cryptsetup luksOpen "$root_partition" lvm
 
   # TODO: Zero out the partition
   # dd if=/dev/zero of=/dev/mapper/lvm bs=16M
 
   pvcreate /dev/mapper/lvm
-  vgcreate vgcrypt /dev/mapper/lvm
+  vgcreate $encrypted_volume_group_name /dev/mapper/lvm
 
-  lvcreate --extents +100%FREE -n root vgcrypt
+  lvcreate --extents +100%FREE -n $root_logical_volume_name $encrypted_volume_group_name
 
-  mkfs.ext4 -O ^has_journal -b 4096 -L root "$root_device"
+  mkfs.ext4 -O ^has_journal -b 4096 -L $root_logical_volume_name "$root_device"
   mount "$root_device" /mnt
 }
 
