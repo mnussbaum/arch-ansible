@@ -5,7 +5,6 @@ set -o nounset
 
 source _bootstrap.sh
 
-# cp -r /run/archiso/bootmnt/arch-ansible .
 # parted --align optimal /dev/sda
 # > unit MiB
 # > mklabel gpt
@@ -16,7 +15,6 @@ source _bootstrap.sh
 # > name 2 "Grub"
 # > mkpart primary ext4 773MiB 100%
 # > name 3 "Arch Root"
-# mkfs.vfat -F32 /dev/sda1
 
 hostname="qemu"
 username="mnussbaum"
