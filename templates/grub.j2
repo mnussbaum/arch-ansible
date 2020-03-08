@@ -61,7 +61,12 @@ GRUB_ENABLE_CRYPTODISK=y
     selectattr("name", "equalto", boot_device["root_partition_name"]) |
     list | first
 ).num %}
-GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ boot_device['name'] }}p{{ root_partition_number }}:vgcrypt"
+{% if "nvme" in boot_device["name"] %}
+{% set cryptdevice = boot_device["name"] ~ "p" ~ root_partition_number %}
+{% else %}
+{% set cryptdevice = boot_device["name"] ~ root_partition_number %}
+{% endif %}
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ cryptdevice }}:vgcrypt"
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume=/dev/mapper/vgcrypt-root"
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"
 {% endif %}
