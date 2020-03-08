@@ -67,6 +67,7 @@ format_and_mount_boot_partition() {
   # TODO: Zero out the partition
   # dd if=/dev/zero of=$boot_device bs=16M
 
+  mkfs.vfat -F32 "$efi_partition"
   mkfs.ext4 -O ^has_journal -L grub "$boot_device"
   mkdir -p /mnt/boot
   mount "$boot_device" /mnt/boot
