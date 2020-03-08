@@ -1,0 +1,28 @@
+#! /bin/bash
+
+set -o errexit
+set -o nounset
+
+rm ~/.local/share/qemu-arch-image.qcow2
+qemu-img create -f qcow2 ~/.local/share/qemu-arch-image.qcow2 8G
+rm ~/.local/share/qemu-arch-usb.iso
+qemu-img create -f raw ~/.local/share/qemu-arch-usb.iso 8G
+
+ansible-playbook build-live-usb.yml -v --ask-become-pass \
+  -e usb_device=~/.local/share/qemu-arch-usb.iso \
+  -e pass_gpg_key="mnussbaum (Password Store)"
+
+cp /usr/share/ovmf/x64/OVMF_VARS.fd /tmp/qemu-arch-uefi-vars.bin
+
+echo "Starting qemu"
+exec qemu-system-x86_64 \
+  -drive file=/home/mnussbaum/.local/share/qemu-arch-image.qcow2,format=qcow2 \
+  -drive if=pflash,format=raw,readonly,file=/usr/share/ovmf/x64/OVMF_CODE.fd \
+  -drive if=pflash,format=raw,file=/tmp/qemu-arch-uefi-vars.bin \
+  -m 2048 \
+  -enable-kvm \
+  -M q35 \
+  -cpu host -smp 4,sockets=1,cores=4,threads=1 \
+  -bios /usr/share/qemu/bios.bin \
+  -boot menu=on \
+  -cdrom /home/mnussbaum/.local/share/qemu-arch-usb.iso
