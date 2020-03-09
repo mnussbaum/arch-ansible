@@ -18,6 +18,7 @@
     - import_tasks: tasks/set-appearance-facts.yml
       tags: [base16, tablet_toggle]
     - import_tasks: tasks/time.yml
+      tags: [bootstrap]
     - import_tasks: tasks/boot.yml
       tags: [bootstrap]
     - import_tasks: tasks/trim.yml

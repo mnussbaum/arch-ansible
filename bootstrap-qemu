@@ -27,7 +27,7 @@ bootstrap "$hostname" "$username" "$disk" "$ssid" "$wireless_card"
 # After rebooting:
 # sudo systemctl start NetworkManager
 # sudo cp -r /root/arch-ansible ~/src
-# cd arch-ansible
+# cd ~/src/arch-ansible
 # ./ansible # This should succeed to the point of secret setup
 # gpg --import ~/gpg-keys/private-key.asc
 # gpg --import ~/gpg-keys/public-key.asc
