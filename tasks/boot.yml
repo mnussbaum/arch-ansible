@@ -20,16 +20,9 @@
     locale_language: "{{ localectl_status.stdout | regex_search('LANGUAGE=([^\n]+)', '\\1') | default([locale_lang], true) | first }}"
 
 - name: boot | Set locale and language
+  become: true
   command: localectl set-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8
   when: locale_lang != "en_US.UTF-8" or locale_language != "en_US.UTF-8"
-
-- name: boot | Set timezone
-  timezone:
-    name: America/Los_Angeles
-
-- name: boot | Set hardware clock timezone to UTC
-  timezone:
-    hwclock: UTC
 
 - name: boot | Install packages
   become: true

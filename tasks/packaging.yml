@@ -39,6 +39,7 @@
       - base-devel
       - ccache
       - curl
+      - git
       - lzop
   become: true
 
