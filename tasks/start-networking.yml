@@ -13,13 +13,6 @@
     dest: /etc/NetworkManager/NetworkManager.conf
   become: true
 
-- name: networking | Disable dhcpcd
-  service:
-    name: dhcpcd
-    enabled: no
-    state: stopped
-  become: true
-
 - name: networking | Enable wpa_supplicant
   service:
     name: wpa_supplicant
