@@ -10,5 +10,3 @@ TODO:
 - Remove hardcoding of vgcrypt and vgcrypt-root in boot tasks and grub config
   - Ideally pull partition info from disk too
 - Fix failed install of ruby-solargraph due to ruby-ruby-progressbar ruby-progressbar conflicts
-- Fix being unable to disable dhcpcd service during bootstrapping
-  - Maybe needs to be disabled in qemu? Or maybe install dhcpcd first?
