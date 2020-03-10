@@ -3,21 +3,22 @@
 set -o errexit
 set -o nounset
 
-source bin/_common_qemu_args.sh
+source bin/_qemu_common.sh
 
-rm ~/.local/share/qemu-arch-image.qcow2
-qemu-img create -f qcow2 ~/.local/share/qemu-arch-image.qcow2 8G
-rm ~/.local/share/qemu-arch-usb.iso
-qemu-img create -f raw ~/.local/share/qemu-arch-usb.iso 8G
+rm "$qemu_image_file"
+qemu-img create -f qcow2 "$qemu_image_file" 12G
+
+rm "$qemu_live_usb_file"
+qemu-img create -f raw "$qemu_live_usb_file" 8G
 
 ansible-playbook build-live-usb.yml -v --ask-become-pass \
-  -e usb_device=~/.local/share/qemu-arch-usb.iso \
+  -e usb_device="$qemu_live_usb_file" \
   -e pass_gpg_key="mnussbaum (Password Store)"
 
-cp /usr/share/ovmf/x64/OVMF_VARS.fd /tmp/qemu-arch-uefi-vars.bin
+cp /usr/share/ovmf/x64/OVMF_VARS.fd "$qemu_ovmf_vars_file"
 
 echo "Starting qemu"
 exec qemu-system-x86_64 \
   "${common_qemu_args[@]}" \
-  -drive file=/home/mnussbaum/.local/share/qemu-arch-image.qcow2,format=qcow2 \
-  -cdrom /home/mnussbaum/.local/share/qemu-arch-usb.iso
+  -drive "file=$qemu_image_file=qcow2" \
+  -cdrom "$qemu_live_usb_file"

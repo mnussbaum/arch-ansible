@@ -1,8 +1,5 @@
 TODO:
 
-- Move uefi vars out of tmp and into ~/.local/share, reference location from var
-- Consolidate all data files into a single dir in ~/.local/share
-  - Consolidate references to images into a variable
 - hostname isn't persisted correctly
 - Script partitioning
 - Run qemu headlessly?
