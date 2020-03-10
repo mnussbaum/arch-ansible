@@ -1,10 +1,17 @@
 TODO:
 
+- Move uefi vars out of tmp and into ~/.local/share, reference location from var
+- Consolidate all data files into a single dir in ~/.local/share
+  - Consolidate references to images into a variable
+- hostname isn't persisted correctly
 - Script partitioning
 - Run qemu headlessly?
-- Everything into ansible?
+- DRY up qemu invocations across scripts
+  - Make scripts build missing disk or iso as necessary
+  - Move qemu setup into ansible?
+- Move all bootstrapping into ansible?
 - Remove hardcoding of vgcrypt and vgcrypt-root in boot tasks and grub config
-
-- Still not working, can't reboot after successful provisioning
-- Upon booting into ISO I can't mount vgcrypt-root due to "unknown filesystem type 'LVM2_member'"
-- Tried to get past that with https://www.svennd.be/mount-unknown-filesystem-type-lvm2_member/, got error where mount can't read superblock on vgcrypt-root
+  - Ideally pull partition info from disk too
+- Fix failed install of ruby-solargraph due to ruby-ruby-progressbar ruby-progressbar conflicts
+- Fix being unable to disable dhcpcd service during bootstrapping
+  - Maybe needs to be disabled in qemu? Or maybe install dhcpcd first?

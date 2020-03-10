@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+
+source bin/_common_qemu_args.sh
+
+exec qemu-system-x86_64 \
+  "${common_qemu_args[@]}" \
+  /home/mnussbaum/.local/share/qemu-arch-image.qcow2
