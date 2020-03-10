@@ -108,8 +108,8 @@ ansible_bootstrap() {
 
   cp -r . /mnt/root/arch-ansible
 
-  arch-chroot /mnt /root/arch-ansible/initial-configure-xps "$hostname"
-  arch-chroot /mnt sh -c "cd /root/arch-ansible && ./ansible \
+  arch-chroot /mnt /root/arch-ansible/bin/initial-configure-xps "$hostname"
+  arch-chroot /mnt sh -c "cd /root/arch-ansible && ./bin/ansible \
     -e bootstrap='true' --tags bootstrap"
 
   cp -r . "/mnt/home/$username/src/arch-ansible"

@@ -22,7 +22,7 @@ def main():
     env = dict(os.environ)
     env["NO_ASK_BECOME_PASS"] = "1"
     ansible_result = subprocess.run(
-        ["nice", "./ansible", "--tags", "base16"],
+        ["nice", "./bin/ansible", "--tags", "base16"],
         capture_output=True,
         cwd=os.path.join(os.path.expanduser("~"), "src", "arch-ansible"),
         encoding="utf-8",
