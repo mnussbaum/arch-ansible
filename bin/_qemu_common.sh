@@ -5,7 +5,7 @@ qemu_data_dir="$XDG_DATA_HOME/qemu-arch"
 
 qemu_image_file="$qemu_data_dir/image.qcow2"
 qemu_install_iso="$qemu_data_dir/live-usb.iso"
-qemu_ovmf_vars_file="/$qemu_data_dir/uefi-vars.bin"
+qemu_ovmf_vars_file="$qemu_data_dir/uefi-vars.bin"
 
 common_qemu_args=(
   "-drive" "if=pflash,format=raw,readonly,file=/usr/share/ovmf/x64/OVMF_CODE.fd" \
