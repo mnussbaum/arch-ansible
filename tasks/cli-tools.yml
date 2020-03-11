@@ -32,6 +32,7 @@
       - xdg-utils
       - yajl
       - zip
+  retries: 2
   become: true
 
 - name: CLI Tools | Install fzf helper scripts

@@ -30,6 +30,7 @@
   pacman:
     update_cache: yes
     upgrade: yes
+  retries: 2
   become: true
 
 - name: Packaging | Install packages necessary for AUR installs
@@ -77,6 +78,7 @@
   yay:
     update_cache: yes
     upgrade: yes
+  retries: 2
 
 - name: Packaging | Enable pacman colors
   become: true
