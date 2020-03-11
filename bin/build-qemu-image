@@ -5,7 +5,9 @@ set -o nounset
 
 source bin/_qemu_common.sh
 
-rm "$qemu_image_file"
+mkdir -p "$qemu_data_dir"
+
+rm -f "$qemu_image_file"
 qemu-img create -f qcow2 "$qemu_image_file" 12G
 
 rm -f "$qemu_install_iso"
@@ -17,8 +19,8 @@ ansible-playbook build-install-iso.yml -v --ask-become-pass \
 
 cp /usr/share/ovmf/x64/OVMF_VARS.fd "$qemu_ovmf_vars_file"
 
-echo "Starting qemu"
+echo "Starting qemu..."
 exec qemu-system-x86_64 \
   "${common_qemu_args[@]}" \
-  -drive "file=$qemu_image_file=qcow2" \
-  -cdrom "$qemu_live_usb_file"
+  -drive file=$qemu_image_file,format=qcow2 \
+  -cdrom "$qemu_install_iso"
