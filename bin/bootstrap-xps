@@ -3,7 +3,7 @@
 set -o errexit
 set -o nounset
 
-source _bootstrap.sh
+source bin/_bootstrap.sh
 
 # parted --align optimal /dev/nvme0n1
 # > unit MiB
