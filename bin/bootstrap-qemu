@@ -25,8 +25,8 @@ wireless_card=""
 bootstrap "$hostname" "$username" "$disk" "$ssid" "$wireless_card"
 
 # After rebooting:
-# sudo systemctl start NetworkManager
 # sudo cp -r /root/arch-ansible ~/src
+# hostnamectl set-hostname qemu # Don't know why this isn't sticking from initial setup
 # cd ~/src/arch-ansible
 # ./bin/ansible # This should succeed to the point of secret setup
 # gpg --import ~/gpg-keys/private-key.asc
