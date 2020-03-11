@@ -132,7 +132,7 @@
 
         - name: Write ISO to USB
           become: true
-          command: "dd bs=4M if={{ item.path }} of={{ usb_device }} oflag=sync"
+          command: "dd bs=4M if={{ item.path }} of={{ iso_output_file }} oflag=sync"
           loop: "{{ built_images.files }}"
 
       always:

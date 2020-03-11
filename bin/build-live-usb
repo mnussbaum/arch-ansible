@@ -3,7 +3,7 @@
 set -o errexit
 set -o nounset
 
-ansible-playbook build-live-usb.yml -v --ask-become-pass \
-  -e usb_device=/dev/sdb \
+ansible-playbook build-install-iso.yml -v --ask-become-pass \
+  -e iso_output_file=/dev/sdb \
   -e pass_gpg_key="mnussbaum (Password Store)" \
   $@

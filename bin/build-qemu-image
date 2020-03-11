@@ -8,11 +8,11 @@ source bin/_qemu_common.sh
 rm "$qemu_image_file"
 qemu-img create -f qcow2 "$qemu_image_file" 12G
 
-rm "$qemu_live_usb_file"
-qemu-img create -f raw "$qemu_live_usb_file" 8G
+rm -f "$qemu_install_iso"
+qemu-img create -f raw "$qemu_install_iso" 8G
 
-ansible-playbook build-live-usb.yml -v --ask-become-pass \
-  -e usb_device="$qemu_live_usb_file" \
+ansible-playbook build-install-iso.yml -v --ask-become-pass \
+  -e iso_output_file="$qemu_install_iso" \
   -e pass_gpg_key="mnussbaum (Password Store)"
 
 cp /usr/share/ovmf/x64/OVMF_VARS.fd "$qemu_ovmf_vars_file"
