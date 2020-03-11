@@ -43,11 +43,6 @@
       - vim
       - zsh
 
-- name: boot | Refresh pacman keys
-  command: pacman-key --refresh-keys
-  become: true
-  when: bootstrap is defined and bootstrap == "true"
-
 - name: boot | Install Grub packages
   become: true
   package:
