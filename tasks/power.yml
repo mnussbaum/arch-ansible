@@ -35,13 +35,6 @@
     daemon-reload: true
   become: true
 
-- name: power | Enable TLP Sleep
-  systemd:
-    name: tlp-sleep
-    enabled: true
-    daemon-reload: true
-  become: true
-
 - name: power | Install service to disable wake-up from spurious USB3 signals
   copy:
     src: files/disable-xhc-wakeup.service
