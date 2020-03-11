@@ -9,3 +9,4 @@ TODO:
 - Move all bootstrapping into ansible?
 - Remove hardcoding of vgcrypt and vgcrypt-root in boot tasks and grub config
   - Ideally pull partition info from disk too
+- Make install console font bigger
