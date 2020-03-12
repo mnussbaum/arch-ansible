@@ -1,0 +1,11 @@
+#! /bin/bash
+
+set -o errexit
+set -o nounset
+
+source bin/_qemu_common.sh
+
+exec qemu-system-x86_64 \
+  "${common_qemu_args[@]}" \
+  -drive file=$qemu_image_file,format=qcow2 \
+  -cdrom "$qemu_install_iso"
