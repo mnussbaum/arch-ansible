@@ -99,6 +99,8 @@
 
 - name: power | Enable audio codec power management
   become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
   copy:
-    content: "1"
-    dest: "/sys/module/snd_hda_intel/parameters/power_save"
+    content: "options snd_hda_intel power_save=1"
+    dest: "/etc/modprobe.d/audio_powersave.conf"
