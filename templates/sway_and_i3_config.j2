@@ -1,4 +1,8 @@
+{% if ansible_virtualization_role == "guest" %}
+set $mod Mod4
+{% else %}
 set $mod Mod1
+{% endif %}
 set $left h
 set $down j
 set $up k
