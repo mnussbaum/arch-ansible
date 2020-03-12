@@ -36,13 +36,11 @@
   with_items:
     - i3
 
-- name: i3 | Install templated services
+- name: i3 | Install feh service
   template:
     owner: "{{ user.name }}"
-    src: "templates/{{ item }}"
-    dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
-  with_items:
-    - feh.service.j2
+    src: "templates/feh.service.j2"
+    dest: "{{ user_config_dir }}/systemd/user/feh.service"
 
 - name: i3 | Install services
   copy:
