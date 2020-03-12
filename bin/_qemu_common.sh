@@ -10,7 +10,7 @@ qemu_ovmf_vars_file="$qemu_data_dir/uefi-vars.bin"
 common_qemu_args=(
   "-drive" "if=pflash,format=raw,readonly,file=/usr/share/ovmf/x64/OVMF_CODE.fd" \
   "-drive" "if=pflash,format=raw,file=$qemu_ovmf_vars_file" \
-  "-m" "2048" \
+  "-m" "4096" \
   "-enable-kvm" \
   "-M" "q35" \
   "-cpu" "host" \
