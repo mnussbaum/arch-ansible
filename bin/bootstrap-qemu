@@ -31,5 +31,6 @@ bootstrap "$hostname" "$username" "$disk" "$ssid" "$wireless_card"
 # gpg --import ~/gpg-keys/public-key.asc
 # rm -rf ~/gpg-keys
 # shutdown -r now # Amongst other reasons this activates gpg-agent
-# ssh-add  # Adds SSH key to gpg-agent
+# ssh-add # Adds SSH key to gpg-agent
+# cd ~/src/arch-ansible
 # ./bin/ansible

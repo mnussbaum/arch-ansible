@@ -19,8 +19,8 @@ monitor:
   dpi: 276
 
 optional_daemons:
-  calised: true
-  illum: true
+  calised: false
+  illum: false
   libinput_gestures: true
 
 user:
