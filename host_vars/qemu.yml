@@ -16,7 +16,7 @@ monitor:
 optional_daemons:
   calised: false
   illum: false
-  libinput_gestures: true
+  libinput_gestures: false
 
 user:
   name: mnussbaum
