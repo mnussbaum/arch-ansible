@@ -8,7 +8,7 @@ key_repeat:
   delay: 250
 
 monitor:
-  id: eDP-1
+  id: Virtual-1
   height: 165
   width: 294
   dpi: 276
