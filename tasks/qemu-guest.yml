@@ -19,6 +19,5 @@
     name: qemu-ga.service
     enabled: yes
     state: started
-    scope: user
     daemon-reload: true
   become: true
