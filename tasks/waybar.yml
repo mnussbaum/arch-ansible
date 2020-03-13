@@ -18,13 +18,13 @@
   template:
     src: templates/waybar-config.json.j2
     dest: "{{ user_config_dir }}/waybar/config"
-  tags: [base16, tablet_toggle]
+  tags: [base16]
 
 - name: Waybar | Install waybar styling
   template:
     src: templates/waybar-style.css.j2
     dest: "{{ user_config_dir }}/waybar/style.css"
-  tags: [base16, tablet_toggle]
+  tags: [base16]
 
 - name: Waybar | Install service
   copy:

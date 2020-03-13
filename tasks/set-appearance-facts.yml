@@ -22,21 +22,3 @@
     base16_scheme: "{{ daytime_base16_scheme }}"
     base16_scheme_family: "{{ daytime_base16_scheme_family }}"
     desktop_backgound: "{{ user_data_dir }}/wallpapers/daytime.jpg"
-
-- set_fact:
-    waybar_tablet_mode_font_modifier_file: "{{ user_data_dir }}/waybar_tablet_mode_font_modifier"
-
-- name: Appearance facts | Check if waybar tablet mode font modifier file exists
-  stat:
-    path: "{{ waybar_tablet_mode_font_modifier_file }}"
-  register: waybar_tablet_mode_font_modifier_file_stat_result
-
-- name: Appearance facts | Create waybar tablet mode font modifier file
-  copy:
-    dest: "{{ waybar_tablet_mode_font_modifier_file }}"
-    content: 1
-  when: not waybar_tablet_mode_font_modifier_file_stat_result.stat.exists
-
-- name: Appearance facts | Set tablet_mode_waybar_font_modifier
-  set_fact:
-    waybar_tablet_mode_font_modifier: "{{ lookup('file', waybar_tablet_mode_font_modifier_file) | int }}"

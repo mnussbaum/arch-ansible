@@ -3,11 +3,6 @@ boot_device:
   name: /dev/sda2
   encrypted_root: false
 
-configure_for_tablet_mode: false
-
-font:
-  rofi_size: 10
-
 key_repeat:
   delay: 350
 
