@@ -7,3 +7,18 @@
   copy:
     content: "blacklist coretemp"
     dest: "/etc/modprobe.d/blacklist_coretemp.conf"
+
+- name: qemu guest | Install guest agent package
+  package:
+    state: present
+    name: qemu-guest-agent
+  become: true
+
+- name: qemu guest | Enable qemu guest agent service
+  service:
+    name: qemu-ga.service
+    enabled: yes
+    state: started
+    scope: user
+    daemon-reload: true
+  become: true
