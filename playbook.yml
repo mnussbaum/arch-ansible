@@ -59,6 +59,7 @@
     - import_tasks: tasks/alacritty.yml
     - import_tasks: tasks/tmux.yml
     - import_tasks: tasks/power.yml
+    - import_tasks: tasks/qemu-host.yml
     - import_tasks: tasks/qemu-guest.yml
       when: ansible_virtualization_type == "kvm"
     - import_tasks: tasks/virtualbox-guest.yml

@@ -14,6 +14,7 @@ common_qemu_args=(
   "-enable-kvm" \
   "-M" "q35" \
   "-cpu" "host" \
+  "-nic" "user,model=virtio-net-pci" \
   "-smp" "4,sockets=1,cores=4,threads=1" \
   "-bios" "/usr/share/qemu/bios.bin" \
   "-boot" "menu=on" \

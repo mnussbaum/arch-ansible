@@ -1,0 +1,22 @@
+---
+- name: qemu host | Install qemu
+  package:
+    state: present
+    name: qemu
+  become: true
+
+- name: qemu host | Enable kvm CPU pass-through
+  become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  copy:
+    content: "options kvm_intel nested=1"
+    dest: "/etc/modprobe.d/kvm_intel.conf"
+
+- name: qemu host | Enable virtio module
+  become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  copy:
+    content: "virtio"
+    dest: "/etc/modules-load.d/virtio.conf"

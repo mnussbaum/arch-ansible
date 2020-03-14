@@ -3,6 +3,5 @@
   package:
     state: present
     name:
-      - qemu
       - qemu-arm-static
   become: true
