@@ -1,0 +1,102 @@
+# vim:ft=yaml.ansible:
+---
+- hosts: all
+  tasks:
+    # Right now needs sd_device and root_dir_mnt as args set to
+    # /dev/sda and /mnt respectively
+    - name: Set partition facts
+      set_fact:
+        desired_partitions:
+          - number: 1
+            partition_device: "{{ sd_device }}1"
+            logical_device: "{{ sd_device }}1"
+            name: EFI
+            start: 0%
+            end: 261MiB
+            fstype: vfat
+            fs_options: []
+            # mount_point: "{{ boot_dir_mnt }}"
+            encrypted: false
+            flags:
+              - esp
+          - number: 2
+            partition_device: "{{ sd_device }}2"
+            logical_device: "/dev/mapper/pi-sd-root"
+            name: Grub
+            start: 261MiB
+            end: 773MiB
+            fstype: ext4
+            fs_options:
+              - ^has_journal
+            # mount_point: "{{ root_dir_mnt }}"
+            encrypted: true
+            flags: []
+          - number: 3
+            partition_device: "{{ sd_device }}3"
+            logical_device: "/dev/mapper/vgcrypt-root"
+            name: Arch Root
+            start: 773MiB
+            end: 100%
+            fstype: ext4
+            fs_options:
+              - ^has_journal
+            mount_point: "{{ root_dir_mnt }}"
+            encrypted: true
+            flags: []
+    - name: Create partitions
+      parted:
+        # The gpt label always needs to be set due to
+        # https://github.com/ansible/ansible/issues/38594
+        label: gpt
+        device: "{{ disk_device }}"
+        number: "{{ item.number }}"
+        state: present
+        part_type: primary
+        part_start: "{{ item.start }}"
+        part_end: "{{ item.end }}"
+        unit: MiB
+        flags: "{{ item.flags }}"
+        name: "{{ item.name }}"
+        unit: MiB
+      become: true
+      loop: "{{ desired_partitions }}"
+
+    - name: LUKS format device and cryptopen it
+      luks_device:
+        device: "{{ item.partition_device }}"
+        state: "opened"
+        name: "{{ item.logical_device | basename }}"
+        keyfile: "luks-keyfile"
+      become: true
+      loop: "{{ desired_partitions }}"
+      when: item.encrypted
+      register: luks_format_result
+
+    - name: Create physical volume and volume group for encrypted root
+      lvg:
+        vg: vgcrypt
+        pvs: /dev/mapper/lvm
+    - name: Create logical volume for encrypted root
+      lvol:
+        vg: vgcrypt
+        lv: root
+        size: 100%FREE
+
+    - name: Create partition filesystems
+      filesystem:
+        fstype: "{{ item.fstype }}"
+        dev: "{{ item.partition_device }}"
+        opts: "{{ item.fs_options }}"
+        force: true
+        # Would be nice to add fs labels here set to the name
+      become: true
+      loop: "{{ desired_partitions }}"
+
+    - name: Mount partitions
+      mount:
+        fstype: "{{ item.fstype }}"
+        src: "{{ item.logical_device }}"
+        path: "{{ item.mount_point }}"
+        state: mounted
+      become: true
+      loop: "{{ desired_partitions }}"
