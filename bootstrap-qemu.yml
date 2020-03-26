@@ -2,37 +2,37 @@
 ---
 - hosts: all
   tasks:
-    # Right now needs sd_device and root_dir_mnt as args set to
+    # Right now needs disk_device and root_dir_mnt as args set to
     # /dev/sda and /mnt respectively
     - name: Set partition facts
       set_fact:
         desired_partitions:
           - number: 1
-            partition_device: "{{ sd_device }}1"
-            logical_device: "{{ sd_device }}1"
+            partition_device: "{{ disk_device }}1"
+            logical_device: "{{ disk_device }}1"
             name: EFI
             start: 0%
             end: 261MiB
             fstype: vfat
             fs_options: []
-            # mount_point: "{{ boot_dir_mnt }}"
+            mount_point: "{{ root_dir_mnt }}/boot/efi"
             encrypted: false
             flags:
               - esp
           - number: 2
-            partition_device: "{{ sd_device }}2"
-            logical_device: "/dev/mapper/pi-sd-root"
+            partition_device: "{{ disk_device }}2"
+            logical_device: "{{ disk_device }}2"
             name: Grub
             start: 261MiB
             end: 773MiB
             fstype: ext4
             fs_options:
               - ^has_journal
-            # mount_point: "{{ root_dir_mnt }}"
-            encrypted: true
+            mount_point: "{{ root_dir_mnt }}/boot"
+            encrypted: false
             flags: []
           - number: 3
-            partition_device: "{{ sd_device }}3"
+            partition_device: "{{ disk_device }}3"
             logical_device: "/dev/mapper/vgcrypt-root"
             name: Arch Root
             start: 773MiB
@@ -65,7 +65,7 @@
       luks_device:
         device: "{{ item.partition_device }}"
         state: "opened"
-        name: "{{ item.logical_device | basename }}"
+        name: "lvm" # TODO: unhardcode this
         keyfile: "luks-keyfile"
       become: true
       loop: "{{ desired_partitions }}"
@@ -99,4 +99,23 @@
         path: "{{ item.mount_point }}"
         state: mounted
       become: true
-      loop: "{{ desired_partitions }}"
+      # Reverse the partitions so that the mount order is:
+      # 1. /mnt
+      # 2. /mnt/boot
+      # 3. /mnt/boot/efi
+      loop: "{{ desired_partitions | reverse }}"
+
+     # Fix hardcoding of lvm, test volume/mounting
+     # Next up is network setup, but we can skip that in qemu
+     # for now
+     # Resume at line 148 of bin/_bootstrap.sh, create file for mirrors
+     # Then refresh keys
+     # Then pacstrap
+     # Then genfstab
+     # Then migrate initial-configure-xps into bootstrap tagged ansible tasks
+     # Then migrate install gpg and ssh keys to ansible
+     # Then migrate copying arch-ansible repo to ansible
+     # Then run ansible bootstrap tag via chroot connection plugin ala https://www.reddit.com/r/ansible/comments/8kc59a/how_to_use_the_chroot_connection_plugin/
+     #
+     # Pull partition definitions into host vars
+     # Unify pi boostrapping and qemu/xps bootstrapping
