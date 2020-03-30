@@ -2,8 +2,6 @@
 ---
 - hosts: all
   tasks:
-    # Right now needs disk_device and root_dir_mnt as args set to
-    # /dev/sda and /mnt respectively
     - name: Set partition facts
       set_fact:
         desired_partitions:
@@ -115,17 +113,32 @@
       # 3. /mnt/boot/efi
       loop: "{{ desired_partitions | reverse | list }}"
 
-     # Fix hardcoding of lvm, test volume/mounting
-     # Next up is network setup, but we can skip that in qemu
-     # for now
-     # Resume at line 148 of bin/_bootstrap.sh, create file for mirrors
-     # Then refresh keys
-     # Then pacstrap
-     # Then genfstab
-     # Then migrate initial-configure-xps into bootstrap tagged ansible tasks
-     # Then migrate install gpg and ssh keys to ansible
-     # Then migrate copying arch-ansible repo to ansible
-     # Then run ansible bootstrap tag via chroot connection plugin ala https://www.reddit.com/r/ansible/comments/8kc59a/how_to_use_the_chroot_connection_plugin/
-     #
-     # Pull partition definitions into host vars
-     # Unify pi boostrapping and qemu/xps bootstrapping
+    - name: Install pacman mirrorlist
+      copy:
+        src: files/pacman_bootstrap_mirrorlist
+        dest: /etc/pacman.d/mirrorlist
+
+    - name: Pacstrap
+      command: "pacstrap {{ root_dir_mnt }} base linux linux-firmware linux-headers"
+      become: true
+
+    - name: Generate fstab contents with mounts
+      command: "genfstab -U -p {{ root_dir_mnt }}"
+      register: genfstab_result
+
+    - name: Write fstab file in chroot
+      copy:
+        content: "{{ genfstab_result.stdout }}"
+        dest: "{{ root_dir_mnt }}/etc/fstab"
+      become: true
+
+    # There's something weird going on where hostnamectl
+    # in the chroot doesn't modify the /etc/hostname
+    # file in the chroot, so the new hostname isn't
+    # persisted
+    - name: Set hostname in chroot
+      command: "arch-chroot {{ root_dir_mnt }} hostnamectl set-hostname {{ new_hostname}}"
+    - name: Set hostname file in chroot
+      command: "arch-chroot {{ root_dir_mnt }} sh -c 'echo -n {{ new_hostname}} > /etc/hostname'"
+
+# TODO: Configure wpa_supplicant wifi stuff

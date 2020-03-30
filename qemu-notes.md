@@ -1,8 +1,9 @@
 TODO:
 
 - Move all bootstrapping into ansible
-  - hostname isn't persisted correctly, not being set in /etc/hostname - maybed fixed in ansible world
-  - More notes in WIP playbook
+  - Write networking configuration into chroot
+  - Pull partition definitions into host vars
+  - Unify pi boostrapping and qemu/xps bootstrapping
   - Right runner script for it
 - fix font in qemu
 - Make install console font bigger

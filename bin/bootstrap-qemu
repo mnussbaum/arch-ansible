@@ -3,28 +3,39 @@
 set -o errexit
 set -o nounset
 
-source bin/_bootstrap.sh
+if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]] ; then
+  echo "Run ansible in an arch ISO running in QEMU to provision a QEMU guest" >&2
+  exit
+else
+  set -o xtrace
+fi
 
-parted --align optimal /dev/sda mklabel gpt
-parted --align optimal /dev/sda mkpart primary fat32 1MiB 261MiB
-parted --align optimal /dev/sda set 1 esp on
-parted --align optimal /dev/sda name 1 "EFI"
-parted --align optimal /dev/sda mkpart primary ext4 261MiB 773MiB
-parted --align optimal /dev/sda name 2 "Grub"
-parted --align optimal /dev/sda mkpart primary ext4 773MiB 100%
-parted --align optimal /dev/sda name 3 '"Arch Root"'
+ansible-playbook bootstrap-qemu.yml \
+  --verbose \
+  -e disk_device=/dev/sda \
+  -e root_dir_mnt=/mnt \
+  -e new_hostname=qemu \
+  $@
 
-hostname="qemu"
-username="mnussbaum"
-disk="/dev/sda"
-ssid=""
-wireless_card=""
+ansible-playbook playbook.yml \
+  --verbose \
+  --inventory hosts.yml \
+  --limit qemu \
+  --connection chroot \
+  -e ansible_host=/mnt \
+  -e bootstrap='true' \
+  -e appearance=night \
+  --tags bootstrap \
+  $@
 
-bootstrap "$hostname" "$username" "$disk" "$ssid" "$wireless_card"
+ansible-playbook post-bootstrap-qemu.yml \
+  --verbose \
+  -e disk_device=/dev/sda \
+  -e root_dir_mnt=/mnt \
+  -e new_hostname=qemu \
+  $@
 
 # After rebooting:
-# sudo cp -r /root/arch-ansible ~/src
-# hostnamectl set-hostname qemu # Don't know why this isn't sticking from initial setup
 # cd ~/src/arch-ansible
 # ./bin/ansible # This should succeed to the point of secret setup
 # gpg --import ~/gpg-keys/private-key.asc

@@ -1,6 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-# Hmm, hostname, set before ansible for targeting or provide as var?
 - name: boot | Generate locales
   locale_gen:
     name: en_US.UTF-8
