@@ -23,6 +23,13 @@
   command: localectl set-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8
   when: locale_lang != "en_US.UTF-8" or locale_language != "en_US.UTF-8"
 
+- name: boot | Install pacman database files
+  become: true
+  pacman:
+    update_cache: yes
+    upgrade: yes
+  retries: 2
+
 - name: boot | Install packages
   become: true
   package:
