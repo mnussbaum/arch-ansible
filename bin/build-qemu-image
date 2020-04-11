@@ -13,7 +13,8 @@ qemu-img create -f qcow2 "$qemu_image_file" 20G
 rm -f "$qemu_install_iso"
 qemu-img create -f raw "$qemu_install_iso" 8G
 
-ansible-playbook build-install-iso.yml -v --ask-become-pass \
+ANSIBLE_PLAYBOOK=build-install-iso.yml \
+  ./bin/ansible \
   -e iso_output_file="$qemu_install_iso" \
   -e pass_gpg_key="mnussbaum (Password Store)"
 

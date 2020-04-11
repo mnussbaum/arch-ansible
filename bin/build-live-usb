@@ -3,7 +3,8 @@
 set -o errexit
 set -o nounset
 
-ansible-playbook build-install-iso.yml -v --ask-become-pass \
+ANSIBLE_PLAYBOOK=build-install-iso.yml \
+  exec ./bin/ansible \
   -e iso_output_file=/dev/sdb \
   -e pass_gpg_key="mnussbaum (Password Store)" \
   $@

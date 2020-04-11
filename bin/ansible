@@ -9,11 +9,15 @@ else
   appearance="night"
 fi
 
-ansible_args=$@
+maybe_ask_become_pass=""
 if [[ -z "${NO_ASK_BECOME_PASS:-}" ]] ; then
-  ansible_args="$ansible_args --ask-become-pass"
+  maybe_ask_become_pass="--ask-become-pass"
 fi
 
-
-exec ansible-playbook playbook.yml --verbose --inventory hosts.yml \
-  --limit $(hostname) --extra-vars "appearance=$appearance" $ansible_args
+exec ansible-playbook "${ANSIBLE_PLAYBOOK:-playbook.yml}" \
+  --verbose \
+  --connection local \
+  --limit $(hostname) \
+  --extra-vars "appearance=$appearance" \
+  "$@" \
+  $maybe_ask_become_pass

@@ -10,29 +10,18 @@ else
   set -o xtrace
 fi
 
-ansible-playbook bootstrap-qemu.yml \
-  --verbose \
-  -e disk_device=/dev/sda \
-  -e root_dir_mnt=/mnt \
-  -e new_hostname=qemu \
-  $@
+local new_hostname="qemu"
+hostnamectl set-hostname $new_hostname
 
-ansible-playbook playbook.yml \
-  --verbose \
-  --inventory hosts.yml \
+NO_ASK_BECOME_PASS=1 \
+ANSIBLE_PLAYBOOK=bootstrap-qemu.yml \
+  exec ./bin/ansible \
   --limit qemu \
-  --connection chroot \
-  -e ansible_host=/mnt \
-  -e bootstrap='true' \
-  -e appearance=night \
-  --tags bootstrap \
-  $@
-
-ansible-playbook post-bootstrap-qemu.yml \
-  --verbose \
   -e disk_device=/dev/sda \
   -e root_dir_mnt=/mnt \
-  -e new_hostname=qemu \
+  -e new_hostname=$new_hostname \
+  -e bootstrap="true" \
+  --tags bootstrap \
   $@
 
 # After rebooting:

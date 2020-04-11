@@ -25,7 +25,8 @@ fi
 
 extra_ansible_args="$extra_ansible_args -e boot_dir_mnt=$boot_dir -e root_dir_mnt=$root_dir"
 
-ansible-playbook build-pi-sd.yml -v --ask-become-pass \
+ANSIBLE_PLAYBOOK=build-pi-sd.yml \
+  exec ./bin/ansible \
   -e sd_device=/dev/mmcblk0 \
   -e pass_gpg_key="mnussbaum (Password Store)" \
   $extra_ansible_args \
