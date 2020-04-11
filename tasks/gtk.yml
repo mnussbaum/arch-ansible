@@ -5,9 +5,11 @@
     path: "{{ user_config_dir }}/gtk-3.0"
     state: directory
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: GTK | Install configs
   template:
     src: templates/gtk_3_0_settings.ini.j2
     dest: "{{ user_config_dir }}/gtk-3.0/settings.ini"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"

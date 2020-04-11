@@ -45,6 +45,7 @@
     src: templates/Xresources.j2
     dest: "/home/{{ user.name }}/.Xresources"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   tags: [base16]
 
 - name: Xorg | Install templated services
@@ -52,6 +53,7 @@
     src: "templates/{{ item }}.j2"
     dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   with_items:
     - xorg.service
 
@@ -60,6 +62,7 @@
     src: "files/{{ item }}"
     dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   with_items:
     - xrdb.service
 

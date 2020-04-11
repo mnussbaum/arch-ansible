@@ -4,6 +4,7 @@
   file:
     path: "{{ user_config_dir }}/i3"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: i3 | Install packages
@@ -32,6 +33,7 @@
     src: templates/sway_and_i3_config.j2
     dest: "{{ user_config_dir }}/i3/config"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   tags: [base16]
   with_items:
     - i3
@@ -39,12 +41,14 @@
 - name: i3 | Install feh service
   template:
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     src: "templates/feh.service.j2"
     dest: "{{ user_config_dir }}/systemd/user/feh.service"
 
 - name: i3 | Install services
   copy:
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     src: "files/{{ item }}"
     dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
   with_items:

@@ -29,7 +29,9 @@
 
 - name: user | Create individual user group
   become: true
-  group: name={{ user.group }} state=present
+  group:
+    name: "{{ user.group }}"
+    state: present
 
 - name: user | Create user
   become: true
@@ -49,24 +51,28 @@
   file:
     path: "{{ user_data_dir }}"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: user | Create user config dir
   file:
     path: "{{ user_config_dir }}"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: user | Create user source code dir
   file:
     path: "/home/{{ user.name }}/src"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: user | Create user systemd dir
   file:
     path: "{{ user_config_dir }}/systemd/user"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: user | Install user profile
@@ -74,9 +80,11 @@
     dest: "/home/{{ user.name }}/.profile"
     src: templates/profile.j2
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: user | Install user zprofile, sourcing profile
   copy:
     dest: "/home/{{ user.name }}/.zprofile"
     src: source_user_profile
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"

@@ -11,6 +11,7 @@
 - name: Waybar | Create waybar config dir
   file:
     path: "{{ user_config_dir }}/waybar"
+    group: "{{ user.group }}"
     owner: "{{ user.name }}"
     state: directory
 
@@ -31,6 +32,7 @@
     src: files/waybar.service
     dest: "{{ user_config_dir }}/systemd/user/waybar.service"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Waybar | Enable service
   become: true
@@ -50,6 +52,7 @@
   file:
     path: "{{ user_config_dir }}/waybar-sway-workspace-output-manager"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: Waybar | Install waybar-sway-workspace-output-manager config file
@@ -69,6 +72,7 @@
     src: files/waybar-sway-workspace-output-manager.service
     dest: "{{ user_config_dir }}/systemd/user/waybar-sway-workspace-output-manager.service"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Waybar | Enable waybar-sway-workspace-output-manager service
   become: true

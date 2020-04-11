@@ -13,6 +13,7 @@
   file:
     path: "{{ user_config_dir }}/zathura"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: zathura | Generate base16 configs

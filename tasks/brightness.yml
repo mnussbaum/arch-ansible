@@ -14,6 +14,7 @@
     src: templates/redshift.conf.j2
     dest: "{{ user_config_dir }}/redshift.conf"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Brightness | Install redshift-period binary
   become: true
@@ -34,12 +35,14 @@
     src: files/colorscheme-changer.service
     dest: "{{ user_config_dir }}/systemd/user/colorscheme-changer.service"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Brightness | Install colorscheme-changer timer
   copy:
     src: files/colorscheme-changer.timer
     dest: "{{ user_config_dir }}/systemd/user/colorscheme-changer.timer"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Brightness | Enable colorscheme-changer timer
   service:
@@ -56,6 +59,7 @@
     src: files/redshift.service
     dest: "{{ user_config_dir }}/systemd/user/redshift.service"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Brightness | Enable redshift service
   become: true

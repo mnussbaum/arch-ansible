@@ -32,6 +32,7 @@
 - name: Virtualbox guest | Install VBoxClient service
   copy:
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     src: files/vboxclient.service
     dest: "{{ user_config_dir }}/systemd/user/vboxclient.service"
 

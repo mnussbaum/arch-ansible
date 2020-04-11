@@ -15,17 +15,20 @@
     dest: "{{ user_config_dir }}/dircolors"
     src: dircolors
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: ZSH | Install zshrc
   copy:
     dest: "/home/{{ user.name }}/.zshrc"
     src: zshrc
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: ZSH | Create zsh config dir
   file:
     path: "{{ user_config_dir }}/zsh"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: ZSH | Generate base16 configs
@@ -49,5 +52,6 @@
     dest: "{{ user_config_dir }}/zsh/{{ item | basename }}"
     src: "{{ item }}"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   with_fileglob:
     - files/zsh-configs/*

@@ -29,12 +29,14 @@
   file:
     path: "{{ user_data_dir }}/rofi/themes"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: Rofi | Create config dir
   file:
     path: "{{ user_config_dir }}/rofi"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: Rofi | Install config

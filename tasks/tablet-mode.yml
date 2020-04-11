@@ -12,6 +12,7 @@
     src: "files/{{ item }}.service"
     dest: "{{ user_config_dir }}/systemd/user/{{ item }}.service"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   with_items:
     - rot8
     - virtboard

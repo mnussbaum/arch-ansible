@@ -19,3 +19,4 @@
     src: files/editorconfig
     dest: "/home/{{ user.name }}/.editorconfig"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"

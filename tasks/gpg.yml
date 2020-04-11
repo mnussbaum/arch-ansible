@@ -15,6 +15,7 @@
   file:
     path: "/home/{{ user.name }}/.gnupg"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     mode: 0700
     state: directory
 
@@ -23,6 +24,7 @@
     dest: "/home/{{ user.name }}/.gnupg/gpg.conf"
     src: files/gpg.conf
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     mode: 0600
 
 # This value is derived from my SSH key. If rotating keys rederive this value
@@ -32,6 +34,7 @@
     dest: "/home/{{ user.name }}/.gnupg/sshcontrol"
     content: "B72091CA763D99BC9A060A220F08763AC1836687 0\n\n"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     mode: 0600
 
 - name: GPG | Find gpg-agent user service configs
@@ -47,6 +50,7 @@
     dest: "{{ user_config_dir }}/systemd/user/{{ item.path | basename }}"
     src: "{{ item.path }}"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   with_items: "{{ gpg_agent_service_configs.files }}"
 
 - name: GPG | Enable gpg-agent user services

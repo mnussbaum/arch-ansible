@@ -59,4 +59,5 @@
     content: "{{ base16_fzf['schemes'][base16_scheme]['fzf']['bash']['base16-' + base16_scheme + '.config'] }}"
     dest: "{{ user_config_dir }}/zsh/fzf-base16.zsh"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   tags: [base16]

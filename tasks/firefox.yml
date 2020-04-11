@@ -32,18 +32,21 @@
     dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/user.js"
     src: templates/firefox-user.js.j2
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Firefox | Create chrome config dir
   file:
     path: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome"
     state: directory
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Firefox | Configure firefox userChrome.css
   template:
     dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome/userChrome.css"
     src: templates/firefox-userChrome.css.j2
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   tags: [base16]
 
 - name: Firefox | Configure firefox userContent.css
@@ -51,6 +54,7 @@
     dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome/userContent.css"
     src: templates/firefox-userContent.css.j2
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   tags: [base16]
 
 - name: Firefox | Create vim-vixen plugin config dir
@@ -58,6 +62,7 @@
     path: "/home/{{ user.name }}/.mozilla/firefox/default.profile/browser-extension-data/vim-vixen@i-beam.org"
     state: directory
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Firefox | Configure flash plugin
   copy:
@@ -66,6 +71,7 @@
     dest: "{{ user_config_dir }}/freshwrapper.conf"
     force: no
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Firefox | Enable hardware acceleration for flash plugin
   lineinfile:

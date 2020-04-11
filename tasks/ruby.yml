@@ -21,6 +21,7 @@
     src: files/irbrc
     dest: "/home/{{ user.name }}/.irbrc"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Ruby | Install rubocop config
   become: true
@@ -28,3 +29,4 @@
     src: files/rubocop.yml
     dest: "/home/{{ user.name }}/.rubocop.yml"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"

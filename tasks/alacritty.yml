@@ -10,6 +10,7 @@
   file:
     path: "{{ user_config_dir }}/alacritty"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
     state: directory
 
 - name: alacritty | Generate base16 colors
@@ -27,4 +28,5 @@
     src: templates/alacritty.yml.j2
     dest: "{{ user_config_dir }}/alacritty/alacritty.yml"
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
   tags: [base16]
