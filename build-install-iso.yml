@@ -39,6 +39,12 @@
             dest: "{{ iso_build_dir }}/packages.x86_64"
             line: ansible
 
+        - name: Add git package
+          become: true
+          lineinfile:
+            dest: "{{ iso_build_dir }}/packages.x86_64"
+            line: git
+
         - name: Add tmux package
           become: true
           lineinfile:

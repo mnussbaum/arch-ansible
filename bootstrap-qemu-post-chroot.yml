@@ -1,0 +1,39 @@
+# vim:ft=yaml.ansible:
+---
+- hosts: all
+  tasks:
+    - set_fact:
+        user_home_dir: "/home/{{ user.name }}"
+    - set_fact:
+        arch_ansible_dest: "{{ user_home_dir }}/src/arch-ansible"
+        secrets_to_install:
+          - src: gpg-keys/
+            dest: "{{ user_home_dir }}/gpg-keys"
+          - src: ssh-keys/
+            dest: "{{ user_home_dir }}/.ssh"
+
+    - name: Install secrets
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ user.name }}"
+        group: "{{ user.group }}"
+        mode: "0600"
+        directory_mode: "0700"
+      loop: "{{ secrets_to_install }}"
+
+    - name: Copy over arch-ansible repo
+      local_action: command cp -r "{{ playbook_dir }}/" "{{ root_dir_mnt }}/{{ arch_ansible_dest }}"
+
+    - name: Set permission on arch-ansible copy
+      file:
+        path: "{{ arch_ansible_dest }}"
+        recurse: true
+        owner: "{{ user.name }}"
+        group: "{{ user.group }}"
+
+    - name: Delete keys out of arch-ansible copy
+      file:
+        path: "{{ arch_ansible_dest }}/{{ item.src }}"
+        state: absent
+      loop: "{{ secrets_to_install }}"

@@ -29,6 +29,7 @@
     update_cache: yes
     upgrade: yes
   retries: 2
+  when: bootstrap is defined and bootstrap == "true"
 
 - name: boot | Install packages
   become: true
