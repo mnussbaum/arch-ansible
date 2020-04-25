@@ -13,8 +13,8 @@
     - set_fact:
         skel_dir: "{{ iso_build_dir }}/airootfs/etc/skel"
         ansible_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible"
-        gpg_keys_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible/gpg-keys"
-        ssh_keys_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible/ssh-keys"
+        gpg_keys_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible/secrets/gpg-keys"
+        ssh_keys_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible/secrets/ssh-keys"
     - name: Populate temp dir
       become: true
       synchronize:

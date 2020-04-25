@@ -98,12 +98,11 @@
   changed_when: false
   become: true
 
-- name: boot | Read parition information
-  parted:
-    device: "{{ boot_device['name'] }}"
-    unit: MiB
-  register: partition_info
-  become: true
+- name: Identify root partition
+  set_fact:
+    root_partition: "{{ item }}"
+  loop: "{{ desired_partitions }}"
+  when: item.name == "Arch Root"
 
 - name: boot | Configure grub
   become: true

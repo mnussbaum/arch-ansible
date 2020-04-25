@@ -55,23 +55,13 @@ GRUB_ENABLE_CRYPTODISK=y
 
 # These params are passed to the kernel at boot
 
-{% if boot_device["encrypted_root"] %}
-{% set root_partition_number = (
-    partition_info["partitions"] |
-    selectattr("name", "equalto", boot_device["root_partition_name"]) |
-    list | first
-).num %}
-{% if "nvme" in boot_device["name"] %}
-{% set cryptdevice = boot_device["name"] ~ "p" ~ root_partition_number %}
-{% else %}
-{% set cryptdevice = boot_device["name"] ~ root_partition_number %}
-{% endif %}
-GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ cryptdevice }}:vgcrypt"
+{% if root_partition["encrypted"] %}
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ root_partition["partition_device"] }}:vgcrypt"
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume=/dev/mapper/vgcrypt-root"
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"
 {% endif %}
 
-{% if "nvme" in boot_device["name"] %}
+{% if "nvme" in root_partition["physical_device"] %}
 # Save power, force necessary for NVMe
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} pcie_aspm=force"
 {% endif %}

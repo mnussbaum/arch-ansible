@@ -1,7 +1,4 @@
 *.pyc
 *.retry
 .vagrant/
-gpg-keys
-luks-keyfile
-ssh-keys
-luks-keyfile
+secrets/

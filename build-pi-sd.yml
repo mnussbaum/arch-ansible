@@ -42,8 +42,8 @@
     - name: Set secondary facts
       set_fact:
         ansible_dir: "{{ alarm_home_dir }}/arch-ansible"
-        gpg_keys_dir: "{{ alarm_home_dir }}/arch-ansible/gpg-keys"
-        ssh_keys_dir: "{{ alarm_home_dir }}/arch-ansible/ssh-keys"
+        gpg_keys_dir: "{{ alarm_home_dir }}/arch-ansible/secrets/gpg-keys"
+        ssh_keys_dir: "{{ alarm_home_dir }}/arch-ansible/secrets/ssh-keys"
 
     - block:
         - name: Read SD card device info
@@ -79,7 +79,7 @@
             device: "{{ item.raw_device }}"
             state: "opened"
             name: "{{ item.logical_device | basename }}"
-            keyfile: "luks-keyfile"
+            keyfile: secrets/luks-keyfile
           become: true
           loop: "{{ desired_partitions }}"
           when: item.encrypted

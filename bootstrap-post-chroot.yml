@@ -7,9 +7,9 @@
     - set_fact:
         arch_ansible_dest: "{{ user_home_dir }}/src/arch-ansible"
         secrets_to_install:
-          - src: gpg-keys/
+          - src: secrets/gpg-keys/
             dest: "{{ user_home_dir }}/gpg-keys"
-          - src: ssh-keys/
+          - src: secrets/ssh-keys/
             dest: "{{ user_home_dir }}/.ssh"
 
     - name: Install secrets
@@ -32,8 +32,7 @@
         owner: "{{ user.name }}"
         group: "{{ user.group }}"
 
-    - name: Delete keys out of arch-ansible copy
+    - name: Delete secrets out of arch-ansible copy
       file:
-        path: "{{ arch_ansible_dest }}/{{ item.src }}"
+        path: "{{ arch_ansible_dest }}/secrets"
         state: absent
-      loop: "{{ secrets_to_install }}"
