@@ -24,12 +24,6 @@
     path: /etc/X11/xorg.conf.d
     state: directory
 
-- name: Xorg | Install xorg monitor config
-  template:
-    dest: /etc/X11/xorg.conf.d/90-monitor.conf
-    src: templates/xorg-monitor.conf.j2
-  become: true
-
 - name: Xorg | Generate base16 configs
   base16_builder:
     scheme: "{{ base16_scheme }}"

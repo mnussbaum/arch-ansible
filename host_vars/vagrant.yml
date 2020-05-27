@@ -32,10 +32,10 @@ desired_partitions:
 key_repeat:
   delay: 350
 
-monitor:
+monitors:
   id: VGA-1
-  height: 660
-  width: 1160
+
+hidpi_firefox: false
 
 optional_daemons:
   calised: true

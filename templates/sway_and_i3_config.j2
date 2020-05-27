@@ -32,6 +32,15 @@ gaps outer 2
 gaps top 15
 
 output * bg {{ desktop_backgound }} fill
+
+{% for monitor in monitors %}
+{% if monitor.position is defined %}
+output {{ monitor.id }} position {{ monitor.position.x }} {{ monitor.position.y }}
+{% endif %}
+{% if monitor.scale is defined %}
+output {{ monitor.id }} scale {{ monitor.scale }}
+{% endif %}
+{% endfor %}
 {% endif %}
 
 ### Input configuration
@@ -48,7 +57,7 @@ input * {
     scroll_method two_finger
     tap enabled
 
-    map_to_output "eDP-1"
+    map_to_output "*"
 }
 {% endif %}
 

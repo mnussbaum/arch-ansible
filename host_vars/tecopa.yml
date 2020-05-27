@@ -35,11 +35,19 @@ network:
 key_repeat:
   delay: 250
 
-monitor:
-  id: eDP-1
-  height: 165
-  width: 294
-  dpi: 276
+monitors:
+  - id: eDP-1
+    position:
+      x: 0
+      y: 0
+    scale: 2
+  - id: DP-1
+    position:
+      x: -1100
+      y: -1600
+    scale: 0.9
+
+hidpi_firefox: true
 
 optional_daemons:
   calised: true
