@@ -10,7 +10,6 @@
       - firefox-vim-vixen
       - freshplayerplugin
       - pepper-flash
-      - google-talkplugin
   become: true
 
 - name: Firefox | Make default profile
