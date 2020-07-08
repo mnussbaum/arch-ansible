@@ -7,7 +7,7 @@
     name:
       - calise-git
       - illum-git
-      - redshift-wlr-gamma-control-git
+      - redshift-wayland-git
 
 - name: Brightness | Install redshift config
   template:
