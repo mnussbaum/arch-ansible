@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: qemu guest| Blacklist coretemp module
+- name: qemu guest | Blacklist coretemp module
   become: true
   notify:
     - Regenerate mkinitcpio ramdisk

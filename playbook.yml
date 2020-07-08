@@ -61,9 +61,9 @@
     - import_tasks: tasks/power.yml
     - import_tasks: tasks/qemu-host.yml
     - import_tasks: tasks/qemu-guest.yml
-      when: ansible_virtualization_type == "kvm"
+      when: ansible_virtualization_type == "kvm" and ansible_virtualization_role == "guest"
     - import_tasks: tasks/virtualbox-guest.yml
-      when: ansible_virtualization_type == "virtualbox"
+      when: ansible_virtualization_type == "virtualbox" and ansible_virtualization_role == "guest"
     - import_tasks: tasks/fonts.yml
     - import_tasks: tasks/xorg.yml
     - import_tasks: tasks/libinput.yml
