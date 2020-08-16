@@ -7,9 +7,9 @@ let g:ale_completion_enabled = 1
 
 " We can skip slow python checks because we've installed neovim's python client
 let g:loaded_python_provider = 1
-let g:python3_host_prog  = '/usr/bin/python'
+let g:python3_host_prog  = "/usr/bin/python"
 let g:python3_host_skip_check = 1
-let g:python_host_prog = '/usr/bin/python2'
+let g:python_host_prog = "/usr/bin/python2"
 let g:python_host_skip_check=1
 
 " Close the autocomplete window after completion is done
@@ -29,7 +29,7 @@ let g:ale_echo_cursor = 0
 let g:ale_set_highlights = 1
 let g:ale_set_signs = 0
 let g:ale_virtualtext_cursor = 1
-let g:ale_virtualtext_prefix = '▬▶  '
+let g:ale_virtualtext_prefix = "▬▶  "
 highlight link ALEErrorLine Error
 highlight link ALEVirtualTextError ErrorMsg
 highlight link ALEVirtualTextInfo ALEVirtualTextWarning
@@ -42,19 +42,19 @@ let g:ale_rust_rls_toolchain = ""
 let g:ale_rust_rls_executable = "ra_lsp_server"
 
 let g:ale_fixers = {
-\  'c': ['clang-format'],
-\  'css': ['prettier'],
-\  'go': ['goimports', 'gofmt'],
-\  'graphql': ['prettier'],
-\  'html': ['prettier'],
-\  'javascript': ['prettier'],
-\  'json': ['prettier'],
-\  'markdown': ['prettier'],
-\  'python': ['black'],
-\  'ruby': ['rubocop'],
-\  'rust': ['rustfmt'],
-\  'scss': ['prettier'],
-\  'yaml': ['prettier']
+\  "c": ["clang-format"],
+\  "css": ["prettier"],
+\  "go": ["goimports", "gofmt"],
+\  "graphql": ["prettier"],
+\  "html": ["prettier"],
+\  "javascript": ["prettier"],
+\  "json": ["prettier"],
+\  "markdown": ["prettier"],
+\  "python": ["black"],
+\  "ruby": ["rubocop"],
+\  "rust": ["rustfmt"],
+\  "scss": ["prettier"],
+\  "yaml": ["prettier"]
 \}
 
 let g:ale_linters = {
