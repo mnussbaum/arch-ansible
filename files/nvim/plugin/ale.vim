@@ -21,7 +21,6 @@ set completeopt=menu,menuone,preview,noselect,noinsert
 
 let g:ale_enabled = 1
 let g:ale_fix_on_save = 1
-let g:ale_rust_rls_toolchain = ""
 let g:ale_warn_about_trailing_blank_lines = 1
 let g:ale_warn_about_trailing_whitespace = 1
 
@@ -39,16 +38,8 @@ highlight link ALEVirtualTextStyleWarning ALEVirtualTextWarning
 highlight link ALEVirtualTextWarning WarningMsg
 highlight link ALEWarningLine WarningMsg
 
-let g:ale_rust_rls_config = {
-  \ 'rust': {
-    \ 'all_targets': 1,
-    \ 'build_on_save': 1,
-    \ 'clippy_preference': 'on'
-  \ }
-\ }
-
-let g:ale_rust_rls_toolchain = ''
-let g:ale_rust_rls_executable = 'rust-analyzer'
+let g:ale_rust_rls_toolchain = ""
+let g:ale_rust_rls_executable = "ra_lsp_server"
 
 let g:ale_fixers = {
 \  'c': ['clang-format'],
@@ -67,7 +58,7 @@ let g:ale_fixers = {
 \}
 
 let g:ale_linters = {
-\  'go': ['golint', 'go vet', 'golangserver'],
-\  'python': ['pyls'],
-\  'rust': ['rls']
+\  "go": ["golint", "go vet", "golangserver"],
+\  "python": ["pyls"],
+\  "rust": ["analyzer"]
 \}
