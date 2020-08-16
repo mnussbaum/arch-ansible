@@ -5,3 +5,7 @@ QT_QPA_PLATFORM=wayland-egl
 QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 SDL_VIDEODRIVER=wayland
 _JAVA_AWT_WM_NONREPARENTING=1
+
+# This env var works around a bug in sway. It currently needs to be set for
+# multi-monitor to work - https://github.com/swaywm/wlroots/issues/1877
+WLR_DRM_NO_MODIFIERS=1
