@@ -208,7 +208,7 @@
           become: true
           copy:
             src: files/resolvconf.conf
-            dest: "{{ root_dir_mnt }}/resolvconf.conf"
+            dest: "{{ root_dir_mnt }}/etc/resolvconf.conf"
 
         - name: create systemd-nspawn service file directory
           become: true
