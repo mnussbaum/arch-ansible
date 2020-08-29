@@ -14,7 +14,7 @@
     - name: Set partition facts
       set_fact:
         alarm_home_dir: "{{ root_dir_mnt }}/home/alarm/"
-        root_filesystem_download_path: "{{ lookup('env', 'HOME') }}/.cache/ArchLinuxARM-rpi-3-latest.tar.gz"
+        root_filesystem_download_path: "{{ lookup('env', 'HOME') }}/.cache/ArchLinuxARM-rpi-2-latest.tar.gz"
         # TODO: Make this a key value pair so I can lookup the boot part by name
         desired_partitions:
           - number: 1
@@ -110,7 +110,7 @@
 
         - name: Download root filesystem
           get_url:
-            url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz
+            url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-2-latest.tar.gz
             dest: "{{ root_filesystem_download_path }}"
           when: not root_filesystem_download_check_result.stat.exists
 
