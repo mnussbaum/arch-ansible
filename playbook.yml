@@ -19,8 +19,12 @@
       tags: [base16]
     - import_tasks: tasks/time.yml
       tags: [bootstrap]
-    - import_tasks: tasks/boot.yml
+    - import_tasks: tasks/locale.yml
       tags: [bootstrap]
+    - import_tasks: tasks/bootstrap-packages.yml
+      tags: [bootstrap]
+    - import_tasks: tasks/boot.yml
+      tags: [bootstrap, rebuild-boot-parition]
     - import_tasks: tasks/trim.yml
     - import_tasks: tasks/user.yml
       tags: [bootstrap]

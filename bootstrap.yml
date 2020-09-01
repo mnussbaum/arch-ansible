@@ -7,13 +7,11 @@
         root_dir_mnt: "{{ item.mount_point }}"
       loop: "{{ desired_partitions }}"
       when: item.name == "Arch Root"
-      tags:
-        - bootstrap
+      tags: [bootstrap, rebuild-boot-parition, mount-partitions]
 
 - name: Run pre-chroot tasks
   import_playbook: bootstrap-pre-chroot.yml
-  tags:
-    - bootstrap
+  tags: [bootstrap, rebuild-boot-parition, mount-partitions]
 
 - hosts: all
   tasks:
@@ -21,8 +19,7 @@
       set_fact:
         ansible_host: /mnt
         ansible_connection: chroot
-      tags:
-        - bootstrap
+      tags: [bootstrap, rebuild-boot-parition]
 
 - name: Run normal playbook from inside the chroot
   import_playbook: playbook.yml

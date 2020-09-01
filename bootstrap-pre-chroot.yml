@@ -28,6 +28,7 @@
       become: true
       loop: "{{ desired_partitions }}"
       when: item.encrypted
+      tags: [rebuild-boot-parition, mount-partitions]
 
     - name: Create physical volumes and volume groups for encrypted partitions
       lvg:
@@ -48,6 +49,18 @@
       become: true
       loop: "{{ desired_partitions }}"
       when: item.encrypted
+
+    # This is primarily useful for rebuilding and mounting the boot partition,
+    # but shouldn't hurt initial bootstrapping
+    - name: Activate logical volumes for encrypted partitions
+      lvol:
+        vg: "{{ item.volume_group_name }}"
+        lv: "{{ item.logical_volume_name }}"
+        active: true
+      become: true
+      loop: "{{ desired_partitions }}"
+      when: item.encrypted
+      tags: [rebuild-boot-parition, mount-partitions]
 
     - name: Create partition filesystems
       filesystem:
@@ -72,6 +85,7 @@
       # 2. /mnt/boot
       # 3. /mnt/boot/efi
       loop: "{{ desired_partitions | reverse | list }}"
+      tags: [rebuild-boot-parition, mount-partitions]
 
     - name: Install pacman mirrorlist
       copy:
