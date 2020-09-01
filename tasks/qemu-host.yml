@@ -1,8 +1,10 @@
 ---
-- name: qemu host | Install qemu
+- name: qemu host | Install packages
   package:
     state: present
-    name: qemu
+    name:
+      - qemu
+      - edk2-ovmf
   become: true
 
 - name: qemu host | Enable kvm CPU pass-through

@@ -11,7 +11,7 @@
 
 - name: Run pre-chroot tasks
   import_playbook: bootstrap-pre-chroot.yml
-  tags: [bootstrap, rebuild-boot-parition, mount-partitions]
+  tags: [bootstrap]
 
 - hosts: all
   tasks:

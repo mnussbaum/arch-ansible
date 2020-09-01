@@ -15,5 +15,5 @@ ANSIBLE_PLAYBOOK=bootstrap.yml \
   exec ./bin/ansible \
   --limit tecopa \
   -e bootstrap="true" \
-  --tags bootstrap,rebuild-boot-parition \
+  --tags rebuild-boot-parition \
   $@

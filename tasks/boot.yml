@@ -20,6 +20,8 @@
     force: no
     mode: 0600
 
+# TODO: This fails because the role uses fallocate and creates  a swapfile with
+# holes. Need to use dd instead
 - name: boot | Configure swapfile
   include_role:
     name: ansible-swapfile
