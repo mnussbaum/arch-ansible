@@ -17,9 +17,9 @@
       - archlinux-keyring
       - base
       - inetutils
-      - linux
+      - linux-lts
+      - linux-lts-headers
       - linux-firmware
-      - linux-headers
       - lvm2
       - python
       - python-passlib
