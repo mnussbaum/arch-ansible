@@ -14,3 +14,11 @@ idle_thresholds:
   lock_screen_delay_minutes: 5
   suspend_delay_minutes: 10
   hibernate_delay_minutes: 45
+
+base16:
+  day_scheme: gruvbox-dark-hard
+  day_scheme_family: gruvbox
+  night_scheme: unikitty-dark
+  night_scheme_family: unikitty
+  schemes_source: "https://github.com/mnussbaum/base16-schemes-source"
+  templates_source: "https://github.com/mnussbaum/base16-templates-source"

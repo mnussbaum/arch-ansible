@@ -7,8 +7,10 @@
     group: "{{ user.group }}"
     state: directory
   with_items:
+    - mako
     - sway
     - swaylock
+  tags: [base16]
 
 - name: sway | Install sway env file
   become: true
@@ -28,6 +30,8 @@
       - swayidle-git
       - swaylock-git
       - grim-git
+      - libnotify
+      - mako
       - slurp
       - wl-clipboard-git
       - wdisplays-git
@@ -38,8 +42,8 @@
     scheme: "{{ base16_scheme }}"
     scheme_family: "{{ base16_scheme_family }}"
     template: i3
-    schemes_source: "{{ base16_schemes_source }}"
-    templates_source: "{{ base16_templates_source }}"
+    schemes_source: "{{ base16['schemes_source'] }}"
+    templates_source: "{{ base16['templates_source'] }}"
   register: base16_i3
   tags: [base16]
 
@@ -62,6 +66,24 @@
   tags: [base16]
   with_items:
     - sway
+
+- name: sway | Generate mako base16 config
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: mako
+    schemes_source: "{{ base16['schemes_source'] }}"
+    templates_source: "{{ base16['templates_source'] }}"
+  register: base16_mako
+  tags: [base16]
+
+- name: sway | Write mako config to a file
+  copy:
+    content: "{{ base16_mako['schemes'][base16_scheme]['mako']['colors']['base16-' + base16_scheme + '.config'] }}"
+    dest: "{{ user_config_dir }}/mako/config"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+  tags: [base16]
 
 - name: Sway | Install services
   copy:

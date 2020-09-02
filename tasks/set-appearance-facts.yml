@@ -1,24 +1,15 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Appearance facts | Set base16 day and night themes
-  set_fact:
-    daytime_base16_scheme: gruvbox-dark-hard
-    daytime_base16_scheme_family: gruvbox
-    night_base16_scheme: unikitty-dark
-    night_base16_scheme_family: unikitty
-    base16_schemes_source: "https://github.com/mnussbaum/base16-schemes-source"
-    base16_templates_source: "https://github.com/mnussbaum/base16-templates-source"
-
 - name: Appearance facts | Set night appearance
   when: appearance is undefined or appearance == "night"
   set_fact:
-    base16_scheme: "{{ night_base16_scheme }}"
-    base16_scheme_family: "{{ night_base16_scheme_family }}"
+    base16_scheme: "{{ base16['night_scheme'] }}"
+    base16_scheme_family: "{{ base16['night_scheme_family'] }}"
     desktop_backgound: "{{ user_data_dir }}/wallpapers/night.jpg"
 
 - name: Appearance facts | Set daytime appearance
   when: appearance is defined and appearance == "daytime"
   set_fact:
-    base16_scheme: "{{ daytime_base16_scheme }}"
-    base16_scheme_family: "{{ daytime_base16_scheme_family }}"
+    base16_scheme: "{{ base16['day_scheme'] }}"
+    base16_scheme_family: "{{ base16['day_scheme_family'] }}"
     desktop_backgound: "{{ user_data_dir }}/wallpapers/daytime.jpg"
