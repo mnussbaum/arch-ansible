@@ -1,4 +1,3 @@
-- src: https://github.com/kamaln7/ansible-swapfile
-  version: master
+- src: geerlingguy.swap
 - src: mnussbaum.base16-builder-ansible
 - src: tomeon.ansible_connection_machinectl

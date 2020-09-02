@@ -20,19 +20,17 @@
     force: no
     mode: 0600
 
-# TODO: This fails because the role uses fallocate and creates  a swapfile with
-# holes. Need to use dd instead
+# TODO: Set vmf cache pressure to 1 to improve perf
 - name: boot | Configure swapfile
   include_role:
-    name: ansible-swapfile
+    name: geerlingguy.swap
     apply:
       become: true
   vars:
     ansible_become: true
-    swapfile_location: /swapfile
-    swapfile_size: "{{ ((power_image_size_bytes.stdout | int) * 1.25) | int }}"
-    swapfile_swappiness: 1
-    swapfile_vfs_cache_pressure: 1
+    swapfile_path: /swapfile
+    swapfile_size_mb: "{{ ((power_image_size_bytes.stdout | int) / (1024**2)) | int }}"
+    swapfile_swappiness: "1"
 
 - name: boot | Get swapfile offset
   shell: filefrag -v /swapfile | awk '{gsub(/\./,""); if($1=="0:"){print $4}}'

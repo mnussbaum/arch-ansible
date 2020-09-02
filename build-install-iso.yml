@@ -56,6 +56,12 @@
             src: files/tmux.conf
             dest: "{{ skel_dir }}/.tmux.conf"
 
+        - name: Add os-prober package
+          become: true
+          lineinfile:
+            dest: "{{ iso_build_dir }}/packages.x86_64"
+            line: os-prober
+
         - name: Create gpg-keys dir
           become: true
           file:
