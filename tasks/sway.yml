@@ -78,8 +78,8 @@
   tags: [base16]
 
 - name: sway | Write mako config to a file
-  copy:
-    content: "{{ base16_mako['schemes'][base16_scheme]['mako']['colors']['base16-' + base16_scheme + '.config'] }}"
+  template:
+    src: templates/mako.j2
     dest: "{{ user_config_dir }}/mako/config"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
