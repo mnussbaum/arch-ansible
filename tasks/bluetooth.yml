@@ -15,7 +15,7 @@
     dest: "/etc/pulse/system.pa"
     line: "{{ item }}"
   loop:
-    - "load-module module-bluetooth-policy"
+    - "load-module module-bluetooth-policy auto_switch=2"
     - "load-module module-bluetooth-discover"
 
 - name: Bluetooth | Switch audio to new paired headsets on connect
