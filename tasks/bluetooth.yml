@@ -5,6 +5,7 @@
     state: present
     name:
       - bluez
+      - bluez-tools
       - bluez-utils
       - pulseaudio-bluetooth
 
@@ -50,3 +51,4 @@
 # scan on
 # pair <MAC address>
 # connect <MAC address>
+# trust <MAC address>
