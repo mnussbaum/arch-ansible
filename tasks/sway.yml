@@ -33,7 +33,6 @@
       - libnotify
       - mako
       - qt5-wayland # Provides libs for all Qt5 apps
-      - qt5ct # Provides desktop styling info to Qt5 apps
       - slurp
       - wl-clipboard-git
       - wdisplays-git
