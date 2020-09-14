@@ -7,6 +7,24 @@
       - syncthing
   become: true
 
+- name: syncthing | Create systemd service override dir
+  file:
+    path: "{{ user_config_dir }}/systemd/user/syncthing.service.d"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory
+
+- name: syncthing | Add systemd override to set Nice=19
+  copy:
+    dest: "{{ user_config_dir }}/systemd/user/syncthing.service.d/10-low-priority.conf"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    content: |
+      [Service]
+      Nice=19
+      IOSchedulingClass=2
+      IOSchedulingPriority=7
+
 - name: syncthing | Enable syncthing user service
   become: true
   become_user: "{{ user.name }}"
