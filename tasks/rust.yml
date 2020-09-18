@@ -8,8 +8,8 @@
       - rust-analyzer
   become: true
 
-- name: Rust | Install rust stable
-  command: rustup default stable
+- name: Rust | Install rust nightly
+  command: rustup default nightly
   args:
     creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu"
 

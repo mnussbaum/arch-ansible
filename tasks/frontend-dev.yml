@@ -6,17 +6,7 @@
     name:
       - npm
       - javascript-typescript-langserver
-      - js-beautify
       - prettier
-      - stylelint
-      - stylelint-config-standard
       - vscode-css-languageserver-bin
       - vscode-html-languageserver-bin
   become: true
-
-- name: Frontend-dev | Install editorconfig
-  copy:
-    src: files/editorconfig
-    dest: "/home/{{ user.name }}/.editorconfig"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"

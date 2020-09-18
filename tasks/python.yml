@@ -4,8 +4,9 @@
   package:
     state: present
     name:
-      - python-pip
-      - python-pipenv
       - python-black
       - python-language-server
+      - python-pip
+      - python-pipenv
+      - python-pylint
   become: true

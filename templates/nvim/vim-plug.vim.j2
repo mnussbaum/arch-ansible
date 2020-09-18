@@ -3,5 +3,8 @@ call plug#begin('{{ nvim_data_dir }}/plugged')
 {% for plugin in vim_plugins %}
 Plug '{{ plugin['name'] }}', {{ plugin['args'] | default ({}) | to_json | replace('"', "'") }}
 {% endfor %}
+{% for plugin in coc_plugins %}
+Plug '{{ plugin['name'] }}', {{ plugin['args'] | default ({}) | to_json | replace('"', "'") }}
+{% endfor %}
 
 call plug#end()

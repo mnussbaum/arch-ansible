@@ -7,7 +7,9 @@
     nvim_config_dir: "{{ user_config_dir }}/nvim"
     nvim_data_dir: "{{ user_data_dir }}/nvim"
     vim_plugins:
-      - name: "w0rp/ale"
+      - name: "neoclide/coc.nvim"
+        args:
+          branch: release
       - name: "christoomey/vim-tmux-runner"
       - name: "fatih/vim-go"
         args:
@@ -43,6 +45,72 @@
       - name: "tyru/caw.vim"
       - name: "vim-ruby/vim-ruby"
       - name: "arrufat/vala.vim"
+    coc_plugins:
+      - name: "clangd/coc-clangd"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages: [c, cpp]
+      - name: "neoclide/coc-tsserver"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages:
+          - javascript
+          - typescript
+      - name: "neoclide/coc-html"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages:
+          - html
+      - name: "neoclide/coc-css"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages:
+          - css
+          - scss
+      - name: "neoclide/coc-prettier"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages:
+          - graphql
+          - markdown
+        settings:
+          prettier.formatterPriority: -1
+          prettier.trailingComma: true
+      - name: "neoclide/coc-json"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages:
+          - json
+      - name: "neoclide/coc-yaml"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages: [yaml]
+        settings:
+          yaml.format.proseWrap: true
+          yaml.format.enable: true
+      - name: "josa42/coc-go"
+        languages: [go]
+        args:
+          do: "yarn install --frozen-lockfile"
+      - name: "neoclide/coc-python"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages: [python]
+        settings:
+          python.formatting.provider: black
+      - name: "neoclide/coc-solargraph"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages: [ruby]
+        settings:
+          solargraph.diagnostics: true
+          solargraph.formatting: true
+      - name: "fannheyward/coc-rust-analyzer"
+        args:
+          do: "yarn install --frozen-lockfile"
+        languages: [rust]
+        settings:
+          rust-analyzer.serverPath: "/usr/bin/rust-analyzer"
   tags: [base16]
 
 - name: nvim | Ensure nvim config and data dirs exist
@@ -63,11 +131,12 @@
     state: present
     name:
       - ansible-lint
-      - ccls
       - clang
       - ctags
       - neovim
       - python-neovim
+      - yaml-language-server-bin
+      - vscode-json-languageserver-bin
   become: true
 
 - name: nvim | Download vim-plug installer
@@ -81,6 +150,13 @@
   copy:
     src: nvim/init.vim
     dest: "{{ nvim_config_dir }}/init.vim"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: nvim | Install coc-settings.json
+  template:
+    src: templates/nvim/coc-settings.json.j2
+    dest: "{{ nvim_config_dir }}/coc-settings.json"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
