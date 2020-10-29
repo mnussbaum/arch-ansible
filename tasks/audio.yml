@@ -8,6 +8,8 @@
       - pulseaudio
       - pulseaudio-alsa
       - pavucontrol
+      - gst-libav
       - spotify
       - playerctl
+      - lollypop
     state: present
