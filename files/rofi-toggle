@@ -7,24 +7,24 @@ if grep -q rofi-pass <<< "$@" ; then
   invoking_rofi_pass=true
 fi
 
-pgrep -x -f 'bash /usr/bin/rofi-pass' >/dev/null 2>/dev/null
+pgrep --exact --full 'bash /usr/bin/rofi-pass' >/dev/null 2>/dev/null
 running_rofi_pass=$?
 if $invoking_rofi_pass && [ $running_rofi_pass == 0 ] ; then
-  pkill -x rofi
+  pkill --exact rofi
   exit 0
 fi
 
 if $invoking_rofi_pass ; then
-  pkill -x rofi
+  pkill --exact rofi
   exec $@
 fi
 
 # If we're running rofi-pass then kill it and start new rofi command
-if [ $running_rofi_pass == 0 ] && pkill -x rofi ; then
+if [ $running_rofi_pass == 0 ] && pkill --exact rofi ; then
   exec $@
 fi
 
 # If we're running normal rofi then kill it, if we aren't then start it
-if ! pkill -x -f "$@" ; then
+if ! pkill --exact --full "$@" ; then
   exec $@
 fi

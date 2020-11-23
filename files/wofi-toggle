@@ -1,0 +1,30 @@
+#!/usr/bin/bash
+
+set -o nounset
+
+invoking_wofi_pass=false
+if grep -q wofipassmenu <<< "$@" ; then
+  invoking_wofi_pass=true
+fi
+
+pgrep --exact --full 'bash /usr/bin/wofipassmenu' >/dev/null 2>/dev/null
+running_wofi_pass=$?
+if $invoking_wofi_pass && [ $running_wofi_pass == 0 ] ; then
+  pkill --exact wofi
+  exit 0
+fi
+
+if $invoking_wofi_pass ; then
+  pkill --exact wofi
+  exec $@
+fi
+
+# If we're running wofi-pass then kill it and start new wofi command
+if [ $running_wofi_pass == 0 ] && pkill --exact wofi ; then
+  exec $@
+fi
+
+# If we're running normal wofi then kill it, if we aren't then start it
+if ! pkill --exact --full "$@" ; then
+  exec $@
+fi
