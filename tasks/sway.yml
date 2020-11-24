@@ -28,7 +28,7 @@
       - sway-git
       - swaybg-git
       - swayidle-git
-      - swaylock-git
+      - swaylock-effects-git
       - grim-git
       - libnotify
       - mako
