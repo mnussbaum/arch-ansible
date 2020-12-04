@@ -76,6 +76,11 @@ bindsym $mod+slash exec $passmenu
 {% if item == "i3" %}bindsym $mod+Print exec i3lock{% endif %}
 
 {% if item == "sway" %}
+# Notifications
+bindsym Shift+d exec makoctl dismiss -a
+{% endif %}
+
+{% if item == "sway" %}
 # Drag floating windows by holding down $mod and left mouse button.
 # Resize them with right mouse button + $mod.
 # Despite the name, also works for non-floating windows.
