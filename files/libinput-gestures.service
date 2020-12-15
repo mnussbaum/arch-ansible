@@ -1,8 +1,8 @@
 [Unit]
 Description=Multitouch via libinput-gestures
 Documentation=https://github.com/bulletmark/libinput-gestures/blob/master/README.md
-After=multi-user.target
-Requires=multi-user.target
+Requires=graphical-session.target
+After=graphical-session.target
 
 [Service]
 ExecStart=/usr/bin/libinput-gestures
@@ -11,4 +11,4 @@ RestartSec=1
 TimeoutStopSec=10
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=graphical-session.target

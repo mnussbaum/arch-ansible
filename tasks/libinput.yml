@@ -6,7 +6,7 @@
     name:
       - libinput
       - libinput-gestures
-      - ydotool
+      - wtype
       - xf86-input-libinput
   become: true
 
@@ -25,19 +25,21 @@
 - name: libinput | Install libinput-gestures service
   become: true
   copy:
-    dest: /etc/systemd/system/libinput-gestures.service
+    dest: "{{ user_config_dir }}/systemd/user/libinput-gestures.service"
     src: libinput-gestures.service
 
 - name: libinput | Install libinput-gestures.conf
   become: true
   copy:
-    dest: /etc/libinput-gestures.conf
+    dest: "{{ user_config_dir }}/libinput-gestures.conf"
     src: libinput-gestures.conf
 
 - name: libinput | Enable libinput-gestures service
   become: true
+  become_user: "{{ user.name }}"
   when: optional_daemons.libinput_gestures
   systemd:
     enabled: true
     name: libinput-gestures.service
+    scope: user
     daemon-reload: true
