@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Audio | Install packages
+- name: AV | Install packages
   become: true
   package:
     name:
@@ -14,3 +14,10 @@
       - lollypop
       - mpv
     state: present
+
+- name: AV | Create mpv config
+  copy:
+    src: files/mpv.conf
+    dest: "{{ user_config_dir }}/mpv/mpv.conf"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
