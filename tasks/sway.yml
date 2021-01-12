@@ -24,10 +24,10 @@
   package:
     state: present
     name:
-      - wlroots-git
-      - sway-git
-      - swaybg-git
-      - swayidle-git
+      - wlroots
+      - sway
+      - swaybg
+      - swayidle
       - swaylock-effects-git
       - grim-git
       - libnotify
