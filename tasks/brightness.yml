@@ -5,22 +5,29 @@
   package:
     state: present
     name:
-      - calise-git
-      - illum-git
-      - redshift-wayland-git
+      - clight
 
-- name: Brightness | Install redshift config
+- name: Brightness | Install clight config
+  become: true
   template:
-    src: templates/redshift.conf.j2
-    dest: "{{ user_config_dir }}/redshift.conf"
+    src: files/clight.conf
+    dest: "/etc/default/clight.conf"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
-- name: Brightness | Install redshift-period binary
+- name: Brightness | Enable clightd service
+  become: true
+  when: optional_daemons.clightd
+  systemd:
+    enabled: true
+    name: clightd.service
+    daemon-reload: true
+
+- name: Brightness | Install day-or-night binary
   become: true
   copy:
-    src: files/redshift-period
-    dest: /usr/local/bin/redshift-period
+    src: files/day-or-night
+    dest: /usr/local/bin/day-or-night
     mode: a+x
 
 - name: Brightness | Install colorscheme-changer binary
@@ -53,50 +60,6 @@
     daemon-reload: true
   become: true
   become_user: "{{ user.name }}"
-
-- name: Brightness | Install redshift service
-  copy:
-    src: files/redshift.service
-    dest: "{{ user_config_dir }}/systemd/user/redshift.service"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-
-- name: Brightness | Enable redshift service
-  become: true
-  become_user: "{{ user.name }}"
-  systemd:
-    enabled: true
-    name: redshift.service
-    scope: user
-    daemon-reload: true
-
-- name: Brightness | Install calise config for screen auto-brightness
-  become: true
-  copy:
-    src: files/calise.conf
-    dest: /etc/calise.conf
-
-- name: Brightness | Install calised.service config
-  copy:
-    src: calised.service
-    dest: /etc/systemd/system/calised.service
-  become: true
-
-- name: Brightness | Enable calise service
-  become: true
-  when: optional_daemons.calised
-  systemd:
-    enabled: true
-    name: calised.service
-    daemon-reload: true
-
-- name: Brightness | Enable illum service for backlight keys
-  become: true
-  when: optional_daemons.illum
-  systemd:
-    enabled: true
-    name: illum.service
-    daemon-reload: true
 
 # The ansible copy module doesn't work on this device file :/
 # https://forum.floydhub.com/t/error-invalid-cross-device-link-when-copy-file-from-input-to-output-with-os-rename/100/3

@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+
+import re
+import subprocess
+
+
+def main():
+    clight_call_result = subprocess.run(
+        [
+            "busctl",
+            "--user",
+            "get-property",
+            "org.clight.clight",
+            "/org/clight/clight",
+            "org.clight.clight",
+            "DayTime",
+        ],
+        check=True,
+        capture_output=True,
+        encoding="utf-8",
+    )
+
+    # Output will be "i 0" for day time, "i 1" for night
+    period_match = re.search(r"i ([01])", clight_call_result.stdout)
+    if period_match is None:
+        raise RuntimeError(
+            "No day/night info found in clight dbus output: {}".format(
+                clight_call_result.stdout
+            )
+        )
+
+    if bool(period_match.group(1)):
+        print("daytime", end="")
+    else:
+        print("night", end="")
+
+    return
+
+
+if __name__ == "__main__":
+    main()

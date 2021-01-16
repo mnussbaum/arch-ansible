@@ -80,6 +80,7 @@
     - import_tasks: tasks/qt.yml
     - import_tasks: tasks/gtk.yml
     - import_tasks: tasks/brightness.yml
+      tags: [woo]
     - import_tasks: tasks/audio-video.yml
     - import_tasks: tasks/bluetooth.yml
     - import_tasks: tasks/firejail.yml
