@@ -23,7 +23,6 @@
     dest: /usr/local/bin/wofi-toggle
     mode: a+x
   become: true
-  tags: [woo]
 
 - name: Launcher | Generate rofi base16 configs
   base16_builder:

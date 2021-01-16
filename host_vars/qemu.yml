@@ -50,8 +50,7 @@ monitors:
 hidpi_firefox: false
 
 optional_daemons:
-  calised: false
-  illum: false
+  clightd: false
   libinput_gestures: false
 
 user:
