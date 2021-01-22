@@ -10,13 +10,6 @@
       - spaceship-prompt-git
   become: true
 
-- name: ZSH | Install dircolors config
-  copy:
-    dest: "{{ user_config_dir }}/dircolors"
-    src: dircolors
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-
 - name: ZSH | Install zshrc
   copy:
     dest: "/home/{{ user.name }}/.zshrc"
