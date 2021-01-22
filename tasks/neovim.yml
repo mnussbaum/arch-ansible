@@ -98,6 +98,7 @@
         languages: [python]
         settings:
           python.formatting.provider: black
+          python.jediEnabled: false
       - name: "neoclide/coc-solargraph"
         args:
           do: "yarn install --frozen-lockfile"
