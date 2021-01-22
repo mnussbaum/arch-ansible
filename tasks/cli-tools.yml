@@ -9,6 +9,7 @@
       - bfs
       - dnsutils
       - dstat
+      - exa
       - expac
       - figlet
       - fwupd
@@ -19,7 +20,6 @@
       - iotop
       - jq
       - lolcat
-      - ls_extended
       - lsof
       - net-tools
       - openssh
