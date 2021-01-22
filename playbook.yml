@@ -42,7 +42,7 @@
       base16_builder:
         scheme: "{{ base16_scheme }}"
         scheme_family: "{{ base16_scheme_family }}"
-        template: ""
+        template: []
         schemes_source: "{{ base16['schemes_source'] }}"
         templates_source: "{{ base16['templates_source'] }}"
       register: generated_base16_scheme
