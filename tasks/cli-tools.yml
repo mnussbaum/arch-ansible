@@ -5,6 +5,7 @@
     state: present
     name:
       - aws-cli
+      - bat
       - bc
       - bfs
       - dnsutils
@@ -62,3 +63,18 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
   tags: [base16]
+
+- name: CLI Tools | Create bat config dir
+  become: true
+  file:
+    path: "{{ user_config_dir }}/bat"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: CLI Tools | Write bat config file
+  copy:
+    src: files/bat-config
+    dest: "{{ user_config_dir }}/bat/config"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
