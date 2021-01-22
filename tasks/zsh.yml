@@ -7,7 +7,7 @@
       - zsh
       - zsh-syntax-highlighting
       - python-pystache # For base16_builder
-      - spaceship-prompt-git
+      - starship-bin
   become: true
 
 - name: ZSH | Install zshrc
@@ -48,3 +48,10 @@
     group: "{{ user.group }}"
   with_fileglob:
     - files/zsh-configs/*
+
+- name: ZSH | Install startship prompt config
+  copy:
+    dest: "{{ user_config_dir }}/starship.toml"
+    src: files/starship.toml
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
