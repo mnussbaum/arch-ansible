@@ -10,6 +10,10 @@
       - firefox-vim-vixen
       - freshplayerplugin
       - pepper-flash
+      - intel-media-driver
+      - intel-hybrid-codec-driver-gcc10
+      - libva-intel-driver-hybrid
+      - libva-utils
   become: true
 
 - name: Firefox | Make default profile
