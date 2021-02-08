@@ -8,5 +8,5 @@
       - javascript-typescript-langserver
       - prettier
       - vscode-css-languageserver-bin
-      - vscode-html-languageserver-bin
+      - vscode-html-languageserver
   become: true
