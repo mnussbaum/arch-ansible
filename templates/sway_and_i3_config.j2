@@ -222,8 +222,8 @@ bindsym XF86AudioPause exec playerctl play-pause
 bindsym XF86AudioNext exec playerctl next
 bindsym XF86AudioPrev exec playerctl previous
 
-bindsym XF86MonBrightnessUp exec busctl --user call org.clight.clight /org/clight/clight org.clight.clight IncBl "d" 0.1
-bindsym XF86MonBrightnessDown exec busctl --user call org.clight.clight /org/clight/clight org.clight.clight DecBl "d" 0.1
+bindsym XF86MonBrightnessUp exec busctl --user call org.clight.clight /org/clight/clight org.clight.clight IncBl "d" 0.05
+bindsym XF86MonBrightnessDown exec busctl --user call org.clight.clight /org/clight/clight org.clight.clight DecBl "d" 0.05
 
 {% if item == "sway" %}
 # Screenshot a selectable region

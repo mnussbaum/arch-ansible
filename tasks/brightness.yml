@@ -5,7 +5,12 @@
   package:
     state: present
     name:
-      - clight
+      # clightd (not -git) doesn't compile. But clightd-git seems broken due to:
+      # https://github.com/FedeDP/Clightd/issues/66
+      #
+      # Hopefully clightd 5.3 and clight 4.3 fix everything
+      - clightd-git
+      - clight-git
 
 - name: Brightness | Install clight config
   become: true
