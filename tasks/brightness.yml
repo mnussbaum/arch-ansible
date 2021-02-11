@@ -5,18 +5,14 @@
   package:
     state: present
     name:
-      # clightd (not -git) doesn't compile. But clightd-git seems broken due to:
-      # https://github.com/FedeDP/Clightd/issues/66
-      #
-      # Hopefully clightd 5.3 and clight 4.3 fix everything
+      # Using clightd-git to work around Clightd #66 until clightd 5.3 is out
       - clightd-git
       - clight-git
 
 - name: Brightness | Install clight config
-  become: true
-  template:
+  copy:
     src: files/clight.conf
-    dest: "/etc/default/clight.conf"
+    dest: "{{ user_config_dir }}/clight.conf"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
