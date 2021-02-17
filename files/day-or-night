@@ -29,7 +29,7 @@ def main():
             )
         )
 
-    if bool(period_match.group(1)):
+    if bool(int(period_match.group(1))):
         print("night", end="")
     else:
         print("daytime", end="")
