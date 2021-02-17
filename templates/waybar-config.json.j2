@@ -23,6 +23,7 @@
       "memory",
       "network",
       "pulseaudio",
+      "backlight",
       "clock"
     ],
 
@@ -68,9 +69,15 @@
       "tooltip": false
     },
 
+    "backlight": {
+      "device": "intel_backlight",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{percent}% {icon}', last_block=True, position='right') }}",
+      "format-icons": ["", ""]
+    },
+
     "clock": {
-      "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{:%a, %d %b %I:%M:%S}', last_block=True, position='right') }}",
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{:%I:%M}', last_block=True, position='right') }}",
+      "format-alt": "{{ color_scheme_vars | waybar_colored_block('base09-hex', 'base0E-hex', '{:%a, %d %b %I:%M:%S}', last_block=True, position='right') }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base09-hex', 'base0E-hex', '{:%I:%M}', last_block=True, position='right') }}",
       "tooltip": false
     }
   },
