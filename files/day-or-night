@@ -20,7 +20,7 @@ def main():
         encoding="utf-8",
     )
 
-    # Output will be "i 0" for day time, "i 1" for night
+    # Output will be "i 1" for day time, "i 0" for night
     period_match = re.search(r"i ([01])", clight_call_result.stdout)
     if period_match is None:
         raise RuntimeError(
@@ -30,9 +30,9 @@ def main():
         )
 
     if bool(period_match.group(1)):
-        print("daytime", end="")
-    else:
         print("night", end="")
+    else:
+        print("daytime", end="")
 
     return
 
