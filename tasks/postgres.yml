@@ -1,0 +1,15 @@
+# vim:ft=yaml.ansible:
+---
+- name: Postgres | Install packages
+  package:
+    state: present
+    name:
+      - postgresql
+  become: true
+
+- name: Postgres | Install psqlrc file
+  copy:
+    src: files/psqlrc
+    dest: "{{ user_home_dir }}/.psqlrc"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"

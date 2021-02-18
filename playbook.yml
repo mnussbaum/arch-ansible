@@ -12,8 +12,11 @@
     - mnussbaum.base16-builder-ansible
   tasks:
     - set_fact:
-        user_config_dir: "/home/{{ user.name }}/.config"
-        user_data_dir: "/home/{{ user.name }}/.local/share"
+        user_home_dir: "/home/{{ user.name }}"
+      tags: [bootstrap, base16]
+    - set_fact:
+        user_config_dir: "{{ user_home_dir }}/.config"
+        user_data_dir: "{{ user_home_dir }}/.local/share"
       tags: [bootstrap, base16]
     - import_tasks: tasks/set-appearance-facts.yml
       tags: [base16]
@@ -57,6 +60,7 @@
     - import_tasks: tasks/golang.yml
     - import_tasks: tasks/ruby.yml
     - import_tasks: tasks/frontend-dev.yml
+    - import_tasks: tasks/postgres.yml
     - import_tasks: tasks/global-environment-configuration.yml
     - import_tasks: tasks/neovim.yml
     - import_tasks: tasks/gitconfig.yml

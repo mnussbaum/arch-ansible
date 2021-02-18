@@ -1,0 +1,10 @@
+\set QUIET 1
+\timing
+\set ON_ERROR_ROLLBACK interactive
+\set VERBOSITY verbose
+\x auto
+\set PROMPT1 '%[%033[1m%]%M/%/%R%[%033[0m%]%# '
+\set PROMPT2 ''
+\set HISTCONTROL ignoredups
+\pset null [null]
+\unset QUIET
