@@ -1,9 +1,19 @@
+function! LightlineFilename()
+  let root = fnamemodify(get(b:, 'git_dir'), ':h')
+  let path = expand('%:p')
+  if path[:len(root)-1] ==# root
+    return path[len(root)+1:]
+  endif
+  return expand('%')
+endfunction
+
 let g:lightline = {
       \ 'colorscheme': 'base16_{{ base16_scheme | replace("-", "_") }}',
       \ 'separator': {'left': "\ue0bc", 'right': "\ue0ba"},
       \ 'subseparator': {'left': "\ue0bb", 'right': "\ue0bb"},
       \ 'tabline_separator': {'left': "\ue0bc", 'right': "\ue0ba"},
       \ 'tabline_subseparator': {'left': "\ue0bb", 'right': "\ue0bb"},
+      \ 'component_function': { 'filename': 'LightlineFilename'},
       \ 'active': {
       \   'left': [['readonly', 'modified'], ['filename']],
       \   'right': [['percent', 'lineinfo' ]]
