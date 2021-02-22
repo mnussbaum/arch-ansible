@@ -17,13 +17,12 @@
     },
 
   {% endfor %}
+
     "modules-right": [
       "battery",
       "cpu",
       "memory",
-      "network",
-      "pulseaudio",
-      "backlight",
+      "temperature",
       "clock"
     ],
 
@@ -55,29 +54,17 @@
       "tooltip": false
     },
 
-    "network": {
-      "format-wifi": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{essid} {signalStrength}% ') }}",
-      "format-ethernet": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{ifname} ') }}",
-      "format-disconnected": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', 'Disconnected ⚠') }}",
+    "temperature": {
+      "thermal-zone": 11,
+      "critical-threshold": 80,
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{temperatureF}°F ') }}",
+      "format-critical": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{temperatureF}°F ') }}",
       "tooltip": false
-    },
-
-    "pulseaudio": {
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{volume}% ') }}",
-      "format-muted": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '0% ') }}",
-      "on-click": "pavucontrol",
-      "tooltip": false
-    },
-
-    "backlight": {
-      "device": "intel_backlight",
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0A-hex', 'base09-hex', '{percent}% {icon}', last_block=True, position='right') }}",
-      "format-icons": ["", ""]
     },
 
     "clock": {
-      "format-alt": "{{ color_scheme_vars | waybar_colored_block('base09-hex', 'base0E-hex', '{:%a, %d %b %I:%M:%S}', last_block=True, position='right') }}",
-      "format": "{{ color_scheme_vars | waybar_colored_block('base09-hex', 'base0E-hex', '{:%I:%M}', last_block=True, position='right') }}",
+      "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{:%a, %d %b %I:%M:%S}', last_block=True, position='right') }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{:%I:%M}', last_block=True, position='right') }}",
       "tooltip": false
     }
   },
@@ -90,7 +77,11 @@
       "custom/virtual-keyboard-toggle"
     ],
 
-    "modules-right": [],
+    "modules-right": [
+      "network",
+      "pulseaudio",
+      "backlight"
+    ],
 
     "idle_inhibitor": {
       "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{icon}', first_block=True, position='left') }}",
@@ -116,6 +107,26 @@
       "interval": 1,
       "on-click": "toggle-virtboard",
       "tooltip": false
+    },
+
+    "network": {
+      "format-wifi": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{essid} {signalStrength}% ', first_block=True, position='right') }}",
+      "format-ethernet": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{ifname} ', first_block=True, position='right') }}",
+      "format-disconnected": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', 'Disconnected ⚠', first_block=True, position='right') }}",
+      "tooltip": false
+    },
+
+    "pulseaudio": {
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{volume}% ') }}",
+      "format-muted": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '0% ') }}",
+      "on-click": "pavucontrol",
+      "tooltip": false
+    },
+
+    "backlight": {
+      "device": "intel_backlight",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{percent}% {icon}', last_block=True, position='right') }}",
+      "format-icons": ["", ""]
     }
   }
 ]
