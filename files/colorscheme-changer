@@ -7,8 +7,16 @@ import sys
 
 
 def _reload_wayland():
-    for service in ["waybar.service", "waybar-sway-workspace-output-manager.service"]:
-        subprocess.run(["systemctl", "--user", "restart", service], check=True)
+    subprocess.run(
+        [
+            "systemctl",
+            "--user",
+            "restart",
+            "waybar-sway-workspace-output-manager.service",
+        ],
+        check=True,
+    )
+    subprocess.run(["systemctl", "--user", "reload", "waybar"], check=True)
 
     subprocess.run(["swaymsg", "reload"])
 
