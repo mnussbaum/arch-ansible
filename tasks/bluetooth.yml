@@ -7,22 +7,6 @@
       - bluez
       - bluez-tools
       - bluez-utils
-      - pulseaudio-bluetooth
-
-- name: Bluetooth | Enable pulseaudio over bluetooth
-  become: true
-  lineinfile:
-    dest: "/etc/pulse/system.pa"
-    line: "{{ item }}"
-  loop:
-    - "load-module module-bluetooth-policy auto_switch=2"
-    - "load-module module-bluetooth-discover"
-
-- name: Bluetooth | Switch audio to new paired headsets on connect
-  become: true
-  lineinfile:
-    dest: "/etc/pulse/default.pa"
-    line: "load-module module-switch-on-connect"
 
 - name: Bluetooth | Power on afer reboot
   become: true

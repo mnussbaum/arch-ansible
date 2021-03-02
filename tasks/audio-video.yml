@@ -5,14 +5,21 @@
   package:
     name:
       - alsa-utils
-      - pulseaudio
-      - pulseaudio-alsa
+      - pipewire
+      - pipewire-alsa
+      - pipewire-docs
+      - pipewire-pulse
       - pavucontrol
+      - gstreamer
+      - gstreamer-vaapi
+      - gst-plugins-good
       - gst-libav
       - spotify
       - playerctl
       - lollypop
       - mpv
+      - xdg-desktop-portal
+      - xdg-desktop-portal-wlr
     state: present
 
 - name: AV | Create mpv config
