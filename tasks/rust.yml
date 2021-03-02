@@ -14,9 +14,9 @@
     creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu"
 
 - name: Rust | Install rls
-  command: rustup component add rls rust-analysis rust-src
+  command: rustup component add rust-src
   args:
-    creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rls"
+    creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust"
 
 - name: Rust | Install rustfmt
   command: rustup component add rustfmt
