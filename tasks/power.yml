@@ -45,7 +45,6 @@
   systemd:
     name: disable-xhc-wakeup.service
     enabled: true
-    state: started
     daemon-reload: true
   become: true
 
