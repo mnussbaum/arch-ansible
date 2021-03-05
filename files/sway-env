@@ -9,6 +9,7 @@ QT_QPA_PLATFORMTHEME=qt5ct
 QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 SDL_VIDEODRIVER=wayland
 XDG_CURRENT_DESKTOP=sway
+XDG_SESSION_DESKTOP=sway
 _JAVA_AWT_WM_NONREPARENTING=1
 
 # This env var works around a bug in sway. It currently needs to be set for

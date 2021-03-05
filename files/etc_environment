@@ -1,0 +1,3 @@
+BROWSER=firefox-nightly
+EDITOR=nvim
+VISUAL=nvim

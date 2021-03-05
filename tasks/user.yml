@@ -74,17 +74,3 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
     state: directory
-
-- name: user | Install user profile
-  template:
-    dest: "/home/{{ user.name }}/.profile"
-    src: templates/profile.j2
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-
-- name: user | Install user zprofile, sourcing profile
-  copy:
-    dest: "/home/{{ user.name }}/.zprofile"
-    src: source_user_profile
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"

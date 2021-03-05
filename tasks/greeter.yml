@@ -1,0 +1,43 @@
+# vim:ft=yaml.ansible:
+---
+- name: greeter | Install pacakges
+  become: true
+  package:
+    state: present
+    name:
+      - greetd
+      - greetd-gtkgreet
+
+- name: greeter | Create config dirs
+  become: true
+  file:
+    path: /etc/greetd
+    state: directory
+    owner: greeter
+    group: greeter
+
+- name: greeter | Install config files
+  become: true
+  copy:
+    src: "files/greetd-{{ item }}"
+    dest: "/etc/greetd/{{ item }}"
+    owner: greeter
+    group: greeter
+  with_items:
+    - sway-config
+    - config.toml
+    - environments
+
+- name: greeter | Install sway-run script
+  become: true
+  copy:
+    src: files/sway-run
+    dest: /usr/local/bin/sway-run
+    mode: a+x
+
+- name: greeter | Enable greetd service
+  become: true
+  systemd:
+    enabled: true
+    name: greetd
+    daemon-reload: true
