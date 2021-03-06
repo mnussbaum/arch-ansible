@@ -67,4 +67,3 @@
   with_items:
     - picom.service
     - feh.service
-    - i3.service

@@ -5,11 +5,11 @@
   set_fact:
     base16_scheme: "{{ base16['night_scheme'] }}"
     base16_scheme_family: "{{ base16['night_scheme_family'] }}"
-    desktop_background: "{{ user_data_dir }}/wallpapers/night.jpg"
+    desktop_background: "{{ wallpaper_dir }}/night.jpg"
 
 - name: Appearance facts | Set daytime appearance
   when: appearance is defined and appearance == "daytime"
   set_fact:
     base16_scheme: "{{ base16['day_scheme'] }}"
     base16_scheme_family: "{{ base16['day_scheme_family'] }}"
-    desktop_background: "{{ user_data_dir }}/wallpapers/daytime.jpg"
+    desktop_background: "{{ wallpaper_dir }}/daytime.jpg"

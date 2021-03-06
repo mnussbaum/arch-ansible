@@ -103,14 +103,11 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
-- name: Sway | Enable services
+- name: Sway | Enable swayidle
   become: true
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
-    name: "{{ item }}"
+    name: swayidle.service
     scope: user
     daemon-reload: true
-  with_items:
-    - sway.service
-    - swayidle.service

@@ -97,5 +97,3 @@
     - import_tasks: tasks/zathura.yml
     - import_tasks: tasks/syncthing.yml
     - import_tasks: tasks/raspberry-pi-dev.yml
-# AV
-# Littlesnitch replacement

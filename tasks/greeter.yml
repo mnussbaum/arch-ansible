@@ -8,13 +8,14 @@
       - greetd
       - greetd-gtkgreet
 
-- name: greeter | Create config dirs
+- name: greeter | Create config dir
   become: true
   file:
     path: /etc/greetd
     state: directory
     owner: greeter
     group: greeter
+    mode: u=rwX,g=rwX,o=rwX
 
 - name: greeter | Install config files
   become: true
@@ -24,16 +25,27 @@
     owner: greeter
     group: greeter
   with_items:
-    - sway-config
     - config.toml
     - environments
 
-- name: greeter | Install sway-run script
+- name: greeter | Install templated files
+  tags: [base16]
+  template:
+    src: templates/greetd-{{ item }}.j2
+    dest: /etc/greetd/{{ item }}
+  with_items:
+    - sway-config
+    - style.css
+
+- name: greeter | Install WM start commands
   become: true
   copy:
-    src: files/sway-run
-    dest: /usr/local/bin/sway-run
+    src: "files/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
     mode: a+x
+  with_items:
+    - start-sway
+    - start-i3
 
 - name: greeter | Enable greetd service
   become: true

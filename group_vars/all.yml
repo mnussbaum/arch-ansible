@@ -22,3 +22,5 @@ base16:
   night_scheme_family: unikitty
   schemes_source: "https://github.com/mnussbaum/base16-schemes-source"
   templates_source: "https://github.com/mnussbaum/base16-templates-source"
+
+wallpaper_dir: /usr/share/backgrounds
