@@ -89,11 +89,11 @@
     - import_tasks: tasks/audio-video.yml
     - import_tasks: tasks/bluetooth.yml
     - import_tasks: tasks/firejail.yml
-    - import_tasks: tasks/secrets.yml
-    - import_tasks: tasks/firefox.yml
     - import_tasks: tasks/torrents.yml
     - import_tasks: tasks/docker.yml
     - import_tasks: tasks/archiso.yml
     - import_tasks: tasks/zathura.yml
     - import_tasks: tasks/syncthing.yml
     - import_tasks: tasks/raspberry-pi-dev.yml
+    - import_tasks: tasks/firefox.yml
+    - import_tasks: tasks/secrets.yml
