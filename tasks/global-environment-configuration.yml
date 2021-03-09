@@ -2,7 +2,7 @@
 ---
 - name: global environment configuration | Install /etc/environment
   copy:
-    src: file/etc_environment
+    src: files/etc_environment
     dest: /etc/environment
   become: true
 
