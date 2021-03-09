@@ -16,54 +16,45 @@
         gpg_keys_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible/secrets/gpg-keys"
         ssh_keys_dir: "{{ iso_build_dir }}/airootfs/etc/skel/arch-ansible/secrets/ssh-keys"
     - name: Populate temp dir
-      become: true
       synchronize:
         src: /usr/share/archiso/configs/releng/
         dest: "{{ iso_build_dir }}"
 
     - block:
         - name: Create skel dir
-          become: true
           file:
             path: "{{ skel_dir }}"
             state: directory
         - name: Copy arch-ansible to skel
-          become: true
           synchronize:
             src: "{{ playbook_dir }}/"
             dest: "{{ ansible_dir }}"
 
         - name: Add ansible package
-          become: true
           lineinfile:
             dest: "{{ iso_build_dir }}/packages.x86_64"
             line: ansible
 
         - name: Add git package
-          become: true
           lineinfile:
             dest: "{{ iso_build_dir }}/packages.x86_64"
             line: git
 
         - name: Add tmux package
-          become: true
           lineinfile:
             dest: "{{ iso_build_dir }}/packages.x86_64"
             line: tmux
         - name: Add tmux config to skel
-          become: true
           copy:
             src: files/tmux.conf
             dest: "{{ skel_dir }}/.tmux.conf"
 
         - name: Add os-prober package
-          become: true
           lineinfile:
             dest: "{{ iso_build_dir }}/packages.x86_64"
             line: os-prober
 
         - name: Create gpg-keys dir
-          become: true
           file:
             path: "{{ gpg_keys_dir }}"
             state: directory
@@ -78,7 +69,6 @@
           copy:
             dest: "{{ gpg_keys_dir }}/private-key.asc"
             content: "{{ gpg_private_export_cmd.stdout }}"
-          become: true
           no_log: true
           when: gpg_private_export_cmd.changed
 
@@ -89,7 +79,6 @@
           args:
             creates: "{{ gpg_keys_dir }}/public-key.asc"
         - name: Write gpg public key
-          become: true
           no_log: true
           when: gpg_public_export_cmd.changed
           copy:
@@ -97,36 +86,21 @@
             content: "{{ gpg_public_export_cmd.stdout }}"
 
         - name: Create ssh-keys dir
-          become: true
           file:
             path: "{{ ssh_keys_dir }}"
             state: directory
         - name: Copy SSH private key
-          become: true
           copy:
             src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
             dest: "{{ ssh_keys_dir }}/id_rsa"
-            owner: root
         - name: Copy SSH public key
-          become: true
           copy:
             src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
             dest: "{{ ssh_keys_dir }}/id_rsa.pub"
 
-        - name: Make ISO build.sh executable
-          become: true
-          file:
-            dest: "{{ iso_build_dir  }}/build.sh"
-            mode: "a+x"
-        - name: Make ISO customize_airootfs.sh executable
-          become: true
-          file:
-            dest: "{{ iso_build_dir  }}/airootfs/root/customize_airootfs.sh"
-            mode: "a+x"
-
         - name: Build ISO
           become: true
-          command: "{{ iso_build_dir  }}/build.sh -v"
+          command: "mkarchiso -v -w {{ iso_build_dir }}/work -o {{ iso_build_dir }}/out {{ iso_build_dir }}"
           args:
             creates: "{{ iso_build_dir }}/out/*.iso"
             chdir: "{{ iso_build_dir }}"
@@ -142,7 +116,7 @@
           fail:
             msg: "Incorrect image file count in {{ iso_build_dir }}/out"
 
-        - name: Write ISO to USB
+        - name: Write out ISO file
           become: true
           command: "dd bs=4M if={{ item.path }} of={{ iso_output_file }} oflag=sync"
           loop: "{{ built_images.files }}"
