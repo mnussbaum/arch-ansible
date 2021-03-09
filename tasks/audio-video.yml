@@ -22,6 +22,13 @@
       - xdg-desktop-portal-wlr
     state: present
 
+- name: AV | Create mpv config dir
+  file:
+    path: "{{ user_config_dir }}/mpv"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory
+
 - name: AV | Create mpv config
   copy:
     src: files/mpv.conf
