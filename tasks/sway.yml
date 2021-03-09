@@ -29,12 +29,12 @@
       - swaybg-git
       - swayidle
       - swaylock-effects-git
-      - grim-git
       - libnotify
       - mako-git
       - qt5-wayland # Provides libs for all Qt5 apps
-      - slurp
       - wl-clipboard-git
+      - grim-git
+      - slurp
       - wdisplays-git
   become: true
 
