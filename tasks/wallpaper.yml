@@ -1,5 +1,11 @@
 # vim:ft=yaml.ansible:
 ---
+- name: Wallpaper | Create directory
+  become: true
+  file:
+    path: "{{ wallpaper_dir }}"
+    state: directory
+
 - name: Wallpaper | Download daytime wallpaper image
   become: true
   get_url:
