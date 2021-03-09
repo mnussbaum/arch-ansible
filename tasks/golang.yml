@@ -5,8 +5,7 @@
     state: present
     name:
       - go
-      - go-langserver-git
-      - vim-gocode
+      - gopls
   become: yes
 
 - name: golang | Create gopath dirs
