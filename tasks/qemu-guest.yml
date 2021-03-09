@@ -16,7 +16,7 @@
 
 - name: qemu guest | Enable qemu guest agent service
   service:
-    name: qemu-ga.service
+    name: qemu-guest-agent.service
     enabled: yes
     state: started
     daemon-reload: true
