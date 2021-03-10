@@ -16,6 +16,7 @@
       - gst-libav
       - spotify
       - playerctl
+      - libpipewire02 # Necessary for chromium screensharing
       - lollypop
       - mpv
       - xdg-desktop-portal
