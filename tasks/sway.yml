@@ -33,6 +33,7 @@
       - mako-git
       - qt5-wayland # Provides libs for all Qt5 apps
       - wl-clipboard-git
+      - glfw-wayland  # Provides libs for GLFW apps
       - grim-git
       - slurp
       - wdisplays-git
