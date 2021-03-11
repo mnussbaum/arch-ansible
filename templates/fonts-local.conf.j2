@@ -2,16 +2,16 @@
 <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
 <fontconfig>
     <match>
-        <edit mode="prepend" name="family"><string>{{ font.regular_sans_family }}</string></edit>
+        <edit mode="prepend" name="family"><string>{{ font.sans_family }}</string></edit>
     </match>
     <match target="pattern">
         <test qual="any" name="family"><string>serif</string></test>
-          <edit name="family" mode="assign" binding="same"><string>{{ font.regular_serif_family }}</string></edit>
+          <edit name="family" mode="assign" binding="same"><string>{{ font.serif_family }}</string></edit>
     </match>
     <match target="pattern">
         <test qual="any" name="family"><string>sans-serif</string></test>
         <edit name="family" mode="assign" binding="same">
-          <string>{{ font.regular_sans_family }}/string>
+          <string>{{ font.sans_family }}/string>
         </edit>
     </match>
     <match target="pattern">
