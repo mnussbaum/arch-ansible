@@ -3,13 +3,17 @@
 - name: Appearance facts | Set night appearance
   when: appearance is undefined or appearance == "night"
   set_fact:
-    base16_scheme: "{{ base16['night_scheme'] }}"
-    base16_scheme_family: "{{ base16['night_scheme_family'] }}"
-    desktop_background: "{{ wallpaper_dir }}/night.jpg"
+    base16_scheme: "{{ base16.night_scheme }}"
+    base16_scheme_family: "{{ base16.night_scheme_family }}"
+    wallpaper_filename: "{{ wallpaper.night_image }}"
 
 - name: Appearance facts | Set daytime appearance
   when: appearance is defined and appearance == "daytime"
   set_fact:
-    base16_scheme: "{{ base16['day_scheme'] }}"
-    base16_scheme_family: "{{ base16['day_scheme_family'] }}"
-    desktop_background: "{{ wallpaper_dir }}/daytime.jpg"
+    base16_scheme: "{{ base16.day_scheme }}"
+    base16_scheme_family: "{{ base16.day_scheme_family }}"
+    wallpaper_filename: "{{ wallpaper.daytime_image }}"
+
+- name: Appearance facts | Set wallpaper path
+  set_fact:
+    desktop_background: "{{ wallpaper.desktop_dir }}/{{ wallpaper_filename }}"

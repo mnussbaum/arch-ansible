@@ -19,7 +19,7 @@
         user_data_dir: "{{ user_home_dir }}/.local/share"
       tags: [bootstrap, base16]
     - import_tasks: tasks/set-appearance-facts.yml
-      tags: [base16]
+      tags: [bootstrap, base16, rebuild-boot-parition]
     - import_tasks: tasks/time.yml
       tags: [bootstrap]
     - import_tasks: tasks/locale.yml

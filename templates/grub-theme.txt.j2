@@ -1,0 +1,42 @@
+# GRUB2 gfxmenu Linux theme
+
+# Global Property
+title-text: ""
+desktop-image: "{{ wallpaper_filename }}"
+desktop-color: "#000000"
+terminal-font: "{{ font.monospace_family }} Regular {{ font.size }}"
+terminal-left: "0"
+terminal-top: "0"
+terminal-width: "100%"
+terminal-height: "100%"
+terminal-border: "0"
+
+# Show the boot menu
++ boot_menu {
+  left = 25%
+  top = 30%
+  width = 40%
+  height = 40%
+  item_font = "{{ font.sans_family }} Regular {{ font.grub_graphical_size }}"
+  item_color = "#cccccc"
+  selected_item_color = "#ffffff"
+  icon_width = {{ font.grub_graphical_size }}
+  icon_height = {{ font.grub_graphical_size }}
+  item_icon_space = 36
+  item_height = 80
+  item_padding = 12
+  item_spacing = 24
+  selected_item_pixmap_style = "select_*.png"
+}
+
+# Show a countdown message using the label component
++ label {
+  top = 82%
+  left = 25%
+  width = 36%
+  align = "center"
+  id = "__timeout__"
+  text = "Booting in %d seconds"
+  color = "#cccccc"
+  font = "{{ font.sans_family }} Regular {{ font.grub_graphical_size }}"
+}

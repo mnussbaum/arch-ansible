@@ -52,6 +52,44 @@
     src: templates/grub.j2
     dest: /etc/default/grub
 
+- name: boot | Create grub theme directory
+  become: true
+  file:
+    path: "{{ grub_theme_dir }}"
+    state: directory
+    mode: a+rw
+
+- name: boot | Create grub theme icon directory
+  file:
+    path: "{{ grub_theme_dir }}/icons"
+    state: directory
+
+- name: boot | Install grub theme file
+  tags: [base16]
+  template:
+    src: templates/grub-theme.txt.j2
+    dest: "{{ grub_theme_dir }}/custom.txt"
+
+- name: boot | Install grub theme assets
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ grub_theme_dir }}/{{ item.path | basename }}"
+  with_filetree: assets/grub-theme/
+  when: item.state == "file" and item.path is not search("icons")
+
+- name: boot | Install grub theme assets
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ grub_theme_dir }}/icons/{{ item.path | basename }}"
+  with_filetree: assets/grub-theme/icons/
+
+- name: boot | Install grub theme wallpaper
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ grub_theme_dir }}/{{ item.path | basename }}"
+  with_filetree: assets/wallpaper/
+  when: item.state == "file"
+
 - name: boot | Create kernel module directory
   become: true
   file:

@@ -3,33 +3,13 @@
 - name: Wallpaper | Create directory
   become: true
   file:
-    path: "{{ wallpaper_dir }}"
+    path: "{{ wallpaper.desktop_dir }}"
     state: directory
 
-- name: Wallpaper | Download daytime wallpaper image
+- name: Wallpaper | Install desktop background images
   become: true
   copy:
-    src: assets/wallpaper/lost_coast_golden_path.jpg
-    dest: "{{ wallpaper_dir }}/lost_coast_golden_path.jpg"
-
-- name: Wallpaper | Symlink daytime wallpaper in place
-  become: true
-  file:
-    src: "{{ wallpaper_dir }}/lost_coast_golden_path.jpg"
-    path: "{{ wallpaper_dir }}/daytime.jpg"
-    force: true
-    state: link
-
-- name: Wallpaper | Download night wallpaper image
-  become: true
-  copy:
-    src: assets/wallpaper/evening_train.jpg
-    dest: "{{ wallpaper_dir }}/evening_train.jpg"
-
-- name: Wallpaper | Symlink night wallpaper in place
-  become: true
-  file:
-    src: "{{ wallpaper_dir }}/evening_train.jpg"
-    path: "{{ wallpaper_dir }}/night.jpg"
-    force: true
-    state: link
+    src: "{{ item }}"
+    dest: "{{ wallpaper.desktop_dir }}/{{ item | basename }}"
+  with_fileglob:
+    - assets/wallpaper/*

@@ -5,6 +5,7 @@ font:
   monospace_family: "FuraMono Nerd Font Mono"
   size: 20
   rofi_size: 10
+  grub_graphical_size: 50
 
 key_repeat:
   rate: 35
@@ -25,4 +26,9 @@ base16:
   schemes_source: "https://github.com/mnussbaum/base16-schemes-source"
   templates_source: "https://github.com/mnussbaum/base16-templates-source"
 
-wallpaper_dir: /usr/share/backgrounds
+grub_theme_dir: /boot/grub/themes/custom
+
+wallpaper:
+  desktop_dir: /usr/share/backgrounds
+  daytime_image: lost_coast_golden_path.jpg
+  night_image: evening_train.jpg
