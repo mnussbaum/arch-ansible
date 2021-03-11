@@ -22,6 +22,8 @@
       - jq
       - lolcat
       - lsof
+      - man-db
+      - man-pages
       - ncdu
       - net-tools
       - openssh
