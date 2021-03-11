@@ -9,7 +9,7 @@
 - name: Wallpaper | Download daytime wallpaper image
   become: true
   copy:
-    src: assets/lost_coast_golden_path.jpg
+    src: assets/wallpaper/lost_coast_golden_path.jpg
     dest: "{{ wallpaper_dir }}/lost_coast_golden_path.jpg"
 
 - name: Wallpaper | Symlink daytime wallpaper in place
@@ -23,7 +23,7 @@
 - name: Wallpaper | Download night wallpaper image
   become: true
   copy:
-    src: assets/evening_train.jpg
+    src: assets/wallpaper/evening_train.jpg
     dest: "{{ wallpaper_dir }}/evening_train.jpg"
 
 - name: Wallpaper | Symlink night wallpaper in place
