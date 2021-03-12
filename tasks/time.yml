@@ -1,16 +1,16 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Set timezone to America/Las_Angeles
+- name: Time | Set timezone to America/Las_Angeles
   become: true
   timezone:
     name: America/Los_Angeles
 
-- name: boot | Set hardware clock timezone to UTC
+- name: Time | Set hardware clock timezone to UTC
   become: true
   timezone:
     hwclock: UTC
 
-- name: Check timedatectl NTP status
+- name: Time | Check timedatectl NTP status
   command: timedatectl status
   register: timedatectl_ntp_status
   changed_when: false
