@@ -1,6 +1,6 @@
 #!/bin/bash
 
-printf "🖮 "
+printf " "
 if systemctl status --user virtboard > /dev/null ; then
   printf "▼"
 else

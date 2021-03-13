@@ -1,7 +1,7 @@
 ---
 font:
-  sans_family: "Noto Sans"
-  serif_family: "Noto Serif"
+  sans_family: "NotoSans Nerd Font"
+  serif_family: "NotoSerif Nerd Font"
   monospace_family: "FuraMono Nerd Font Mono"
   size: 20
   rofi_size: 10
