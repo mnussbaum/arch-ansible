@@ -1,10 +1,9 @@
 #!/bin/bash
 
-printf "🖵"
 if systemctl status --user rot8 > /dev/null ; then
-  printf "↻"
+  printf "若"
 else
-  printf "🔒"
+  printf "掠"
 fi
 
 printf "\n"

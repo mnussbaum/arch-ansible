@@ -43,24 +43,18 @@ window#waybar {
   }
 }
 
+/* The idle inhibitor icon is so big it causes the bar hight to jump without */
+/* this font-size correction */
+#idle_inhibitor {
+  font-size: 89%;
+}
+
 #battery.warning:not(.charging) {
   animation-name: critical-blink;
   animation-duration: 2.5s;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
   animation-direction: alternate;
-}
-
-/* The unicode characters used by the toggle modules     */
-/* are taller then everything else in the bar. Shrinking */
-/* them leads to a bit better alignment                  */
-
-#custom-virtual-keyboard-toggle {
-  font-size: 85%;
-}
-
-#custom-rotation-toggle {
-  font-size: 85%;
 }
 
 #battery.critical:not(.charging) {
