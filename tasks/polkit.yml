@@ -1,0 +1,23 @@
+# vim:ft=yaml.ansible:
+---
+- name: Polkit | Install gnome polkit agent package
+  package:
+    state: present
+    name: polkit-gnome
+  become: true
+
+- name: Polkit | Install service
+  copy:
+    src: files/polkit-gnome-authentication-agent.service
+    dest: "{{ user_config_dir }}/systemd/user/polkit-gnome-authentication-agent.service"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Polkit | Enable service
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: polkit-gnome-authentication-agent.service
+    scope: user
+    daemon-reload: true

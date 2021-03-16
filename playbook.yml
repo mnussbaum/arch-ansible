@@ -85,6 +85,7 @@
     - import_tasks: tasks/tablet-mode.yml
     - import_tasks: tasks/qt.yml
     - import_tasks: tasks/gtk.yml
+    - import_tasks: tasks/polkit.yml
     - import_tasks: tasks/brightness.yml
     - import_tasks: tasks/audio-video.yml
     - import_tasks: tasks/bluetooth.yml
