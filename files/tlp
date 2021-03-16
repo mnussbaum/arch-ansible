@@ -19,7 +19,7 @@ DISK_IDLE_SECS_ON_BAT=2
 
 # Dirty page values (timeouts in secs).
 MAX_LOST_WORK_SECS_ON_AC=15
-MAX_LOST_WORK_SECS_ON_BAT=60
+MAX_LOST_WORK_SECS_ON_BAT=15
 
 # Hint: CPU parameters below are disabled by default, remove the leading #
 # to enable them, otherwise kernel default values are used.
