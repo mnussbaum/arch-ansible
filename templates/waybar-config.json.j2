@@ -79,6 +79,7 @@
 
     "modules-right": [
       "network",
+      "custom/bluetooth",
       "pulseaudio",
       "backlight"
     ],
@@ -116,16 +117,24 @@
       "tooltip": false
     },
 
+    "custom/bluetooth": {
+      "on-click": "toggle-bluetooth",
+      "exec": "waybar-bluetooth-status",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}') }}",
+      "tooltip": false,
+      "interval": 1
+    },
+
     "pulseaudio": {
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{volume}% ') }}",
-      "format-muted": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '0% ') }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{volume}% ') }}",
+      "format-muted": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '0% ') }}",
       "on-click": "pavucontrol",
       "tooltip": false
     },
 
     "backlight": {
       "device": "intel_backlight",
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{percent}% {icon}', last_block=True, position='right') }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{percent}% {icon}', last_block=True, position='right') }}",
       "format-icons": ["", ""]
     }
   }

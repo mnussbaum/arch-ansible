@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if systemctl status bluetooth > /dev/null ; then
+  printf "⏽"
+else
+  printf "⭘"
+fi
+
+printf "\n"
