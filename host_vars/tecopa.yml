@@ -28,6 +28,11 @@ desired_partitions:
     logical_volume_name: root
     flags: []
 
+mkinitcpio_modules:
+  - nvme
+  - intel_agp
+  - i915
+
 network:
   ssid: "JazzHands"
   wireless_card: wlp60s0

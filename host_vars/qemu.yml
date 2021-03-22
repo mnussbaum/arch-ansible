@@ -41,6 +41,11 @@ desired_partitions:
     logical_volume_name: root
     flags: []
 
+mkinitcpio_modules:
+  - nvme
+  - intel_agp
+  - i915
+
 key_repeat:
   delay: 250
 

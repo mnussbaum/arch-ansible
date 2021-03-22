@@ -29,6 +29,8 @@ desired_partitions:
     encrypted: false
     flags: []
 
+mkinitcpio_modules: []
+
 key_repeat:
   delay: 350
 

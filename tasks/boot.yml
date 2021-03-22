@@ -130,6 +130,6 @@
   become: true
   notify:
     - Regenerate mkinitcpio ramdisk
-  copy:
-    src: files/mkinitcpio.conf
+  template:
+    src: templates/mkinitcpio.conf.j2
     dest: /etc/mkinitcpio.conf
