@@ -1,3 +1,2 @@
 - src: geerlingguy.swap
 - src: mnussbaum.base16-builder-ansible
-- src: tomeon.ansible_connection_machinectl
