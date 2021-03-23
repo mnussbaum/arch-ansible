@@ -6,3 +6,6 @@ Timezone=off
 [Files]
 Bind=/usr/bin/qemu-arm-static
 PrivateUsersChown=true
+
+[Network]
+VirtualEthernet=false

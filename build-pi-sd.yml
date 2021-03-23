@@ -74,12 +74,24 @@
           become: true
           loop: "{{ desired_partitions }}"
 
+        - name: Wipe exising LUKS partitions
+          luks_device:
+            device: "{{ item.raw_device }}"
+            state: "absent"
+            name: "{{ item.logical_device | basename }}"
+          become: true
+          loop: "{{ desired_partitions }}"
+          when: item.encrypted and (wipe_card is defined and wipe_card == "true")
+
+        # TODO: PW set in key file doesn't seem to work as expected. Retest if
+        # this is still necessary
         - name: LUKS format device and cryptopen it
           luks_device:
             device: "{{ item.raw_device }}"
             state: "opened"
             name: "{{ item.logical_device | basename }}"
-            keyfile: secrets/luks-keyfile
+            # keyfile: secrets/luks-keyfile
+            passphrase: "{{ lookup('file', 'secrets/luks-keyfile') }}"
           become: true
           loop: "{{ desired_partitions }}"
           when: item.encrypted
@@ -114,7 +126,7 @@
             dest: "{{ root_filesystem_download_path }}"
           when: not root_filesystem_download_check_result.stat.exists
 
-        # # TODO: Make this idempotent
+        # TODO: Make this idempotent
         - name: Extract root filesystem
           unarchive:
             src: "{{ root_filesystem_download_path }}"
@@ -129,7 +141,7 @@
         - name: Unmount boot dir
           mount:
             path: "{{ boot_dir_mnt }}"
-            state: unmounted
+            state: absent
           become: true
 
         - name: Mount boot dir under root dir
@@ -235,57 +247,100 @@
             state: started
             name: systemd-nspawn@arch-pi.service
             daemon-reload: true
-        # Right now pi dies at "unknown filesystem type 'crypto_LUKS'"
-        # Replace below with machinectl connection plugin
-        # Maybe allow alarm user to log in without pw?
-        # - name: Init pacman keys in nspawn container
-        #   become: true
-        #   command: "systemd-nspawn --bind /usr/bin/qemu-arm-static -b -D {{ root_dir_mnt }} pacman-key --init"
-        #
-        # - name: Populate ARM pacman keys in nspawn container
-        #   become: true
-        #   command: "systemd-nspawn --bind /usr/bin/qemu-arm-static -b -D {{ root_dir_mnt }} pacman-key --populate archlinuxarm"
-        #
-        # - name: Update and install pacakges in nspawn container
-        #   become: true
-        #   command: "systemd-nspawn --bind /usr/bin/qemu-arm-static -b -D {{ root_dir_mnt }} pacman -Suy lvm2 cryptsetup sudo git rsync base base-devel uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear"
-        #
-        # - name: Set hostname nspawn container
-        #   become: true
-        #   command: "systemd-nspawn --bind /usr/bin/qemu-arm-static -b -D {{ root_dir_mnt }} hostnamectl set-hostname panamint"
-        #
-        # - name: Add alarm user to sudoers
-        #   become: true
-        #   lineinfile:
-        #     dest: "{{ root_dir_mnt }}/etc/sudoers"
-        #     line: "alarm ALL=(ALL)"
-        #     state: present
-        #     create: yes
+
+        - name: Init pacman keys in nspawn container
+          become: true
+          command: "machinectl shell arch-pi /bin/bash -c 'pacman-key --init'"
+          retries: 10
+          delay: 2
+          register: pacman_key_init_result
+          until: pacman_key_init_result.rc == 0
+          ignore_errors: true
+
+        - name: Populate ARM pacman keys in nspawn container
+          become: true
+          command: "machinectl shell arch-pi /bin/bash -c 'pacman-key --populate archlinuxarm'"
+
+        - name: Update and install pacakges in nspawn container
+          become: true
+          command: "machinectl shell arch-pi /bin/bash -c 'pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear python ansible'"
+
+        - set_fact:
+            mkinitcpio_modules: []
+
+        - name: boot | Install mkinitcpio.conf
+          become: true
+          template:
+            src: templates/mkinitcpio.conf.j2
+            dest: "{{ root_dir_mnt }}/etc/mkinitcpio.conf"
+
+        # Normal shutdown attempts result in the container going into "rescue mode"
+        - name: Restart arch-pi container to pick up any kernel version updates
+          become: true
+          command: "machinectl kill --signal SIGKILL arch-pi"
+
+        - name: Restart arch-pi container to pick up any kernel version updates
+          become: true
+          systemd:
+            state: started
+            name: systemd-nspawn@arch-pi.service
+          retries: 4
+          delay: 4
+
+        # Can't use `uname` since that returns the host kernel version
+        - name: Rebuild initramfs in container
+          become: true
+          command: "machinectl shell arch-pi /bin/bash -c 'mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img'"
+          retries: 10
+          delay: 10
+          register: mkinitcpio_result
+          until: mkinitcpio_result.rc == 0
+          ignore_errors: true
+
+        - name: Update boot params for crypt root
+          become: true
+          copy:
+            dest: "{{ root_dir_mnt }}/boot/cmdline.txt"
+            content: "root=/dev/mapper/sdroot cryptdevice=/dev/mmcblk0p2:sdroot rootfstype=ext4 rw rootwait console=serial0,115200 console=tty1 selinux=0 plymouth.enable=0 smsc95xx.turbo_mode=N dwc_otg.lpm_enable=0 kgdboc=serial0,115200"
+
+        - name: Set hostname in container
+          become: true
+          copy:
+            content: "panamint"
+            dest: "{{ root_dir_mnt }}/etc/hostname"
+
+        - name: Add alarm user to sudoers
+          become: true
+          lineinfile:
+            dest: "{{ root_dir_mnt }}/etc/sudoers"
+            line: "alarm ALL=(ALL) ALL"
+            state: present
+            create: yes
       always:
+        - name: Stop arch-pi container
+          become: true
+          command: "machinectl kill --signal SIGKILL arch-pi"
+
         - name: Unmount temp boot dir
           mount:
-            path: "{{ arch_pi_boot_temp_dir.path }}"
-            state: unmounted
-          when: arch_pi_boot_temp_dir is defined and arch_pi_boot_temp_dir.skipped is not defined
+            path: "{{ boot_dir_mnt }}"
+            state: absent
           become: true
 
         - name: Remove temp boot dir mount point
-          when: arch_pi_boot_temp_dir is defined and arch_pi_boot_temp_dir.skipped is not defined
           file:
-            path: "{{ arch_pi_boot_temp_dir.path }}"
+            path: "{{ boot_dir_mnt }}"
             state: absent
 
         - name: Unmount temp root dir
           mount:
-            path: "{{ arch_pi_root_temp_dir.path }}"
-            state: unmounted
-          when: arch_pi_root_temp_dir is defined and arch_pi_root_temp_dir.skipped is not defined
+            path: "{{ root_dir_mnt }}"
+            state: absent
           become: true
 
         - name: Remove temp root dir mount point
-          when: arch_pi_root_temp_dir is defined and arch_pi_root_temp_dir.skipped is not defined
           file:
-            path: "{{ arch_pi_root_temp_dir.path }}"
+            path: "{{ root_dir_mnt }}"
             state: absent
 
         - name: Close LUKS devices
