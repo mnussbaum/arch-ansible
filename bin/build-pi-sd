@@ -7,6 +7,8 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]] ; then
   echo "Builds an SD card to provision a Raspberry Pi B+" >&2
   echo "" >&2
   echo "--wipe-card, -w      Wipe all SD card partitions clean" >&2
+  echo "" >&2
+  echo "--no-clean,  -n      Don't clean up mounts and containers after run. Eases debugging" >&2
   exit
 else
   set -o xtrace
@@ -16,10 +18,23 @@ extra_ansible_args=""
 boot_dir=/tmp/arch-pi-boot
 root_dir=/var/lib/machines/arch-pi
 
+for arg in "$@"
+do
+  case $arg in
+    -n|--no-clean)
+      extra_ansible_args="$extra_ansible_args -e no_clean='true'"
+      shift
+      ;;
+    -w|--wipe-card)
+      extra_ansible_args="$extra_ansible_args -e wipe_card='true'"
+      shift
+      ;;
+  esac
+done
+
 if [[ "${1:-}" == "--wipe-card" ]] || [[ "${1:-}" == "-w" ]] ; then
   sudo rm -rf "$boot_dir"
   sudo rm -rf "$root_dir"
-  extra_ansible_args="$extra_ansible_args -e wipe_card='true'"
   shift
 fi
 

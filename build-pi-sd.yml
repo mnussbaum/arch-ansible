@@ -13,7 +13,7 @@
 
     - name: Set partition facts
       set_fact:
-        alarm_home_dir: "{{ root_dir_mnt }}/home/alarm/"
+        alarm_home_dir: "{{ root_dir_mnt }}/home/alarm"
         root_filesystem_download_path: "{{ lookup('env', 'HOME') }}/.cache/ArchLinuxARM-rpi-2-latest.tar.gz"
         # TODO: Make this a key value pair so I can lookup the boot part by name
         desired_partitions:
@@ -46,308 +46,351 @@
         ssh_keys_dir: "{{ alarm_home_dir }}/arch-ansible/secrets/ssh-keys"
 
     - block:
-        - name: Read SD card device info
-          parted:
-            device: "{{ sd_device }}"
-            unit: MiB
-          register: sd_device_info
-          become: true
-        - name: Remove extra partitions from disk
-          parted:
-            device: "{{ sd_device }}"
-            number: "{{ item.num }}"
-            state: absent
-          loop: "{{ sd_device_info.partitions }}"
-          when: (item.num > (desired_partitions | length)) or (wipe_card is defined and wipe_card == "true")
-          become: true
+      - name: Read SD card device info
+        parted:
+          device: "{{ sd_device }}"
+          unit: MiB
+        register: sd_device_info
+        become: true
 
-        - name: Create partitions
-          parted:
-            device: "{{ sd_device }}"
-            number: "{{ item.number }}"
-            state: present
-            part_type: primary
-            part_start: "{{ item.start }}"
-            part_end: "{{ item.end }}"
-            unit: MiB
-            flags: "{{ item.flags }}"
-          become: true
-          loop: "{{ desired_partitions }}"
+      - name: Remove extra partitions from disk
+        parted:
+          device: "{{ sd_device }}"
+          number: "{{ item.num }}"
+          state: absent
+        loop: "{{ sd_device_info.partitions }}"
+        when: (item.num > (desired_partitions | length)) or (wipe_card is defined and wipe_card == "true")
+        become: true
 
-        - name: Wipe exising LUKS partitions
-          luks_device:
-            device: "{{ item.raw_device }}"
-            state: "absent"
-            name: "{{ item.logical_device | basename }}"
-          become: true
-          loop: "{{ desired_partitions }}"
-          when: item.encrypted and (wipe_card is defined and wipe_card == "true")
+      - name: Create partitions
+        parted:
+          device: "{{ sd_device }}"
+          number: "{{ item.number }}"
+          state: present
+          part_type: primary
+          part_start: "{{ item.start }}"
+          part_end: "{{ item.end }}"
+          unit: MiB
+          flags: "{{ item.flags }}"
+        become: true
+        loop: "{{ desired_partitions }}"
 
-        # TODO: PW set in key file doesn't seem to work as expected. Retest if
-        # this is still necessary
-        - name: LUKS format device and cryptopen it
-          luks_device:
-            device: "{{ item.raw_device }}"
-            state: "opened"
-            name: "{{ item.logical_device | basename }}"
-            # keyfile: secrets/luks-keyfile
-            passphrase: "{{ lookup('file', 'secrets/luks-keyfile') }}"
-          become: true
-          loop: "{{ desired_partitions }}"
-          when: item.encrypted
-          register: luks_format_result
+      - name: Wipe exising LUKS partitions
+        luks_device:
+          device: "{{ item.raw_device }}"
+          state: "absent"
+          name: "{{ item.logical_device | basename }}"
+        become: true
+        loop: "{{ desired_partitions }}"
+        when: item.encrypted and (wipe_card is defined and wipe_card == "true")
 
-        # TODO: Make this idempotent
-        - name: Create partition filesystems
-          filesystem:
-            fstype: "{{ item.fstype }}"
-            dev: "{{ item.logical_device }}"
-            force: true
-          become: true
-          loop: "{{ desired_partitions }}"
+      - name: LUKS format device and cryptopen it
+        luks_device:
+          device: "{{ item.raw_device }}"
+          state: "opened"
+          name: "{{ item.logical_device | basename }}"
+          keyfile: secrets/luks-keyfile
+          # Pi 3B+ can only handle a small key size
+          pbkdf:
+            memory: 256
+        become: true
+        loop: "{{ desired_partitions }}"
+        when: item.encrypted
 
-        - name: Mount partition filesystem
-          mount:
-            fstype: "{{ item.fstype }}"
-            src: "{{ item.logical_device }}"
-            path: "{{ item.mount_point }}"
-            state: mounted
-          become: true
-          loop: "{{ desired_partitions }}"
+      - name: Create partition filesystems
+        filesystem:
+          fstype: "{{ item.fstype }}"
+          dev: "{{ item.logical_device }}"
+        become: true
+        loop: "{{ desired_partitions }}"
 
-        - name: Check for root filesystem download
-          stat:
-            path: "{{ root_filesystem_download_path }}"
-          register: root_filesystem_download_check_result
+      - name: Mount partition filesystem
+        mount:
+          fstype: "{{ item.fstype }}"
+          src: "{{ item.logical_device }}"
+          path: "{{ item.mount_point }}"
+          state: mounted
+        become: true
+        loop: "{{ desired_partitions }}"
 
-        - name: Download root filesystem
-          get_url:
-            url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-2-latest.tar.gz
-            dest: "{{ root_filesystem_download_path }}"
-          when: not root_filesystem_download_check_result.stat.exists
+      - name: Check for root filesystem download
+        stat:
+          path: "{{ root_filesystem_download_path }}"
+        register: root_filesystem_download_check_result
 
-        # TODO: Make this idempotent
-        - name: Extract root filesystem
-          unarchive:
-            src: "{{ root_filesystem_download_path }}"
-            dest: "{{ root_dir_mnt }}"
-          become: true
+      - name: Download root filesystem
+        get_url:
+          url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-2-latest.tar.gz
+          dest: "{{ root_filesystem_download_path }}"
+        when: not root_filesystem_download_check_result.stat.exists
 
-        # TODO: Make this idempotent
-        - name: Move boot files to boot partition
-          shell: "mv {{ root_dir_mnt }}/boot/* {{ boot_dir_mnt }}/"
-          become: true
+      - name: Extract root filesystem
+        unarchive:
+          src: "{{ root_filesystem_download_path }}"
+          dest: "{{ root_dir_mnt }}"
+          creates: "{{ root_dir_mnt}}/etc/os-release"
+        become: true
 
-        - name: Unmount boot dir
-          mount:
-            path: "{{ boot_dir_mnt }}"
-            state: absent
-          become: true
+      - name: Move boot files to boot partition
+        synchronize:
+          src: "{{ root_dir_mnt }}/boot/"
+          dest: "{{ boot_dir_mnt }}"
+        become: true
 
-        - name: Mount boot dir under root dir
-          mount:
-            path: "{{ root_dir_mnt }}/boot"
-            src: "{{ sd_device }}p1"
-            state: mounted
-            fstype: vfat
-          become: true
+      - name: List old boot dir files to delete
+        become: true
+        find:
+          paths: "{{ root_dir_mnt }}/boot/"
+          patterns: "*"
+          hidden: true
+          recurse: true
+          file_type: any
+        register: boot_dir_contents
 
-        - name: Copy arch-ansible to root
-          become: true
-          synchronize:
-            src: "{{ playbook_dir }}/"
-            dest: "{{ ansible_dir }}"
+      - name: Remove old boot dir files
+        become: true
+        file:
+          path: "{{ item.path }}"
+          state: absent
+        with_items: "{{ boot_dir_contents.files }}"
 
-        - name: Add tmux config to root
-          become: true
-          copy:
-            src: files/tmux.conf
-            dest: "{{ alarm_home_dir }}/.tmux.conf"
+      - name: Unmount boot dir
+        mount:
+          path: "{{ boot_dir_mnt }}"
+          state: absent
+        become: true
 
-        - name: Create gpg-keys dir
-          become: true
-          file:
-            path: "{{ gpg_keys_dir }}"
-            state: directory
+      - name: Mount boot dir under root dir
+        mount:
+          path: "{{ root_dir_mnt }}/boot"
+          src: "{{ sd_device }}p1"
+          state: mounted
+          fstype: vfat
+        become: true
 
-        # TODO: Make this idempotent
-        - name: export gpg private key
-          command: gpg --armor --export-secret-key '{{ pass_gpg_key }}'
-          args:
-            creates: "{{ gpg_keys_dir }}/private-key.asc"
-          register: gpg_private_export_cmd
-          no_log: true
-        - name: write gpg private key
-          copy:
-            dest: "{{ gpg_keys_dir }}/private-key.asc"
-            content: "{{ gpg_private_export_cmd.stdout }}"
-          become: true
-          no_log: true
-          when: gpg_private_export_cmd.changed
+      - name: Copy arch-ansible to root
+        become: true
+        synchronize:
+          src: "{{ playbook_dir }}/"
+          dest: "{{ ansible_dir }}"
 
-        - name: export gpg public key
-          command: gpg --armor --export '{{ pass_gpg_key }}'
-          no_log: true
-          register: gpg_public_export_cmd
-          args:
-            creates: "{{ gpg_keys_dir }}/public-key.asc"
-        - name: write gpg public key
-          become: true
-          no_log: true
-          when: gpg_public_export_cmd.changed
-          copy:
-            dest: "{{ gpg_keys_dir }}/public-key.asc"
-            content: "{{ gpg_public_export_cmd.stdout }}"
+      - name: Add tmux config to root
+        become: true
+        copy:
+          src: files/tmux.conf
+          dest: "{{ alarm_home_dir }}/.tmux.conf"
 
-        - name: create ssh-keys dir
-          become: true
-          file:
-            path: "{{ ssh_keys_dir }}"
-            state: directory
-        - name: copy ssh private key
-          become: true
-          copy:
-            src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
-            dest: "{{ ssh_keys_dir }}/id_rsa"
-            owner: root
-        - name: copy ssh public key
-          become: true
-          copy:
-            src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
-            dest: "{{ ssh_keys_dir }}/id_rsa.pub"
+      - name: Create gpg-keys dir
+        become: true
+        file:
+          path: "{{ gpg_keys_dir }}"
+          state: directory
 
-        - name: install resolvconf.conf
-          become: true
-          copy:
-            src: files/resolvconf.conf
-            dest: "{{ root_dir_mnt }}/etc/resolvconf.conf"
+      - name: Check for exported GPG private key
+        become: true
+        stat:
+          path: "{{ gpg_keys_dir }}/private-key.asc"
+        register: check_exported_gpg_private_key
 
-        - name: create systemd-nspawn service file directory
-          become: true
-          file:
-            path: /etc/systemd/nspawn
-            state: directory
+      - name: Export GPG private key
+        command: "gpg --armor --export-secret-key '{{ pass_gpg_key }}'"
+        register: gpg_private_export_cmd
+        no_log: true
+        when: not check_exported_gpg_private_key.stat.exists
 
-        - name: Install nspawn config for arch-pi
-          become: true
-          copy:
-            src: files/arch-pi.nspawn
-            dest: "/etc/systemd/nspawn/arch-pi.nspawn"
+      - name: Write gpg private key
+        copy:
+          dest: "{{ gpg_keys_dir }}/private-key.asc"
+          content: "{{ gpg_private_export_cmd.stdout }}"
+        become: true
+        no_log: true
+        when: gpg_private_export_cmd.changed
 
-        - name: Ensure root dir permissions
-          become: true
-          file:
-            path: "{{ root_dir_mnt }}"
-            owner: root
-            group: root
+      - name: Check for exported GPG public key
+        become: true
+        stat:
+          path: "{{ gpg_keys_dir }}/public-key.asc"
+        register: check_exported_gpg_public_key
 
-        - name: Start arch-pi container
-          become: true
-          systemd:
-            state: started
-            name: systemd-nspawn@arch-pi.service
-            daemon-reload: true
 
-        - name: Init pacman keys in nspawn container
-          become: true
-          command: "machinectl shell arch-pi /bin/bash -c 'pacman-key --init'"
-          retries: 10
-          delay: 2
-          register: pacman_key_init_result
-          until: pacman_key_init_result.rc == 0
-          ignore_errors: true
+      - name: Export GPG public key
+        command: "gpg --armor --export '{{ pass_gpg_key }}'"
+        no_log: true
+        register: gpg_public_export_cmd
+        when: not check_exported_gpg_public_key.stat.exists
 
-        - name: Populate ARM pacman keys in nspawn container
-          become: true
-          command: "machinectl shell arch-pi /bin/bash -c 'pacman-key --populate archlinuxarm'"
+      - name: Write GPG public key
+        become: true
+        no_log: true
+        when: gpg_public_export_cmd.changed
+        copy:
+          dest: "{{ gpg_keys_dir }}/public-key.asc"
+          content: "{{ gpg_public_export_cmd.stdout }}"
 
-        - name: Update and install pacakges in nspawn container
-          become: true
-          command: "machinectl shell arch-pi /bin/bash -c 'pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear python ansible'"
+      - name: Create ssh-keys dir
+        become: true
+        file:
+          path: "{{ ssh_keys_dir }}"
+          state: directory
+      - name: Copy SSH private key
+        become: true
+        copy:
+          src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
+          dest: "{{ ssh_keys_dir }}/id_rsa"
+          owner: root
+      - name: Copy SSH public key
+        become: true
+        copy:
+          src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
+          dest: "{{ ssh_keys_dir }}/id_rsa.pub"
 
-        - set_fact:
-            mkinitcpio_modules: []
+      - name: Install resolvconf.conf
+        become: true
+        copy:
+          src: files/resolvconf.conf
+          dest: "{{ root_dir_mnt }}/etc/resolvconf.conf"
 
-        - name: boot | Install mkinitcpio.conf
-          become: true
-          template:
-            src: templates/mkinitcpio.conf.j2
-            dest: "{{ root_dir_mnt }}/etc/mkinitcpio.conf"
+      - name: Create systemd-nspawn service file directory
+        become: true
+        file:
+          path: /etc/systemd/nspawn
+          state: directory
 
-        # Normal shutdown attempts result in the container going into "rescue mode"
-        - name: Restart arch-pi container to pick up any kernel version updates
-          become: true
-          command: "machinectl kill --signal SIGKILL arch-pi"
+      - name: Install nspawn config for arch-pi
+        become: true
+        copy:
+          src: files/arch-pi.nspawn
+          dest: "/etc/systemd/nspawn/arch-pi.nspawn"
 
-        - name: Restart arch-pi container to pick up any kernel version updates
-          become: true
-          systemd:
-            state: started
-            name: systemd-nspawn@arch-pi.service
-          retries: 4
-          delay: 4
+      - name: Ensure root dir permissions
+        become: true
+        file:
+          path: "{{ root_dir_mnt }}"
+          owner: root
+          group: root
 
-        # Can't use `uname` since that returns the host kernel version
-        - name: Rebuild initramfs in container
-          become: true
-          command: "machinectl shell arch-pi /bin/bash -c 'mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img'"
-          retries: 10
-          delay: 10
-          register: mkinitcpio_result
-          until: mkinitcpio_result.rc == 0
-          ignore_errors: true
+      - name: Start arch-pi container
+        become: true
+        systemd:
+          state: started
+          name: systemd-nspawn@arch-pi.service
+          daemon-reload: true
 
-        - name: Update boot params for crypt root
-          become: true
-          copy:
-            dest: "{{ root_dir_mnt }}/boot/cmdline.txt"
-            content: "root=/dev/mapper/sdroot cryptdevice=/dev/mmcblk0p2:sdroot rootfstype=ext4 rw rootwait console=serial0,115200 console=tty1 selinux=0 plymouth.enable=0 smsc95xx.turbo_mode=N dwc_otg.lpm_enable=0 kgdboc=serial0,115200"
+      - name: Init pacman keys in nspawn container
+        become: true
+        command: "machinectl shell arch-pi /bin/bash -c 'pacman-key --init'"
+        retries: 10
+        delay: 2
+        register: pacman_key_init_result
+        until: pacman_key_init_result.rc == 0
+        ignore_errors: true
 
-        - name: Set hostname in container
-          become: true
-          copy:
-            content: "panamint"
-            dest: "{{ root_dir_mnt }}/etc/hostname"
+      - name: Populate ARM pacman keys in nspawn container
+        become: true
+        command: "machinectl shell arch-pi /bin/bash -c 'pacman-key --populate archlinuxarm'"
 
-        - name: Add alarm user to sudoers
-          become: true
-          lineinfile:
-            dest: "{{ root_dir_mnt }}/etc/sudoers"
-            line: "alarm ALL=(ALL) ALL"
-            state: present
-            create: yes
+      - name: Update and install pacakges in nspawn container
+        become: true
+        command: "machinectl shell arch-pi /bin/bash -c 'pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel tmux uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear python ansible'"
+
+      - set_fact:
+          mkinitcpio_modules: []
+
+      - name: Install mkinitcpio.conf
+        become: true
+        template:
+          src: templates/mkinitcpio.conf.j2
+          dest: "{{ root_dir_mnt }}/etc/mkinitcpio.conf"
+
+      # Normal shutdown attempts result in the container going into "rescue mode"
+      - name: Restart arch-pi container to pick up any kernel version updates
+        become: true
+        command: "machinectl kill --signal SIGKILL arch-pi"
+
+      - name: Restart arch-pi container to pick up any kernel version updates
+        become: true
+        systemd:
+          state: started
+          name: systemd-nspawn@arch-pi.service
+        retries: 4
+        delay: 4
+
+      # Can't use `uname` since that returns the host kernel version
+      - name: Rebuild initramfs in container
+        become: true
+        command: "machinectl shell arch-pi /bin/bash -c 'mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img'"
+        retries: 10
+        delay: 2
+        register: mkinitcpio_result
+        until: mkinitcpio_result.rc == 0
+        ignore_errors: true
+
+      - name: Update boot params for crypt root
+        become: true
+        copy:
+          dest: "{{ root_dir_mnt }}/boot/cmdline.txt"
+          content: "root=/dev/mapper/sdroot cryptdevice=/dev/mmcblk0p2:sdroot rootfstype=ext4 rw rootwait console=serial0,115200 console=tty1 selinux=0 plymouth.enable=0 smsc95xx.turbo_mode=N dwc_otg.lpm_enable=0 kgdboc=serial0,115200"
+
+      - name: Set hostname in container
+        become: true
+        copy:
+          content: "panamint"
+          dest: "{{ root_dir_mnt }}/etc/hostname"
+
+      - name: Add alarm user to sudoers
+        become: true
+        lineinfile:
+          dest: "{{ root_dir_mnt }}/etc/sudoers"
+          line: "alarm ALL=(ALL) ALL"
+          state: present
+          create: yes
       always:
         - name: Stop arch-pi container
           become: true
-          command: "machinectl kill --signal SIGKILL arch-pi"
+          command: machinectl kill --signal SIGKILL arch-pi
+          when: not (no_clean is defined and no_clean == "true")
+          ignore_errors: true
 
         - name: Unmount temp boot dir
+          become: true
+          mount:
+            path: "{{ root_dir_mnt }}/boot"
+            state: absent
+          when: not (no_clean is defined and no_clean == "true")
+
+        - name: Unmount sub-root boot dir
+          become: true
           mount:
             path: "{{ boot_dir_mnt }}"
             state: absent
-          become: true
+          when: not (no_clean is defined and no_clean == "true")
 
         - name: Remove temp boot dir mount point
+          become: true
           file:
             path: "{{ boot_dir_mnt }}"
             state: absent
+          when: not (no_clean is defined and no_clean == "true")
 
         - name: Unmount temp root dir
+          become: true
           mount:
             path: "{{ root_dir_mnt }}"
             state: absent
-          become: true
+          when: not (no_clean is defined and no_clean == "true")
 
         - name: Remove temp root dir mount point
+          become: true
           file:
             path: "{{ root_dir_mnt }}"
             state: absent
+          when: not (no_clean is defined and no_clean == "true")
 
         - name: Close LUKS devices
+          become: true
           luks_device:
             device: "{{ item.raw_device }}"
             state: "closed"
             name: "{{ item.logical_device | basename }}"
-          become: true
           loop: "{{ desired_partitions }}"
-          when: luks_format_result is succeeded and item.encrypted
+          when: item.encrypted and not (no_clean is defined and no_clean == "true")
