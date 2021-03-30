@@ -27,6 +27,7 @@ desired_partitions:
     fs_options: ""
     mount_point: /var/lib/machines/arch-pi
     encrypted: true
+    volume_group_name: pi-sd-root
     flags: []
 
 mkinitcpio_modules: []

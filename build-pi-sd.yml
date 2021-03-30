@@ -314,7 +314,7 @@
         become: true
         copy:
           dest: "{{ desired_partitions['root'].mount_point }}/boot/cmdline.txt"
-          content: "root=/dev/mapper/sdroot cryptdevice=/dev/mmcblk0p2:sdroot rootfstype=ext4 rw rootwait console=serial0,115200 console=tty1 selinux=0 plymouth.enable=0 smsc95xx.turbo_mode=N dwc_otg.lpm_enable=0 kgdboc=serial0,115200"
+          content: "root={{ desired_partitions['root'].logical_device }} cryptdevice={{ desired_partitions['root'].partition_device }}:{{ desired_partitions['root'].volume_group_name }} rootfstype={{ desired_partitions['root'].fstype }} rw rootwait console=serial0,115200 console=tty1 selinux=0 plymouth.enable=0 smsc95xx.turbo_mode=N dwc_otg.lpm_enable=0 kgdboc=serial0,115200"
 
       - name: Set hostname in container
         become: true
