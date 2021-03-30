@@ -244,11 +244,11 @@
           path: /etc/systemd/nspawn
           state: directory
 
-      - name: Install nspawn config for arch-pi
+      - name: Install nspawn config for panamint
         become: true
         copy:
-          src: files/arch-pi.nspawn
-          dest: "/etc/systemd/nspawn/arch-pi.nspawn"
+          src: files/panamint.nspawn
+          dest: "/etc/systemd/nspawn/panamint.nspawn"
 
       - name: Ensure root dir permissions
         become: true
@@ -257,16 +257,16 @@
           owner: root
           group: root
 
-      - name: Start arch-pi container
+      - name: Start panamint container
         become: true
         systemd:
           state: started
-          name: systemd-nspawn@arch-pi.service
+          name: systemd-nspawn@panamint.service
           daemon-reload: true
 
       - name: Init pacman keys in nspawn container
         become: true
-        command: "machinectl shell arch-pi /bin/bash -c 'pacman-key --init'"
+        command: "machinectl shell panamint /bin/bash -c 'pacman-key --init'"
         retries: 10
         delay: 2
         register: pacman_key_init_result
@@ -275,11 +275,11 @@
 
       - name: Populate ARM pacman keys in nspawn container
         become: true
-        command: "machinectl shell arch-pi /bin/bash -c 'pacman-key --populate archlinuxarm'"
+        command: "machinectl shell panamint /bin/bash -c 'pacman-key --populate archlinuxarm'"
 
       - name: Update and install pacakges in nspawn container
         become: true
-        command: "machinectl shell arch-pi /bin/bash -c 'pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel tmux uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear python ansible'"
+        command: "machinectl shell panamint /bin/bash -c 'pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel tmux uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear python ansible'"
 
       - name: Install mkinitcpio.conf
         become: true
@@ -288,22 +288,22 @@
           dest: "{{ desired_partitions['root'].mount_point }}/etc/mkinitcpio.conf"
 
       # Normal shutdown attempts result in the container going into "rescue mode"
-      - name: Restart arch-pi container to pick up any kernel version updates
+      - name: Restart panamint container to pick up any kernel version updates
         become: true
-        command: "machinectl kill --signal SIGKILL arch-pi"
+        command: "machinectl kill --signal SIGKILL panamint"
 
-      - name: Restart arch-pi container to pick up any kernel version updates
+      - name: Restart panamint container to pick up any kernel version updates
         become: true
         systemd:
           state: started
-          name: systemd-nspawn@arch-pi.service
+          name: systemd-nspawn@panamint.service
         retries: 4
         delay: 4
 
       # Can't use `uname` since that returns the host kernel version
       - name: Rebuild initramfs in container
         become: true
-        command: "machinectl shell arch-pi /bin/bash -c 'mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img'"
+        command: "machinectl shell panamint /bin/bash -c 'mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img'"
         retries: 10
         delay: 2
         register: mkinitcpio_result
@@ -330,9 +330,9 @@
           state: present
           create: yes
       always:
-        - name: Stop arch-pi container
+        - name: Stop panamint container
           become: true
-          command: machinectl kill --signal SIGKILL arch-pi
+          command: machinectl kill --signal SIGKILL panamint
           when: not (no_clean is defined and no_clean == "true")
           ignore_errors: true
 

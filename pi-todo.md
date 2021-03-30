@@ -12,7 +12,6 @@
   * Migrated desired_partitions to a map
   * Need to test this in qemu and pi still
   * Also changed how connections are configured, putting it in ansible.cfg
-* All references to arch-pi should become references to panamint
 * Probably don't want to use alarm user for pi
 * Merge like half of bootstrap-pre-chroot
   * Probably need to sort shared tasks into an included file or set of included files
