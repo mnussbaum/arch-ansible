@@ -15,8 +15,6 @@ else
 fi
 
 extra_ansible_args=""
-boot_dir=/tmp/arch-pi-boot
-root_dir=/var/lib/machines/arch-pi
 
 for arg in "$@"
 do
@@ -32,17 +30,9 @@ do
   esac
 done
 
-if [[ "${1:-}" == "--wipe-card" ]] || [[ "${1:-}" == "-w" ]] ; then
-  sudo rm -rf "$boot_dir"
-  sudo rm -rf "$root_dir"
-  shift
-fi
-
-extra_ansible_args="$extra_ansible_args -e boot_dir_mnt=$boot_dir -e root_dir_mnt=$root_dir"
-
 ANSIBLE_PLAYBOOK=build-pi-sd.yml \
   exec ./bin/ansible \
-  -e sd_device=/dev/mmcblk0 \
+  --limit arch-pi \
   -e pass_gpg_key="mnussbaum (Password Store)" \
   $extra_ansible_args \
   $@

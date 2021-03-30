@@ -38,12 +38,6 @@
   changed_when: false
   become: true
 
-- name: Identify root partition
-  set_fact:
-    root_partition: "{{ item }}"
-  loop: "{{ desired_partitions }}"
-  when: item.name == "Arch Root"
-
 - name: boot | Configure grub
   become: true
   notify:

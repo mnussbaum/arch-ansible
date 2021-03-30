@@ -2,43 +2,29 @@
 ---
 - hosts: all
   tasks:
-    - name: Create root and boot dir mount points
+    - name: Wipe mount points
       file:
-        path: "{{ item }}"
+        path: "{{ item.mount_point }}"
+        state: absent
+      become: true
+      when: wipe_card is defined and wipe_card == "true"
+      loop: "{{ desired_partitions | values }}"
+
+    - name: Create mount points
+      file:
+        path: "{{ item.mount_point }}"
         state: directory
       become: true
-      loop:
-        - "{{ boot_dir_mnt }}"
-        - "{{ root_dir_mnt }}"
+      loop: "{{ desired_partitions | values }}"
+
+    - assert:
+        that: "desired_partitions['boot'].physical_device == desired_partitions['root'].physical_device"
+        msg: "Boot and root partitions must be on the same SD card"
 
     - name: Set partition facts
       set_fact:
-        alarm_home_dir: "{{ root_dir_mnt }}/home/alarm"
+        alarm_home_dir: "{{ desired_partitions['root'].mount_point }}/home/alarm"
         root_filesystem_download_path: "{{ lookup('env', 'HOME') }}/.cache/ArchLinuxARM-rpi-2-latest.tar.gz"
-        # TODO: Make this a key value pair so I can lookup the boot part by name
-        desired_partitions:
-          - number: 1
-            raw_device: "{{ sd_device }}p1"
-            logical_device: "{{ sd_device }}p1"
-            name: boot
-            start: 0%
-            end: 300MiB
-            fstype: vfat
-            mount_point: "{{ boot_dir_mnt }}"
-            encrypted: false
-            flags:
-              - lba
-              - boot
-          - number: 2
-            raw_device: "{{ sd_device }}p2"
-            logical_device: "/dev/mapper/pi-sd-root"
-            name: root
-            start: 300MiB
-            end: 100%
-            fstype: ext4
-            mount_point: "{{ root_dir_mnt }}"
-            encrypted: true
-            flags: []
     - name: Set secondary facts
       set_fact:
         ansible_dir: "{{ alarm_home_dir }}/arch-ansible"
@@ -48,14 +34,14 @@
     - block:
       - name: Read SD card device info
         parted:
-          device: "{{ sd_device }}"
+          device: "{{ desired_partitions['root'].physical_device }}"
           unit: MiB
         register: sd_device_info
         become: true
 
       - name: Remove extra partitions from disk
         parted:
-          device: "{{ sd_device }}"
+          device: "{{ desired_partitions['root'].physical_device }}"
           number: "{{ item.num }}"
           state: absent
         loop: "{{ sd_device_info.partitions }}"
@@ -64,7 +50,8 @@
 
       - name: Create partitions
         parted:
-          device: "{{ sd_device }}"
+          label: "{{ item.partition_label }}"
+          device: "{{ item.physical_device }}"
           number: "{{ item.number }}"
           state: present
           part_type: primary
@@ -72,21 +59,23 @@
           part_end: "{{ item.end }}"
           unit: MiB
           flags: "{{ item.flags }}"
+          # MBR/msdos labeled partitions can't handle names
+          name: "{{ item.partition_name | default(omit) }}"
         become: true
-        loop: "{{ desired_partitions }}"
+        loop: "{{ desired_partitions | values }}"
 
       - name: Wipe exising LUKS partitions
         luks_device:
-          device: "{{ item.raw_device }}"
+          device: "{{ item.partition_device }}"
           state: "absent"
           name: "{{ item.logical_device | basename }}"
         become: true
-        loop: "{{ desired_partitions }}"
+        loop: "{{ desired_partitions | values }}"
         when: item.encrypted and (wipe_card is defined and wipe_card == "true")
 
       - name: LUKS format device and cryptopen it
         luks_device:
-          device: "{{ item.raw_device }}"
+          device: "{{ item.partition_device }}"
           state: "opened"
           name: "{{ item.logical_device | basename }}"
           keyfile: secrets/luks-keyfile
@@ -94,7 +83,7 @@
           pbkdf:
             memory: 256
         become: true
-        loop: "{{ desired_partitions }}"
+        loop: "{{ desired_partitions | values }}"
         when: item.encrypted
 
       - name: Create partition filesystems
@@ -102,7 +91,7 @@
           fstype: "{{ item.fstype }}"
           dev: "{{ item.logical_device }}"
         become: true
-        loop: "{{ desired_partitions }}"
+        loop: "{{ desired_partitions | values }}"
 
       - name: Mount partition filesystem
         mount:
@@ -111,7 +100,7 @@
           path: "{{ item.mount_point }}"
           state: mounted
         become: true
-        loop: "{{ desired_partitions }}"
+        loop: "{{ desired_partitions | values }}"
 
       - name: Check for root filesystem download
         stat:
@@ -127,20 +116,20 @@
       - name: Extract root filesystem
         unarchive:
           src: "{{ root_filesystem_download_path }}"
-          dest: "{{ root_dir_mnt }}"
-          creates: "{{ root_dir_mnt}}/etc/os-release"
+          dest: "{{ desired_partitions['root'].mount_point }}"
+          creates: "{{ desired_partitions['root'].mount_point}}/etc/os-release"
         become: true
 
       - name: Move boot files to boot partition
         synchronize:
-          src: "{{ root_dir_mnt }}/boot/"
-          dest: "{{ boot_dir_mnt }}"
+          src: "{{ desired_partitions['root'].mount_point }}/boot/"
+          dest: "{{ desired_partitions['boot'].mount_point }}"
         become: true
 
       - name: List old boot dir files to delete
         become: true
         find:
-          paths: "{{ root_dir_mnt }}/boot/"
+          paths: "{{ desired_partitions['root'].mount_point }}/boot/"
           patterns: "*"
           hidden: true
           recurse: true
@@ -156,14 +145,14 @@
 
       - name: Unmount boot dir
         mount:
-          path: "{{ boot_dir_mnt }}"
+          path: "{{ desired_partitions['boot'].mount_point }}"
           state: absent
         become: true
 
       - name: Mount boot dir under root dir
         mount:
-          path: "{{ root_dir_mnt }}/boot"
-          src: "{{ sd_device }}p1"
+          path: "{{ desired_partitions['root'].mount_point }}/boot"
+          src: "{{ desired_partitions['boot'].partition_device }}"
           state: mounted
           fstype: vfat
         become: true
@@ -212,7 +201,6 @@
           path: "{{ gpg_keys_dir }}/public-key.asc"
         register: check_exported_gpg_public_key
 
-
       - name: Export GPG public key
         command: "gpg --armor --export '{{ pass_gpg_key }}'"
         no_log: true
@@ -248,7 +236,7 @@
         become: true
         copy:
           src: files/resolvconf.conf
-          dest: "{{ root_dir_mnt }}/etc/resolvconf.conf"
+          dest: "{{ desired_partitions['root'].mount_point }}/etc/resolvconf.conf"
 
       - name: Create systemd-nspawn service file directory
         become: true
@@ -265,7 +253,7 @@
       - name: Ensure root dir permissions
         become: true
         file:
-          path: "{{ root_dir_mnt }}"
+          path: "{{ desired_partitions['root'].mount_point }}"
           owner: root
           group: root
 
@@ -293,14 +281,11 @@
         become: true
         command: "machinectl shell arch-pi /bin/bash -c 'pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel tmux uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear python ansible'"
 
-      - set_fact:
-          mkinitcpio_modules: []
-
       - name: Install mkinitcpio.conf
         become: true
         template:
           src: templates/mkinitcpio.conf.j2
-          dest: "{{ root_dir_mnt }}/etc/mkinitcpio.conf"
+          dest: "{{ desired_partitions['root'].mount_point }}/etc/mkinitcpio.conf"
 
       # Normal shutdown attempts result in the container going into "rescue mode"
       - name: Restart arch-pi container to pick up any kernel version updates
@@ -328,19 +313,19 @@
       - name: Update boot params for crypt root
         become: true
         copy:
-          dest: "{{ root_dir_mnt }}/boot/cmdline.txt"
+          dest: "{{ desired_partitions['root'].mount_point }}/boot/cmdline.txt"
           content: "root=/dev/mapper/sdroot cryptdevice=/dev/mmcblk0p2:sdroot rootfstype=ext4 rw rootwait console=serial0,115200 console=tty1 selinux=0 plymouth.enable=0 smsc95xx.turbo_mode=N dwc_otg.lpm_enable=0 kgdboc=serial0,115200"
 
       - name: Set hostname in container
         become: true
         copy:
           content: "panamint"
-          dest: "{{ root_dir_mnt }}/etc/hostname"
+          dest: "{{ desired_partitions['root'].mount_point }}/etc/hostname"
 
       - name: Add alarm user to sudoers
         become: true
         lineinfile:
-          dest: "{{ root_dir_mnt }}/etc/sudoers"
+          dest: "{{ desired_partitions['root'].mount_point }}/etc/sudoers"
           line: "alarm ALL=(ALL) ALL"
           state: present
           create: yes
@@ -354,43 +339,43 @@
         - name: Unmount temp boot dir
           become: true
           mount:
-            path: "{{ root_dir_mnt }}/boot"
+            path: "{{ desired_partitions['root'].mount_point }}/boot"
             state: absent
           when: not (no_clean is defined and no_clean == "true")
 
         - name: Unmount sub-root boot dir
           become: true
           mount:
-            path: "{{ boot_dir_mnt }}"
+            path: "{{ desired_partitions['boot'].mount_point }}"
             state: absent
           when: not (no_clean is defined and no_clean == "true")
 
         - name: Remove temp boot dir mount point
           become: true
           file:
-            path: "{{ boot_dir_mnt }}"
+            path: "{{ desired_partitions['boot'].mount_point }}"
             state: absent
           when: not (no_clean is defined and no_clean == "true")
 
         - name: Unmount temp root dir
           become: true
           mount:
-            path: "{{ root_dir_mnt }}"
+            path: "{{ desired_partitions['root'].mount_point }}"
             state: absent
           when: not (no_clean is defined and no_clean == "true")
 
         - name: Remove temp root dir mount point
           become: true
           file:
-            path: "{{ root_dir_mnt }}"
+            path: "{{ desired_partitions['root'].mount_point }}"
             state: absent
           when: not (no_clean is defined and no_clean == "true")
 
         - name: Close LUKS devices
           become: true
           luks_device:
-            device: "{{ item.raw_device }}"
+            device: "{{ item.partition_device }}"
             state: "closed"
             name: "{{ item.logical_device | basename }}"
-          loop: "{{ desired_partitions }}"
+          loop: "{{ desired_partitions | values }}"
           when: item.encrypted and not (no_clean is defined and no_clean == "true")

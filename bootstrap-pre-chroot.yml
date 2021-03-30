@@ -4,9 +4,7 @@
   tasks:
     - name: Create partitions
       parted:
-        # The gpt label always needs to be set due to
-        # https://github.com/ansible/ansible/issues/38594
-        label: gpt
+        label: "{{ item.partition_label }}"
         device: "{{ item.physical_device }}"
         number: "{{ item.number }}"
         state: present
@@ -15,9 +13,10 @@
         part_end: "{{ item.end }}"
         unit: MiB
         flags: "{{ item.flags }}"
-        name: "{{ item.name }}"
+        # MBR/msdos labeled partitions can't handle names
+        name: "{{ item.partition_name | default(omit) }}"
       become: true
-      loop: "{{ desired_partitions }}"
+      loop: "{{ desired_partitions | values }}"
 
     - name: LUKS format device and cryptopen it
       luks_device:
@@ -26,7 +25,7 @@
         name: "{{ item.volume_container_name }}"
         keyfile: secrets/luks-keyfile
       become: true
-      loop: "{{ desired_partitions }}"
+      loop: "{{ desired_partitions | values }}"
       when: item.encrypted
       tags: [rebuild-boot-parition, mount-partitions]
 
@@ -35,7 +34,7 @@
         vg: "{{ item.volume_group_name }}"
         pvs: "/dev/mapper/{{ item.volume_container_name }}"
       become: true
-      loop: "{{ desired_partitions }}"
+      loop: "{{ desired_partitions | values }}"
       when: item.encrypted
 
     # This is apparently not idempotent for partition 3
@@ -47,7 +46,7 @@
         size: 100%VG
         shrink: false
       become: true
-      loop: "{{ desired_partitions }}"
+      loop: "{{ desired_partitions | values }}"
       when: item.encrypted
 
     # This is primarily useful for rebuilding and mounting the boot partition,
@@ -58,7 +57,7 @@
         lv: "{{ item.logical_volume_name }}"
         active: true
       become: true
-      loop: "{{ desired_partitions }}"
+      loop: "{{ desired_partitions | values }}"
       when: item.encrypted
       tags: [rebuild-boot-parition, mount-partitions]
 
@@ -67,11 +66,9 @@
         fstype: "{{ item.fstype }}"
         dev: "{{ item.logical_device }}"
         opts: "{{ item.fs_options }}"
-        force: true
         # Would be nice to add fs labels here set to the name
       become: true
-      loop: "{{ desired_partitions }}"
-      ignore_errors: true # Ignoring errors since to make it "idempotent"
+      loop: "{{ desired_partitions | values }}"
 
     - name: Mount partitions
       mount:
@@ -80,11 +77,11 @@
         path: "{{ item.mount_point }}"
         state: mounted
       become: true
-      # Reverse the partitions so that the mount order is:
+      # Sort and reverse the partitions so that the mount order is:
       # 1. /mnt
       # 2. /mnt/boot
       # 3. /mnt/boot/efi
-      loop: "{{ desired_partitions | reverse | list }}"
+      loop: "{{ desired_partitions | values | sort(attribute='number') | reverse | list }}"
       tags: [rebuild-boot-parition, mount-partitions]
 
     - name: Install pacman mirrorlist
@@ -113,7 +110,7 @@
     - name: Install wpa_supplicant config into the chroot
       template:
         src: templates/wpa_supplicant.conf.j2
-        dest: "{{ root_dir_mnt }}/etc/wpa_supplicant/{{ network.ssid }}.conf"
+        dest: "{{ desired_partitions['root'].mount_point }}/etc/wpa_supplicant/{{ network.ssid }}.conf"
       when: network_check is failed
 
     - name: Enable the wireless card
@@ -129,17 +126,17 @@
       when: network_check is failed
 
     - name: Pacstrap
-      command: "pacstrap {{ root_dir_mnt }} base linux linux-firmware linux-headers python"
+      command: "pacstrap {{ desired_partitions['root'].mount_point }} base linux linux-firmware linux-headers python"
       become: true
 
     - name: Generate fstab contents with mounts
-      command: "genfstab -U -p {{ root_dir_mnt }}"
+      command: "genfstab -U -p {{ desired_partitions['root'].mount_point }}"
       register: genfstab_result
 
     - name: Write fstab file in chroot
       copy:
         content: "{{ genfstab_result.stdout }}"
-        dest: "{{ root_dir_mnt }}/etc/fstab"
+        dest: "{{ desired_partitions['root'].mount_point }}/etc/fstab"
       become: true
 
     # There's something weird going on where hostnamectl
@@ -147,7 +144,6 @@
     # file in the chroot, so the new hostname isn't
     # persisted
     - name: Set hostname in chroot
-      command: "arch-chroot {{ root_dir_mnt }} hostnamectl set-hostname {{ new_hostname}}"
+      command: "arch-chroot {{ desired_partitions['root'].mount_point }} hostnamectl set-hostname {{ new_hostname}}"
     - name: Set hostname file in chroot
-      command: "arch-chroot {{ root_dir_mnt }} sh -c 'echo -n {{ new_hostname}} > /etc/hostname'"
-# TODO: Configure wpa_supplicant wifi stuff
+      command: "arch-chroot {{ desired_partitions['root'].mount_point }} sh -c 'echo -n {{ new_hostname}} > /etc/hostname'"

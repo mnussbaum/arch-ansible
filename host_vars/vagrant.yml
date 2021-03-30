@@ -1,14 +1,12 @@
 ---
-boot_device:
-  name: /dev/sda2
-  encrypted_root: false
-
 desired_partitions:
-  - number: 1
+  boot:
+    number: 1
     physical_device: "/dev/sda"
     partition_device: "/dev/sda1"
     logical_device: "/dev/sda1"
-    name: Grub
+    partition_name: Grub
+    partition_label: gpt
     start: 0%
     end: 261MiB
     fstype: ext4
@@ -16,11 +14,13 @@ desired_partitions:
     mount_point: "/mnt/boot"
     encrypted: false
     flags: []
-  - number: 2
+  root:
+    number: 2
     physical_device: "/dev/sda"
     partition_device: "/dev/sda2"
     logical_device: "/dev/mapper/vgcrypt-root"
-    name: Arch Root
+    partition_name: Arch Root
+    partition_label: gpt
     start: 261MiB
     end: 100%
     fstype: ext4

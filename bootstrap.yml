@@ -1,14 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- hosts: all
-  tasks:
-    - name: Identify root partition mount point
-      set_fact:
-        root_dir_mnt: "{{ item.mount_point }}"
-      loop: "{{ desired_partitions }}"
-      when: item.name == "Arch Root"
-      tags: [bootstrap, rebuild-boot-parition, mount-partitions]
-
 - name: Run pre-chroot tasks
   import_playbook: bootstrap-pre-chroot.yml
   tags: [bootstrap]

@@ -1,1 +1,51 @@
+---
+desired_partitions:
+  boot:
+    number: 1
+    physical_device: /dev/mmcblk0
+    partition_device: /dev/mmcblk0p1
+    partition_label: msdos
+    logical_device: /dev/mmcblk0p1
+    start: 0%
+    end: 300MiB
+    fstype: vfat
+    fs_options: ""
+    mount_point: /tmp/arch-pi-boot
+    encrypted: false
+    flags:
+      - lba
+      - boot
+  root:
+    number: 2
+    physical_device: /dev/mmcblk0
+    partition_device: /dev/mmcblk0p2
+    partition_label: msdos
+    logical_device: /dev/mapper/pi-sd-root
+    start: 300MiB
+    end: 100%
+    fstype: ext4
+    fs_options: ""
+    mount_point: /var/lib/machines/arch-pi
+    encrypted: true
+    flags: []
+
 mkinitcpio_modules: []
+
+key_repeat:
+  delay: 250
+
+hidpi_firefox: false
+
+optional_daemons:
+  clightd: false
+  libinput_gestures: false
+
+user:
+  name: alarm
+  group: alarm
+  shell: /usr/bin/zsh
+  email: michaelnussbaum08@gmail.com
+
+window_manager:
+  window_manager: sway
+  windowing_system: wayland

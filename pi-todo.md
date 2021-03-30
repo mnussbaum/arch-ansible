@@ -8,5 +8,15 @@
 
 ### Todo
 
-1. Consolidate input data with standard bootstrapping playbook
-2. Run rest of bootstrapping playbook in live image
+* Consolidate input data with standard bootstrapping playbook
+  * Migrated desired_partitions to a map
+  * Need to test this in qemu and pi still
+  * Also changed how connections are configured, putting it in ansible.cfg
+* All references to arch-pi should become references to panamint
+* Probably don't want to use alarm user for pi
+* Merge like half of bootstrap-pre-chroot
+  * Probably need to sort shared tasks into an included file or set of included files
+* I think then run boostrap tasks from playbook.yml in container and bootstrap-post-chroot.yml
+* Run rest of bootstrapping playbook in live image
+* Upgrade to the pi 3 image
+* Allow root volume unlock via SSH for remote management

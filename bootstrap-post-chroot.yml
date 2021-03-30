@@ -23,7 +23,9 @@
       loop: "{{ secrets_to_install }}"
 
     - name: Copy over arch-ansible repo
-      local_action: command cp -r "{{ playbook_dir }}/" "{{ root_dir_mnt }}/{{ arch_ansible_dest }}"
+      synchronize:
+        src: "{{ playbook_dir }}/"
+        dest: "{{ desired_partitions['root'].mount_point }}/{{ arch_ansible_dest }}"
 
     - name: Set permission on arch-ansible copy
       file:
