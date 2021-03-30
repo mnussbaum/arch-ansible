@@ -1,0 +1,14 @@
+# vim:ft=yaml.ansible:
+---
+- name: Mount partitions
+  mount:
+    fstype: "{{ item.fstype }}"
+    src: "{{ item.logical_device }}"
+    path: "{{ item.mount_point }}"
+    state: mounted
+  become: true
+  # Sort and reverse the partitions so that the mount order for EFI systems is:
+  # 1. /mnt
+  # 2. /mnt/boot
+  # 3. /mnt/boot/efi
+  loop: "{{ desired_partitions | values | sort(attribute='number') | reverse | list }}"

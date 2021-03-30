@@ -31,60 +31,35 @@
         gpg_keys_dir: "{{ alarm_home_dir }}/arch-ansible/secrets/gpg-keys"
         ssh_keys_dir: "{{ alarm_home_dir }}/arch-ansible/secrets/ssh-keys"
 
+    - name: Read SD card device info
+      parted:
+        device: "{{ desired_partitions['root'].physical_device }}"
+        unit: MiB
+      register: sd_device_info
+      become: true
+
+    - name: Remove extra partitions from disk
+      parted:
+        device: "{{ desired_partitions['root'].physical_device }}"
+        number: "{{ item.num }}"
+        state: absent
+      loop: "{{ sd_device_info.partitions }}"
+      when: (item.num > (desired_partitions | length)) or (wipe_card is defined and wipe_card == "true")
+      become: true
+
+    - import_tasks: tasks/bootstrapping/create_partitions.yml
+
+    - name: Wipe exising LUKS partitions
+      luks_device:
+        device: "{{ item.partition_device }}"
+        state: "absent"
+        name: "{{ item.logical_device | basename }}"
+      become: true
+      loop: "{{ desired_partitions | values }}"
+      when: item.encrypted and (wipe_card is defined and wipe_card == "true")
+
     - block:
-      - name: Read SD card device info
-        parted:
-          device: "{{ desired_partitions['root'].physical_device }}"
-          unit: MiB
-        register: sd_device_info
-        become: true
-
-      - name: Remove extra partitions from disk
-        parted:
-          device: "{{ desired_partitions['root'].physical_device }}"
-          number: "{{ item.num }}"
-          state: absent
-        loop: "{{ sd_device_info.partitions }}"
-        when: (item.num > (desired_partitions | length)) or (wipe_card is defined and wipe_card == "true")
-        become: true
-
-      - name: Create partitions
-        parted:
-          label: "{{ item.partition_label }}"
-          device: "{{ item.physical_device }}"
-          number: "{{ item.number }}"
-          state: present
-          part_type: primary
-          part_start: "{{ item.start }}"
-          part_end: "{{ item.end }}"
-          unit: MiB
-          flags: "{{ item.flags }}"
-          # MBR/msdos labeled partitions can't handle names
-          name: "{{ item.partition_name | default(omit) }}"
-        become: true
-        loop: "{{ desired_partitions | values }}"
-
-      - name: Wipe exising LUKS partitions
-        luks_device:
-          device: "{{ item.partition_device }}"
-          state: "absent"
-          name: "{{ item.logical_device | basename }}"
-        become: true
-        loop: "{{ desired_partitions | values }}"
-        when: item.encrypted and (wipe_card is defined and wipe_card == "true")
-
-      - name: LUKS format device and cryptopen it
-        luks_device:
-          device: "{{ item.partition_device }}"
-          state: "opened"
-          name: "{{ item.logical_device | basename }}"
-          keyfile: secrets/luks-keyfile
-          # Pi 3B+ can only handle a small key size
-          pbkdf:
-            memory: 256
-        become: true
-        loop: "{{ desired_partitions | values }}"
-        when: item.encrypted
+      - import_tasks: tasks/bootstrapping/luks_format_and_open.yml
 
       - name: Create partition filesystems
         filesystem:
@@ -93,14 +68,7 @@
         become: true
         loop: "{{ desired_partitions | values }}"
 
-      - name: Mount partition filesystem
-        mount:
-          fstype: "{{ item.fstype }}"
-          src: "{{ item.logical_device }}"
-          path: "{{ item.mount_point }}"
-          state: mounted
-        become: true
-        loop: "{{ desired_partitions | values }}"
+      - import_tasks: tasks/bootstrapping/mount_partitions.yml
 
       - name: Check for root filesystem download
         stat:
@@ -156,6 +124,16 @@
           state: mounted
           fstype: vfat
         become: true
+
+      - name: Generate WPA PSK
+        command: "wpa_passphrase {{ network.ssid }} {{ lookup('file', 'secrets/wifi_passphrase') }}"
+        register: wpa_passphrase_result
+        changed_when: false
+
+      - name: Install wpa_supplicant config
+        template:
+          src: templates/wpa_supplicant.conf.j2
+          dest: "{{ desired_partitions['root'].mount_point }}/etc/wpa_supplicant/{{ network.ssid }}.conf"
 
       - name: Copy arch-ansible to root
         become: true

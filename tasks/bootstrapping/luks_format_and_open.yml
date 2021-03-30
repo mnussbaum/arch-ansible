@@ -1,0 +1,14 @@
+# vim:ft=yaml.ansible:
+---
+- name: LUKS format device and cryptopen it
+  luks_device:
+    device: "{{ item.partition_device }}"
+    state: "opened"
+    name: "{{ item.volume_group_name }}"
+    keyfile: secrets/luks-keyfile
+    # Pi 3B+ can only handle a small key size
+    pbkdf:
+      memory: 256
+  become: true
+  loop: "{{ desired_partitions | values }}"
+  when: item.encrypted

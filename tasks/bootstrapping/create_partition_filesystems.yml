@@ -1,0 +1,10 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create partition filesystems
+  filesystem:
+    fstype: "{{ item.fstype }}"
+    dev: "{{ item.logical_device }}"
+    opts: "{{ item.fs_options | default(omit) }}"
+    # Would be nice to add fs labels here set to the name
+  become: true
+  loop: "{{ desired_partitions | values }}"

@@ -1,0 +1,17 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create partitions
+  parted:
+    label: "{{ item.partition_label }}"
+    device: "{{ item.physical_device }}"
+    number: "{{ item.number }}"
+    state: present
+    part_type: primary
+    part_start: "{{ item.start }}"
+    part_end: "{{ item.end }}"
+    unit: MiB
+    flags: "{{ item.flags }}"
+    # MBR/msdos labeled partitions can't handle names
+    name: "{{ item.partition_name | default(omit) }}"
+  become: true
+  loop: "{{ desired_partitions | values }}"

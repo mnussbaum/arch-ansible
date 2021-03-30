@@ -2,31 +2,8 @@
 ---
 - hosts: all
   tasks:
-    - name: Create partitions
-      parted:
-        label: "{{ item.partition_label }}"
-        device: "{{ item.physical_device }}"
-        number: "{{ item.number }}"
-        state: present
-        part_type: primary
-        part_start: "{{ item.start }}"
-        part_end: "{{ item.end }}"
-        unit: MiB
-        flags: "{{ item.flags }}"
-        # MBR/msdos labeled partitions can't handle names
-        name: "{{ item.partition_name | default(omit) }}"
-      become: true
-      loop: "{{ desired_partitions | values }}"
-
-    - name: LUKS format device and cryptopen it
-      luks_device:
-        device: "{{ item.partition_device }}"
-        state: "opened"
-        name: "{{ item.volume_container_name }}"
-        keyfile: secrets/luks-keyfile
-      become: true
-      loop: "{{ desired_partitions | values }}"
-      when: item.encrypted
+    - import_tasks: tasks/bootstrapping/create_partitions.yml
+    - import_tasks: tasks/bootstrapping/luks_format_and_open.yml
       tags: [rebuild-boot-parition, mount-partitions]
 
     - name: Create physical volumes and volume groups for encrypted partitions
@@ -61,27 +38,9 @@
       when: item.encrypted
       tags: [rebuild-boot-parition, mount-partitions]
 
-    - name: Create partition filesystems
-      filesystem:
-        fstype: "{{ item.fstype }}"
-        dev: "{{ item.logical_device }}"
-        opts: "{{ item.fs_options }}"
-        # Would be nice to add fs labels here set to the name
-      become: true
-      loop: "{{ desired_partitions | values }}"
+    - import_tasks: tasks/bootstrapping/create_partition_filesystems.yml
 
-    - name: Mount partitions
-      mount:
-        fstype: "{{ item.fstype }}"
-        src: "{{ item.logical_device }}"
-        path: "{{ item.mount_point }}"
-        state: mounted
-      become: true
-      # Sort and reverse the partitions so that the mount order is:
-      # 1. /mnt
-      # 2. /mnt/boot
-      # 3. /mnt/boot/efi
-      loop: "{{ desired_partitions | values | sort(attribute='number') | reverse | list }}"
+    - import_tasks: tasks/bootstrapping/mount_partitions.yml
       tags: [rebuild-boot-parition, mount-partitions]
 
     - name: Install pacman mirrorlist
@@ -89,29 +48,26 @@
         src: files/pacman_bootstrap_mirrorlist
         dest: /etc/pacman.d/mirrorlist
 
-    - name: Check for network connectivity
-      uri:
-        url: https://www.google.com
-      register: network_check
-      ignore_errors: true
-
     - name: Generate WPA PSK
       command: "wpa_passphrase {{ network.ssid }} {{ lookup('file', 'secrets/wifi_passphrase') }}"
       register: wpa_passphrase_result
       changed_when: false
-      when: network_check is failed
 
     - name: Install wpa_supplicant config locally
       template:
         src: templates/wpa_supplicant.conf.j2
         dest: "/etc/wpa_supplicant/{{ network.ssid }}.conf"
-      when: network_check is failed
 
     - name: Install wpa_supplicant config into the chroot
       template:
         src: templates/wpa_supplicant.conf.j2
         dest: "{{ desired_partitions['root'].mount_point }}/etc/wpa_supplicant/{{ network.ssid }}.conf"
-      when: network_check is failed
+
+    - name: Check for network connectivity
+      uri:
+        url: https://www.google.com
+      register: network_check
+      ignore_errors: true
 
     - name: Enable the wireless card
       command: "ip link set dev  {{ network.wireless_card }} up"

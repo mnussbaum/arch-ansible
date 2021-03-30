@@ -8,14 +8,13 @@
 
 ### Todo
 
-* Consolidate input data with standard bootstrapping playbook
-  * Migrated desired_partitions to a map
-  * Need to test this in qemu and pi still
-  * Also changed how connections are configured, putting it in ansible.cfg
-* Probably don't want to use alarm user for pi
-* Merge like half of bootstrap-pre-chroot
-  * Probably need to sort shared tasks into an included file or set of included files
-* I think then run boostrap tasks from playbook.yml in container and bootstrap-post-chroot.yml
-* Run rest of bootstrapping playbook in live image
+* Need to test all changes against qemu and pi still
+* Need to figure out how to run the normal playbook with the
+  bootstrap tag within the nspawn container
+* Need to remove intel/grub/ssd assumptions from normal playbook
+  * bootstrap-packages
+  * boot.yml
+    * modprobe.d stuff
+    * grub configuration
 * Upgrade to the pi 3 image
 * Allow root volume unlock via SSH for remote management

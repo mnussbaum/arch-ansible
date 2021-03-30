@@ -9,7 +9,6 @@ desired_partitions:
     start: 0%
     end: 300MiB
     fstype: vfat
-    fs_options: ""
     mount_point: /tmp/panamint-boot
     encrypted: false
     flags:
@@ -24,7 +23,6 @@ desired_partitions:
     start: 300MiB
     end: 100%
     fstype: ext4
-    fs_options: ""
     mount_point: /var/lib/machines/panamint
     encrypted: true
     volume_group_name: pi-sd-root
