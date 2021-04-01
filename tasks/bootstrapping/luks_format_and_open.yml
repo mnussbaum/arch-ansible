@@ -10,5 +10,5 @@
     pbkdf:
       memory: 256
   become: true
-  loop: "{{ desired_partitions | values }}"
+  loop: "{{ desired_partitions | dict_values }}"
   when: item.encrypted

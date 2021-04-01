@@ -45,6 +45,10 @@ user:
   shell: /usr/bin/zsh
   email: michaelnussbaum08@gmail.com
 
+network:
+  ssid: "JazzHands"
+  wireless_card: wlan0
+
 window_manager:
   window_manager: sway
   windowing_system: wayland

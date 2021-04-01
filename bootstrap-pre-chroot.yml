@@ -11,7 +11,7 @@
         vg: "{{ item.volume_group_name }}"
         pvs: "/dev/mapper/{{ item.volume_container_name }}"
       become: true
-      loop: "{{ desired_partitions | values }}"
+      loop: "{{ desired_partitions | dict_values }}"
       when: item.encrypted
 
     # This is apparently not idempotent for partition 3
@@ -23,7 +23,7 @@
         size: 100%VG
         shrink: false
       become: true
-      loop: "{{ desired_partitions | values }}"
+      loop: "{{ desired_partitions | dict_values }}"
       when: item.encrypted
 
     # This is primarily useful for rebuilding and mounting the boot partition,
@@ -34,7 +34,7 @@
         lv: "{{ item.logical_volume_name }}"
         active: true
       become: true
-      loop: "{{ desired_partitions | values }}"
+      loop: "{{ desired_partitions | dict_values }}"
       when: item.encrypted
       tags: [rebuild-boot-parition, mount-partitions]
 
@@ -48,20 +48,11 @@
         src: files/pacman_bootstrap_mirrorlist
         dest: /etc/pacman.d/mirrorlist
 
-    - name: Generate WPA PSK
-      command: "wpa_passphrase {{ network.ssid }} {{ lookup('file', 'secrets/wifi_passphrase') }}"
-      register: wpa_passphrase_result
-      changed_when: false
-
-    - name: Install wpa_supplicant config locally
-      template:
-        src: templates/wpa_supplicant.conf.j2
-        dest: "/etc/wpa_supplicant/{{ network.ssid }}.conf"
-
-    - name: Install wpa_supplicant config into the chroot
-      template:
-        src: templates/wpa_supplicant.conf.j2
-        dest: "{{ desired_partitions['root'].mount_point }}/etc/wpa_supplicant/{{ network.ssid }}.conf"
+    - import_tasks: tasks/bootstrapping/generate_wpa_supplicant_conf.yml
+      vars:
+        dest_root_dirs:
+          - "/"
+          - "{{ desired_partitions['root'].mount_point }}"
 
     - name: Check for network connectivity
       uri:

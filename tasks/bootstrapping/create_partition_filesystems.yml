@@ -7,4 +7,4 @@
     opts: "{{ item.fs_options | default(omit) }}"
     # Would be nice to add fs labels here set to the name
   become: true
-  loop: "{{ desired_partitions | values }}"
+  loop: "{{ desired_partitions | dict_values }}"

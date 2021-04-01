@@ -11,4 +11,4 @@
   # 1. /mnt
   # 2. /mnt/boot
   # 3. /mnt/boot/efi
-  loop: "{{ desired_partitions | values | sort(attribute='number') | reverse | list }}"
+  loop: "{{ desired_partitions | dict_values | sort(attribute='number') | reverse | list }}"

@@ -1,0 +1,14 @@
+# vim:ft=yaml.ansible:
+---
+- name: Generate WPA PSK
+  command: "wpa_passphrase {{ network.ssid }} {{ lookup('file', 'secrets/wifi-passphrase') }}"
+  register: wpa_passphrase_result
+  no_log: true
+  changed_when: false
+
+- name: Install wpa_supplicant config
+  become: true
+  template:
+    src: templates/wpa_supplicant.conf.j2
+    dest: "{{ item }}/etc/wpa_supplicant/{{ network.ssid }}.conf"
+  loop: "{{ dest_root_dirs }}"
