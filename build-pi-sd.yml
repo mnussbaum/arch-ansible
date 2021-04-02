@@ -247,6 +247,8 @@
           state: started
           name: systemd-nspawn@panamint.service
           daemon-reload: true
+        retries: 10
+        delay: 2
 
       - name: Install mkinitcpio.conf
         become: true
@@ -254,24 +256,26 @@
           src: templates/mkinitcpio.conf.j2
           dest: "{{ desired_partitions['root'].mount_point }}/etc/mkinitcpio.conf"
 
-
       - name: Init pacman keys in nspawn container
-        command: machinectl shell panamint /bin/bash -c "pacman-key --init"
-        ignore_errors: true
+        become: true
+        command: machinectl shell panamint /usr/bin/pacman-key --init
         retries: 10
         delay: 2
         register: pacman_key_init_result
         until: pacman_key_init_result.rc == 0
 
       - name: Populate ARM pacman keys in nspawn container
-        command: machinectl shell panamint  /bin/bash -c "pacman-key --populate archlinuxarm"
+        become: true
+        command: machinectl shell panamint /usr/bin/pacman-key --populate archlinuxarm
 
       - name: Update and install pacakges in nspawn container
-        command: machinectl shell panamint  /bin/bash -c "pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel uboot-tools mkinitcpio-utils python ansible"
+        become: true
+        command: machinectl shell panamint /usr/bin/pacman -Syu --noconfirm lvm2 cryptsetup sudo git rsync base base-devel uboot-tools mkinitcpio-utils python ansible
 
       # Can't use `uname` since that returns the host kernel version
       - name: Rebuild initramfs in container
-        shell: machinectl shell panamint  /bin/bash -c "mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img"
+        become: true
+        command: machinectl shell panamint /bin/bash -c "mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img"
 
       # Currently using a locally modified version of the machinectl plugin
       # due to https://github.com/tomeon/ansible-connection-machinectl/issues/10

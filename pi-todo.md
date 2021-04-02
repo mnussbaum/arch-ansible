@@ -8,8 +8,7 @@
 
 ### Todo
 
-* Need to test all changes against qemu and pi still
-  * Failing to boot in pi "unknown /dev/mapper/pi-sd-root"
+* Need to test all changes against qemu still
 * Need to remove intel/grub/ssd assumptions from normal playbook
   * bootstrap-packages
   * boot.yml
@@ -17,4 +16,9 @@
     * grub configuration
 * Run the normal playbook with the bootstrap tag within the nspawn container
 * Upgrade to the pi 3 image
-* Allow root volume unlock via SSH for remote management
+* Enable remote management
+  * Root volume unlock via SSH
+  * Enable normal SSH
+  * Wireguard for WAN networking
+  * Remote targeting of ansible
+  * Remote sync
