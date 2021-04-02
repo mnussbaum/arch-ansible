@@ -1,4 +1,6 @@
 ---
+grub: true
+
 desired_partitions:
   boot:
     number: 7
@@ -36,6 +38,11 @@ mkinitcpio_modules:
   - nvme
   - intel_agp
   - i915
+
+modprobe_files:
+  - intel.conf
+  - iwlwifi.conf
+  - nvme.conf
 
 network:
   ssid: "JazzHands"

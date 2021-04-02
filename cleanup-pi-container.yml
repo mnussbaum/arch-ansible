@@ -1,0 +1,47 @@
+# vim:ft=yaml.ansible:
+---
+- hosts: all
+  tasks:
+    - name: Stop panamint container
+      become: true
+      command: machinectl kill --signal SIGKILL panamint
+      ignore_errors: true
+
+    - name: Unmount temp boot dir
+      become: true
+      mount:
+        path: "{{ desired_partitions['root'].mount_point }}/boot"
+        state: absent
+
+    - name: Unmount sub-root boot dir
+      become: true
+      mount:
+        path: "{{ desired_partitions['boot'].mount_point }}"
+        state: absent
+
+    - name: Remove temp boot dir mount point
+      become: true
+      file:
+        path: "{{ desired_partitions['boot'].mount_point }}"
+        state: absent
+
+    - name: Unmount temp root dir
+      become: true
+      mount:
+        path: "{{ desired_partitions['root'].mount_point }}"
+        state: absent
+
+    - name: Remove temp root dir mount point
+      become: true
+      file:
+        path: "{{ desired_partitions['root'].mount_point }}"
+        state: absent
+
+    - name: Close LUKS devices
+      become: true
+      luks_device:
+        device: "{{ item.partition_device }}"
+        state: "closed"
+        name: "{{ item.logical_device | basename }}"
+      loop: "{{ desired_partitions | dict_values }}"
+      when: item.encrypted

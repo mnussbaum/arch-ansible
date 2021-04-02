@@ -1,4 +1,6 @@
 ---
+grub: false
+
 desired_partitions:
   boot:
     number: 1
@@ -29,6 +31,7 @@ desired_partitions:
     flags: []
 
 mkinitcpio_modules: []
+modprobe_files: []
 
 key_repeat:
   delay: 250
@@ -40,8 +43,8 @@ optional_daemons:
   libinput_gestures: false
 
 user:
-  name: alarm
-  group: alarm
+  name: mnussbaum
+  group: mnussbaum
   shell: /usr/bin/zsh
   email: michaelnussbaum08@gmail.com
 

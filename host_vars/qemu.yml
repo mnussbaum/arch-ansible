@@ -1,4 +1,6 @@
 ---
+grub: true
+
 desired_partitions:
   efi:
     number: 1
@@ -51,6 +53,11 @@ mkinitcpio_modules:
   - nvme
   - intel_agp
   - i915
+
+modprobe_files:
+  - intel.conf
+  - iwlwifi.conf
+  - nvme.conf
 
 key_repeat:
   delay: 250

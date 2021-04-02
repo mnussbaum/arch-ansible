@@ -1,44 +1,23 @@
 # vim:ft=yaml.ansible:
 ---
-- name: boot | Run os-prober to find other OS
+- name: Grub | Install packages
+  become: true
+  package:
+    state: present
+    name:
+      - efibootmgr
+      - grub
+      - intel-ucode
+      - os-prober
+
+- name: Grub | Run os-prober to find other OS
   command: os-prober
   become: true
   changed_when: false
   notify:
     - Regenerate grub.cfg
 
-- name: boot | Get power_image size
-  command: cat /sys/power/image_size
-  register: power_image_size_bytes
-  changed_when: false
-
-- name: boot | Create /etc/sysctl.conf
-  become: true
-  copy:
-    content: ""
-    dest: /etc/sysctl.conf
-    force: no
-    mode: 0600
-
-# TODO: Set vmf cache pressure to 1 to improve perf
-- name: boot | Configure swapfile
-  include_role:
-    name: geerlingguy.swap
-    apply:
-      become: true
-  vars:
-    ansible_become: true
-    swapfile_path: /swapfile
-    swapfile_size_mb: "{{ ((power_image_size_bytes.stdout | int) / (1024**2)) | int }}"
-    swapfile_swappiness: "1"
-
-- name: boot | Get swapfile offset
-  shell: filefrag -v /swapfile | awk '{gsub(/\./,""); if($1=="0:"){print $4}}'
-  register: swapfile_offset
-  changed_when: false
-  become: true
-
-- name: boot | Configure grub
+- name: Grub | Configure grub
   become: true
   notify:
     - Regenerate grub.cfg
@@ -46,19 +25,19 @@
     src: templates/grub.j2
     dest: /etc/default/grub
 
-- name: boot | Create grub theme directory
+- name: Grub | Create grub theme directory
   become: true
   file:
     path: "{{ grub_theme_dir }}"
     state: directory
     mode: a+rw
 
-- name: boot | Create grub theme icon directory
+- name: Grub | Create grub theme icon directory
   file:
     path: "{{ grub_theme_dir }}/icons"
     state: directory
 
-- name: boot | Install grub theme file
+- name: Grub | Install grub theme file
   tags: [base16]
   template:
     src: templates/grub-theme.txt.j2
@@ -75,43 +54,27 @@
 #             --output assets/grub-theme/fonts/fura.pf2 \
 #             /usr/share/fonts/nerd-fonts-complete/OTF/Fura\ Mono\ Regular\ Nerd\ Font\ Complete\ Mono.otf
 
-- name: boot | Install grub theme assets
+- name: Grub | Install grub theme assets
   copy:
     src: "{{ item.src }}"
     dest: "{{ grub_theme_dir }}/{{ item.path | basename }}"
   with_filetree: assets/grub-theme/
   when: item.state == "file" and item.path is not search("icons")
 
-- name: boot | Install grub theme assets
+- name: Grub | Install grub theme assets
   copy:
     src: "{{ item.src }}"
     dest: "{{ grub_theme_dir }}/icons/{{ item.path | basename }}"
   with_filetree: assets/grub-theme/icons/
 
-- name: boot | Install grub theme wallpaper
+- name: Grub | Install grub theme wallpaper
   copy:
     src: "{{ item.src }}"
     dest: "{{ grub_theme_dir }}/{{ item.path | basename }}"
   with_filetree: assets/wallpaper/
   when: item.state == "file"
 
-- name: boot | Create kernel module directory
-  become: true
-  file:
-    path: /etc/modprobe.d
-    state: directory
-
-- name: boot | Configure kernel modules
-  become: true
-  notify:
-    - Regenerate mkinitcpio ramdisk
-  copy:
-    src: "{{ item }}"
-    dest: "/etc/modprobe.d/{{ item | basename }}"
-  with_fileglob:
-    - files/modprobe.d/*
-
-- name: boot | Install grub
+- name: Grub | Install grub
   when: bootstrap is defined and bootstrap == "true"
   notify:
     - Regenerate grub.cfg
@@ -119,11 +82,3 @@
     grub-install --target=x86_64-efi
                  --efi-directory=/boot/efi
                  --bootloader-id=arch_grub
-
-- name: boot | Install mkinitcpio.conf
-  become: true
-  notify:
-    - Regenerate mkinitcpio ramdisk
-  template:
-    src: templates/mkinitcpio.conf.j2
-    dest: /etc/mkinitcpio.conf

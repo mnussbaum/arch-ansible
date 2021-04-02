@@ -9,12 +9,18 @@ if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]] ; then
   echo "--wipe-card, -w      Wipe all SD card partitions clean" >&2
   echo "" >&2
   echo "--no-clean,  -n      Don't clean up mounts and containers after run. Eases debugging" >&2
+  echo "--tags cleanup       Just clean up the pi container and mounts" >&2
+  echo "--tags open          Just setup the mounts and start the pi container" >&2
   exit
 else
   set -o xtrace
 fi
 
-extra_ansible_args=""
+if [[ "$*" == *--tags* ]] ; then
+  extra_ansible_args=""
+else
+  extra_ansible_args="-e bootstrap='true' --tags bootstrap"
+fi
 
 for arg in "$@"
 do

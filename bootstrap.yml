@@ -17,5 +17,4 @@
 
 - name: Run post-chroot tasks
   import_playbook: bootstrap-post-chroot.yml
-  tags:
-    - bootstrap
+  tags: [bootstrap]

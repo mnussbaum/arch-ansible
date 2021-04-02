@@ -1,0 +1,24 @@
+# vim:ft=yaml.ansible:
+---
+- name: mkinitcpio | Create kernel module directory
+  become: true
+  file:
+    path: /etc/modprobe.d
+    state: directory
+
+- name: mkinitcpio | Configure kernel modules
+  become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  copy:
+    src: "files/modprobe.d/{{ item }}"
+    dest: "/etc/modprobe.d/{{ item }}"
+  loop: "{{ modprobe_files }}"
+
+- name: mkinitcpio | Install mkinitcpio.conf
+  become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  template:
+    src: templates/mkinitcpio.conf.j2
+    dest: /etc/mkinitcpio.conf

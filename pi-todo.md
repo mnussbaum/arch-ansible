@@ -8,13 +8,10 @@
 
 ### Todo
 
+* Test cleanup and open tags
+* Rename desired_partitions to partitions
 * Need to test all changes against qemu still
-* Need to remove intel/grub/ssd assumptions from normal playbook
-  * bootstrap-packages
-  * boot.yml
-    * modprobe.d stuff
-    * grub configuration
-* Run the normal playbook with the bootstrap tag within the nspawn container
+  * Make sure to test the rebuild-boot-partition tag too
 * Upgrade to the pi 3 image
 * Enable remote management
   * Root volume unlock via SSH
