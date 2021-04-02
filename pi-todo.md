@@ -9,6 +9,7 @@
 ### Todo
 
 * Need to test all changes against qemu and pi still
+  * Failing to boot in pi "unknown /dev/mapper/pi-sd-root"
 * Need to remove intel/grub/ssd assumptions from normal playbook
   * bootstrap-packages
   * boot.yml

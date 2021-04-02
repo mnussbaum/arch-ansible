@@ -254,28 +254,34 @@
           src: templates/mkinitcpio.conf.j2
           dest: "{{ desired_partitions['root'].mount_point }}/etc/mkinitcpio.conf"
 
-      # Currently using a locally modified version of the machinectl plugin
-      # due to https://github.com/tomeon/ansible-connection-machinectl/issues/10
-      - name: Switch connection to machinectl
-        set_fact:
-          ansible_connection: machinectl
 
       - name: Init pacman keys in nspawn container
-        command: pacman-key --init
+        command: machinectl shell panamint /bin/bash -c "pacman-key --init"
+        ignore_errors: true
+        retries: 10
+        delay: 2
+        register: pacman_key_init_result
+        until: pacman_key_init_result.rc == 0
 
       - name: Populate ARM pacman keys in nspawn container
-        command: pacman-key --populate archlinuxarm
+        command: machinectl shell panamint  /bin/bash -c "pacman-key --populate archlinuxarm"
 
       - name: Update and install pacakges in nspawn container
-        command: pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel tmux uboot-tools mkinitcpio-utils mkinitcpio-netconf python ansible
+        command: machinectl shell panamint  /bin/bash -c "pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel uboot-tools mkinitcpio-utils python ansible"
 
       # Can't use `uname` since that returns the host kernel version
       - name: Rebuild initramfs in container
-        shell: mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img
+        shell: machinectl shell panamint  /bin/bash -c "mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img"
 
-      - name: Switch connection back to local for cleanup
-        set_fact:
-          ansible_connection: local
+      # Currently using a locally modified version of the machinectl plugin
+      # due to https://github.com/tomeon/ansible-connection-machinectl/issues/10
+      # - name: Switch connection to machinectl
+      #   set_fact:
+      #     ansible_connection: machinectl
+      # Call playbook with bootstrap tag here
+      # - name: Switch connection back to local for cleanup
+      #   set_fact:
+      #     ansible_connection: local
 
       - name: Update boot params for crypt root
         become: true
