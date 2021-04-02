@@ -1,0 +1,6 @@
+/* Allow machinectl commands to run without root for the sake of rasp-pi bootstrapping */
+polkit.addRule(function(action, subject) {
+  if (action.id == "org.freedesktop.machine1.shell" || action.id == "org.freedesktop.machine1.manage-machines") {
+    return polkit.Result.YES;
+  }
+});

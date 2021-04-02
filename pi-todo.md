@@ -9,12 +9,11 @@
 ### Todo
 
 * Need to test all changes against qemu and pi still
-* Need to figure out how to run the normal playbook with the
-  bootstrap tag within the nspawn container
 * Need to remove intel/grub/ssd assumptions from normal playbook
   * bootstrap-packages
   * boot.yml
     * modprobe.d stuff
     * grub configuration
+* Run the normal playbook with the bootstrap tag within the nspawn container
 * Upgrade to the pi 3 image
 * Allow root volume unlock via SSH for remote management

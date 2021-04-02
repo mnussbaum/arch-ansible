@@ -1,2 +1,5 @@
+# Currently using a locally modified version of the machinectl plugin
+# due to https://github.com/tomeon/ansible-connection-machinectl/issues/10
+- src: tomeon.ansible_connection_machinectl
 - src: geerlingguy.swap
 - src: mnussbaum.base16-builder-ansible

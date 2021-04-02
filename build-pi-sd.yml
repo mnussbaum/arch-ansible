@@ -230,6 +230,17 @@
           owner: root
           group: root
 
+      # Logging into the container intermittently hangs until systemd-homed
+      # is removed as an auth mechanism from PAM
+      # Arch forum with workaround - https://archlinuxarm.org/forum/viewtopic.php?t=14722
+      # Systemd issues - https://github.com/systemd/systemd/issues/18598
+      - name: Disable systemd-homed in container
+        become: true
+        replace:
+          path: "{{ desired_partitions['root'].mount_point }}/etc/pam.d/system-auth"
+          regexp: '(.*pam_systemd_home.so.*)'
+          replace: '#\1'
+
       - name: Start panamint container
         become: true
         systemd:
@@ -237,51 +248,34 @@
           name: systemd-nspawn@panamint.service
           daemon-reload: true
 
-      - name: Init pacman keys in nspawn container
-        become: true
-        command: "machinectl shell panamint /bin/bash -c 'pacman-key --init'"
-        retries: 10
-        delay: 2
-        register: pacman_key_init_result
-        until: pacman_key_init_result.rc == 0
-        ignore_errors: true
-
-      - name: Populate ARM pacman keys in nspawn container
-        become: true
-        command: "machinectl shell panamint /bin/bash -c 'pacman-key --populate archlinuxarm'"
-
-      - name: Update and install pacakges in nspawn container
-        become: true
-        command: "machinectl shell panamint /bin/bash -c 'pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel tmux uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear python ansible'"
-
       - name: Install mkinitcpio.conf
         become: true
         template:
           src: templates/mkinitcpio.conf.j2
           dest: "{{ desired_partitions['root'].mount_point }}/etc/mkinitcpio.conf"
 
-      # Normal shutdown attempts result in the container going into "rescue mode"
-      - name: Restart panamint container to pick up any kernel version updates
-        become: true
-        command: "machinectl kill --signal SIGKILL panamint"
+      # Currently using a locally modified version of the machinectl plugin
+      # due to https://github.com/tomeon/ansible-connection-machinectl/issues/10
+      - name: Switch connection to machinectl
+        set_fact:
+          ansible_connection: machinectl
 
-      - name: Restart panamint container to pick up any kernel version updates
-        become: true
-        systemd:
-          state: started
-          name: systemd-nspawn@panamint.service
-        retries: 4
-        delay: 4
+      - name: Init pacman keys in nspawn container
+        command: pacman-key --init
+
+      - name: Populate ARM pacman keys in nspawn container
+        command: pacman-key --populate archlinuxarm
+
+      - name: Update and install pacakges in nspawn container
+        command: pacman -Suy --noconfirm lvm2 cryptsetup sudo git rsync base base-devel tmux uboot-tools mkinitcpio-utils mkinitcpio-netconf python ansible
 
       # Can't use `uname` since that returns the host kernel version
       - name: Rebuild initramfs in container
-        become: true
-        command: "machinectl shell panamint /bin/bash -c 'mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img'"
-        retries: 10
-        delay: 2
-        register: mkinitcpio_result
-        until: mkinitcpio_result.rc == 0
-        ignore_errors: true
+        shell: mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img
+
+      - name: Switch connection back to local for cleanup
+        set_fact:
+          ansible_connection: local
 
       - name: Update boot params for crypt root
         become: true
@@ -302,7 +296,12 @@
           line: "alarm ALL=(ALL) ALL"
           state: present
           create: yes
+
       always:
+        - name: Switch connection back to local for cleanup
+          set_fact:
+            ansible_connection: local
+
         - name: Stop panamint container
           become: true
           command: machinectl kill --signal SIGKILL panamint

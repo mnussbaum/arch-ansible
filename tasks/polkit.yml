@@ -6,14 +6,22 @@
     name: polkit-gnome
   become: true
 
-- name: Polkit | Install service
+# This allows the machinectl connection plugin used to bootstrap Rasp-pi hosts
+# to run without requiring the entire playbook to be run as root
+- name: Polkit | Allow all users to run machinectl commands
+  become: true
+  copy:
+    src: files/polkit-00-machinectl.rules
+    dest: /etc/polkit-1/rules.d/00-machinectl.rules
+
+- name: Polkit | Install user agent service
   copy:
     src: files/polkit-gnome-authentication-agent.service
     dest: "{{ user_config_dir }}/systemd/user/polkit-gnome-authentication-agent.service"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
-- name: Polkit | Enable service
+- name: Polkit | Enable user agent service
   become: true
   become_user: "{{ user.name }}"
   systemd:
