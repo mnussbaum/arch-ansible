@@ -56,7 +56,7 @@ GRUB_ENABLE_CRYPTODISK=y
 # These params are passed to the kernel at boot
 
 {% if desired_partitions["root"].encrypted %}
-GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ desired_partitions['root'].partition_device }}:{{ desired_partitions['root'].volume_group_name }}
+GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ desired_partitions['root'].partition_device }}:{{ desired_partitions['root'].volume_group_name }}"
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume={{ desired_partitions['root'].logical_device }}"
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"
 {% endif %}
