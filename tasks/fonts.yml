@@ -15,14 +15,14 @@
 
 - name: Fonts | Enable LCD filter
   file:
-    src: /etc/fonts/conf.avail/11-lcdfilter-default.conf
+    src: /usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf
     dest: /etc/fonts/conf.d/11-lcdfilter-default.conf
     state: link
   become: true
 
 - name: Fonts | Enable sub-pixel rendering
   file:
-    src: /etc/fonts/conf.avail/10-sub-pixel-rgb.conf
+    src: /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf
     dest: /etc/fonts/conf.d/10-sub-pixel-rgb.conf
     state: link
   become: true
@@ -35,14 +35,14 @@
 
 - name: Fonts | Enable crisper fonts with full hinting
   file:
-    src: /etc/fonts/conf.avail/10-hinting-full.conf
+    src: /usr/share/fontconfig/conf.avail/10-hinting-full.conf
     dest: /etc/fonts/conf.d/10-hinting-full.conf
     state: link
   become: true
 
 - name: Fonts | Disable bitmap fonts
   file:
-    src: /etc/fonts/conf.avail/70-no-bitmaps.conf
+    src: /usr/share/fontconfig/conf.avail/70-no-bitmaps.conf
     dest: /etc/fonts/conf.d/70-no-bitmaps.conf
     state: link
   become: true
