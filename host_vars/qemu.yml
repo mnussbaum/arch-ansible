@@ -80,3 +80,5 @@ user:
 window_manager:
   window_manager: sway
   windowing_system: wayland
+
+qemu_host: false
