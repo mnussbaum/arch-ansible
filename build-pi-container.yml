@@ -162,7 +162,7 @@
         dest: "{{ item.path }}/override.conf"
       loop: "{{ systemd_override_dirs.results }}"
 
-    - name: Copy arch-ansible to root
+    - name: Copy over arch-ansible repo
       become: true
       synchronize:
         src: "{{ playbook_dir }}/"

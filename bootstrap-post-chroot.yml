@@ -3,7 +3,7 @@
 - hosts: all
   tasks:
     - set_fact:
-        user_home_dir: "/home/{{ user.name }}"
+        user_home_dir: "{{ desired_partitions['root'].mount_point }}/home/{{ user.name }}"
     - set_fact:
         arch_ansible_dest: "{{ user_home_dir }}/src/arch-ansible"
         secrets_to_install:
@@ -25,7 +25,7 @@
     - name: Copy over arch-ansible repo
       synchronize:
         src: "{{ playbook_dir }}/"
-        dest: "{{ desired_partitions['root'].mount_point }}/{{ arch_ansible_dest }}"
+        dest: "{{ arch_ansible_dest }}"
 
     - name: Set permission on arch-ansible copy
       file:

@@ -8,12 +8,21 @@
   tasks:
     - name: Set facts for chroot playbook execution
       set_fact:
+        original_hostname: "{{ ansible_host }}"
         ansible_host: /mnt
         ansible_connection: chroot
       tags: [bootstrap, rebuild-boot-parition]
 
 - name: Run normal playbook from inside the chroot
   import_playbook: playbook.yml
+
+- hosts: all
+  tasks:
+    - name: Switch connection back to local for post-chroot tasks
+      set_fact:
+        ansible_host: "{{ original_hostname }}"
+        ansible_connection: local
+      tags: [bootstrap]
 
 - name: Run post-chroot tasks
   import_playbook: bootstrap-post-chroot.yml

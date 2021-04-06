@@ -22,8 +22,6 @@
 * Fix boot error complaining about no resume something
 * Test cleanup and open tags
 * Rename desired_partitions to partitions
-* Need to test all changes against qemu still
-  * Make sure to test the rebuild-boot-partition tag too
 * Upgrade to the pi 3 image
 * Enable remote management
   * Root volume unlock via SSH
