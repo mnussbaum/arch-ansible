@@ -36,7 +36,6 @@
       - glfw-wayland  # Provides libs for GLFW apps
       - grim-git
       - slurp
-      - wdisplays-git
   become: true
 
 - name: sway | Generate base16 configs
