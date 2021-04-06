@@ -5,6 +5,11 @@
   register: wpa_passphrase_result
   no_log: true
   changed_when: false
+  when: network is defined
+
+- debug:
+    msg: "Skipping wpa_supplicant config since no network config is defined"
+  when: network is not defined
 
 - name: Install wpa_supplicant config
   become: true
@@ -12,3 +17,4 @@
     src: templates/wpa_supplicant.conf.j2
     dest: "{{ item }}/etc/wpa_supplicant/{{ network.ssid }}.conf"
   loop: "{{ dest_root_dirs }}"
+  when: network is defined
