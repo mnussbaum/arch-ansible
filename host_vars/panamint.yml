@@ -56,4 +56,7 @@ window_manager:
   window_manager: sway
   windowing_system: wayland
 
+# TODO: Fill this in once I know typical monitor name
+monitors: []
+
 qemu_host: false
