@@ -1,10 +1,15 @@
 # vim:ft=yaml.ansible:
 ---
+# Split these into multiple groups to avoid sudo timeout on initial
+# install
 - name: CLI Tools | Install packages
   package:
     state: present
-    name:
-      - aws-cli
+    name: "{{ item }}"
+  retries: 2
+  become: true
+  loop:
+    - - aws-cli
       - bat
       - bc
       - bfs
@@ -15,7 +20,7 @@
       - figlet
       - fwupd
       - fzf
-      - htop
+    - - htop
       - hwinfo
       - imv
       - iotop
@@ -26,7 +31,7 @@
       - man-pages
       - ncdu
       - net-tools
-      - openssh
+    - - openssh
       - ripgrep
       - rsync
       - ruby
@@ -37,8 +42,6 @@
       - xdg-utils
       - yajl
       - zip
-  retries: 2
-  become: true
 
 - name: CLI Tools | Install fzf helper scripts
   copy:
