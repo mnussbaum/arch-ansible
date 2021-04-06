@@ -5,7 +5,6 @@
     state: present
     name:
       - mesa
-      - vulkan-intel
       - xorg-server
       - xorg-xdpyinfo
       - xorg-xinput
