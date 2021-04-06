@@ -12,6 +12,28 @@
           - src: secrets/ssh-keys/
             dest: "{{ user_home_dir }}/.ssh"
 
+    - name: Copy over arch-ansible repo
+      synchronize:
+        src: "{{ playbook_dir }}/"
+        dest: "{{ arch_ansible_dest }}"
+
+    - name: Delete secrets out of arch-ansible copy
+      file:
+        path: "{{ arch_ansible_dest }}/secrets"
+        state: absent
+
+    - name: Switch back into chroot to fix file permissions
+      set_fact:
+        ansible_host: /mnt
+        ansible_connection: chroot
+
+    - name: Set permission on arch-ansible copy
+      file:
+        path: "{{ arch_ansible_dest }}"
+        recurse: true
+        owner: "{{ user.name }}"
+        group: "{{ user.group }}"
+
     - name: Install secrets
       copy:
         src: "{{ item.src }}"
@@ -21,20 +43,3 @@
         mode: "0600"
         directory_mode: "0700"
       loop: "{{ secrets_to_install }}"
-
-    - name: Copy over arch-ansible repo
-      synchronize:
-        src: "{{ playbook_dir }}/"
-        dest: "{{ arch_ansible_dest }}"
-
-    - name: Set permission on arch-ansible copy
-      file:
-        path: "{{ arch_ansible_dest }}"
-        recurse: true
-        owner: "{{ user.name }}"
-        group: "{{ user.group }}"
-
-    - name: Delete secrets out of arch-ansible copy
-      file:
-        path: "{{ arch_ansible_dest }}/secrets"
-        state: absent
