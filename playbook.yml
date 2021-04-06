@@ -41,12 +41,14 @@
       tags: [bootstrap]
     - import_tasks: tasks/start-networking.yml
     - import_tasks: tasks/network-online.yml
-    - import_tasks: tasks/gpg.yml
+    - import_tasks: tasks/reflector.yml
+      when: ansible_architecture is not match("arm.*")
     - import_tasks: tasks/packaging.yml
     - set_fact:
         ansible_facts:
           pkg_mgr: yay
       tags: [base16]
+    - import_tasks: tasks/gpg.yml
     - import_tasks: tasks/zsh.yml
     - name: Base16 | Generate color scheme vars
       base16_builder:

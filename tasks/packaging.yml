@@ -1,31 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-# Reflector ranks mirrors
-- name: Packaging | Install reflector
-  package:
-    name: reflector
-    state: present
-  become: true
-
-- name: Packaging | Install reflector service
-  copy:
-    src: files/reflector.service
-    dest: /etc/systemd/system/reflector.service
-  become: true
-
-- name: Packaging | Install reflector timer
-  copy:
-    src: files/reflector.timer
-    dest: /etc/systemd/system/reflector.timer
-  become: true
-
-- name: Packaging | Enable reflector timer
-  service:
-    name: reflector.timer
-    enabled: yes
-    state: started
-  become: true
-
 - name: Packaging | Update official packages
   pacman:
     update_cache: yes
@@ -45,10 +19,9 @@
   become: true
 
 - name: Packaging | Install makepkg.conf
-  become: true
   template:
     src: templates/makepkg.conf.j2
-    dest: /etc/makepkg.conf
+    dest: "{{ user_home_dir }}/.makepkg.conf"
 
 - name: Packaging | Install install-yay script
   copy:

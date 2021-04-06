@@ -1,0 +1,27 @@
+# vim:ft=yaml.ansible:
+---
+# Reflector ranks mirrors
+- name: Reflector | Install reflector
+  package:
+    name: reflector
+    state: present
+  become: true
+
+- name: Reflector | Install reflector service
+  copy:
+    src: files/reflector.service
+    dest: /etc/systemd/system/reflector.service
+  become: true
+
+- name: Reflector | Install reflector timer
+  copy:
+    src: files/reflector.timer
+    dest: /etc/systemd/system/reflector.timer
+  become: true
+
+- name: Reflector | Enable reflector timer
+  service:
+    name: reflector.timer
+    enabled: yes
+    state: started
+  become: true

@@ -49,7 +49,7 @@ user:
   email: michaelnussbaum08@gmail.com
 
 network:
-  ssid: "JazzHands"
+  ssid: "JazzHands2.4G"
   wireless_card: wlan0
 
 window_manager:

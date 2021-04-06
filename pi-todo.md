@@ -8,6 +8,16 @@
 
 ### Todo
 
+* Missing packages
+  * hwinfo
+  * vscode-languageserver-bin
+  * vscode-json-languageserver-bin
+  * ruby-rexml missing across the board atm, in community testing
+* Wifi not working in pi
+  * Worked when I manually setup 2.4 network, try that
+* Copy arch-ansible dir to user home instead of alarm home
+  * Should get rid of all references to alarm home
+* Fix boot error complaining about no resume something
 * Test cleanup and open tags
 * Rename desired_partitions to partitions
 * Need to test all changes against qemu still
