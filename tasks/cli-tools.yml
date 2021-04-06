@@ -29,6 +29,7 @@
       - lsof
       - man-db
       - man-pages
+      - meson
       - ncdu
       - net-tools
     - - openssh
