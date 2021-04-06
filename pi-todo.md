@@ -13,6 +13,8 @@
   * vscode-languageserver-bin
   * vscode-json-languageserver-bin
   * ruby-rexml missing across the board atm, in community testing
+  * thermald has a missing upower-glib dependency
+  * starship prompt doesn't work - need to update https://github.com/starship/starship/pull/2137/files for arm with glibc
 * Wifi not working in pi
   * Worked when I manually setup 2.4 network, try that
 * Copy arch-ansible dir to user home instead of alarm home
