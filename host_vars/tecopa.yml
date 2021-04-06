@@ -4,34 +4,33 @@ grub: true
 desired_partitions:
   boot:
     number: 7
-    physical_device: "/dev/nvme0n1"
-    partition_device: "/dev/nvme0n1p7"
-    logical_device: "/dev/nvme0n1p7"
+    physical_device: /dev/nvme0n1
+    partition_device: /dev/nvme0n1p7
+    logical_device: /dev/nvme0n1p7
     partition_name: Grub
     partition_label: gpt
     start: 77414MiB
     end: 77902MiB
     fstype: ext4
     fs_options: "-O ^has_journal"
-    mount_point: "/mnt/boot"
+    mount_point: /mnt/boot
     encrypted: false
     flags: []
   root:
     number: 8
-    physical_device: "/dev/nvme0n1"
-    partition_device: "/dev/nvme0n1p8"
-    logical_device: "/dev/mapper/vgcrypt-root"
+    physical_device: /dev/nvme0n1
+    partition_device: /dev/nvme0n1p8
+    logical_device: /dev/mapper/vgcrypt-root
+    volume_group_name: vgcrypt
+    logical_volume_name: root
     partition_name: Arch Root
     partition_label: gpt
     start: 77902MiB
     end: 476822MiB
     fstype: ext4
     fs_options: "-O ^has_journal"
-    mount_point: "/mnt"
+    mount_point: /mnt
     encrypted: true
-    volume_container_name: lvm
-    volume_group_name: vgcrypt
-    logical_volume_name: root
     flags: []
 
 mkinitcpio_modules:

@@ -9,7 +9,7 @@
     - name: Create physical volumes and volume groups for encrypted partitions
       lvg:
         vg: "{{ item.volume_group_name }}"
-        pvs: "/dev/mapper/{{ item.volume_container_name }}"
+        pvs: "/dev/mapper/{{ item.volume_group_name }}"
       become: true
       loop: "{{ desired_partitions | dict_values }}"
       when: item.encrypted

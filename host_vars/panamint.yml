@@ -22,12 +22,12 @@ desired_partitions:
     partition_device: /dev/mmcblk0p2
     partition_label: msdos
     logical_device: /dev/mapper/pi-sd-root
+    volume_group_name: pi-sd-root
     start: 300MiB
     end: 100%
     fstype: ext4
     mount_point: /var/lib/machines/panamint
     encrypted: true
-    volume_group_name: pi-sd-root
     flags: []
 
 mkinitcpio_modules: []
