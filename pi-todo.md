@@ -10,11 +10,19 @@
 
 * Missing packages
   * hwinfo
-  * vscode-languageserver-bin
+  * vscode-{html|css}-languageserver-bin - I forgot which one
   * vscode-json-languageserver-bin
   * ruby-rexml missing across the board atm, in community testing
-  * thermald has a missing upower-glib dependency
-  * starship prompt doesn't work - need to update https://github.com/starship/starship/pull/2137/files for arm with glibc
+  * thermald doesn't compile
+  * greetd-gtkgreet - Should be fixed in versions > 0.7, using git version for not
+  * spotify
+  * qemu-arm-static
+  * firefox-nightly
+  * Need to set `LIBGL_ALWAYS_SOFTWARE=1` for alacritty to run
+    * Might be able to use zink?
+  * nerd-fonts-complete completely fills the disk :rimshot:
+* Fill in monitor info in host_vars
+* Fix alacritty
 * Wifi not working in pi
   * Worked when I manually setup 2.4 network, try that
 * Copy arch-ansible dir to user home instead of alarm home
