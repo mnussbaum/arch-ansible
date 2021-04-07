@@ -21,7 +21,6 @@
   * Need to set `LIBGL_ALWAYS_SOFTWARE=1` for alacritty to run
     * Might be able to use zink?
   * nerd-fonts-complete completely fills the disk :rimshot:
-* Fill in monitor info in host_vars
 * Fix alacritty
 * Wifi not working in pi
   * Worked when I manually setup 2.4 network, try that

@@ -56,7 +56,11 @@ window_manager:
   window_manager: sway
   windowing_system: wayland
 
-# TODO: Fill this in once I know typical monitor name
-monitors: []
+monitors:
+  - id: HDMI-A-1
+    position:
+      x: 0
+      y: 0
+    scale: 2
 
 qemu_host: false
