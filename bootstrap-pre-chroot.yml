@@ -2,8 +2,8 @@
 ---
 - hosts: all
   tasks:
-    - import_tasks: tasks/bootstrapping/create_partitions.yml
-    - import_tasks: tasks/bootstrapping/luks_format_and_open.yml
+    - import_tasks: tasks/bootstrapping/create-partitions.yml
+    - import_tasks: tasks/bootstrapping/luks-format-and-open.yml
       tags: [rebuild-boot-parition, mount-partitions]
 
     - name: Create physical volumes and volume groups for encrypted partitions
@@ -38,9 +38,9 @@
       when: item.encrypted
       tags: [rebuild-boot-parition, mount-partitions]
 
-    - import_tasks: tasks/bootstrapping/create_partition_filesystems.yml
+    - import_tasks: tasks/bootstrapping/create-partition-filesystems.yml
 
-    - import_tasks: tasks/bootstrapping/mount_partitions.yml
+    - import_tasks: tasks/bootstrapping/mount-partitions.yml
       tags: [rebuild-boot-parition, mount-partitions]
 
     - name: Install pacman mirrorlist
@@ -48,7 +48,7 @@
         src: files/pacman_bootstrap_mirrorlist
         dest: /etc/pacman.d/mirrorlist
 
-    - import_tasks: tasks/bootstrapping/generate_wpa_supplicant_conf.yml
+    - import_tasks: tasks/bootstrapping/generate-wpa-supplicant-conf.yml
       vars:
         dest_root_dirs:
           - "/"

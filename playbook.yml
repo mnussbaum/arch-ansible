@@ -37,7 +37,7 @@
     - import_tasks: tasks/trim.yml
     - import_tasks: tasks/user.yml
       tags: [bootstrap]
-    - import_tasks: tasks/networking-packages.yml
+    - import_tasks: tasks/networking-setup.yml
       tags: [bootstrap]
     - import_tasks: tasks/start-networking.yml
     - import_tasks: tasks/network-online.yml

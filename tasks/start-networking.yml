@@ -1,26 +1,13 @@
 # vim:ft=yaml.ansible:
 ---
-- name: networking | Configure nameservers
-  copy:
-    src: files/resolvconf.conf
-    dest: /etc/resolvconf.conf
-  become: true
-
-# TODO: Look into noarp to speed up connect time
-- name: networking | Configure NetworkManager
-  copy:
-    src: files/NetworkManager.conf
-    dest: /etc/NetworkManager/NetworkManager.conf
-  become: true
-
-- name: networking | Enable wpa_supplicant
+- name: networking | Start and enable wpa_supplicant
   service:
     name: wpa_supplicant
     enabled: yes
     state: started
   become: true
 
-- name: networking | Enable NetworkManager
+- name: networking | Start and enable NetworkManager
   service:
     name: NetworkManager
     enabled: yes

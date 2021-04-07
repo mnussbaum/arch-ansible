@@ -12,6 +12,7 @@ Sets up an Arch Linux based workstation
 - For QEMU this will happen automatically after the image is built
 
 1. `cd arch-ansible`
+1. `chmod +x bin/*`
 1. `./bin/bootstrap-<qemu|xps>`
 1. Reboot into the newly provisioned disk
 

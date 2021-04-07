@@ -1,0 +1,72 @@
+# vim:ft=yaml.ansible:
+---
+- set_fact:
+    ansible_dir: "{{ dest_dir }}/arch-ansible"
+    gpg_keys_dir: "{{ dest_dir }}/arch-ansible/secrets/gpg-keys"
+    ssh_keys_dir: "{{ dest_dir }}/arch-ansible/secrets/ssh-keys"
+
+- name: Copy over arch-ansible repo
+  synchronize:
+    src: "{{ playbook_dir }}/"
+    dest: "{{ ansible_dir }}"
+
+- name: Add tmux config
+  copy:
+    src: files/tmux.conf
+    dest: "{{ dest_dir }}/.tmux.conf"
+
+- name: Create gpg-keys dir
+  file:
+    path: "{{ gpg_keys_dir }}"
+    state: directory
+
+- name: Check for exported GPG private key
+  stat:
+    path: "{{ gpg_keys_dir }}/private-key.asc"
+  register: check_exported_gpg_private_key
+
+- name: Export GPG private key
+  command: "gpg --armor --export-secret-key '{{ pass_gpg_key }}'"
+  register: gpg_private_export_cmd
+  no_log: true
+  when: not check_exported_gpg_private_key.stat.exists
+
+- name: Write GPG private key
+  copy:
+    dest: "{{ gpg_keys_dir }}/private-key.asc"
+    content: "{{ gpg_private_export_cmd.stdout }}"
+  no_log: true
+  when: gpg_private_export_cmd.changed
+
+- name: Check for exported GPG public key
+  stat:
+    path: "{{ gpg_keys_dir }}/public-key.asc"
+  register: check_exported_gpg_public_key
+
+- name: Export GPG public key
+  command: "gpg --armor --export '{{ pass_gpg_key }}'"
+  no_log: true
+  register: gpg_public_export_cmd
+  when: not check_exported_gpg_public_key.stat.exists
+
+- name: Write GPG public key
+  no_log: true
+  when: gpg_public_export_cmd.changed
+  copy:
+    dest: "{{ gpg_keys_dir }}/public-key.asc"
+    content: "{{ gpg_public_export_cmd.stdout }}"
+
+- name: Create ssh-keys dir
+  file:
+    path: "{{ ssh_keys_dir }}"
+    state: directory
+
+- name: Copy SSH private key
+  copy:
+    src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
+    dest: "{{ ssh_keys_dir }}/id_rsa"
+
+- name: Copy SSH public key
+  copy:
+    src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
+    dest: "{{ ssh_keys_dir }}/id_rsa.pub"

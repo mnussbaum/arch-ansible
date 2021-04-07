@@ -25,8 +25,6 @@
 * Fix alacritty
 * Wifi not working in pi
   * Worked when I manually setup 2.4 network, try that
-* Copy arch-ansible dir to user home instead of alarm home
-  * Should get rid of all references to alarm home
 * Fix boot error complaining about no resume something
 * Upgrade to the pi 3 image
 * Enable remote management

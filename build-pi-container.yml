@@ -21,15 +21,9 @@
         that: "partitions['boot'].physical_device == partitions['root'].physical_device"
         msg: "Boot and root partitions must be on the same SD card"
 
-    - name: Set partition facts
+    - name: Set facts
       set_fact:
-        alarm_home_dir: "{{ partitions['root'].mount_point }}/home/alarm"
         root_filesystem_download_path: "{{ lookup('env', 'HOME') }}/.cache/ArchLinuxARM-rpi-2-latest.tar.gz"
-    - name: Set secondary facts
-      set_fact:
-        ansible_dir: "{{ alarm_home_dir }}/arch-ansible"
-        gpg_keys_dir: "{{ alarm_home_dir }}/arch-ansible/secrets/gpg-keys"
-        ssh_keys_dir: "{{ alarm_home_dir }}/arch-ansible/secrets/ssh-keys"
 
     - name: Read SD card device info
       parted:
@@ -47,7 +41,7 @@
       when: (item.num > (partitions | length)) or (wipe_card is defined and wipe_card == "true")
       become: true
 
-    - import_tasks: tasks/bootstrapping/create_partitions.yml
+    - import_tasks: tasks/bootstrapping/create-partitions.yml
 
     - name: Wipe exising LUKS partitions
       luks_device:
@@ -58,7 +52,7 @@
       loop: "{{ partitions | dict_values }}"
       when: item.encrypted and (wipe_card is defined and wipe_card == "true")
 
-    - import_tasks: tasks/bootstrapping/luks_format_and_open.yml
+    - import_tasks: tasks/bootstrapping/luks-format-and-open.yml
       tags: [open]
 
     - name: Create partition filesystems
@@ -68,7 +62,7 @@
       become: true
       loop: "{{ partitions | dict_values }}"
 
-    - import_tasks: tasks/bootstrapping/mount_partitions.yml
+    - import_tasks: tasks/bootstrapping/mount-partitions.yml
       tags: [open]
 
     - name: Check for root filesystem download
@@ -126,7 +120,7 @@
         fstype: vfat
       become: true
 
-    - import_tasks: tasks/bootstrapping/generate_wpa_supplicant_conf.yml
+    - import_tasks: tasks/bootstrapping/generate-wpa-supplicant-conf.yml
       vars:
         dest_root_dirs:
           - "{{ partitions['root'].mount_point }}"
@@ -161,87 +155,6 @@
         src: files/private_network_override.conf
         dest: "{{ item.path }}/override.conf"
       loop: "{{ systemd_override_dirs.results }}"
-
-    - name: Copy over arch-ansible repo
-      become: true
-      synchronize:
-        src: "{{ playbook_dir }}/"
-        dest: "{{ ansible_dir }}"
-
-    - name: Add tmux config to root
-      become: true
-      copy:
-        src: files/tmux.conf
-        dest: "{{ alarm_home_dir }}/.tmux.conf"
-
-    - name: Create gpg-keys dir
-      become: true
-      file:
-        path: "{{ gpg_keys_dir }}"
-        state: directory
-
-    - name: Check for exported GPG private key
-      become: true
-      stat:
-        path: "{{ gpg_keys_dir }}/private-key.asc"
-      register: check_exported_gpg_private_key
-
-    - name: Export GPG private key
-      command: "gpg --armor --export-secret-key '{{ pass_gpg_key }}'"
-      register: gpg_private_export_cmd
-      no_log: true
-      when: not check_exported_gpg_private_key.stat.exists
-
-    - name: Write gpg private key
-      copy:
-        dest: "{{ gpg_keys_dir }}/private-key.asc"
-        content: "{{ gpg_private_export_cmd.stdout }}"
-      become: true
-      no_log: true
-      when: gpg_private_export_cmd.changed
-
-    - name: Check for exported GPG public key
-      become: true
-      stat:
-        path: "{{ gpg_keys_dir }}/public-key.asc"
-      register: check_exported_gpg_public_key
-
-    - name: Export GPG public key
-      command: "gpg --armor --export '{{ pass_gpg_key }}'"
-      no_log: true
-      register: gpg_public_export_cmd
-      when: not check_exported_gpg_public_key.stat.exists
-
-    - name: Write GPG public key
-      become: true
-      no_log: true
-      when: gpg_public_export_cmd.changed
-      copy:
-        dest: "{{ gpg_keys_dir }}/public-key.asc"
-        content: "{{ gpg_public_export_cmd.stdout }}"
-
-    - name: Create ssh-keys dir
-      become: true
-      file:
-        path: "{{ ssh_keys_dir }}"
-        state: directory
-    - name: Copy SSH private key
-      become: true
-      copy:
-        src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
-        dest: "{{ ssh_keys_dir }}/id_rsa"
-        owner: root
-    - name: Copy SSH public key
-      become: true
-      copy:
-        src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
-        dest: "{{ ssh_keys_dir }}/id_rsa.pub"
-
-    - name: Install resolvconf.conf
-      become: true
-      copy:
-        src: files/resolvconf.conf
-        dest: "{{ partitions['root'].mount_point }}/etc/resolvconf.conf"
 
     - name: Create systemd-nspawn service file directory
       become: true

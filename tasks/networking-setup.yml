@@ -1,0 +1,24 @@
+# vim:ft=yaml.ansible:
+---
+- name: Networking Setup | Install packages
+  package:
+    state: latest
+    name:
+      - dhclient
+      - wireless_tools
+      - wpa_supplicant
+      - networkmanager
+  become: true
+
+- name: Networking setup | Configure nameservers
+  copy:
+    src: files/resolvconf.conf
+    dest: /etc/resolvconf.conf
+  become: true
+
+# TODO: Look into noarp to speed up connect time
+- name: Networking setup | Configure NetworkManager
+  copy:
+    src: files/NetworkManager.conf
+    dest: /etc/NetworkManager/NetworkManager.conf
+  become: true
