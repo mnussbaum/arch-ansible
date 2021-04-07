@@ -1,7 +1,7 @@
 ---
 grub: true
 
-desired_partitions:
+partitions:
   boot:
     number: 7
     physical_device: /dev/nvme0n1

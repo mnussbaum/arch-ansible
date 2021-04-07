@@ -8,22 +8,22 @@
         state: absent
       become: true
       when: wipe_card is defined and wipe_card == "true"
-      loop: "{{ desired_partitions | dict_values }}"
+      loop: "{{ partitions | dict_values }}"
 
     - name: Create mount points
       file:
         path: "{{ item.mount_point }}"
         state: directory
       become: true
-      loop: "{{ desired_partitions | dict_values }}"
+      loop: "{{ partitions | dict_values }}"
 
     - assert:
-        that: "desired_partitions['boot'].physical_device == desired_partitions['root'].physical_device"
+        that: "partitions['boot'].physical_device == partitions['root'].physical_device"
         msg: "Boot and root partitions must be on the same SD card"
 
     - name: Set partition facts
       set_fact:
-        alarm_home_dir: "{{ desired_partitions['root'].mount_point }}/home/alarm"
+        alarm_home_dir: "{{ partitions['root'].mount_point }}/home/alarm"
         root_filesystem_download_path: "{{ lookup('env', 'HOME') }}/.cache/ArchLinuxARM-rpi-2-latest.tar.gz"
     - name: Set secondary facts
       set_fact:
@@ -33,18 +33,18 @@
 
     - name: Read SD card device info
       parted:
-        device: "{{ desired_partitions['root'].physical_device }}"
+        device: "{{ partitions['root'].physical_device }}"
         unit: MiB
       register: sd_device_info
       become: true
 
     - name: Remove extra partitions from disk
       parted:
-        device: "{{ desired_partitions['root'].physical_device }}"
+        device: "{{ partitions['root'].physical_device }}"
         number: "{{ item.num }}"
         state: absent
       loop: "{{ sd_device_info.partitions }}"
-      when: (item.num > (desired_partitions | length)) or (wipe_card is defined and wipe_card == "true")
+      when: (item.num > (partitions | length)) or (wipe_card is defined and wipe_card == "true")
       become: true
 
     - import_tasks: tasks/bootstrapping/create_partitions.yml
@@ -55,7 +55,7 @@
         state: "absent"
         name: "{{ item.logical_device | basename }}"
       become: true
-      loop: "{{ desired_partitions | dict_values }}"
+      loop: "{{ partitions | dict_values }}"
       when: item.encrypted and (wipe_card is defined and wipe_card == "true")
 
     - import_tasks: tasks/bootstrapping/luks_format_and_open.yml
@@ -66,7 +66,7 @@
         fstype: "{{ item.fstype }}"
         dev: "{{ item.logical_device }}"
       become: true
-      loop: "{{ desired_partitions | dict_values }}"
+      loop: "{{ partitions | dict_values }}"
 
     - import_tasks: tasks/bootstrapping/mount_partitions.yml
       tags: [open]
@@ -85,20 +85,20 @@
     - name: Extract root filesystem
       unarchive:
         src: "{{ root_filesystem_download_path }}"
-        dest: "{{ desired_partitions['root'].mount_point }}"
-        creates: "{{ desired_partitions['root'].mount_point}}/etc/os-release"
+        dest: "{{ partitions['root'].mount_point }}"
+        creates: "{{ partitions['root'].mount_point}}/etc/os-release"
       become: true
 
     - name: Move boot files to boot partition
       synchronize:
-        src: "{{ desired_partitions['root'].mount_point }}/boot/"
-        dest: "{{ desired_partitions['boot'].mount_point }}"
+        src: "{{ partitions['root'].mount_point }}/boot/"
+        dest: "{{ partitions['boot'].mount_point }}"
       become: true
 
     - name: List old boot dir files to delete
       become: true
       find:
-        paths: "{{ desired_partitions['root'].mount_point }}/boot/"
+        paths: "{{ partitions['root'].mount_point }}/boot/"
         patterns: "*"
         hidden: true
         recurse: true
@@ -114,14 +114,14 @@
 
     - name: Unmount boot dir
       mount:
-        path: "{{ desired_partitions['boot'].mount_point }}"
+        path: "{{ partitions['boot'].mount_point }}"
         state: absent
       become: true
 
     - name: Mount boot dir under root dir
       mount:
-        path: "{{ desired_partitions['root'].mount_point }}/boot"
-        src: "{{ desired_partitions['boot'].partition_device }}"
+        path: "{{ partitions['root'].mount_point }}/boot"
+        src: "{{ partitions['boot'].partition_device }}"
         state: mounted
         fstype: vfat
       become: true
@@ -129,7 +129,7 @@
     - import_tasks: tasks/bootstrapping/generate_wpa_supplicant_conf.yml
       vars:
         dest_root_dirs:
-          - "{{ desired_partitions['root'].mount_point }}"
+          - "{{ partitions['root'].mount_point }}"
 
     # It seems like creating network namespaces fails within the container
     # Many built-in systemd services attempt to create a network NS via the
@@ -140,7 +140,7 @@
     - name: Create systemd override directories
       become: true
       file:
-        path: "{{ desired_partitions['root'].mount_point }}/etc/systemd/system/{{ item }}"
+        path: "{{ partitions['root'].mount_point }}/etc/systemd/system/{{ item }}"
         state: directory
       register: systemd_override_dirs
       loop:
@@ -241,7 +241,7 @@
       become: true
       copy:
         src: files/resolvconf.conf
-        dest: "{{ desired_partitions['root'].mount_point }}/etc/resolvconf.conf"
+        dest: "{{ partitions['root'].mount_point }}/etc/resolvconf.conf"
 
     - name: Create systemd-nspawn service file directory
       become: true
@@ -258,7 +258,7 @@
     - name: Ensure root dir permissions
       become: true
       file:
-        path: "{{ desired_partitions['root'].mount_point }}"
+        path: "{{ partitions['root'].mount_point }}"
         owner: root
         group: root
 
@@ -269,7 +269,7 @@
     - name: Disable systemd-homed in container
       become: true
       replace:
-        path: "{{ desired_partitions['root'].mount_point }}/etc/pam.d/system-auth"
+        path: "{{ partitions['root'].mount_point }}/etc/pam.d/system-auth"
         regexp: "(.*pam_systemd_home.so.*)"
         replace: '#\1'
 
@@ -277,7 +277,7 @@
       become: true
       template:
         src: templates/mkinitcpio.conf.j2
-        dest: "{{ desired_partitions['root'].mount_point }}/etc/mkinitcpio.conf"
+        dest: "{{ partitions['root'].mount_point }}/etc/mkinitcpio.conf"
 
     - name: Start panamint container
       become: true
@@ -313,11 +313,11 @@
     - name: Update boot params for crypt root
       become: true
       copy:
-        dest: "{{ desired_partitions['root'].mount_point }}/boot/cmdline.txt"
-        content: "root={{ desired_partitions['root'].logical_device }} cryptdevice={{ desired_partitions['root'].partition_device }}:{{ desired_partitions['root'].volume_group_name }} rootfstype={{ desired_partitions['root'].fstype }} rw rootwait console=serial0,115200 console=tty1 selinux=0 plymouth.enable=0 smsc95xx.turbo_mode=N dwc_otg.lpm_enable=0 kgdboc=serial0,115200"
+        dest: "{{ partitions['root'].mount_point }}/boot/cmdline.txt"
+        content: "root={{ partitions['root'].logical_device }} cryptdevice={{ partitions['root'].partition_device }}:{{ partitions['root'].volume_group_name }} rootfstype={{ partitions['root'].fstype }} rw rootwait console=serial0,115200 console=tty1 selinux=0 plymouth.enable=0 smsc95xx.turbo_mode=N dwc_otg.lpm_enable=0 kgdboc=serial0,115200"
 
     - name: Set hostname in container
       become: true
       copy:
         content: "panamint"
-        dest: "{{ desired_partitions['root'].mount_point }}/etc/hostname"
+        dest: "{{ partitions['root'].mount_point }}/etc/hostname"

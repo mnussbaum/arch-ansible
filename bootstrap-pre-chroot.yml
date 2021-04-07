@@ -11,7 +11,7 @@
         vg: "{{ item.volume_group_name }}"
         pvs: "/dev/mapper/{{ item.volume_group_name }}"
       become: true
-      loop: "{{ desired_partitions | dict_values }}"
+      loop: "{{ partitions | dict_values }}"
       when: item.encrypted
 
     # This is apparently not idempotent for partition 3
@@ -23,7 +23,7 @@
         size: 100%VG
         shrink: false
       become: true
-      loop: "{{ desired_partitions | dict_values }}"
+      loop: "{{ partitions | dict_values }}"
       when: item.encrypted
 
     # This is primarily useful for rebuilding and mounting the boot partition,
@@ -34,7 +34,7 @@
         lv: "{{ item.logical_volume_name }}"
         active: true
       become: true
-      loop: "{{ desired_partitions | dict_values }}"
+      loop: "{{ partitions | dict_values }}"
       when: item.encrypted
       tags: [rebuild-boot-parition, mount-partitions]
 
@@ -52,7 +52,7 @@
       vars:
         dest_root_dirs:
           - "/"
-          - "{{ desired_partitions['root'].mount_point }}"
+          - "{{ partitions['root'].mount_point }}"
 
     - name: Check for network connectivity
       uri:
@@ -73,17 +73,17 @@
       when: network_check is failed
 
     - name: Pacstrap
-      command: "pacstrap {{ desired_partitions['root'].mount_point }} base linux linux-firmware linux-headers python"
+      command: "pacstrap {{ partitions['root'].mount_point }} base linux linux-firmware linux-headers python"
       become: true
 
     - name: Generate fstab contents with mounts
-      command: "genfstab -U -p {{ desired_partitions['root'].mount_point }}"
+      command: "genfstab -U -p {{ partitions['root'].mount_point }}"
       register: genfstab_result
 
     - name: Write fstab file in chroot
       copy:
         content: "{{ genfstab_result.stdout }}"
-        dest: "{{ desired_partitions['root'].mount_point }}/etc/fstab"
+        dest: "{{ partitions['root'].mount_point }}/etc/fstab"
       become: true
 
     # There's something weird going on where hostnamectl
@@ -91,6 +91,6 @@
     # file in the chroot, so the new hostname isn't
     # persisted
     - name: Set hostname in chroot
-      command: "arch-chroot {{ desired_partitions['root'].mount_point }} hostnamectl set-hostname {{ new_hostname}}"
+      command: "arch-chroot {{ partitions['root'].mount_point }} hostnamectl set-hostname {{ new_hostname}}"
     - name: Set hostname file in chroot
-      command: "arch-chroot {{ desired_partitions['root'].mount_point }} sh -c 'echo -n {{ new_hostname}} > /etc/hostname'"
+      command: "arch-chroot {{ partitions['root'].mount_point }} sh -c 'echo -n {{ new_hostname}} > /etc/hostname'"

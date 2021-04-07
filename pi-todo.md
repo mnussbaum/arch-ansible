@@ -28,8 +28,6 @@
 * Copy arch-ansible dir to user home instead of alarm home
   * Should get rid of all references to alarm home
 * Fix boot error complaining about no resume something
-* Test cleanup and open tags
-* Rename desired_partitions to partitions
 * Upgrade to the pi 3 image
 * Enable remote management
   * Root volume unlock via SSH

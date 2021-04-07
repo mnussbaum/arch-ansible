@@ -3,7 +3,7 @@
 - hosts: all
   tasks:
     - set_fact:
-        user_home_dir: "{{ desired_partitions['root'].mount_point }}/home/{{ user.name }}"
+        user_home_dir: "{{ partitions['root'].mount_point }}/home/{{ user.name }}"
     - set_fact:
         arch_ansible_dest: "{{ user_home_dir }}/src/arch-ansible"
         secrets_to_install:

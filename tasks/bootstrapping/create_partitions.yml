@@ -14,4 +14,4 @@
     # MBR/msdos labeled partitions can't handle names
     name: "{{ item.partition_name | default(omit) }}"
   become: true
-  loop: "{{ desired_partitions | dict_values }}"
+  loop: "{{ partitions | dict_values }}"

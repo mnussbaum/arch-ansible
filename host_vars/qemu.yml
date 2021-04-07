@@ -1,7 +1,7 @@
 ---
 grub: true
 
-desired_partitions:
+partitions:
   efi:
     number: 1
     physical_device: /dev/sda
