@@ -24,13 +24,13 @@
   package:
     state: present
     name:
-      - wlroots-git
-      - sway-git
-      - swaybg-git
+      - wlroots
+      - sway
+      - swaybg
       - swayidle
       - swaylock-effects-git
       - libnotify
-      - mako-git
+      - mako
       - qt5-wayland # Provides libs for all Qt5 apps
       - wl-clipboard-git
       - glfw-wayland  # Provides libs for GLFW apps
