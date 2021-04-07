@@ -54,25 +54,29 @@
 #             --output assets/grub-theme/fonts/fura.pf2 \
 #             /usr/share/fonts/nerd-fonts-complete/OTF/Fura\ Mono\ Regular\ Nerd\ Font\ Complete\ Mono.otf
 
-- name: Grub | Install grub theme assets
-  copy:
-    src: "{{ item.src }}"
-    dest: "{{ grub_theme_dir }}/{{ item.path | basename }}"
-  with_filetree: assets/grub-theme/
-  when: item.state == "file" and item.path is not search("icons")
+- name: Grub | Install grub theme fonts
+  become: true
+  synchronize:
+    src: assets/grub-theme/fonts/
+    dest: "{{ grub_theme_dir }}"
 
-- name: Grub | Install grub theme assets
-  copy:
-    src: "{{ item.src }}"
-    dest: "{{ grub_theme_dir }}/icons/{{ item.path | basename }}"
-  with_filetree: assets/grub-theme/icons/
+- name: Grub | Install grub theme selection assets
+  become: true
+  synchronize:
+    src: assets/grub-theme/select/
+    dest: "{{ grub_theme_dir }}"
+
+- name: Grub | Install grub theme icons
+  become: true
+  synchronize:
+    src: assets/grub-theme/icons/
+    dest: "{{ grub_theme_dir }}/icons"
 
 - name: Grub | Install grub theme wallpaper
-  copy:
-    src: "{{ item.src }}"
-    dest: "{{ grub_theme_dir }}/{{ item.path | basename }}"
-  with_filetree: assets/wallpaper/
-  when: item.state == "file"
+  become: true
+  synchronize:
+    src: assets/wallpaper/
+    dest: "{{ grub_theme_dir }}"
 
 - name: Grub | Install grub
   when: bootstrap is defined and bootstrap == "true"
