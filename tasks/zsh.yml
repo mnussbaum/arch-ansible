@@ -42,13 +42,11 @@
   tags: [base16]
 
 - name: ZSH | Install zsh configs
-  copy:
-    dest: "{{ user_config_dir }}/zsh/{{ item | basename }}"
-    src: "{{ item }}"
+  synchronize:
+    dest: "{{ user_config_dir }}/zsh"
+    src: files/zsh-configs/
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
-  with_fileglob:
-    - files/zsh-configs/*
 
 - name: ZSH | Install startship prompt config
   copy:

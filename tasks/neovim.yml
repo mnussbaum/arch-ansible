@@ -174,12 +174,11 @@
   when: vim_plug_config.changed
 
 - name: nvim | Install nvim file configs
-  copy:
-    src: "{{ item }}"
-    dest: "{{ nvim_config_dir }}/plugin/{{ item | basename }}"
+  synchronize:
+    src: files/nvim/plugin/
+    dest: "{{ nvim_config_dir }}/plugin"
+    group: "{{ user.name }}"
     owner: "{{ user.name }}"
-  with_fileglob:
-    - files/nvim/plugin/*
 
 - name: nvim | Install nvim template configs
   template:

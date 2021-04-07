@@ -8,8 +8,6 @@
 
 - name: Wallpaper | Install desktop background images
   become: true
-  copy:
-    src: "{{ item }}"
-    dest: "{{ wallpaper.desktop_dir }}/{{ item | basename }}"
-  with_fileglob:
-    - assets/wallpaper/*
+  synchronize:
+    src: assets/wallpaper/
+    dest: "{{ wallpaper.desktop_dir }}"
