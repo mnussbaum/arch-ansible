@@ -7,7 +7,7 @@
       - zsh
       - zsh-syntax-highlighting
       - python-pystache # For base16_builder
-      - starship-bin
+      - starship
       - zoxide-bin
   become: true
 
