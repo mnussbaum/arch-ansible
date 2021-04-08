@@ -25,59 +25,6 @@
     src: templates/grub.j2
     dest: /etc/default/grub
 
-- name: Grub | Create grub theme directory
-  become: true
-  file:
-    path: "{{ grub_theme_dir }}"
-    state: directory
-    mode: a+rw
-
-- name: Grub | Create grub theme icon directory
-  file:
-    path: "{{ grub_theme_dir }}/icons"
-    state: directory
-
-- name: Grub | Install grub theme file
-  tags: [base16]
-  template:
-    src: templates/grub-theme.txt.j2
-    dest: "{{ grub_theme_dir }}/custom.txt"
-
-# Grub theme assets sourced from https://github.com/vinceliuice/grub2-themes
-# Grub theme guide http://wiki.rosalab.ru/en/index.php/Grub2_theme_tutorial
-# Commands to generate Grub fonts:
-#
-# grub-mkfont --size 50 \
-#             --output assets/grub-theme/fonts/noto_sans_50.pf2 \
-#             /usr/share/fonts/nerd-fonts-complete/TTF/Noto\ Sans\ Regular\ Nerd\ Font\ Complete.ttf
-# grub-mkfont --size 20 \
-#             --output assets/grub-theme/fonts/fura.pf2 \
-#             /usr/share/fonts/nerd-fonts-complete/OTF/Fura\ Mono\ Regular\ Nerd\ Font\ Complete\ Mono.otf
-
-- name: Grub | Install grub theme fonts
-  become: true
-  synchronize:
-    src: assets/grub-theme/fonts/
-    dest: "{{ grub_theme_dir }}"
-
-- name: Grub | Install grub theme selection assets
-  become: true
-  synchronize:
-    src: assets/grub-theme/select/
-    dest: "{{ grub_theme_dir }}"
-
-- name: Grub | Install grub theme icons
-  become: true
-  synchronize:
-    src: assets/grub-theme/icons/
-    dest: "{{ grub_theme_dir }}/icons"
-
-- name: Grub | Install grub theme wallpaper
-  become: true
-  synchronize:
-    src: assets/wallpaper/
-    dest: "{{ grub_theme_dir }}"
-
 - name: Grub | Install grub
   when: bootstrap is defined and bootstrap == "true"
   notify:

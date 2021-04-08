@@ -34,7 +34,6 @@
       - net-tools
     - - openssh
       - ripgrep
-      - rsync
       - ruby
       - strace
       - tig

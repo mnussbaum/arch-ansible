@@ -32,6 +32,8 @@
     - import_tasks: tasks/grub.yml
       tags: [bootstrap, rebuild-boot-partition]
       when: grub
+    - import_tasks: tasks/grub-theme.yml
+      when: grub
     - import_tasks: tasks/mkinitcpio.yml
       tags: [bootstrap, rebuild-boot-parition]
     - import_tasks: tasks/trim.yml

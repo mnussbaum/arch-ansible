@@ -1,4 +1,4 @@
-# vim:ft=yaml.ansible:
+# vim:ft=yaml.ansible
 ---
 - name: ZSH | Install package
   package:
@@ -45,8 +45,13 @@
   synchronize:
     dest: "{{ user_config_dir }}/zsh"
     src: files/zsh-configs/
+
+- name: ZSH | Ensure zsh config owner is right
+  file:
+    path: "{{ user_config_dir }}/zsh"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
+    recurse: true
 
 - name: ZSH | Install startship prompt config
   copy:

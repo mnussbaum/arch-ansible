@@ -10,6 +10,13 @@
     src: "{{ playbook_dir }}/"
     dest: "{{ ansible_dir }}"
 
+- name: Fix arch-ansible permissions
+  file:
+    path: "{{ ansible_dir }}"
+    owner: "{{ user.name }}"
+    group: "{{ user.name }}"
+    recurse: true
+
 - name: Add tmux config
   copy:
     src: files/tmux.conf

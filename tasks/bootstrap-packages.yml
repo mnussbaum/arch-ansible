@@ -23,6 +23,7 @@
       - lvm2
       - python
       - python-passlib
+      - rsync
       - sudo
       - vim
       - zsh
