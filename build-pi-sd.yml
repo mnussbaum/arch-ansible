@@ -18,17 +18,21 @@
 
 - hosts: all
   tasks:
-    - name: Install files into new user's home dir
-      import_tasks: tasks/bootstrapping/install-user-files.yml
-      vars:
-        dest_dir: "/home/{{ user.name }}"
-
-- hosts: all
-  tasks:
     - name: Switch connection back to local for cleanup
       set_fact:
         ansible_connection: local
       tags: [bootstrap]
+
+- hosts: all
+  tasks:
+    - name: Install files into new user's home dir
+      import_tasks: tasks/bootstrapping/install-user-files.yml
+      tags: [bootstrap]
+      become: true
+      vars:
+        user_home_dir: "{{ partitions['root'].mount_point }}/home/{{ user.name }}"
+        ansible_dest_dir: "{{ partitions['root'].mount_point }}/home/{{ user.name }}/src/arch-ansible"
+        user_name: "{{ user.name }}"
 
 - name: Cleanup the pi container and mounts
   import_playbook: cleanup-pi-container.yml

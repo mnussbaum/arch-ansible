@@ -23,7 +23,9 @@
         - name: Install files into root user dir
           import_tasks: tasks/bootstrapping/install-user-files.yml
           vars:
-            dest_dir: "{{ root_user_dir }}"
+            user_home_dir: "{{ root_user_dir }}"
+            ansible_dest_dir: "{{ root_user_dir }}"
+            user_name: root
 
         - name: Add ansible package
           lineinfile:

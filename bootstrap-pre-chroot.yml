@@ -48,29 +48,7 @@
         src: files/pacman_bootstrap_mirrorlist
         dest: /etc/pacman.d/mirrorlist
 
-    - import_tasks: tasks/bootstrapping/generate-wpa-supplicant-conf.yml
-      vars:
-        dest_root_dirs:
-          - "/"
-          - "{{ partitions['root'].mount_point }}"
-
-    - name: Check for network connectivity
-      uri:
-        url: https://www.google.com
-      register: network_check
-      ignore_errors: true
-
-    - name: Enable the wireless card
-      command: "ip link set dev  {{ network.wireless_card }} up"
-      when: network_check is failed
-
-    - name: Enable wpa_supplicant
-      command: "wpa_supplicant -B -i  {{ network.wireless_card }} -c /etc/wpa_supplicant/{{ network.ssid }}.conf"
-      when: network_check is failed
-
-    - name: Enable wpa_supplicant
-      command: "dhcpcd  {{ network.wireless_card }}"
-      when: network_check is failed
+    - import_tasks: tasks/networking.yml
 
     - name: Pacstrap
       command: "pacstrap {{ partitions['root'].mount_point }} base linux linux-firmware linux-headers python"

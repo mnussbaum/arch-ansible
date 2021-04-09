@@ -45,7 +45,7 @@ modprobe_files:
 
 network:
   ssid: "JazzHands2.4G"
-  wireless_card: wlp60s0
+  wireless_interface: wlp60s0
 
 key_repeat:
   delay: 250

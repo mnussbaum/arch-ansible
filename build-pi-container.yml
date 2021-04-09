@@ -83,28 +83,25 @@
         creates: "{{ partitions['root'].mount_point}}/etc/os-release"
       become: true
 
+    - name: Check for boot dir on the root partition
+      become: true
+      stat:
+        path: "{{ partitions['root'].mount_point }}/boot"
+      register: boot_dir_on_root
+
     - name: Move boot files to boot partition
       synchronize:
         src: "{{ partitions['root'].mount_point }}/boot/"
         dest: "{{ partitions['boot'].mount_point }}"
       become: true
-
-    - name: List old boot dir files to delete
-      become: true
-      find:
-        paths: "{{ partitions['root'].mount_point }}/boot/"
-        patterns: "*"
-        hidden: true
-        recurse: true
-        file_type: any
-      register: boot_dir_contents
+      when: boot_dir_on_root.stat.exists
 
     - name: Remove old boot dir files
       become: true
-      file:
-        path: "{{ item.path }}"
-        state: absent
-      with_items: "{{ boot_dir_contents.files }}"
+      command:
+        cmd: "rm -rf {{ partitions['root'].mount_point }}/boot/*"
+        warn: false
+      when: boot_dir_on_root.stat.exists
 
     - name: Unmount boot dir
       mount:
@@ -119,11 +116,6 @@
         state: mounted
         fstype: vfat
       become: true
-
-    - import_tasks: tasks/bootstrapping/generate-wpa-supplicant-conf.yml
-      vars:
-        dest_root_dirs:
-          - "{{ partitions['root'].mount_point }}"
 
     # It seems like creating network namespaces fails within the container
     # Many built-in systemd services attempt to create a network NS via the
@@ -198,15 +190,15 @@
         state: started
         name: systemd-nspawn@panamint.service
         daemon-reload: true
-      retries: 10
-      delay: 2
+      retries: 20
+      delay: 4
       tags: [open]
 
     - name: Init pacman keys in nspawn container
       become: true
       command: machinectl shell panamint /usr/bin/pacman-key --init
-      retries: 10
-      delay: 2
+      retries: 20
+      delay: 4
       register: pacman_key_init_result
       until: pacman_key_init_result.rc == 0
 
@@ -216,12 +208,12 @@
 
     - name: Update and install pacakges in nspawn container
       become: true
-      command: machinectl shell panamint /usr/bin/pacman -Syu --noconfirm --overwrite '*.dtbo' lvm2 cryptsetup sudo git rsync base base-devel uboot-tools mkinitcpio-utils python ansible
+      command: machinectl shell panamint /usr/bin/pacman -Syu --noconfirm --overwrite '*.dtbo' linux-raspberrypi-headers lvm2 cryptsetup sudo git rsync base base-devel uboot-tools mkinitcpio-utils python ansible
 
     # Can't use `uname` since that returns the host kernel version
     - name: Rebuild initramfs in container
       become: true
-      command: machinectl shell panamint /bin/bash -c "mkinitcpio -k $(ls /usr/lib/modules | grep ARCH) -g /boot/initramfs-linux.img"
+      command: machinectl shell panamint /bin/bash -c "mkinitcpio -k $(ls /usr/lib/modules | grep ARCH | tail -n 1) -g /boot/initramfs-linux.img"
 
     - name: Update boot params for crypt root
       become: true

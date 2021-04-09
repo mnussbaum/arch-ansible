@@ -1,0 +1,78 @@
+# vim:ft=yaml.ansible:
+---
+- name: Networking | Install packages
+  become: true
+  package:
+    state: latest
+    name:
+      - wireless_tools
+      - wpa_supplicant
+
+- name: Networking | Create systemd-resolved config directory
+  become: true
+  file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+
+- name: Networking | Configure nameservers
+  become: true
+  copy:
+    src: files/resolved-dns-servers.conf
+    dest: /etc/systemd/resolved.conf.d/dns_servers.conf
+
+- name: Networking | Point /etc/resolv.conf at systemd-resolved
+  become: true
+  file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    path: /etc/resolv.conf
+    force: true
+    state: link
+
+- name: Networking | Start and enable systemd-resolved
+  become: true
+  systemd:
+    state: started
+    enabled: true
+    name: systemd-resolved.service
+
+- debug:
+    msg: "Skipping wpa_supplicant configuration since no network config is defined"
+  when: network is not defined
+
+- name: Generate WPA PSK
+  shell: "wpa_passphrase {{ network.ssid }} {{ lookup('file', 'secrets/wifi-passphrase') }}"
+  register: wpa_passphrase_result
+  no_log: true
+  changed_when: false
+  when: network is defined
+
+- name: Networking | Configure wpa_supplicant
+  become: true
+  template:
+    src: templates/wpa_supplicant.conf.j2
+    dest: "/etc/wpa_supplicant/wpa_supplicant-{{ network.wireless_interface }}.conf"
+  when: network is defined
+
+# Bootstrapping the pi SD card network is defined but we can't start it up in
+# the container, hence the ternary
+- name: Networking | Start and enable wpa_supplicant for wireless interface
+  become: true
+  systemd:
+    state: "{{ (ansible_virtualization_role == 'guest') | ternary('stopped', 'started') }}"
+    enabled: true
+    name: "wpa_supplicant@{{ network.wireless_interface }}.service"
+  when: network is defined
+
+- name: Networking | Install systemd-networkd network config file
+  become: true
+  template:
+    src: templates/25-wireless.network.j2
+    dest: /etc/systemd/network/25-wireless.conf
+  when: network is defined
+
+- name: Networking | Start and enable systemd-networkd
+  become: true
+  systemd:
+    state: started
+    enabled: true
+    name: systemd-networkd.service

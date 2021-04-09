@@ -21,11 +21,12 @@
   * Need to set `LIBGL_ALWAYS_SOFTWARE=1` for alacritty to run
     * Might be able to use zink?
   * nerd-fonts-complete completely fills the disk :rimshot:
+* Fix cleanup failing, why are there files in boot that don't seem to be from the mount?
+* systemd-networkd looks connected but no internets
 * Fix alacritty
-* Wifi not working in pi
-  * Worked when I manually setup 2.4 network, try that
 * Fix boot error complaining about no resume something
 * Upgrade to the pi 3 image
+  * This should let me remove references to linux-raspberrypi-headers in build-pi-container.yml
 * Enable remote management
   * Root volume unlock via SSH
   * Enable normal SSH
