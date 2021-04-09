@@ -1,0 +1,118 @@
+# vim:ft=yaml.ansible:
+---
+- name: Networking | Install packages
+  become: true
+  package:
+    state: latest
+    name:
+      - dhclient
+      - wireless_tools
+      - wpa_supplicant
+
+- name: Networking | Create systemd-resolved config directory
+  become: true
+  file:
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+
+- name: Networking | Configure nameservers
+  become: true
+  copy:
+    src: files/resolved-dns-servers.conf
+    dest: /etc/systemd/resolved.conf.d/dns_servers.conf
+
+- name: Networking | Point /etc/resolv.conf at systemd-resolved
+  become: true
+  file:
+    src: /run/systemd/resolve/stub-resolv.conf
+    path: /etc/resolv.conf
+    force: true
+    state: link
+
+- name: Networking | Start and enable systemd-resolved
+  become: true
+  systemd:
+    state: started
+    enabled: true
+    name: systemd-resolved.service
+
+- debug:
+    msg: "Skipping wpa_supplicant configuration since no network config is defined"
+  when: network is not defined
+
+- name: Generate WPA PSK
+  shell: "wpa_passphrase {{ network.ssid }} {{ lookup('file', 'secrets/wifi-passphrase') }}"
+  register: wpa_passphrase_result
+  no_log: true
+  changed_when: false
+  when: network is defined
+
+- name: Networking | Configure wpa_supplicant
+  become: true
+  template:
+    src: templates/wpa_supplicant.conf.j2
+    dest: "/etc/wpa_supplicant/wpa_supplicant-{{ network.wireless_interface }}.conf"
+  when: network is defined
+
+# Bootstrapping the pi SD card network is defined but we can't start it up in
+# the container, hence the ternary
+- name: Networking | Start and enable wpa_supplicant for wireless interface
+  become: true
+  systemd:
+    state: "{{ (ansible_virtualization_role == 'guest') | ternary('stopped', 'started') }}"
+    enabled: true
+    name: "wpa_supplicant@{{ network.wireless_interface }}.service"
+  when: network is defined
+
+- name: Networking | Install dhclient.service
+  become: true
+  copy:
+    src: files/force-network-online.service
+    dest: /etc/systemd/system/force-network-online.service
+
+- name: Networking | Enable force-network-online.service
+  become: true
+  systemd:
+    enabled: true
+    name: force-network-online.service
+    daemon-reload: true
+
+- name: Networking | Install dhclient.service
+  become: true
+  copy:
+    src: files/dhclient.service
+    dest: /etc/systemd/system/dhclient.service
+
+# This is a bit of a hack. I _should_ be able to use systemd-networkd's DHCP
+# config directive to get DHCP working, and it does appear to work for ipv6,
+# but doesn't create ipv4 IPs. As a work-around, run dhclient instead
+# I asked about this at https://bbs.archlinux.org/viewtopic.php?pid=1966984#p1966984
+- name: Networking | Start and enable dhclient.service
+  become: true
+  systemd:
+    state: started
+    enabled: true
+    name: dhclient.service
+    daemon-reload: true
+
+- name: Networking | Create network-online.target override dir
+  become: true
+  file:
+    path: /etc/systemd/system/systemd-networkd-wait-online.service.d
+    state: directory
+
+# This override allows network-online.target to be reached even though eth0
+# interfaces are never connected
+- name: Networking | Configure network-online.target to only wait for a single interface
+  become: true
+  copy:
+    src: files/systemd-networkd-wait-for-only-one-interface.conf
+    dest: /etc/systemd/system/systemd-networkd-wait-online.service.d/wait-for-only-one-interface.conf
+
+- name: Networking | Start and enable systemd-networkd
+  become: true
+  systemd:
+    state: started
+    enabled: true
+    name: systemd-networkd.service
+    daemon-reload: true

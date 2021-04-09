@@ -9,7 +9,6 @@
       - powertop
       - thermald
       - tlp
-      - tlp-rdw
   become: true
 
 - name: power | Enable thermald

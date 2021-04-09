@@ -1,0 +1,11 @@
+[Unit]
+Description=Ensure that something triggers network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/true
+Restart=no
+Type=oneshot
+
+[Install]
+RequiredBy=multi-user.target

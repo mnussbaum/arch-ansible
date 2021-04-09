@@ -1,31 +1,34 @@
 # vim:ft=yaml.ansible:
 ---
 - set_fact:
-    ansible_dir: "{{ dest_dir }}/arch-ansible"
-    gpg_keys_dir: "{{ dest_dir }}/arch-ansible/secrets/gpg-keys"
-    ssh_keys_dir: "{{ dest_dir }}/arch-ansible/secrets/ssh-keys"
+    gpg_keys_dir: "{{ ansible_dest_dir }}/secrets/gpg-keys"
+    ssh_keys_dir: "{{ ansible_dest_dir }}/secrets/ssh-keys"
 
 - name: Copy over arch-ansible repo
   synchronize:
     src: "{{ playbook_dir }}/"
-    dest: "{{ ansible_dir }}"
+    dest: "{{ ansible_dest_dir }}"
 
-- name: Fix arch-ansible permissions
+- name: Fix permissions on arch-ansible repo
   file:
-    path: "{{ ansible_dir }}"
-    owner: "{{ user.name }}"
-    group: "{{ user.name }}"
+    path: "{{ ansible_dest_dir }}"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
     recurse: true
 
 - name: Add tmux config
   copy:
     src: files/tmux.conf
-    dest: "{{ dest_dir }}/.tmux.conf"
+    dest: "{{ user_home_dir }}/.tmux.conf"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
 
 - name: Create gpg-keys dir
   file:
     path: "{{ gpg_keys_dir }}"
     state: directory
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
 
 - name: Check for exported GPG private key
   stat:
@@ -42,6 +45,8 @@
   copy:
     dest: "{{ gpg_keys_dir }}/private-key.asc"
     content: "{{ gpg_private_export_cmd.stdout }}"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
   no_log: true
   when: gpg_private_export_cmd.changed
 
@@ -62,18 +67,27 @@
   copy:
     dest: "{{ gpg_keys_dir }}/public-key.asc"
     content: "{{ gpg_public_export_cmd.stdout }}"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
 
 - name: Create ssh-keys dir
   file:
     path: "{{ ssh_keys_dir }}"
     state: directory
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
 
 - name: Copy SSH private key
   copy:
     src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
     dest: "{{ ssh_keys_dir }}/id_rsa"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
+
 
 - name: Copy SSH public key
   copy:
     src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
     dest: "{{ ssh_keys_dir }}/id_rsa.pub"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"

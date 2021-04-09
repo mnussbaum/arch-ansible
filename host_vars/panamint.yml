@@ -50,7 +50,7 @@ user:
 
 network:
   ssid: "JazzHands2.4G"
-  wireless_card: wlan0
+  wireless_interface: wlan0
 
 window_manager:
   window_manager: sway
