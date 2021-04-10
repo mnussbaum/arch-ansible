@@ -177,8 +177,13 @@
   synchronize:
     src: files/nvim/plugin/
     dest: "{{ nvim_config_dir }}/plugin"
-    group: "{{ user.name }}"
+
+- name: nvim | Fix permission on nvim configs
+  file:
+    path: "{{ nvim_config_dir }}/plugin"
+    recurse: true
     owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: nvim | Install nvim template configs
   template:
