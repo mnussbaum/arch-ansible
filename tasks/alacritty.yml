@@ -30,3 +30,10 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
   tags: [base16]
+
+- name: alacritty | Install script that forces software libgl for pi
+  become: true
+  copy:
+    src: files/alacritty-software-gl
+    dest: /usr/local/bin/alacritty-software-gl
+    mode: a+x

@@ -18,13 +18,10 @@
   * spotify
   * qemu-arm-static
   * firefox-nightly
-  * Need to set `LIBGL_ALWAYS_SOFTWARE=1` for alacritty to run
-    * Might be able to use zink?
 * nerd-fonts-complete completely fills the disk :rimshot:
   * Either find a smaller package for fonts
   * Or use a different font in pi
 * Fix cleanup failing, why are there files in boot that don't seem to be from the mount?
-* Fix alacritty
 * Installing vim-plugins initially hangs, succeeds on second try
 * Fix ownership of files in homedir, arch-ansible repo
 * Upgrade to the pi 3 image
