@@ -22,6 +22,7 @@
     - block:
         - name: Install files into root user dir
           import_tasks: tasks/bootstrapping/install-user-files.yml
+          become: true
           vars:
             user_home_dir: "{{ root_user_dir }}"
             ansible_dest_dir: "{{ root_user_dir }}"

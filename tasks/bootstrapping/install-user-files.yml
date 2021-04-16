@@ -11,6 +11,7 @@
 
 - name: Fix permissions on arch-ansible repo
   file:
+    state: directory
     path: "{{ ansible_dest_dir }}"
     owner: "{{ user_name }}"
     group: "{{ user_name }}"
