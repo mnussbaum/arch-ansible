@@ -20,7 +20,6 @@
   * Either find a smaller package for fonts
   * Or use a different font in pi
 * Fix cleanup failing, why are there files in boot that don't seem to be from the mount?
-* Installing vim-plugins initially hangs, succeeds on second try
 * Fix ownership of files in homedir, arch-ansible repo
 * Upgrade to the pi 3 image
   * This should let me remove references to linux-raspberrypi-headers in build-pi-container.yml

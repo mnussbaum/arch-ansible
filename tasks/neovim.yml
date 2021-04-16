@@ -138,7 +138,14 @@
       - python-pynvim
       - yaml-language-server-bin
       - vscode-json-languageserver-bin
+      - yarn
   become: true
+
+- name: nvim | Install npx-run that coc-python requires
+  become: true
+  npm:
+    name: npx-run
+    global: true
 
 - name: nvim | Download vim-plug installer
   get_url:
