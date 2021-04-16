@@ -5,7 +5,7 @@
     state: present
     name:
       - python-black
-      - python-language-server
+      - pyright
       - python-pip
       - python-pipenv
       - python-pylint

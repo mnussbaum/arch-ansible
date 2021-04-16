@@ -92,13 +92,13 @@
         languages: [go]
         args:
           do: "yarn install --frozen-lockfile"
-      - name: "neoclide/coc-python"
+      - name: "fannheyward/coc-pyright"
         args:
           do: "yarn install --frozen-lockfile"
         languages: [python]
         settings:
           python.formatting.provider: black
-          python.jediEnabled: false
+          python.linting.pylintEnabled: true
       - name: "neoclide/coc-solargraph"
         args:
           do: "yarn install --frozen-lockfile"
@@ -140,12 +140,6 @@
       - vscode-json-languageserver-bin
       - yarn
   become: true
-
-- name: nvim | Install npx-run that coc-python requires
-  become: true
-  npm:
-    name: npx-run
-    global: true
 
 - name: nvim | Download vim-plug installer
   get_url:
