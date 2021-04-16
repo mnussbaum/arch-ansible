@@ -4,7 +4,7 @@
 
 - name: Waybar | Install package
   package:
-    name: waybar-git
+    name: waybar
     state: present
   become: true
 
