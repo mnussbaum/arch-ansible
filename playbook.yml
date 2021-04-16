@@ -105,5 +105,6 @@
     - import_tasks: tasks/zathura.yml
     - import_tasks: tasks/syncthing.yml
     - import_tasks: tasks/raspberry-pi-dev.yml
+      when: ansible_architecture is not match("arm.*")
     - import_tasks: tasks/firefox.yml
     - import_tasks: tasks/secrets.yml

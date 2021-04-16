@@ -12,11 +12,9 @@
   * hwinfo
   * vscode-{html|css}-languageserver-bin - I forgot which one
   * vscode-json-languageserver-bin
-  * ruby-rexml missing across the board atm, in community testing
   * thermald doesn't compile
   * greetd-gtkgreet - Should be fixed in versions > 0.7, using git version for not
   * spotify
-  * qemu-arm-static
   * firefox-nightly
 * nerd-fonts-complete completely fills the disk :rimshot:
   * Either find a smaller package for fonts
