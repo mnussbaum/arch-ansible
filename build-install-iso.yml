@@ -25,7 +25,7 @@
           become: true
           vars:
             user_home_dir: "{{ root_user_dir }}"
-            ansible_dest_dir: "{{ root_user_dir }}"
+            ansible_dest_dir: "{{ root_user_dir }}/arch-ansible"
             user_name: root
 
         - name: Add ansible package

@@ -21,6 +21,9 @@
     src: files/resolved-dns-servers.conf
     dest: /etc/systemd/resolved.conf.d/dns_servers.conf
 
+# This fails in arch-chroot during qemu bootstrapping, since arch-chroot mounts
+# /etc/resolv.conf from the host into the chroot. Just skip this setup in the
+# chroot and let post-live-env bootstrapping take care of it
 - name: Networking | Point /etc/resolv.conf at systemd-resolved
   become: true
   file:
@@ -28,6 +31,7 @@
     path: /etc/resolv.conf
     force: true
     state: link
+  when: ansible_connection != "chroot"
 
 - name: Networking | Start and enable systemd-resolved
   become: true

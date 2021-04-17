@@ -11,7 +11,7 @@ rm -f "$qemu_image_file"
 qemu-img create -f qcow2 "$qemu_image_file" 32G
 
 rm -f "$qemu_install_iso"
-qemu-img create -f raw "$qemu_install_iso" 8G
+qemu-img create -f raw "$qemu_install_iso" 12G
 
 ANSIBLE_PLAYBOOK=build-install-iso.yml \
   ./bin/ansible \

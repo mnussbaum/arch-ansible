@@ -48,6 +48,7 @@
         src: files/pacman_bootstrap_mirrorlist
         dest: /etc/pacman.d/mirrorlist
 
+    - import_tasks: tasks/bootstrap-packages.yml
     - import_tasks: tasks/networking.yml
 
     - name: Pacstrap
