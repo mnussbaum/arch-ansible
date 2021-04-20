@@ -1,3 +1,4 @@
+# vim:ft=yaml.ansible:
 ---
 - name: Pi Dev | Install packages
   package:
