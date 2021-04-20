@@ -9,7 +9,8 @@
       - freetype2
       - gsfonts
       - libxft
-      - nerd-fonts-complete
+      - nerd-fonts-fira-mono
+      - nerd-fonts-noto
       - gucharmap
   become: true
 

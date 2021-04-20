@@ -13,12 +13,9 @@
   * vscode-{html|css}-languageserver-bin - I forgot which one
   * vscode-json-languageserver-bin
   * thermald doesn't compile
-  * greetd-gtkgreet - Should be fixed in versions > 0.7, using git version for not
+  * greetd-gtkgreet - Should be fixed in versions >= 0.8, using git version for not
   * spotify
   * firefox-nightly
-* nerd-fonts-complete completely fills the disk :rimshot:
-  * Either find a smaller package for fonts
-  * Or use a different font in pi
 * Fix cleanup failing, why are there files in boot that don't seem to be from the mount?
 * Fix ownership of files in homedir, arch-ansible repo
 * Upgrade to the pi 3 image
