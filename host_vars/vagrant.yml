@@ -40,7 +40,9 @@ key_repeat:
 monitors:
   id: VGA-1
 
-hidpi_firefox: false
+firefox:
+  package: firefox-nightly
+  hidpi: false
 
 optional_daemons:
   clightd: true

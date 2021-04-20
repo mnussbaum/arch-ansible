@@ -64,7 +64,9 @@ key_repeat:
 monitors:
   id: Virtual-1
 
-hidpi_firefox: false
+firefox:
+  package: firefox-nightly
+  hidpi: false
 
 optional_daemons:
   clightd: false

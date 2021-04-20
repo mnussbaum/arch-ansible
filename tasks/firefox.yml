@@ -4,8 +4,7 @@
   package:
     state: present
     name:
-      - firefox-nightly
-      - firefox-color
+      - "{{ firefox.package }}"
       - firefox-ublock-origin
       - firefox-vim-vixen
       - freshplayerplugin
@@ -13,13 +12,13 @@
   become: true
 
 - name: Firefox | Make default profile
-  command: firefox-nightly -CreateProfile "default /home/{{ user.name }}/.mozilla/firefox/default.profile"
+  command: "{{ firefox.package }} -CreateProfile 'default /home/{{ user.name }}/.mozilla/firefox/default.profile'"
   args:
     creates: "/home/{{ user.name }}/.mozilla/firefox/default.profile"
   become: true
   become_user: "{{ user.name }}"
 
-- name: Firefox | Symlink extensions dir for nightly
+- name: Firefox | Symlink extensions dir
   file:
     src: /usr/lib/firefox/browser/extensions
     path: "/home/{{ user.name }}/.mozilla/firefox/default.profile/extensions"

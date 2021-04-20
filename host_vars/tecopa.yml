@@ -62,7 +62,9 @@ monitors:
       y: -1600
     scale: 0.9
 
-hidpi_firefox: true
+firefox:
+  package: firefox-nightly
+  hidpi: true
 
 optional_daemons:
   clightd: true

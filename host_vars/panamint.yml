@@ -36,7 +36,9 @@ modprobe_files: []
 key_repeat:
   delay: 250
 
-hidpi_firefox: false
+firefox:
+  package: firefox
+  hidpi: false
 
 optional_daemons:
   clightd: false
