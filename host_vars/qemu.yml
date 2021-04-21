@@ -48,10 +48,25 @@ partitions:
     encrypted: true
     flags: []
 
-mkinitcpio_modules:
-  - nvme
-  - intel_agp
-  - i915
+mkinitcpio:
+  modules:
+    - nvme
+    - intel_agp
+    - i915
+  hooks:
+    - base
+    - udev
+    - autodetect
+    - modconf
+    - block
+    - consolefont
+    - keymap
+    - keyboard
+    - encrypt
+    - resume
+    - lvm2
+    - filesystems
+    - fsck
 
 modprobe_files:
   - intel.conf

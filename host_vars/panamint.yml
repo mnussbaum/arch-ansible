@@ -30,7 +30,30 @@ partitions:
     encrypted: true
     flags: []
 
-mkinitcpio_modules: []
+mkinitcpio:
+  modules:
+    - g_cdc
+    - usb_f_acm
+    - usb_f_ecm
+    - smsc95xx
+    - g_ether
+  hooks:
+    - base
+    - udev
+    - autodetect
+    - modconf
+    - block
+    - consolefont
+    - keyboard
+    - encrypt
+    - lvm2
+    - sleep
+    - netconf
+    - dropbear
+    - encryptssh
+    - filesystems
+    - fsck
+
 modprobe_files: []
 
 key_repeat:

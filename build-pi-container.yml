@@ -23,7 +23,7 @@
 
     - name: Set facts
       set_fact:
-        root_filesystem_download_path: "{{ lookup('env', 'HOME') }}/.cache/ArchLinuxARM-rpi-2-latest.tar.gz"
+        root_filesystem_download_path: "{{ lookup('env', 'HOME') }}/.cache/ArchLinuxARM-rpi-3-latest.tar.gz"
 
     - name: Read SD card device info
       parted:
@@ -72,7 +72,7 @@
 
     - name: Download root filesystem
       get_url:
-        url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-2-latest.tar.gz
+        url: http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-3-latest.tar.gz
         dest: "{{ root_filesystem_download_path }}"
       when: not root_filesystem_download_check_result.stat.exists
 
@@ -208,7 +208,7 @@
 
     - name: Update and install pacakges in nspawn container
       become: true
-      command: machinectl shell panamint /usr/bin/pacman -Syu --noconfirm --overwrite '*.dtbo' linux-raspberrypi-headers lvm2 cryptsetup sudo git rsync base base-devel uboot-tools mkinitcpio-utils python ansible
+      command: machinectl shell panamint /usr/bin/pacman -Syu --noconfirm --overwrite '*.dtbo' lvm2 cryptsetup sudo git rsync base base-devel uboot-tools dropbear mkinitcpio-utils mkinitcpio-netconf mkinitcpio-dropbear python ansible
 
     # Can't use `uname` since that returns the host kernel version
     - name: Rebuild initramfs in container

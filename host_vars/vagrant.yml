@@ -31,7 +31,23 @@ partitions:
     encrypted: false
     flags: []
 
-mkinitcpio_modules: []
+mkinitcpio:
+  modules: []
+  hooks:
+    - base
+    - udev
+    - autodetect
+    - modconf
+    - block
+    - consolefont
+    - keymap
+    - keyboard
+    - encrypt
+    - resume
+    - lvm2
+    - filesystems
+    - fsck
+
 modprobe_files: []
 
 key_repeat:
