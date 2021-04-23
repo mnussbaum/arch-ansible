@@ -48,6 +48,7 @@ network:
   wireless_interface: wlp60s0
 
 key_repeat:
+  rate: 35
   delay: 250
 
 monitors:
@@ -77,6 +78,7 @@ user:
   email: michaelnussbaum08@gmail.com
 
 window_manager:
+  waybar_minimum_workspace_count: 5
   window_manager: sway
   windowing_system: wayland
 

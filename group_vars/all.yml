@@ -7,12 +7,6 @@ font:
   rofi_size: 10
   grub_graphical_size: 50
 
-key_repeat:
-  rate: 35
-
-window_manager:
-  waybar_minimum_workspace_count: 5
-
 idle_thresholds:
   lock_screen_delay_minutes: 5
   suspend_delay_minutes: 10
