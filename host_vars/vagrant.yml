@@ -42,7 +42,6 @@ monitors:
   id: VGA-1
 
 firefox:
-  package: firefox-nightly
   hidpi: false
 
 optional_daemons:

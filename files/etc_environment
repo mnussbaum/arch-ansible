@@ -1,3 +1,4 @@
-BROWSER=firefox-nightly
+BROWSER=firefox
 EDITOR=nvim
 VISUAL=nvim
+MOZ_LEGACY_PROFILES=1

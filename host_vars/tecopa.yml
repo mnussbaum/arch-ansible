@@ -64,7 +64,6 @@ monitors:
     scale: 0.9
 
 firefox:
-  package: firefox-nightly
   hidpi: true
 
 optional_daemons:

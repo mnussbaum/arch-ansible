@@ -1,10 +1,17 @@
 # vim:ft=yaml.ansible:
 ---
+- name: Firefox | Install HW acceleration driver packages
+  become: true
+  package:
+    state: present
+    name: intel-media-driver
+  when: ansible_architecture is not match("arm.*")
+
 - name: Firefox | Install packages
   package:
     state: present
     name:
-      - "{{ firefox.package }}"
+      - firefox
       - firefox-ublock-origin
       - firefox-vim-vixen
       - freshplayerplugin
@@ -12,36 +19,42 @@
   become: true
 
 - name: Firefox | Make default profile
-  command: "{{ firefox.package }} -CreateProfile 'default /home/{{ user.name }}/.mozilla/firefox/default.profile'"
+  command: "firefox -CreateProfile 'default {{ user_home_dir }}/.mozilla/firefox/default.profile'"
   args:
-    creates: "/home/{{ user.name }}/.mozilla/firefox/default.profile"
+    creates: "{{ user_home_dir }}/.mozilla/firefox/default.profile"
   become: true
   become_user: "{{ user.name }}"
 
-- name: Firefox | Symlink extensions dir
-  file:
-    src: /usr/lib/firefox/browser/extensions
-    path: "/home/{{ user.name }}/.mozilla/firefox/default.profile/extensions"
-    force: true
-    state: link
+- name: Firefox | Configure firefox profiles.ini
+  copy:
+    dest: "{{ user_home_dir }}/.mozilla/firefox/profiles.ini"
+    src: files/firefox-profiles.ini
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Firefox | Sideload install extensions
+  firefox_ext_sideloader:
+    path: "{{ item }}"
+  with_fileglob:
+    - /usr/lib/firefox/browser/extensions/*.xpi
 
 - name: Firefox | Configure firefox user.js
   template:
-    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/user.js"
+    dest: "{{ user_home_dir }}/.mozilla/firefox/default.profile/user.js"
     src: templates/firefox-user.js.j2
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
 - name: Firefox | Create chrome config dir
   file:
-    path: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome"
+    path: "{{ user_home_dir }}/.mozilla/firefox/default.profile/chrome"
     state: directory
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
 - name: Firefox | Configure firefox userChrome.css
   template:
-    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome/userChrome.css"
+    dest: "{{ user_home_dir }}/.mozilla/firefox/default.profile/chrome/userChrome.css"
     src: templates/firefox-userChrome.css.j2
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
@@ -49,7 +62,7 @@
 
 - name: Firefox | Configure firefox userContent.css
   template:
-    dest: "/home/{{ user.name }}/.mozilla/firefox/default.profile/chrome/userContent.css"
+    dest: "{{ user_home_dir }}/.mozilla/firefox/default.profile/chrome/userContent.css"
     src: templates/firefox-userContent.css.j2
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
@@ -57,7 +70,7 @@
 
 - name: Firefox | Create vim-vixen plugin config dir
   file:
-    path: "/home/{{ user.name }}/.mozilla/firefox/default.profile/browser-extension-data/vim-vixen@i-beam.org"
+    path: "{{ user_home_dir }}/.mozilla/firefox/default.profile/browser-extension-data/vim-vixen@i-beam.org"
     state: directory
     owner: "{{ user.name }}"
     group: "{{ user.group }}"

@@ -38,7 +38,6 @@ key_repeat:
   delay: 250
 
 firefox:
-  package: firefox
   hidpi: false
 
 optional_daemons:

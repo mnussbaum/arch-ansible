@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  author: Michael Nussbaum (@mnussbaum)
+  description: >
+    "Sideload" installs Firefox extensions from an extension's XPI file.
+    Follows the process described at
+    https://cryptonomic.net/sideload-extensions-in-firefox.html
+  license: MIT
+  min_ansible_version: 2.0
+  platforms:
+    - name: GenericBSD
+      versions:
+        - all
+    - name: GenericLinux
+      versions:
+        - all
+    - name: GenericUNIX
+      versions:
+        - all
+  galaxy_tags:
+    - mozilla
+    - firefox
+    - browser
+
+dependencies: []
+
+# vim:ft=ansible:

@@ -10,6 +10,7 @@
       become: true
   roles:
     - mnussbaum.base16-builder-ansible
+    - mnussbaum.firefox_ext_sideloader
   tasks:
     - set_fact:
         user_home_dir: "/home/{{ user.name }}"
