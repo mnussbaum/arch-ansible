@@ -9,4 +9,5 @@
       - python-pip
       - python-pipenv
       - python-pylint
+      - python-poetry
   become: true
