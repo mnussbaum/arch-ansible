@@ -48,6 +48,7 @@
   when: check_yay_installed is failed
 
 - name: Packaging | Update yay packages
+  become: true
   yay:
     update_cache: yes
     upgrade: yes
