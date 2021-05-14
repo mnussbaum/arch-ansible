@@ -6,11 +6,9 @@
 
 - name: user | Configure sudoers
   become: true
-  lineinfile:
+  copy:
+    src: "files/ansible_sudoers"
     dest: /etc/sudoers.d/ansible
-    line: "%wheel ALL=(ALL) ALL"
-    state: present
-    create: yes
     validate: "/usr/bin/visudo -cf %s"
 
 - name: user | Check if user exists
