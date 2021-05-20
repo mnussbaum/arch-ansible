@@ -46,6 +46,7 @@ modprobe_files:
 network:
   ssid: "JazzHands2.4G"
   wireless_interface: wlp60s0
+  password: "{{ wifi_passwords['jazz_hands'] }}"
 
 key_repeat:
   rate: 35
@@ -69,12 +70,6 @@ firefox:
 optional_daemons:
   clightd: true
   libinput_gestures: true
-
-user:
-  name: mnussbaum
-  group: mnussbaum
-  shell: /usr/bin/zsh
-  email: michaelnussbaum08@gmail.com
 
 window_manager:
   waybar_minimum_workspace_count: 5

@@ -2,11 +2,10 @@ Sets up an Arch Linux based workstation
 
 ## Bootstrapping
 
-1. Create a `secrets/luks-keyfile` file containing a password for encrpyting
-   the new disk
-2. Create a `secrets/wifi-passphrase` file containing the wifi password
-3. Build ISO - `./bin/build-<qemu-image|live-usb>`
-4. Boot into ISO
+1. Create a `./secrets/vault-password` file containing the password to unlock
+   Ansible Vault secrets
+2. Build ISO - `./bin/build-<qemu-image|live-usb>`
+3. Boot into ISO
 
 - For XPS go into BIOS menu to boot from USB
 - For QEMU this will happen automatically after the image is built
@@ -27,3 +26,9 @@ Sets up an Arch Linux based workstation
 1. Add GPG key to the agent - `ssh-add`
 1. `cd ~/src/arch-ansible`
 1. Finish provisioning - `./bin/ansible`
+
+## Adding secrets
+
+```bash
+ansible-vault edit group_vars/all/secrets.yml
+```

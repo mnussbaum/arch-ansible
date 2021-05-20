@@ -45,7 +45,7 @@
   when: network is not defined
 
 - name: Generate WPA PSK
-  shell: "wpa_passphrase {{ network.ssid }} {{ lookup('file', 'secrets/wifi-passphrase') }}"
+  shell: "wpa_passphrase {{ network.ssid }} {{ network.password }}"
   register: wpa_passphrase_result
   no_log: true
   changed_when: false

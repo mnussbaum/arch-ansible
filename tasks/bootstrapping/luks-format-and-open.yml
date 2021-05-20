@@ -5,7 +5,7 @@
     device: "{{ item.partition_device }}"
     state: "opened"
     name: "{{ item.volume_group_name }}"
-    keyfile: secrets/luks-keyfile
+    passphrase: "{{ luks_passphrase }}"
     # Pi 3B+ can only handle a small key size
     pbkdf:
       memory: 256

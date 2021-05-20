@@ -44,12 +44,6 @@ optional_daemons:
   clightd: false
   libinput_gestures: false
 
-user:
-  name: mnussbaum
-  group: mnussbaum
-  shell: /usr/bin/zsh
-  email: michaelnussbaum08@gmail.com
-
 network:
   ssid: "JazzHands2.4G"
   wireless_interface: wlan0

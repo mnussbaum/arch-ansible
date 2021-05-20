@@ -18,7 +18,7 @@
 
 - hosts: all
   tasks:
-    - name: Switch connection back to local for cleanup
+    - name: Switch connection back to local for post bootstrapping work and cleanup
       set_fact:
         ansible_connection: local
       tags: [bootstrap]

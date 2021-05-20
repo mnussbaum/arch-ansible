@@ -72,12 +72,6 @@ optional_daemons:
   clightd: false
   libinput_gestures: false
 
-user:
-  name: mnussbaum
-  group: mnussbaum
-  shell: /usr/bin/zsh
-  email: michaelnussbaum08@gmail.com
-
 window_manager:
   waybar_minimum_workspace_count: 5
   window_manager: sway

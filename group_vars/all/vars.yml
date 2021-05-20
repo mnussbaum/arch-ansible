@@ -1,4 +1,11 @@
 ---
+user:
+  name: mnussbaum
+  group: mnussbaum
+  shell: /usr/bin/zsh
+  email: michaelnussbaum08@gmail.com
+  password: "{{ user_password }}"
+
 font:
   sans_family: "NotoSans Nerd Font"
   serif_family: "NotoSerif Nerd Font"
