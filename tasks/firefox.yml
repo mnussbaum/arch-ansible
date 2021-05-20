@@ -12,6 +12,7 @@
     state: present
     name:
       - firefox
+      - mozlz4
       - firefox-ublock-origin
       - firefox-vim-vixen
       - freshplayerplugin
