@@ -8,7 +8,6 @@
 
 ### Todo
 
-* GPG (and maybe SSH keys?) are empty
 * Missing packages
   * hwinfo
   * vscode-{html|css}-languageserver-bin - I forgot which one

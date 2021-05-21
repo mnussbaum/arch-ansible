@@ -44,8 +44,13 @@
   register: check_exported_gpg_private_key
 
 - name: Export GPG private key
+  # This needs to be user.name and not user_name. This references the local
+  # user providing the GPG key, not the name of the user the files are being
+  # installed into which might be e.g. "root" for a live USB
+  become_user: "{{ user.name }}"
   command: "gpg --armor --export-secret-key '{{ user.pass_gpg_key }}'"
   register: gpg_private_export_cmd
+  failed_when: gpg_private_export_cmd.stderr != ""
   no_log: true
   when: not check_exported_gpg_private_key.stat.exists
 
@@ -64,9 +69,14 @@
   register: check_exported_gpg_public_key
 
 - name: Export GPG public key
+  # This needs to be user.name and not user_name. This references the local
+  # user providing the GPG key, not the name of the user the files are being
+  # installed into which might be e.g. "root" for a live USB
+  become_user: "{{ user.name }}"
   command: "gpg --armor --export '{{ user.pass_gpg_key }}'"
   no_log: true
   register: gpg_public_export_cmd
+  failed_when: gpg_public_export_cmd.stderr != ""
   when: not check_exported_gpg_public_key.stat.exists
 
 - name: Write GPG public key
@@ -86,6 +96,7 @@
     group: "{{ user_name }}"
 
 - name: Copy SSH private key
+  no_log: true
   copy:
     src: "{{ lookup('env', 'HOME') }}/.ssh/id_rsa"
     dest: "{{ ssh_keys_dir }}/id_rsa"
