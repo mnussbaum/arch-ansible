@@ -8,12 +8,13 @@
 
 ### Todo
 
+* GPG (and maybe SSH keys?) are empty
 * Missing packages
   * hwinfo
   * vscode-{html|css}-languageserver-bin - I forgot which one
   * vscode-json-languageserver-bin
   * thermald doesn't compile
-  * greetd-gtkgreet - Should be fixed in versions >= 0.8, using git version for not
+  * greetd-gtkgreet - Should be fixed in versions >= 0.8, using git version for now
   * spotify
 * Fix cleanup failing, why are there files in boot that don't seem to be from the mount?
 * Fix ownership of files in homedir, arch-ansible repo
