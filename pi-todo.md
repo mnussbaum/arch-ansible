@@ -16,7 +16,7 @@
   * greetd-gtkgreet - Should be fixed in versions >= 0.8, using git version for now
   * spotify
 * Fix cleanup failing, why are there files in boot that don't seem to be from the mount?
-* Fix ownership of files in homedir, arch-ansible repo
+* Fix ownership and executable permissions of files in homedir, arch-ansible repo
 * Upgrade to the pi 3 image
   * This should let me remove references to linux-raspberrypi-headers in build-pi-container.yml
 * Enable remote management
