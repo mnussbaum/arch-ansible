@@ -17,6 +17,13 @@
     group: "{{ user_name }}"
     recurse: true
 
+- name: Make arch-ansible bin scripts executable
+  file:
+    path: "{{ item }}"
+    mode: a+x
+  with_fileglob:
+    - "{{ ansible_dest_dir }}/bin/*"
+
 - name: Add tmux config
   copy:
     src: files/tmux.conf
