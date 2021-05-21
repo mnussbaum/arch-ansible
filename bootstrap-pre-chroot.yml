@@ -48,8 +48,8 @@
         src: files/pacman_bootstrap_mirrorlist
         dest: /etc/pacman.d/mirrorlist
 
-    - import_tasks: tasks/bootstrap-packages.yml
     - import_tasks: tasks/networking.yml
+    - import_tasks: tasks/bootstrap-packages.yml
 
     - name: Pacstrap
       command: "pacstrap {{ partitions['root'].mount_point }} base linux linux-firmware linux-headers python"
