@@ -15,8 +15,7 @@ qemu-img create -f raw "$qemu_install_iso" 12G
 
 ANSIBLE_PLAYBOOK=build-install-iso.yml \
   ./bin/ansible \
-  -e iso_output_file="$qemu_install_iso" \
-  -e pass_gpg_key="mnussbaum (Password Store)"
+  -e iso_output_file="$qemu_install_iso"
 
 cp /usr/share/ovmf/x64/OVMF_VARS.fd "$qemu_ovmf_vars_file"
 

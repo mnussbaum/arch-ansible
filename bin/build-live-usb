@@ -6,5 +6,4 @@ set -o nounset
 ANSIBLE_PLAYBOOK=build-install-iso.yml \
   exec ./bin/ansible \
   -e iso_output_file=/dev/sda \
-  -e pass_gpg_key="mnussbaum (Password Store)" \
   $@

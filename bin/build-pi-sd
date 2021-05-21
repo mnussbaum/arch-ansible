@@ -39,6 +39,5 @@ done
 ANSIBLE_PLAYBOOK=build-pi-sd.yml \
   exec ./bin/ansible \
   --limit panamint \
-  -e pass_gpg_key="mnussbaum (Password Store)" \
   $extra_ansible_args \
   $@

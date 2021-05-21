@@ -37,7 +37,7 @@
   register: check_exported_gpg_private_key
 
 - name: Export GPG private key
-  command: "gpg --armor --export-secret-key '{{ pass_gpg_key }}'"
+  command: "gpg --armor --export-secret-key '{{ user.pass_gpg_key }}'"
   register: gpg_private_export_cmd
   no_log: true
   when: not check_exported_gpg_private_key.stat.exists
@@ -57,7 +57,7 @@
   register: check_exported_gpg_public_key
 
 - name: Export GPG public key
-  command: "gpg --armor --export '{{ pass_gpg_key }}'"
+  command: "gpg --armor --export '{{ user.pass_gpg_key }}'"
   no_log: true
   register: gpg_public_export_cmd
   when: not check_exported_gpg_public_key.stat.exists
@@ -84,7 +84,6 @@
     dest: "{{ ssh_keys_dir }}/id_rsa"
     owner: "{{ user_name }}"
     group: "{{ user_name }}"
-
 
 - name: Copy SSH public key
   copy:
