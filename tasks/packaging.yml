@@ -54,10 +54,8 @@
     upgrade: yes
   retries: 2
 
-- name: Packaging | Enable pacman colors
+- name: Packaging | Install pacman config
   become: true
-  lineinfile:
+  copy:
+    src: files/pacman.conf
     dest: /etc/pacman.conf
-    regexp: "^Color$"
-    insertafter: "^#Color$"
-    line: "Color"
