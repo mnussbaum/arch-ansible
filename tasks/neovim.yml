@@ -11,9 +11,6 @@
         args:
           branch: release
       - name: "christoomey/vim-tmux-runner"
-      - name: "fatih/vim-go"
-        args:
-          do: ":GoInstallBinaries"
       - name: "itchyny/lightline.vim"
       - name: "janko-m/vim-test"
       - name: "jlanzarotta/bufexplorer"
