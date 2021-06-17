@@ -3,19 +3,14 @@
 - name: Tablet mode | Install packages
   package:
     state: present
-    name:
-      - rot8-git
-      - virtboard-git
+    name: rot8-git
 
-- name: Tablet mode | Install systemd services
+- name: Tablet mode | Install systemd service
   copy:
-    src: "files/{{ item }}.service"
-    dest: "{{ user_config_dir }}/systemd/user/{{ item }}.service"
+    src: "files/rot8.service"
+    dest: "{{ user_config_dir }}/systemd/user/rot8.service"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
-  with_items:
-    - rot8
-    - virtboard
 
 - name: Tablet mode | Install toggle module scripts
   copy:
@@ -26,5 +21,3 @@
   with_items:
     - rot8-rotation-lock-status
     - toggle-rot8
-    - virtboard-open-status
-    - toggle-virtboard
