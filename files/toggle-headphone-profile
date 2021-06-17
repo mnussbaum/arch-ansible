@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+
+card=`pactl list | grep "Name: bluez_card." | cut -d ' ' -f 2`
+
+if pactl list | grep -q "Active Profile: a2dp-sink-aac" ; then
+  echo "Switching $card to mSBC..."
+  pactl set-card-profile $card headset-head-unit-msbc
+else
+  echo "Switching $card to A2DP..."
+  pactl set-card-profile $card a2dp-sink
+fi

@@ -23,6 +23,28 @@
       - xdg-desktop-portal-wlr
     state: present
 
+- name: AV | Create pipewire config dirs
+  become: true
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /etc/pipewire
+    - /etc/pipewire/media-session.d
+
+- name: AV | Create pipewire config to enable high quality bluetooth codecs
+  become: true
+  copy:
+    src: files/bluez-monitor.conf
+    dest: /etc/pipewire/media-session.d/bluez-monitor.conf
+
+- name: AV | Install headphone profile toggle script
+  become: true
+  copy:
+    src: files/toggle-headphone-profile
+    dest: /usr/local/bin/toggle-headphone-profile
+    mode: a+x
+
 - name: AV | Create mpv config dir
   file:
     path: "{{ user_config_dir }}/mpv"

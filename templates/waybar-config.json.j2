@@ -74,7 +74,7 @@
     "modules-left": [
       "idle_inhibitor",
       "custom/rotation-toggle",
-      "custom/virtual-keyboard-toggle"
+      "custom/toggle-headphone-profile"
     ],
 
     "modules-right": [
@@ -101,12 +101,12 @@
       "tooltip": false
     },
 
-    "custom/virtual-keyboard-toggle": {
-      "exec": "virtboard-open-status",
+    "custom/toggle-headphone-profile": {
+      "exec": "headphone-profile-status",
       "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{}', last_block=True, position='left') }}",
       "tooltip": false,
       "interval": 1,
-      "on-click": "toggle-virtboard",
+      "on-click": "toggle-headphone-profile",
       "tooltip": false
     },
 
