@@ -42,21 +42,22 @@
 
 - debug:
     msg: "Skipping wpa_supplicant configuration since no network config is defined"
-  when: network is not defined
+  when: networking is not defined
 
 - name: Generate WPA PSK
-  shell: "wpa_passphrase {{ network.ssid }} {{ network.password }}"
-  register: wpa_passphrase_result
+  shell: "wpa_passphrase '{{ item.ssid }}' '{{ item.password }}'"
+  register: wpa_passphrase_results
   no_log: true
   changed_when: false
-  when: network is defined
+  when: networking is defined
+  loop: "{{ networking.networks }}"
 
 - name: Networking | Configure wpa_supplicant
   become: true
   template:
     src: templates/wpa_supplicant.conf.j2
-    dest: "/etc/wpa_supplicant/wpa_supplicant-{{ network.wireless_interface }}.conf"
-  when: network is defined
+    dest: "/etc/wpa_supplicant/wpa_supplicant-{{ networking.wireless_interface }}.conf"
+  when: networking is defined
 
 # Bootstrapping the pi SD card network is defined but we can't start it up in
 # the container, hence the ternary
@@ -65,8 +66,8 @@
   systemd:
     state: "{{ (ansible_virtualization_role == 'guest') | ternary('stopped', 'started') }}"
     enabled: true
-    name: "wpa_supplicant@{{ network.wireless_interface }}.service"
-  when: network is defined
+    name: "wpa_supplicant@{{ networking.wireless_interface }}.service"
+  when: networking is defined
 
 - name: Networking | Install dhclient.service
   become: true

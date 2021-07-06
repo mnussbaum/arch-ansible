@@ -44,9 +44,11 @@ optional_daemons:
   clightd: false
   libinput_gestures: false
 
-network:
-  ssid: "JazzHands2.4G"
+networking:
   wireless_interface: wlan0
+  networks:
+    - ssid: "JazzHands2.4G"
+      password: "{{ wifi_passwords['jazz_hands'] }}"
 
 window_manager:
   waybar_minimum_workspace_count: 5

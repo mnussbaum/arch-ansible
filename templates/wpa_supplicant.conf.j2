@@ -3,4 +3,6 @@ ctrl_interface_group=wheel
 update_config=1
 country=US
 
+{% for wpa_passphrase_result in wpa_passphrase_results.results %}
 {{ wpa_passphrase_result.stdout }}
+{% endfor %}

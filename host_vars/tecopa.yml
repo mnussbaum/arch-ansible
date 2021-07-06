@@ -43,10 +43,13 @@ modprobe_files:
   - iwlwifi.conf
   - nvme.conf
 
-network:
-  ssid: "JazzHands2.4G"
+networking:
   wireless_interface: wlp60s0
-  password: "{{ wifi_passwords['jazz_hands'] }}"
+  networks:
+    - ssid: "JazzHands2.4G"
+      password: "{{ wifi_passwords['jazz_hands'] }}"
+    - ssid: "WiFi By The Sea"
+      password: "{{ wifi_passwords['wifi_by_the_sea'] }}"
 
 key_repeat:
   rate: 35
