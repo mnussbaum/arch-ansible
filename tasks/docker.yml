@@ -20,3 +20,9 @@
     name: "{{ user.name }}"
     groups: docker
     append: true
+
+- name: Docker | Enable overlay2 driver
+  become: true
+  copy:
+    src: files/docker-daemon.json
+    dest: /etc/docker/daemon.json
