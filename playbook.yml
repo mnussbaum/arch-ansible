@@ -102,6 +102,7 @@
     - import_tasks: tasks/firejail.yml
     - import_tasks: tasks/torrents.yml
     - import_tasks: tasks/docker.yml
+    - import_tasks: tasks/kubernetes.yml
     - import_tasks: tasks/archiso.yml
     - import_tasks: tasks/zathura.yml
     - import_tasks: tasks/syncthing.yml

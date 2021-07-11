@@ -6,4 +6,5 @@
     name:
       - etcd
       - kubectl-bin
+      - rancher-k3d-bin
     become: yes
