@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+systemctl restart wpa_supplicant@{{ networking.wireless_interface }}.service
+sleep 3
+
+systemctl restart systemd-networkd.service
+sleep 3
+
+systemctl restart dhclient.service
+sleep 3
+
+systemctl restart systemd-resolved.service

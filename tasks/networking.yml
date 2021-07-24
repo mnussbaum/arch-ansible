@@ -121,3 +121,10 @@
     enabled: true
     name: systemd-networkd.service
     daemon-reload: true
+
+- name: Networking | Install restart-networking script
+  become: true
+  template:
+    src: templates/restart-networking
+    dest: /usr/local/bin/restart-networking
+    mode: a+x
