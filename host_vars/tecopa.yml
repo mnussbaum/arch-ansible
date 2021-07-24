@@ -50,6 +50,8 @@ networking:
       password: "{{ wifi_passwords['jazz_hands'] }}"
     - ssid: "WiFi By The Sea"
       password: "{{ wifi_passwords['wifi_by_the_sea'] }}"
+    - ssid: "HOME-0959-2.4"
+      password: "{{ wifi_passwords['27_holly_rd'] }}"
 
 key_repeat:
   rate: 35

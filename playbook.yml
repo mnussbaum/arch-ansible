@@ -41,7 +41,7 @@
     - import_tasks: tasks/user.yml
       tags: [bootstrap]
     - import_tasks: tasks/networking.yml
-      tags: [bootstrap]
+      tags: [bootstrap, networking]
     - import_tasks: tasks/reflector.yml
       when: ansible_architecture is not match("arm.*")
     - import_tasks: tasks/packaging.yml
