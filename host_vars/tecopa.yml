@@ -51,7 +51,9 @@ networking:
     - ssid: "WiFi By The Sea"
       password: "{{ wifi_passwords['wifi_by_the_sea'] }}"
     - ssid: "HOME-0959-2.4"
-      password: "{{ wifi_passwords['27_holly_rd'] }}"
+      password: "{{ wifi_passwords['rehoboth'] }}"
+    - ssid: "nuttree"
+      password: "{{ wifi_passwords['bethesda'] }}"
 
 key_repeat:
   rate: 35
