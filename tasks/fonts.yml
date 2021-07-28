@@ -9,9 +9,16 @@
       - freetype2
       - gsfonts
       - libxft
-      - nerd-fonts-fira-mono
+      - ttf-cascadia-code
       - nerd-fonts-noto
       - gucharmap
+      - python-opentype-feature-freezer
+  become: true
+
+- name: Fonts | Install Cascadia Code with cursive italics enabled
+  copy:
+    src: assets/CascadiaCodePLCursiveItalic.ttf
+    dest: /usr/share/fonts/TTF/CascadiaCodePLCursiveItalic.ttf
   become: true
 
 - name: Fonts | Enable LCD filter

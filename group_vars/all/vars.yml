@@ -10,10 +10,25 @@ user:
 font:
   sans_family: "NotoSans Nerd Font"
   serif_family: "NotoSerif Nerd Font"
-  monospace_family: "FuraMono Nerd Font Mono"
+  monospace_family: "Cascadia Code PL"
   size: 20
   rofi_size: 10
   grub_graphical_size: 50
+
+# Cursive italic font generated via:
+#
+# sudo pyftfeatfreeze -f 'calt,ss01' \
+#   /usr/share/fonts/TTF/CascadiaCodePLItalic.ttf \
+#   assets/CascadiaCodePLCursiveItalic.ttf
+#
+# Grub fonts generated with:
+#
+# grub-mkfont --size 50 \
+#             --output assets/grub-theme/fonts/noto_sans_50.pf2 \
+#             /usr/share/fonts/nerd-fonts-complete/TTF/Noto\ Sans\ Regular\ Nerd\ Font\ Complete.ttf
+# grub-mkfont --size 20 \
+#             --output assets/grub-theme/fonts/cascadia_code.pf2 \
+#             /usr/share/fonts/TTF/CascadiaCodePL.ttf
 
 idle_thresholds:
   lock_screen_delay_minutes: 5
