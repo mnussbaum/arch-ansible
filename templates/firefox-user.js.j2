@@ -15,6 +15,9 @@ user_pref("font.name.serif.x-western", "{{ font.monospace_family }}");
 user_pref("font.name.sans-serif.x-western", "{{ font.monospace_family }}");
 user_pref("font.default.x-western", "sans-serif");
 
+// Enable Firefox account containers
+user_pref("privacy.userContext.enabled", true);
+
 // Appearence
 {% set browser_ui_customization_state = {
   "placements": {
