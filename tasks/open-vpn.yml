@@ -1,0 +1,9 @@
+# vim:ft=yaml.ansible:
+---
+- name: OpenVPN | Install packages
+  package:
+    state: present
+    name:
+      - openvpn
+      - openvpn-update-systemd-resolved
+  become: true
