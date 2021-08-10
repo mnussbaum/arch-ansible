@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if systemctl status openvpn-client@eeek.service > /dev/null ; then
+  printf "💼"
+else
+  printf "✌"
+fi
+
+printf "\n"
