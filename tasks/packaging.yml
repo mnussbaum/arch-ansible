@@ -47,13 +47,6 @@
   command: /usr/local/bin/install-yay
   when: check_yay_installed is failed
 
-- name: Packaging | Update yay packages
-  become: true
-  yay:
-    update_cache: yes
-    upgrade: yes
-  retries: 2
-
 - name: Packaging | Install pacman config
   become: true
   copy:
