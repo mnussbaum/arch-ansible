@@ -25,7 +25,7 @@ font:
 #
 # grub-mkfont --size 50 \
 #             --output assets/grub-theme/fonts/noto_sans_50.pf2 \
-#             /usr/share/fonts/nerd-fonts-complete/TTF/Noto\ Sans\ Regular\ Nerd\ Font\ Complete.ttf
+#             /usr/share/fonts/TTF/Noto\ Sans\ Regular\ Nerd\ Font\ Complete.ttf
 # grub-mkfont --size 20 \
 #             --output assets/grub-theme/fonts/cascadia_code.pf2 \
 #             /usr/share/fonts/TTF/CascadiaCodePL.ttf
