@@ -8,3 +8,4 @@
       - etcd
       - kubectl-bin
       - rancher-k3d-bin
+      - kubectx
