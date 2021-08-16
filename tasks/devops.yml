@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Docker | Enable loop kernel module
+- name: DevOps | Enable loop kernel module
   become: true
   notify:
     - Regenerate mkinitcpio ramdisk
@@ -8,20 +8,27 @@
     content: loop
     dest: /etc/modules-load.d/loop.conf
 
-- name: Docker | Install package
-  become: true
+- name: DevOps | Install packages
+  become: yes
   package:
-    name: docker
     state: present
+    name:
+      - docker
+      - etcd
+      - kubectl-bin
+      - rancher-k3d-bin
+      - kubectx
+      - helm
+      - terraform
 
-- name: Docker | Add user to docker group
+- name: DevOps | Add user to docker group
   become: true
   user:
     name: "{{ user.name }}"
     groups: docker
     append: true
 
-- name: Docker | Enable overlay2 driver
+- name: DevOps | Enable overlay2 driver
   become: true
   copy:
     src: files/docker-daemon.json
