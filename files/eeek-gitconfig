@@ -1,0 +1,5 @@
+[user]
+  email = mike@equilibriumenergy.com
+
+[url "git@gitlab.com-eeek"]
+  insteadOf = git@gitlab.com

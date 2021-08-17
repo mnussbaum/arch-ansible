@@ -1,8 +1,16 @@
 [user]
   name = {{ user.name }}
-  email = {{ user.email }}
+  useConfigOnly = true
+
+[include]
+  path = {{ user_config_dir }}/gitconfig/personal
+
+[includeIf "gitdir:~/src/eeek/"]
+  path = {{ user_config_dir }}/gitconfig/eeek
+
 [color]
   ui = auto
+
 [alias]
   ci = commit
   co = checkout
@@ -15,5 +23,6 @@
   current = log --pretty=format:'%ad %h %d' --abbrev-commit --date=short
   cur = log --pretty=format:'%ad %h %d' --abbrev-commit --date=short -1
   branches = log --graph --abbrev-commit --decorate --date=relative --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
+
 [init]
   defaultBranch = main

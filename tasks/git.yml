@@ -1,0 +1,29 @@
+# vim:ft=yaml.ansible:
+---
+- name: Git | Install gitconfig
+  template:
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    src: templates/gitconfig.j2
+    dest: "{{ user_home_dir }}/.gitconfig"
+
+- name: Git | Create config dir
+  file:
+    path: "{{ user_config_dir }}/gitconfig"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory
+
+- name: Git | Install personal gitconfig
+  template:
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    src: templates/personal-gitconfig.j2
+    dest: "{{ user_config_dir }}/gitconfig/personal"
+
+- name: Git | Install eeek gitconfig
+  copy:
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    src: files/eeek-gitconfig
+    dest: "{{ user_config_dir }}/gitconfig/eeek"

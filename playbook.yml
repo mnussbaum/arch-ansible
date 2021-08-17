@@ -73,7 +73,8 @@
     - import_tasks: tasks/postgres.yml
     - import_tasks: tasks/global-environment-configuration.yml
     - import_tasks: tasks/neovim.yml
-    - import_tasks: tasks/gitconfig.yml
+    - import_tasks: tasks/git.yml
+    - import_tasks: tasks/ssh.yml
     - import_tasks: tasks/alacritty.yml
     - import_tasks: tasks/tmux.yml
     - import_tasks: tasks/power.yml

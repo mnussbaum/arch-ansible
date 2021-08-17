@@ -1,0 +1,15 @@
+Host gitlab.com
+  Hostname gitlab.com
+  User {{ user.name }}
+  IdentityFile ~/.ssh/id_rsa
+
+Host gitlab.com-eeek
+  Hostname gitlab.com
+  User {{ user.name }}
+  IdentityFile ~/.ssh/id_rsa_equilibrium
+
+Host *
+  AddKeysToAgent yes
+  IdentitiesOnly yes
+  PreferredAuthentications publickey
+  Compression yes

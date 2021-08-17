@@ -1,0 +1,15 @@
+# vim:ft=yaml.ansible:
+---
+- name: SSH | Create config dir
+  file:
+    path: "{{ user_home_dir }}/.ssh"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory
+
+- name: SSH | Install config
+  template:
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    src: templates/ssh-config.j2
+    dest: "{{ user_home_dir }}/.ssh/config"

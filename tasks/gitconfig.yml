@@ -1,6 +1,0 @@
-# vim:ft=yaml.ansible:
----
-- name: gitconfig | Install gitconfig
-  template:
-    src: templates/gitconfig.j2
-    dest: "/home/{{ user.name }}/.gitconfig"
