@@ -84,3 +84,18 @@
     dest: "{{ user_config_dir }}/bat/config"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
+
+- name: CLI Tools | Create ripgrep config dir
+  become: true
+  file:
+    path: "{{ user_config_dir }}/ripgrep"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: CLI Tools | Write ripgrep config file
+  copy:
+    src: files/ripgrep-config
+    dest: "{{ user_config_dir }}/ripgrep/config"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
