@@ -19,6 +19,7 @@
       - rancher-k3d-bin
       - kubectx
       - helm
+      - stern
       - terraform
 
 - name: DevOps | Add user to docker group
