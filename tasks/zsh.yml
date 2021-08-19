@@ -8,7 +8,7 @@
       - zsh-syntax-highlighting
       - python-pystache # For base16_builder
       - starship
-      - zoxide-bin
+      - zoxide
   become: true
 
 - name: ZSH | Install zshrc
