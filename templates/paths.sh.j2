@@ -5,6 +5,7 @@ export PATH="${PATH}:/usr/lib/ccache/bin"
 
 export GOPATH="${HOME}/go"
 export PATH="${PATH}:${HOME}/go/bin"
+export PATH="${PATH}:${HOME}/.local/bin"
 
 {% for gem_path in gem_paths['stdout'].split(':') %}
 export PATH="${PATH}:{{ gem_path }}/bin"
