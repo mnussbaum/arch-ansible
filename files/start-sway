@@ -1,3 +1,6 @@
+export XDG_CURRENT_DESKTOP=sway
+export XDG_SESSION_DESKTOP=sway
 export XDG_SESSION_TYPE=wayland
-systemctl --user import-environment
+
+systemctl --user import-environment XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE
 systemctl --user start --wait sway.service
