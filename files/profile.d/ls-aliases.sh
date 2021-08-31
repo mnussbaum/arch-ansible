@@ -1,1 +1,1 @@
-alias ls="exa --icons"
+alias ls="exa --all --icons"
