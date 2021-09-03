@@ -3,3 +3,6 @@
 
 [url "git@gitlab.com-eeek"]
   insteadOf = git@gitlab.com
+
+[url "ssh://git@gitlab.com-eeek"]
+  insteadOf = ssh://git@gitlab.com
