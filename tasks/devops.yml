@@ -13,6 +13,7 @@
   package:
     state: present
     name:
+      - dapr-cli-git
       - docker
       - docker-compose
       - etcd
