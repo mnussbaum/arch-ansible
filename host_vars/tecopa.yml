@@ -54,6 +54,8 @@ networking:
       password: "{{ wifi_passwords['rehoboth'] }}"
     - ssid: "nuttree"
       password: "{{ wifi_passwords['bethesda'] }}"
+    - ssid: "Sonic-3913"
+      password: "{{ wifi_passwords['gens'] }}"
 
 key_repeat:
   rate: 35
