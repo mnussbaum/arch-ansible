@@ -99,3 +99,10 @@
     dest: "{{ user_config_dir }}/ripgrep/config"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
+
+- name: CLI Tools | Write inputrc config file
+  copy:
+    src: files/inputrc
+    dest: "{{ user_home_dir }}/.inputrc"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
