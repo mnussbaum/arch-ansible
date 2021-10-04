@@ -1,4 +1,5 @@
 BROWSER=firefox
 EDITOR=nvim
 VISUAL=nvim
+PAGER=less
 MOZ_LEGACY_PROFILES=1
