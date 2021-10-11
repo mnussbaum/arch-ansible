@@ -23,6 +23,7 @@
       - helm
       - stern
       - terraform
+      - redis
 
 - name: DevOps | Add user to docker group
   become: true
