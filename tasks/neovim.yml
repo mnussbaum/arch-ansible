@@ -133,8 +133,8 @@
       - ctags
       - neovim
       - python-pynvim
-      - yaml-language-server-bin
-      - vscode-json-languageserver-bin
+      - yaml-language-server
+      - vscode-json-languageserver
       - yarn
   become: true
 

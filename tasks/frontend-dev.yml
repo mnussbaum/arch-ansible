@@ -7,6 +7,6 @@
       - npm
       - javascript-typescript-langserver
       - prettier
-      - vscode-css-languageserver-bin
+      - vscode-css-languageserver
       - vscode-html-languageserver
   become: true
