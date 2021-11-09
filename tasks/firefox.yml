@@ -4,7 +4,7 @@
   become: true
   package:
     state: present
-    name: intel-media-driver
+    name: libva-intel-driver
   when: ansible_architecture is not match("arm.*")
 
 - name: Firefox | Install packages
