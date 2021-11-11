@@ -82,6 +82,19 @@
     name: force-network-online.service
     daemon-reload: true
 
+- name: Networking | Make dhclient config dir
+  become: true
+  file:
+    path: /etc/dhclient-enter-hooks.d
+    state: directory
+
+- name: Networking | Stop dhclient overriding /etc/resolv.conf
+  become: true
+  copy:
+    content: "make_resolv_conf() { :; }"
+    dest: /etc/dhclient-enter-hooks.d/leave_resolv_conf_alone
+    mode: 0755
+
 - name: Networking | Install dhclient.service
   become: true
   copy:
