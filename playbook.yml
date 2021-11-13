@@ -100,6 +100,7 @@
     - import_tasks: tasks/brightness.yml
     - import_tasks: tasks/audio-video.yml
     - import_tasks: tasks/bluetooth.yml
+    - import_tasks: tasks/backup.yml
     - import_tasks: tasks/torrents.yml
     - import_tasks: tasks/devops.yml
     - import_tasks: tasks/archiso.yml

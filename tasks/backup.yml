@@ -1,0 +1,18 @@
+# vim:ft=yaml.ansible:
+---
+- name: Backup | Install packages
+  package:
+    state: present
+    name:
+      - restic
+
+# To take a backup:
+#
+# * sudo mount /dev/sda1 /tmp/usb
+# * sudo restic --repo /tmp/usb backup ~/{Desktop,Documents,Sync,.password-store,.ssh,.gnupg}
+#
+# TODO:
+#
+# * Backup to cloud provider on a regular basis
+# * Script backup and restore process
+# * Test backup and restore process regularly in VM
