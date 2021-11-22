@@ -32,6 +32,7 @@
       - meson
       - ncdu
       - net-tools
+      - gnu-netcat
     - - openssh
       - ripgrep
       - ruby
