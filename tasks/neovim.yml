@@ -1,116 +1,109 @@
 # vim:ft=yaml.ansible:
 ---
-# TODO:
-# * Ansible LSP show docs in vim
-# * Make fzf results unique
 - set_fact:
     nvim_config_dir: "{{ user_config_dir }}/nvim"
     nvim_data_dir: "{{ user_data_dir }}/nvim"
     vim_plugins:
-      - name: "neoclide/coc.nvim"
-        args:
-          branch: release
+      - name: "wbthomason/packer.nvim"
       - name: "preservim/vimux"
       - name: "itchyny/lightline.vim"
       - name: "janko-m/vim-test"
       - name: "jlanzarotta/bufexplorer"
-      - name: "junegunn/fzf"
-        args:
-          dir: "/home/{{ user.name }}/.fzf"
-          do: "./install --all"
-      - name: "junegunn/fzf.vim"
-      - name: "KeitaNakamura/highlighter.nvim"
-        args:
-          do: ":UpdateRemotePlugins"
-      - name: "leshill/vim-json"
       - name: "liuchengxu/vista.vim"
       - name: "Matt-Deacalion/vim-systemd-syntax"
       - name: "m-pilia/vim-ccls"
-      - name: "machakann/vim-sandwich"
       - name: "mhinz/vim-startify"
-      - name: "pangloss/vim-javascript"
       - name: "pearofducks/ansible-vim"
-      - name: "python-mode/python-mode"
-        args:
-          branch: develop
-      - name: "rust-lang/rust.vim"
       - name: "ryanoasis/vim-devicons"
       - name: "scrooloose/nerdtree"
       - name: "Shougo/context_filetype.vim"
-      - name: "shmay/vim-yaml"
       - name: "tpope/vim-fugitive"
       - name: "tyru/caw.vim"
-      - name: "vim-ruby/vim-ruby"
-      - name: "arrufat/vala.vim"
-    coc_plugins:
-      - name: "clangd/coc-clangd"
+      - name: "farmergreg/vim-lastplace"
+      - name: "nvim-treesitter/nvim-treesitter"
         args:
-          do: "yarn install --frozen-lockfile"
-        languages: [c, cpp]
-      - name: "neoclide/coc-tsserver"
+          run: "function() require('nvim-treesitter.install').update({ with_sync = true }) end"
+      - name: "neovim/nvim-lspconfig"
+      - name: "rcarriga/nvim-notify"
+      - name: "L3MON4D3/LuaSnip"
+      - name: "drybalka/tree-climber.nvim"
+      - name: "nvim-treesitter/nvim-treesitter-textobjects"
+      - name: "RRethy/nvim-treesitter-textsubjects"
+      - name: "stevearc/dressing.nvim"
+      - name: "hrsh7th/cmp-nvim-lsp"
+      - name: "hrsh7th/cmp-buffer"
+      - name: "hrsh7th/cmp-path"
+      - name: "hrsh7th/cmp-cmdline"
+      - name: "hrsh7th/nvim-cmp"
+      - name: "RRethy/nvim-base16"
+      - name: "mhartington/formatter.nvim"
+      - name: "nvim-telescope/telescope.nvim"
         args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - javascript
-          - typescript
-      - name: "neoclide/coc-html"
+          branch: "0.1.x"
+          requires:  "{{'nvim-lua/plenary.nvim'}}"
+      - name: "nvim-telescope/telescope-fzf-native.nvim"
         args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - html
-      - name: "neoclide/coc-css"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - css
-          - scss
-      - name: "neoclide/coc-prettier"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - graphql
-          - markdown
-        settings:
-          prettier.formatterPriority: -1
-          prettier.trailingComma: true
-      - name: "neoclide/coc-json"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - json
-      - name: "neoclide/coc-yaml"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages: [yaml]
-        settings:
-          yaml.format.proseWrap: true
-          yaml.format.enable: true
-      - name: "josa42/coc-go"
-        languages: [go]
-        settings:
-          go.goplsUseDaemon: false
-        args:
-          do: "yarn install --frozen-lockfile"
-      - name: "fannheyward/coc-pyright"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages: [python]
-        settings:
-          python.formatting.provider: black
-          python.linting.pylintEnabled: true
-      - name: "neoclide/coc-solargraph"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages: [ruby]
-        settings:
-          solargraph.diagnostics: true
-          solargraph.formatting: true
-      - name: "fannheyward/coc-rust-analyzer"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages: [rust]
-        settings:
-          rust-analyzer.serverPath: "/usr/bin/rust-analyzer"
+          run: make
+    tree_sitter_plugins:
+      - c
+      - cpp
+      - css
+      - dockerfile
+      - go
+      - gomod
+      - gowork
+      - graphql
+      - hcl
+      - html
+      - javascript
+      - json
+      - julia
+      - lua
+      - make
+      - markdown
+      - proto
+      - python
+      - ruby
+      - rust
+      - scss
+      - sql
+      - toml
+      - typescript
+      - vim
+      - yaml
+    tree_sitter_options:
+      - name: highlight
+    language_servers:
+      - name: clangd
+      - name: tsserver
+      - name: gopls
+      - name: pyright
+      - name: solargraph
+      - name: rust_analyzer
+    language_formatters:
+      go:
+        - goimports
+        - gofmt
+      lua:
+        - stylua
+      html:
+        - prettier
+      javascript:
+        - prettier
+      json:
+        - prettier
+      markdown:
+        - prettier
+      python:
+        - black
+      ruby:
+        - rubocop
+      rust:
+        - rustfmt
+      typescript:
+        - prettier
+      yaml:
+        - prettier
   tags: [base16]
 
 - name: nvim | Ensure nvim config and data dirs exist
@@ -121,10 +114,11 @@
     group: "{{ user.group }}"
   with_items:
     - "{{ nvim_config_dir }}"
+    - "{{ nvim_config_dir }}/lua"
     - "{{ nvim_config_dir }}/plugin"
     - "{{ nvim_data_dir }}"
-    - "{{ nvim_data_dir }}/plugged"
     - "{{ nvim_data_dir }}/site/autoload"
+    - "{{ nvim_data_dir }}/backups"
 
 - name: nvim | Install neovim packages
   package:
@@ -138,52 +132,59 @@
       - yaml-language-server
       - vscode-json-languageserver
       - yarn
+      - tree-sitter
+      - stylua-bin
   become: true
 
-- name: nvim | Download vim-plug installer
-  get_url:
-    url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-    dest: "{{ nvim_data_dir }}/site/autoload/plug.vim"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-
-- name: nvim | Install init.vim config
+- name: nvim | Install init.lua config
   copy:
-    src: nvim/init.vim
-    dest: "{{ nvim_config_dir }}/init.vim"
+    src: nvim/init.lua
+    dest: "{{ nvim_config_dir }}/init.lua"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
-- name: nvim | Install coc-settings.json
+- name: nvim | Configure plugin list
   template:
-    src: templates/nvim/coc-settings.json.j2
-    dest: "{{ nvim_config_dir }}/coc-settings.json"
-    owner: "{{ user.name }}"
+    src: templates/nvim/plugins.lua.j2
+    dest: "{{ nvim_config_dir }}/lua/plugins.lua"
     group: "{{ user.group }}"
+    owner: "{{ user.name }}"
+  register: plugin_config
 
-- name: nvim | Install vim-plug.vim config
-  template:
-    src: templates/nvim/vim-plug.vim.j2
-    dest: "{{ nvim_config_dir }}/vim-plug.vim"
+- name: nvim | Configure packer
+  copy:
+    src: files/nvim/lua/packer_init.lua
+    dest: "{{ nvim_config_dir }}/lua/packer_init.lua"
     group: "{{ user.group }}"
     owner: "{{ user.name }}"
-  register: vim_plug_config
 
 - name: nvim | Install nvim plugins
-  command: nvim --headless -n -c ":PlugInstall" -c ":qa!"
-  when: vim_plug_config.changed
+  command: nvim --headless -n -c "autocmd User PackerComplete quitall" -c "PackerSync"
+  when: plugin_config.changed
 
 - name: nvim | Install nvim file configs
   synchronize:
-    src: files/nvim/plugin/
-    dest: "{{ nvim_config_dir }}/plugin"
+    src: files/nvim/lua/
+    dest: "{{ nvim_config_dir }}/lua"
 
 - name: nvim | Fix permission on nvim configs
   file:
-    path: "{{ nvim_config_dir }}/plugin"
+    path: "{{ nvim_config_dir }}/lua"
     recurse: true
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
+
+# Would be nice to install treesitter plugins on change, but requires one of:
+# https://github.com/nvim-treesitter/nvim-treesitter/pull/2085
+# https://github.com/nvim-treesitter/nvim-treesitter/issues/2900
+
+- name: nvim | Configure base16 colorscheme
+  template:
+    src: templates/nvim/nvim-base16.lua.j2
+    dest: "{{ nvim_config_dir }}/lua/nvim-base16.lua"
+    group: "{{ user.group }}"
+    owner: "{{ user.name }}"
+  tags: [base16]
 
 - name: nvim | Install nvim template configs
   template:
@@ -195,23 +196,15 @@
   with_fileglob:
     - templates/nvim/plugin/*
 
-- name: nvim | Generate base16-vim configs
-  base16_builder:
-    scheme: "{{ base16_scheme }}"
-    scheme_family: "{{ base16_scheme_family }}"
-    template: vim
-    schemes_source: "{{ base16['schemes_source'] }}"
-    templates_source: "{{ base16['templates_source'] }}"
-  register: base16_vim
-  tags: [base16]
-
-- name: nvim | Write base16-vim config to a file
-  copy:
-    content: "{{ base16_vim['schemes'][base16_scheme]['vim']['colors']['base16-' + base16_scheme + '.vim'] }}"
-    dest: "{{ user_config_dir }}/nvim/plugin/base16.vim"
+- name: nvim | Install nvim Lua template configs
+  template:
+    src: "{{ item }}"
+    dest: "{{ nvim_config_dir }}/lua/{{ item | basename | replace('.j2', '') }}"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
   tags: [base16]
+  with_fileglob:
+    - templates/nvim/lua/*
 
 - name: nvim | Generate base16-vim-lightline configs
   base16_builder:
@@ -220,12 +213,12 @@
     template: vim-lightline
     schemes_source: "{{ base16['schemes_source'] }}"
     templates_source: "{{ base16['templates_source'] }}"
-  register: base16_vim
+  register: base16_lightline
   tags: [base16]
 
 - name: nvim | Write base16-vim-lightline config to a file
   copy:
-    content: "{{ base16_vim['schemes'][base16_scheme]['vim-lightline']['autoload/lightline/colorscheme']['base16-' + base16_scheme + '.vim'] }}"
+    content: "{{ base16_lightline['schemes'][base16_scheme]['vim-lightline']['autoload/lightline/colorscheme']['base16-' + base16_scheme + '.vim'] }}"
     dest: "{{ user_config_dir }}/nvim/plugin/base16-lightline.vim"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"

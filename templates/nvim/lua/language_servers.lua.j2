@@ -1,0 +1,6 @@
+#jinja2: trim_blocks:False
+return {
+{%- for language_server in language_servers %}
+  "{{ language_server.name }}",
+{%- endfor %}
+}

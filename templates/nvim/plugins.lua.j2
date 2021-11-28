@@ -1,0 +1,11 @@
+#jinja2: trim_blocks:False
+return {
+{%- for plugin in vim_plugins %}
+  {
+    "{{ plugin['name'] }}",
+    {%- for plugin_arg, plugin_arg_value in (plugin['args'] | default ({})).items() %}
+    {{ plugin_arg }} = "{{ plugin_arg_value }}",
+    {%- endfor %}
+  },
+{%- endfor %}
+}

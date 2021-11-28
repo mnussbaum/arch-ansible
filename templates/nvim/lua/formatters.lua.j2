@@ -1,0 +1,15 @@
+#jinja2: trim_blocks:False
+return {
+  filetype = {
+  {%- for language, formatters in language_formatters.items() %}
+    {{ language }} = {
+      {%- for formatter in formatters %}
+      require("formatter.filetypes.{{ language }}").{{ formatter }},
+      {%- endfor %}
+    },
+  {%- endfor %}
+    ["*"] = {
+      require("formatter.filetypes.any").remove_trailing_whitespace
+    },
+  },
+}

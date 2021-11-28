@@ -1,0 +1,6 @@
+#jinja2: trim_blocks:False
+return {
+  {%- for plugin in tree_sitter_plugins %}
+  "{{ plugin }}",
+  {%- endfor %}
+}
