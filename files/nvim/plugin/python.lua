@@ -1,0 +1,12 @@
+vim.g.pymode_doc = 0
+vim.g.pymode_indent = 0
+vim.g.pymode_lint = 0
+vim.g.pymode_lint_message = 0
+vim.g.pymode_lint_on_write = 0
+vim.g.pymode_options = 0
+vim.g.pymode_options_colorcolumn = 0
+vim.g.pymode_python = "python3"
+vim.g.pymode_rope = 0
+vim.g.pymode_rope_completion = 0
+vim.g.pymode_trim_whitespaces = 0
+vim.g.pymode_warnings = 0
