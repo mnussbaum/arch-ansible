@@ -49,7 +49,7 @@
   register: wpa_passphrase_results
   no_log: true
   changed_when: false
-  when: networking is defined
+  when: networking is defined and item.password is defined
   loop: "{{ networking.networks }}"
 
 - name: Networking | Configure wpa_supplicant
