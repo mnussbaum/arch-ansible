@@ -1,4 +1,4 @@
-let test#strategy = "vtr"
+let test#strategy = "vimux"
 
 nmap <silent> <leader>ra :TestSuite<CR>   " Run all
 nmap <silent> <leader>rb :TestFile<CR>    " Run buffer

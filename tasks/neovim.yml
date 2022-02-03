@@ -10,7 +10,7 @@
       - name: "neoclide/coc.nvim"
         args:
           branch: release
-      - name: "christoomey/vim-tmux-runner"
+      - name: "preservim/vimux"
       - name: "itchyny/lightline.vim"
       - name: "janko-m/vim-test"
       - name: "jlanzarotta/bufexplorer"
