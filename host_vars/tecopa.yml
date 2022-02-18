@@ -48,8 +48,8 @@ networking:
   networks:
     - ssid: "JazzHandz"
       password: "{{ wifi_passwords['jazz_hands'] }}"
-    - ssid: "WiFi By The Sea"
-      password: "{{ wifi_passwords['wifi_by_the_sea'] }}"
+    - ssid: "No Pants No Problems"
+      password: "{{ wifi_passwords['no_pants_no_problems'] }}"
     - ssid: "HOME-0959-2.4"
       password: "{{ wifi_passwords['rehoboth'] }}"
     - ssid: "nuttree"
