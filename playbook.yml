@@ -111,3 +111,4 @@
     - import_tasks: tasks/firefox.yml
     - import_tasks: tasks/secrets.yml
     - import_tasks: tasks/open-vpn.yml
+    - import_tasks: tasks/slack.yml

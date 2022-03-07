@@ -1,0 +1,8 @@
+# vim:ft=yaml.ansible:
+---
+- name: slack | Install packages
+  become: true
+  package:
+    state: present
+    name:
+      - slack-wayland
