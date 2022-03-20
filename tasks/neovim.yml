@@ -87,6 +87,8 @@
           yaml.format.enable: true
       - name: "josa42/coc-go"
         languages: [go]
+        settings:
+          go.goplsUseDaemon: false
         args:
           do: "yarn install --frozen-lockfile"
       - name: "fannheyward/coc-pyright"
