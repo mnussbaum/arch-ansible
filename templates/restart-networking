@@ -10,7 +10,4 @@ sleep 3
 systemctl restart systemd-networkd.service
 sleep 3
 
-systemctl restart dhclient.service
-sleep 3
-
 systemctl restart systemd-resolved.service

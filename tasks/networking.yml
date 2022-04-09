@@ -5,7 +5,6 @@
   package:
     state: latest
     name:
-      - dhclient
       - wireless_tools
       - wpa_supplicant
 
@@ -69,7 +68,7 @@
     name: "wpa_supplicant@{{ networking.wireless_interface }}.service"
   when: networking is defined
 
-- name: Networking | Install dhclient.service
+- name: Networking | Install force-network-online.service
   become: true
   copy:
     src: files/force-network-online.service
@@ -82,42 +81,17 @@
     name: force-network-online.service
     daemon-reload: true
 
-- name: Networking | Make dhclient config dir
-  become: true
-  file:
-    path: /etc/dhclient-enter-hooks.d
-    state: directory
-
-- name: Networking | Stop dhclient overriding /etc/resolv.conf
-  become: true
-  copy:
-    content: "make_resolv_conf() { :; }"
-    dest: /etc/dhclient-enter-hooks.d/leave_resolv_conf_alone
-    mode: 0755
-
-- name: Networking | Install dhclient.service
-  become: true
-  copy:
-    src: files/dhclient.service
-    dest: /etc/systemd/system/dhclient.service
-
-# This is a bit of a hack. I _should_ be able to use systemd-networkd's DHCP
-# config directive to get DHCP working, and it does appear to work for ipv6,
-# but doesn't create ipv4 IPs. As a work-around, run dhclient instead
-# I asked about this at https://bbs.archlinux.org/viewtopic.php?pid=1966984#p1966984
-- name: Networking | Start and enable dhclient.service
-  become: true
-  systemd:
-    state: started
-    enabled: true
-    name: dhclient.service
-    daemon-reload: true
-
 - name: Networking | Create network-online.target override dir
   become: true
   file:
     path: /etc/systemd/system/systemd-networkd-wait-online.service.d
     state: directory
+
+- name: Networking | Install systemd-networkd config
+  become: true
+  copy:
+    src: files/systemd-networkd-config.network
+    dest: /etc/systemd/network/25-config.network
 
 # This override allows network-online.target to be reached even though eth0
 # interfaces are never connected
