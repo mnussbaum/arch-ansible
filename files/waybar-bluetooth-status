@@ -1,6 +1,16 @@
 #!/bin/bash
 
-if systemctl status bluetooth > /dev/null ; then
+set -o errexit
+set -o nounset
+set -o pipefail
+
+unblocked_bluetooth_devices_count=$(
+  rfkill --json | \
+    jq '.rfkilldevices | map(select(.type == "bluetooth")) |
+          map(select(.soft == "unblocked")) | length'
+)
+
+if [[ $unblocked_bluetooth_devices_count -gt 0 ]] ; then
   printf "⏽"
 else
   printf "⭘"

@@ -1,7 +1,12 @@
 #!/bin/bash
 
-if systemctl status bluetooth > /dev/null ; then
-  systemctl stop bluetooth > /dev/null
-else
-  systemctl start bluetooth > /dev/null
-fi
+set -o errexit
+set -o nounset
+set -o pipefail
+
+bluetooth_device_id=$(
+  rfkill --json | \
+    jq '.rfkilldevices | map(select(.type == "bluetooth")) | map(.id) | first'
+)
+
+pkexec rfkill toggle $bluetooth_device_id

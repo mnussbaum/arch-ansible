@@ -86,6 +86,7 @@
   with_items:
     - waybar-bluetooth-status
     - toggle-bluetooth
+    - toggle-wifi
     - toggle-eeek-openvpn
     - eeek-openvpn-status
     - headphone-profile-status

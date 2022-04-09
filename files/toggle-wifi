@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+wifi_device_id=$(
+  rfkill --json | \
+    jq '.rfkilldevices | map(select(.type == "wlan")) | map(.id) | first'
+)
+
+pkexec rfkill toggle $wifi_device_id
