@@ -87,11 +87,17 @@
     path: /etc/systemd/system/systemd-networkd-wait-online.service.d
     state: directory
 
-- name: Networking | Install systemd-networkd config
+- name: Networking | Install systemd-networkd config for wifi interface
+  become: true
+  template:
+    src: templates/systemd-networkd-wifi-config.network.j2
+    dest: /etc/systemd/network/25-{{ networking.wireless_interface }}.network
+
+- name: Networking | Install systemd-networkd config for eth0 interface
   become: true
   copy:
-    src: files/systemd-networkd-config.network
-    dest: /etc/systemd/network/25-config.network
+    src: files/systemd-networkd-eth0-config.network
+    dest: /etc/systemd/network/eth0.network
 
 # This override allows network-online.target to be reached even though eth0
 # interfaces are never connected
