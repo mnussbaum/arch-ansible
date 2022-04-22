@@ -16,7 +16,7 @@ fi
 
 exec ansible-playbook "${ANSIBLE_PLAYBOOK:-playbook.yml}" \
   --verbose \
-  --limit $(hostname) \
+  --limit ${HOSTNAME:-$(hostname)} \
   --extra-vars "appearance=$appearance" \
   "$@" \
   $maybe_ask_become_pass

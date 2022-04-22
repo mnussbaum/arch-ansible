@@ -4,15 +4,16 @@ set -o errexit
 set -o nounset
 
 if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]] ; then
-  echo "Run ansible in an arch ISO on tecopa to decrypt the root volume and mount it, and mount the boot partitions"
+  echo "Run ansible in an arch ISO on tecopa to rebuild the boot partition" >&2
   exit
 else
   set -o xtrace
 fi
 
+HOSTNAME=tecopa \
 NO_ASK_BECOME_PASS=1 \
 ANSIBLE_PLAYBOOK=bootstrap.yml \
   exec ./bin/ansible \
-  --limit tecopa \
-  --tags mount-partitions \
+  -e bootstrap="true" \
+  --tags rebuild-boot-parition \
   $@

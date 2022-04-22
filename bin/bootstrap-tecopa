@@ -6,8 +6,8 @@ set -o nounset
 source bin/_bootstrap_common.sh
 
 if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]] ; then
-  echo "Run ansible in an arch ISO running in QEMU to provision a QEMU guest" >&2
+  echo "Run ansible in an arch ISO running on tecopa to bootstrap it" >&2
   exit
 fi
 
-HOSTNAME=qemu bootstrap
+HOSTNAME=tecopa bootstrap
