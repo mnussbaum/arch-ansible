@@ -34,6 +34,7 @@ partitions:
     flags: []
 
 mkinitcpio_modules:
+  - nvme_core
   - nvme
   - intel_agp
   - i915
