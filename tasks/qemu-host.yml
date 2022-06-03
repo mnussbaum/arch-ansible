@@ -3,7 +3,7 @@
   package:
     state: present
     name:
-      - qemu
+      - qemu-desktop
       - edk2-ovmf
   become: true
 
