@@ -9,9 +9,9 @@ set $up k
 set $right l
 
 {% if "arm" in ansible_architecture %}
-set $term alacritty-software-gl --command tmux
+set $term alacritty-software-gl --command zsh -ic "exec tmux"
 {% else %}
-set $term alacritty --command tmux
+set $term alacritty --command zsh -ic "exec tmux"
 {% endif %}
 
 set $menu wofi-toggle 'wofi --show run'
