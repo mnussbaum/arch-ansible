@@ -1,5 +1,10 @@
 # Fuzzy-find with ripgrep
-export FZF_DEFAULT_COMMAND='rg --files --no-ignore --hidden --follow --glob "!.git/*" 2> /dev/null'
+
+export FZF_DEFAULT_COMMAND=$(cat <<-END
+rg --files --no-ignore --hidden --follow --glob '!.git/' 2> /dev/null
+END
+)
+
 export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
 export FZF_ALT_C_COMMAND="cd ~/; bfs -type d -nohidden | sed s/^\./~/"
 export FZF_COMPLETION_OPTS='+c -x'
