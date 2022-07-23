@@ -17,26 +17,27 @@
       - spotify
       - playerctl
       - libpipewire02 # Necessary for chromium screensharing
+      - wireplumber
       - lollypop
       - mpv
       - xdg-desktop-portal
       - xdg-desktop-portal-wlr
     state: present
 
-- name: AV | Create pipewire config dirs
+- name: AV | Create wireplumber config dirs
   become: true
   file:
     path: "{{ item }}"
     state: directory
   loop:
-    - /etc/pipewire
-    - /etc/pipewire/media-session.d
+    - /etc/wireplumber
+    - /etc/wireplumber/bluetooth-lua.d
 
-- name: AV | Create pipewire config to enable high quality bluetooth codecs
+- name: AV | Create wireplumber config to enable high quality bluetooth codecs
   become: true
   copy:
-    src: files/bluez-monitor.conf
-    dest: /etc/pipewire/media-session.d/bluez-monitor.conf
+    src: files/wireplumber-bluez-config.lua
+    dest: /etc/wireplumber/bluetooth-lua.d/51-bluez-config.luad
 
 - name: AV | Install headphone profile toggle script
   become: true
