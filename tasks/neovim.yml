@@ -1,8 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-# TODO:
-# * Ansible LSP show docs in vim
-# * Make fzf results unique
 - set_fact:
     nvim_config_dir: "{{ user_config_dir }}/nvim"
     nvim_data_dir: "{{ user_data_dir }}/nvim"
@@ -24,6 +21,36 @@
       - name: "tpope/vim-fugitive"
       - name: "tyru/caw.vim"
       - name: "farmergreg/vim-lastplace"
+      - name: "nvim-treesitter/nvim-treesitter"
+        args:
+          run: "function() require('nvim-treesitter.install').update({ with_sync = true }) end"
+    tree_sitter_plugins:
+      - c
+      - cpp
+      - css
+      - dockerfile
+      - go
+      - gomod
+      - gowork
+      - graphql
+      - hcl
+      - html
+      - javascript
+      - json
+      - julia
+      - lua
+      - make
+      - markdown
+      - proto
+      - python
+      - ruby
+      - rust
+      - scss
+      - sql
+      - toml
+      - typescript
+      - vim
+      - yaml
     coc_plugins:
       - name: "clangd/coc-clangd"
         args:
@@ -121,6 +148,7 @@
       - yaml-language-server
       - vscode-json-languageserver
       - yarn
+      - tree-sitter
   become: true
 
 - name: nvim | Install coc-settings.json
@@ -148,6 +176,21 @@
 - name: nvim | Install nvim plugins
   command: nvim --headless -n -c "autocmd User PackerComplete quitall" -c "PackerSync"
   when: plugin_config.changed
+
+- name: nvim | Configure tree-sitter
+  template:
+    src: templates/nvim/tree-sitter.lua.j2
+    dest: "{{ nvim_config_dir }}/lua/tree-sitter.lua"
+    group: "{{ user.group }}"
+    owner: "{{ user.name }}"
+  register: tree_sitter_config
+
+# This won't work until one of the following is resolved
+# https://github.com/nvim-treesitter/nvim-treesitter/pull/2085
+# https://github.com/nvim-treesitter/nvim-treesitter/issues/2900
+# - name: nvim | Install tree-sitter plugins
+#   command: nvim --headless -n -c "TSSyncInstall" -c "qa"
+#   when: tree_sitter_config.changed
 
 - name: nvim | Install nvim file configs
   synchronize:
