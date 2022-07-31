@@ -1,7 +1,3 @@
--- Enable syntax highlighting
-vim.o.filetype = "plugin indent on"
-vim.o.syntax = "enable"
-
 -- Show line numbers
 vim.o.number = true
 
@@ -18,7 +14,10 @@ vim.o.ruler = true
 vim.cmd('let &colorcolumn="80,".join(range(120,999), ",")')
 
 -- Work in conjunction with base16-shell
-vim.o.base16colorspace = 256
+vim.g.base16colorspace = 256
 
 -- Enable true color support
 vim.o.termguicolors = true
+
+-- Use a block cursor in insert mode
+vim.o.guicursor = "i:block"

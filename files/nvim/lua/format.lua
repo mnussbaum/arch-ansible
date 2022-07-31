@@ -9,9 +9,6 @@ vim.o.smarttab = true
 
 vim.o.autoindent = true
 
--- Only add a single space after joining "." characters
-vim.o.joinspace = false
-
 -- Text behaviour
 -- vim.o.formatoptions = vim.o.formatoptions
 --   + 't'    -- auto-wrap text using textwidth

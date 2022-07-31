@@ -10,4 +10,4 @@ vim.api.nvim_set_keymap(
   ":NERDTreeFind<CR>",
   { silent = true }
 )
-vim.o.NERDTreeShowHidden = 1
+vim.g.NERDTreeShowHidden = 1

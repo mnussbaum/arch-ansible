@@ -7,41 +7,23 @@
     nvim_config_dir: "{{ user_config_dir }}/nvim"
     nvim_data_dir: "{{ user_data_dir }}/nvim"
     vim_plugins:
-      - name: "neoclide/coc.nvim"
-        args:
-          branch: release
+      - name: "wbthomason/packer.nvim"
       - name: "preservim/vimux"
       - name: "itchyny/lightline.vim"
       - name: "janko-m/vim-test"
       - name: "jlanzarotta/bufexplorer"
-      - name: "junegunn/fzf"
-        args:
-          dir: "/home/{{ user.name }}/.fzf"
-          do: "./install --all"
-      - name: "junegunn/fzf.vim"
-      - name: "KeitaNakamura/highlighter.nvim"
-        args:
-          do: ":UpdateRemotePlugins"
-      - name: "leshill/vim-json"
       - name: "liuchengxu/vista.vim"
       - name: "Matt-Deacalion/vim-systemd-syntax"
       - name: "m-pilia/vim-ccls"
-      - name: "machakann/vim-sandwich"
       - name: "mhinz/vim-startify"
-      - name: "pangloss/vim-javascript"
+      # Add vim-matchup
       - name: "pearofducks/ansible-vim"
-      - name: "python-mode/python-mode"
-        args:
-          branch: develop
-      - name: "rust-lang/rust.vim"
       - name: "ryanoasis/vim-devicons"
       - name: "scrooloose/nerdtree"
       - name: "Shougo/context_filetype.vim"
-      - name: "shmay/vim-yaml"
       - name: "tpope/vim-fugitive"
       - name: "tyru/caw.vim"
-      - name: "vim-ruby/vim-ruby"
-      - name: "arrufat/vala.vim"
+      - name: "farmergreg/vim-lastplace"
     coc_plugins:
       - name: "clangd/coc-clangd"
         args:
@@ -121,10 +103,11 @@
     group: "{{ user.group }}"
   with_items:
     - "{{ nvim_config_dir }}"
+    - "{{ nvim_config_dir }}/lua"
     - "{{ nvim_config_dir }}/plugin"
     - "{{ nvim_data_dir }}"
-    - "{{ nvim_data_dir }}/plugged"
     - "{{ nvim_data_dir }}/site/autoload"
+    - "{{ nvim_data_dir }}/backups"
 
 - name: nvim | Install neovim packages
   package:
@@ -140,20 +123,6 @@
       - yarn
   become: true
 
-- name: nvim | Download vim-plug installer
-  get_url:
-    url: https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
-    dest: "{{ nvim_data_dir }}/site/autoload/plug.vim"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-
-- name: nvim | Install init.vim config
-  copy:
-    src: nvim/init.vim
-    dest: "{{ nvim_config_dir }}/init.vim"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-
 - name: nvim | Install coc-settings.json
   template:
     src: templates/nvim/coc-settings.json.j2
@@ -161,26 +130,33 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
-- name: nvim | Install vim-plug.vim config
+- name: nvim | Install init.lua config
+  copy:
+    src: nvim/init.lua
+    dest: "{{ nvim_config_dir }}/init.lua"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: nvim | Configure plugin list
   template:
-    src: templates/nvim/vim-plug.vim.j2
-    dest: "{{ nvim_config_dir }}/vim-plug.vim"
+    src: templates/nvim/plugins.lua.j2
+    dest: "{{ nvim_config_dir }}/lua/plugins.lua"
     group: "{{ user.group }}"
     owner: "{{ user.name }}"
-  register: vim_plug_config
+  register: plugin_config
 
 - name: nvim | Install nvim plugins
-  command: nvim --headless -n -c ":PlugInstall" -c ":qa!"
-  when: vim_plug_config.changed
+  command: nvim --headless -n -c "autocmd User PackerComplete quitall" -c "PackerSync"
+  when: plugin_config.changed
 
 - name: nvim | Install nvim file configs
   synchronize:
-    src: files/nvim/plugin/
-    dest: "{{ nvim_config_dir }}/plugin"
+    src: files/nvim/lua/
+    dest: "{{ nvim_config_dir }}/lua"
 
 - name: nvim | Fix permission on nvim configs
   file:
-    path: "{{ nvim_config_dir }}/plugin"
+    path: "{{ nvim_config_dir }}/lua"
     recurse: true
     owner: "{{ user.name }}"
     group: "{{ user.group }}"

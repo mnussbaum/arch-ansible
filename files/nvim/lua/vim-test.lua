@@ -1,4 +1,4 @@
-vim.o.test#strategy = "vtr"
+vim.g["test#strategy"] = "vtr"
 
 -- Run all
 vim.api.nvim_set_keymap(

@@ -1,0 +1,12 @@
+vim.cmd [[packadd packer.nvim]]
+
+return require("packer").startup(function(use)
+{% for plugin in vim_plugins %}
+  use {
+    "{{ plugin['name'] }}",
+    {% for plugin_arg, plugin_arg_value in (plugin['args'] | default ({})) %}
+    {{ plugin_arg }} = "{{ plugin_arg_value }}",
+    {% endfor %}
+}
+{% endfor %}
+end)
