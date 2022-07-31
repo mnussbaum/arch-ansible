@@ -18,11 +18,15 @@ vim.o.history = 500
 vim.o.shada = "'100,\"100,:20,%,n~/.local/share/nvim/shada/main.shada"
 
 -- Restore cursor position on file reopen
--- Pulled from https://stackoverflow.com/questions/8854371/vim-how-to-restore-the-cursors-logical-and-physical-positions
 vim.o.viewdir = "~/.local/share/nvim/view"
-
-local utils = require("utils")
-utils.create_augroup({
-    { "BufWinLeave", "*", "silent!", "mkview" },
-    { "VimEnter",    "*", "silent!", "loadview" },
-}, "resCur")
+local resume_cursor_autogroup = nvim_create_augroup("resume_cursor")
+nvim_create_autocmd("BufWinLeave", {
+  pattern = "*",
+  command = "silent! mkview",
+  group = resume_cursor_autogroup,
+})
+nvim_create_autocmd("VimEnter", {
+  pattern = "*",
+  command = "silent! loadview",
+  group = resume_cursor_autogroup,
+})
