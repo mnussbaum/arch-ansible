@@ -13,7 +13,6 @@
       - name: "Matt-Deacalion/vim-systemd-syntax"
       - name: "m-pilia/vim-ccls"
       - name: "mhinz/vim-startify"
-      # Add vim-matchup
       - name: "pearofducks/ansible-vim"
       - name: "ryanoasis/vim-devicons"
       - name: "scrooloose/nerdtree"
@@ -24,6 +23,12 @@
       - name: "nvim-treesitter/nvim-treesitter"
         args:
           run: "function() require('nvim-treesitter.install').update({ with_sync = true }) end"
+      - name: "neovim/nvim-lspconfig"
+      - name: "hrsh7th/cmp-nvim-lsp"
+      - name: "hrsh7th/cmp-buffer"
+      - name: "hrsh7th/cmp-path"
+      - name: "hrsh7th/cmp-cmdline"
+      - name: "hrsh7th/nvim-cmp"
     tree_sitter_plugins:
       - c
       - cpp
@@ -51,75 +56,15 @@
       - typescript
       - vim
       - yaml
-    coc_plugins:
-      - name: "clangd/coc-clangd"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages: [c, cpp]
-      - name: "neoclide/coc-tsserver"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - javascript
-          - typescript
-      - name: "neoclide/coc-html"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - html
-      - name: "neoclide/coc-css"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - css
-          - scss
-      - name: "neoclide/coc-prettier"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - graphql
-          - markdown
-        settings:
-          prettier.formatterPriority: -1
-          prettier.trailingComma: true
-      - name: "neoclide/coc-json"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages:
-          - json
-      - name: "neoclide/coc-yaml"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages: [yaml]
-        settings:
-          yaml.format.proseWrap: true
-          yaml.format.enable: true
-      - name: "josa42/coc-go"
-        languages: [go]
-        settings:
-          go.goplsUseDaemon: false
-        args:
-          do: "yarn install --frozen-lockfile"
-      - name: "fannheyward/coc-pyright"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages: [python]
-        settings:
-          python.formatting.provider: black
-          python.linting.pylintEnabled: true
-      - name: "neoclide/coc-solargraph"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages: [ruby]
-        settings:
-          solargraph.diagnostics: true
-          solargraph.formatting: true
-      - name: "fannheyward/coc-rust-analyzer"
-        args:
-          do: "yarn install --frozen-lockfile"
-        languages: [rust]
-        settings:
-          rust-analyzer.serverPath: "/usr/bin/rust-analyzer"
+    tree_sitter_options:
+      - name: highlight
+    language_servers:
+      - name: clangd
+      - name: tsserver
+      - name: gopls
+      - name: pyright
+      - name: solargraph
+      - name: rust_analyzer
   tags: [base16]
 
 - name: nvim | Ensure nvim config and data dirs exist
@@ -150,13 +95,6 @@
       - yarn
       - tree-sitter
   become: true
-
-- name: nvim | Install coc-settings.json
-  template:
-    src: templates/nvim/coc-settings.json.j2
-    dest: "{{ nvim_config_dir }}/coc-settings.json"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
 
 - name: nvim | Install init.lua config
   copy:
@@ -191,6 +129,13 @@
 # - name: nvim | Install tree-sitter plugins
 #   command: nvim --headless -n -c "TSSyncInstall" -c "qa"
 #   when: tree_sitter_config.changed
+
+- name: nvim | Configure language servers
+  template:
+    src: templates/nvim/lsp.lua.j2
+    dest: "{{ nvim_config_dir }}/lua/lsp.lua"
+    group: "{{ user.group }}"
+    owner: "{{ user.name }}"
 
 - name: nvim | Install nvim file configs
   synchronize:

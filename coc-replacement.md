@@ -1,18 +1,11 @@
 Need to replace:
 
-* Syntax highlighting - treesitter
-  * Maybe remove other plugins after this
-* Intelligent text objects - tresitter
-* Diagnostics and fixits
+* Intelligent text objects
+* Diagnostics and fixits - check
 * Formatting
-* Jump to def
-* Jump to type def
-* Jump to impl
-* Jump to ref
-* Show docs
 * Completions
 * Import management
-* Project wide rename
 * vim-vista integration
+* fancy go plugin
 
 * And then replace fzf with telescope
