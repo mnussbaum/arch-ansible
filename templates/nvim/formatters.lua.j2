@@ -1,0 +1,20 @@
+require("formatter").setup({
+  filetype = {
+    {% for language, formatters in language_formatters.items() %}
+    {{ language }} = {
+      {% for formatter in formatters %}
+      require("formatter.filetypes.{{ language }}").{{ formatter }},
+      {% endfor %}
+    },
+    {% endfor %}
+    ["*"] = {
+      require("formatter.filetypes.any").remove_trailing_whitespace
+    },
+  }
+})
+
+-- convert this to lua
+--augroup FormatAutogroup
+--  autocmd!
+--  autocmd BufWritePost * FormatWrite
+--augroup END

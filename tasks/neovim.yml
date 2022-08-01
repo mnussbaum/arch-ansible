@@ -30,6 +30,7 @@
       - name: "hrsh7th/cmp-cmdline"
       - name: "hrsh7th/nvim-cmp"
       - name: "RRethy/nvim-base16"
+      - name: "mhartington/formatter.nvim"
     tree_sitter_plugins:
       - c
       - cpp
@@ -66,6 +67,30 @@
       - name: pyright
       - name: solargraph
       - name: rust_analyzer
+    language_formatters:
+      go:
+        - goimports
+        - gofmt
+      lua:
+        - stylua
+      html:
+        - prettier
+      javascript:
+        - prettier
+      json:
+        - prettier
+      markdown:
+        - prettier
+      python:
+        - black
+      ruby:
+        - rubocop
+      rust:
+        - rustfmt
+      typescript:
+        - prettier
+      yaml:
+        - prettier
   tags: [base16]
 
 - name: nvim | Ensure nvim config and data dirs exist
@@ -95,6 +120,7 @@
       - vscode-json-languageserver
       - yarn
       - tree-sitter
+      - stylua-bin
   become: true
 
 - name: nvim | Install init.lua config
@@ -135,6 +161,13 @@
   template:
     src: templates/nvim/lsp.lua.j2
     dest: "{{ nvim_config_dir }}/lua/lsp.lua"
+    group: "{{ user.group }}"
+    owner: "{{ user.name }}"
+
+- name: nvim | Configure formatters
+  template:
+    src: templates/nvim/formatters.lua.j2
+    dest: "{{ nvim_config_dir }}/lua/formatters.lua"
     group: "{{ user.group }}"
     owner: "{{ user.name }}"
 
