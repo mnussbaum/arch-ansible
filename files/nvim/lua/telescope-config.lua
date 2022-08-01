@@ -1,4 +1,15 @@
-require("telescope").load_extension("fzf")
+local telescope = require("telescope")
+telescope.load_extension("fzf")
+telescope.setup({
+   pickers = {
+    find_files = {
+      theme = "dropdown",
+    },
+    live_grep = {
+      theme = "dropdown",
+    },
+  },
+})
 
 telescope_builtin = require("telescope.builtin")
 local bufopts = {noremap = true, silent = true, buffer = bufnr}
