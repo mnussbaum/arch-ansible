@@ -29,6 +29,7 @@
       - name: "hrsh7th/cmp-path"
       - name: "hrsh7th/cmp-cmdline"
       - name: "hrsh7th/nvim-cmp"
+      - name: "RRethy/nvim-base16"
     tree_sitter_plugins:
       - c
       - cpp
@@ -137,6 +138,14 @@
     group: "{{ user.group }}"
     owner: "{{ user.name }}"
 
+- name: nvim | Configure base16 colorscheme
+  template:
+    src: templates/nvim/nvim-base16.lua.j2
+    dest: "{{ nvim_config_dir }}/lua/nvim-base16.lua"
+    group: "{{ user.group }}"
+    owner: "{{ user.name }}"
+  tags: [base16]
+
 - name: nvim | Install nvim file configs
   synchronize:
     src: files/nvim/lua/
@@ -159,24 +168,6 @@
   with_fileglob:
     - templates/nvim/plugin/*
 
-- name: nvim | Generate base16-vim configs
-  base16_builder:
-    scheme: "{{ base16_scheme }}"
-    scheme_family: "{{ base16_scheme_family }}"
-    template: vim
-    schemes_source: "{{ base16['schemes_source'] }}"
-    templates_source: "{{ base16['templates_source'] }}"
-  register: base16_vim
-  tags: [base16]
-
-- name: nvim | Write base16-vim config to a file
-  copy:
-    content: "{{ base16_vim['schemes'][base16_scheme]['vim']['colors']['base16-' + base16_scheme + '.vim'] }}"
-    dest: "{{ user_config_dir }}/nvim/plugin/base16.vim"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-  tags: [base16]
-
 - name: nvim | Generate base16-vim-lightline configs
   base16_builder:
     scheme: "{{ base16_scheme }}"
@@ -184,12 +175,12 @@
     template: vim-lightline
     schemes_source: "{{ base16['schemes_source'] }}"
     templates_source: "{{ base16['templates_source'] }}"
-  register: base16_vim
+  register: base16_lightline
   tags: [base16]
 
 - name: nvim | Write base16-vim-lightline config to a file
   copy:
-    content: "{{ base16_vim['schemes'][base16_scheme]['vim-lightline']['autoload/lightline/colorscheme']['base16-' + base16_scheme + '.vim'] }}"
+    content: "{{ base16_lightline['schemes'][base16_scheme]['vim-lightline']['autoload/lightline/colorscheme']['base16-' + base16_scheme + '.vim'] }}"
     dest: "{{ user_config_dir }}/nvim/plugin/base16-lightline.vim"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"

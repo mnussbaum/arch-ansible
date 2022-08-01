@@ -1,4 +1,4 @@
-require("nvim-treesitter.configs").setup {
+require("nvim-treesitter.configs").setup({
   ensure_installed = {
   {% for plugin in tree_sitter_plugins %}
     "{{ plugin }}",
@@ -8,4 +8,4 @@ require("nvim-treesitter.configs").setup {
   auto_install = true,
 
   highlight = { enable = true },
-}
+})
