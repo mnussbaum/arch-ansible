@@ -147,46 +147,16 @@
     owner: "{{ user.name }}"
   register: plugin_config
 
+- name: nvim | Configure packer
+  copy:
+    src: files/nvim/lua/packer_init.lua
+    dest: "{{ nvim_config_dir }}/lua/packer_init.lua"
+    group: "{{ user.group }}"
+    owner: "{{ user.name }}"
+
 - name: nvim | Install nvim plugins
   command: nvim --headless -n -c "autocmd User PackerComplete quitall" -c "PackerSync"
   when: plugin_config.changed
-
-- name: nvim | Configure tree-sitter
-  template:
-    src: templates/nvim/tree-sitter.lua.j2
-    dest: "{{ nvim_config_dir }}/lua/tree-sitter.lua"
-    group: "{{ user.group }}"
-    owner: "{{ user.name }}"
-  register: tree_sitter_config
-
-# This won't work until one of the following is resolved
-# https://github.com/nvim-treesitter/nvim-treesitter/pull/2085
-# https://github.com/nvim-treesitter/nvim-treesitter/issues/2900
-# - name: nvim | Install tree-sitter plugins
-#   command: nvim --headless -n -c "TSSyncInstall" -c "qa"
-#   when: tree_sitter_config.changed
-
-- name: nvim | Configure language servers
-  template:
-    src: templates/nvim/lsp.lua.j2
-    dest: "{{ nvim_config_dir }}/lua/lsp.lua"
-    group: "{{ user.group }}"
-    owner: "{{ user.name }}"
-
-- name: nvim | Configure formatters
-  template:
-    src: templates/nvim/formatters.lua.j2
-    dest: "{{ nvim_config_dir }}/lua/formatters.lua"
-    group: "{{ user.group }}"
-    owner: "{{ user.name }}"
-
-- name: nvim | Configure base16 colorscheme
-  template:
-    src: templates/nvim/nvim-base16.lua.j2
-    dest: "{{ nvim_config_dir }}/lua/nvim-base16.lua"
-    group: "{{ user.group }}"
-    owner: "{{ user.name }}"
-  tags: [base16]
 
 - name: nvim | Install nvim file configs
   synchronize:
@@ -200,6 +170,18 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
+# Would be nice to install treesitter plugins on change, but requires one of:
+# https://github.com/nvim-treesitter/nvim-treesitter/pull/2085
+# https://github.com/nvim-treesitter/nvim-treesitter/issues/2900
+
+- name: nvim | Configure base16 colorscheme
+  template:
+    src: templates/nvim/nvim-base16.lua.j2
+    dest: "{{ nvim_config_dir }}/lua/nvim-base16.lua"
+    group: "{{ user.group }}"
+    owner: "{{ user.name }}"
+  tags: [base16]
+
 - name: nvim | Install nvim template configs
   template:
     src: "{{ item }}"
@@ -209,6 +191,16 @@
   tags: [base16]
   with_fileglob:
     - templates/nvim/plugin/*
+
+- name: nvim | Install nvim Lua template configs
+  template:
+    src: "{{ item }}"
+    dest: "{{ nvim_config_dir }}/lua/{{ item | basename | replace('.j2', '') }}"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+  tags: [base16]
+  with_fileglob:
+    - templates/nvim/lua/*
 
 - name: nvim | Generate base16-vim-lightline configs
   base16_builder:
