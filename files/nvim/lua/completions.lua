@@ -3,6 +3,8 @@ vim.opt.completeopt = { "menu", "menuone", "noselect" }
 local cmp = require("cmp")
 
 cmp.setup({
+	snippet = {},
+
 	formatting = {
 		fields = { "menu", "abbr", "kind" },
 		format = function(entry, item)
