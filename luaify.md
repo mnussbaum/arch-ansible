@@ -2,7 +2,6 @@ TODO:
 
 - Intelligent text objects
 - Treesitter extensions
-- vim-vista integration
 - Only templatize data, not code
 - Make it pretty
   - Telescope - make it pretty
