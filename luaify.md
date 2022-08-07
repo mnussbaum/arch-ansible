@@ -9,8 +9,5 @@ TODO:
   - Make startify prettier
   - Gutter
   - Color choices
-- vim-notify
 
 * Word fuzzy find can't handle spaces and needs bracket escaping
-* Progress reporting for LSP actions
-* Inline rename bubble

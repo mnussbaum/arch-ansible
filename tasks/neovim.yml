@@ -24,6 +24,8 @@
         args:
           run: "function() require('nvim-treesitter.install').update({ with_sync = true }) end"
       - name: "neovim/nvim-lspconfig"
+      - name: "rcarriga/nvim-notify"
+      - name: "stevearc/dressing.nvim"
       - name: "hrsh7th/cmp-nvim-lsp"
       - name: "hrsh7th/cmp-buffer"
       - name: "hrsh7th/cmp-path"
