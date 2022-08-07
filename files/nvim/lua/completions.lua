@@ -2,8 +2,40 @@ vim.opt.completeopt = { "menu", "menuone", "noselect" }
 
 local cmp = require("cmp")
 
+local kind_icons = {
+	Text = "",
+	Method = "m",
+	Function = "",
+	Constructor = "",
+	Field = "",
+	Variable = "",
+	Class = "",
+	Interface = "",
+	Module = "",
+	Property = "",
+	Unit = "",
+	Value = "",
+	Enum = "",
+	Keyword = "",
+	Snippet = "",
+	Color = "",
+	File = "",
+	Reference = "",
+	Folder = "",
+	EnumMember = "",
+	Constant = "",
+	Struct = "",
+	Event = "",
+	Operator = "",
+	TypeParameter = "",
+}
+
 cmp.setup({
-	snippet = {},
+	snippet = {
+		expand = function(args)
+			require("luasnip").lsp_expand(args.body)
+		end,
+	},
 
 	formatting = {
 		fields = { "menu", "abbr", "kind" },
@@ -15,6 +47,7 @@ cmp.setup({
 			}
 
 			item.menu = menu_icon[entry.source.name]
+			item.kind = string.format("%s", kind_icons[item.kind])
 
 			return item
 		end,
@@ -38,7 +71,13 @@ cmp.setup({
 	sources = {
 		{ name = "path" },
 		{ name = "nvim_lsp" },
-		-- { name = "treesitter", max_item_count = 10, keyword_length = 5 },
+		{ name = "treesitter", max_item_count = 10, keyword_length = 5 },
+		{ name = "luasnip" },
+	},
+	window = {
+		documentation = {
+			border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
+		},
 	},
 })
 
