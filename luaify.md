@@ -9,5 +9,5 @@ TODO:
   - Make startify prettier
   - Gutter
   - Color choices
-
-* Word fuzzy find can't handle spaces and needs bracket escaping
+  - notification colors
+  - gutter color

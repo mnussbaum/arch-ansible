@@ -8,6 +8,8 @@ vim.o.expandtab = true
 vim.o.smarttab = true
 
 vim.o.autoindent = true
+vim.o.copyindent = true
+vim.o.smartindent = true
 
 -- Text behaviour
 -- vim.o.formatoptions = vim.o.formatoptions
