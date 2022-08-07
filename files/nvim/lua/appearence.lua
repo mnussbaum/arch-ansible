@@ -21,3 +21,7 @@ vim.o.termguicolors = true
 
 -- Use a block cursor in insert mode
 vim.o.guicursor = "i:block"
+
+require("base16-colorscheme").with_config({
+	telescope = false,
+})
