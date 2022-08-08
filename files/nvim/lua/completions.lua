@@ -73,6 +73,7 @@ cmp.setup({
 		{ name = "nvim_lsp" },
 		{ name = "treesitter", max_item_count = 10, keyword_length = 5 },
 		{ name = "luasnip" },
+		{ name = "emoji" },
 	},
 	window = {
 		documentation = {
