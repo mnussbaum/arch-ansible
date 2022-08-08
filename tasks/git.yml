@@ -1,5 +1,16 @@
 # vim:ft=yaml.ansible:
 ---
+- name: Git | Download delta themes
+  get_url:
+    url: https://raw.githubusercontent.com/dandavison/delta/master/themes.gitconfig
+    dest: "{{ user_data_dir }}/delta-themes.gitconfig"
+
+- name: Git | Install delta diff tool
+  package:
+    name: git-delta
+    state: present
+  become: true
+
 - name: Git | Install gitconfig
   template:
     owner: "{{ user.name }}"
