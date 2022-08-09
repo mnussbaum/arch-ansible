@@ -46,6 +46,7 @@
         args:
           run: make
     tree_sitter_plugins:
+      - bash
       - c
       - cpp
       - css
