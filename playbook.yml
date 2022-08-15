@@ -14,13 +14,13 @@
   tasks:
     - set_fact:
         user_home_dir: "/home/{{ user.name }}"
-      tags: [bootstrap, base16]
+      tags: [bootstrap, base16, nvim]
     - set_fact:
         user_config_dir: "{{ user_home_dir }}/.config"
         user_data_dir: "{{ user_home_dir }}/.local/share"
-      tags: [bootstrap, base16]
+      tags: [bootstrap, base16, nvim]
     - import_tasks: tasks/set-appearance-facts.yml
-      tags: [bootstrap, base16, rebuild-boot-parition]
+      tags: [bootstrap, base16, rebuild-boot-parition, nvim]
     - import_tasks: tasks/time.yml
       tags: [bootstrap]
     - import_tasks: tasks/locale.yml
@@ -48,7 +48,7 @@
     - set_fact:
         ansible_facts:
           pkg_mgr: yay
-      tags: [base16]
+      tags: [nvim, base16]
     - import_tasks: tasks/gpg.yml
     - import_tasks: tasks/zsh.yml
     - name: Base16 | Generate color scheme vars
@@ -59,11 +59,11 @@
         schemes_source: "{{ base16['schemes_source'] }}"
         templates_source: "{{ base16['templates_source'] }}"
       register: generated_base16_scheme
-      tags: [base16]
+      tags: [nvim, base16]
     - set_fact:
         color_scheme_vars: "{{ generated_base16_scheme['schemes'][base16_scheme]['scheme-variables'] }}"
         color_scheme_opacity: "0.7"
-      tags: [base16]
+      tags: [nvim, base16]
     - import_tasks: tasks/cli-tools.yml
     - import_tasks: tasks/python.yml
     - import_tasks: tasks/rust.yml
@@ -73,6 +73,7 @@
     - import_tasks: tasks/postgres.yml
     - import_tasks: tasks/global-environment-configuration.yml
     - import_tasks: tasks/neovim.yml
+      tags: [nvim]
     - import_tasks: tasks/git.yml
     - import_tasks: tasks/ssh.yml
     - import_tasks: tasks/alacritty.yml
