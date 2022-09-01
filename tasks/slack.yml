@@ -5,4 +5,5 @@
   package:
     state: present
     name:
+      - electron16-bin
       - slack-wayland
