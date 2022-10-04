@@ -2,8 +2,7 @@ require("plugins")
 
 vim.g.mapleader = "\\"
 
--- Bash style file completion
-vim.o.wildmode = "longest,list"
+vim.opt.mouse = ""
 
 -- Make Y work like other capitals, copy to end of line
 vim.api.nvim_set_keymap("n", "Y", "y$", { noremap = true })

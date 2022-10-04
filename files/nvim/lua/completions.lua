@@ -1,3 +1,6 @@
+-- Bash style file completion
+vim.o.wildmode = "longest,list"
+
 vim.opt.completeopt = { "menu", "menuone", "noselect" }
 
 local cmp = require("cmp")
