@@ -6,7 +6,7 @@
     name:
       - ruby-irb
       - ruby-bundler
-      - ruby-rubocop
+      - rubocop
       - ruby-solargraph
   become: true
 
