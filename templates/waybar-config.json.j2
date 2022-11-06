@@ -90,7 +90,7 @@
       "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{icon}', first_block=True, position='left') }}",
       "format-icons": {
 	"activated": "☕",
-	"deactivated": "💤"
+	"deactivated": "⏾"
       },
       "tooltip": false
     },
@@ -109,13 +109,11 @@
       "tooltip": false,
       "interval": 1,
       "on-click": "toggle-headphone-profile",
-      "tooltip": false
     },
 
     "custom/toggle-eeek-openvpn": {
       "exec": "eeek-openvpn-status",
       "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{}', last_block=True, position='left') }}",
-      "tooltip": false,
       "interval": 1,
       "on-click": "toggle-eeek-openvpn",
       "tooltip": false
