@@ -15,7 +15,10 @@
 - name: Qt | Install packages
   package:
     state: present
-    name: qt5ct
+    name:
+      - qt5ct
+      - qt5-wayland
+      - qt6-wayland
   become: true
 
 - name: Qt | Generate base16 configs
