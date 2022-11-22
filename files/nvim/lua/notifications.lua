@@ -4,6 +4,7 @@ vim.notify.setup({
 	timeout = 2,
 	max_width = 40,
 })
+vim.keymap.set({ "n", "v", "o" }, "<leader>d", vim.notify.dismiss, { noremap = true, silent = true })
 
 -- Use vim.notify for LSP notifications
 -- From https://github.com/rcarriga/nvim-notify/wiki/Usage-Recipes/#progress-updates
@@ -38,7 +39,7 @@ local function update_spinner(client_id, token)
 		})
 
 		vim.defer_fn(function()
-			update_spinner(client_id, token)
+			pcall(update_spinner, client_id, token)
 		end, 100)
 	end
 end
@@ -96,6 +97,7 @@ local lsp_severity_to_vim_severity = {
 	"info",
 	"info",
 }
+
 vim.lsp.handlers["window/showMessage"] = function(err, method, params, client_id)
 	vim.notify(method.message, lsp_severity_to_vim_severityeverity[params.type])
 end
