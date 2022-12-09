@@ -4,5 +4,6 @@
   package:
     state: present
     name:
-      - qemu-arm-static-bin
+      - qemu-user-static
+      - qemu-user-static-binfmt
   become: true
