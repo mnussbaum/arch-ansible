@@ -14,7 +14,8 @@
       - firefox
       - mozlz4
       - firefox-ublock-origin
-      - firefox-vim-vixen
+      - firefox-tridactyl
+      - firefox-tridactyl-native-bin
       - freshplayerplugin
       - pepper-flash
   become: true
@@ -68,13 +69,6 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
   tags: [base16]
-
-- name: Firefox | Create vim-vixen plugin config dir
-  file:
-    path: "{{ user_home_dir }}/.mozilla/firefox/default.profile/browser-extension-data/vim-vixen@i-beam.org"
-    state: directory
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
 
 - name: Firefox | Configure flash plugin
   copy:
