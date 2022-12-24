@@ -26,7 +26,6 @@
       - name: "neovim/nvim-lspconfig"
       - name: "rcarriga/nvim-notify"
       - name: "L3MON4D3/LuaSnip"
-      - name: "drybalka/tree-climber.nvim"
       - name: "nvim-treesitter/nvim-treesitter-textobjects"
       - name: "RRethy/nvim-treesitter-textsubjects"
       - name: "stevearc/dressing.nvim"
