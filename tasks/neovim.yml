@@ -18,7 +18,7 @@
       - name: "scrooloose/nerdtree"
       - name: "Shougo/context_filetype.vim"
       - name: "tpope/vim-fugitive"
-      - name: "tyru/caw.vim"
+      - name: "terrortylor/nvim-comment"
       - name: "farmergreg/vim-lastplace"
       - name: "nvim-treesitter/nvim-treesitter"
         args:
