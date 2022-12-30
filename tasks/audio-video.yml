@@ -16,7 +16,6 @@
       - gst-libav
       - spotify
       - playerctl
-      - libpipewire02 # Necessary for chromium screensharing
       - wireplumber
       - lollypop
       - mpv
