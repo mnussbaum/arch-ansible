@@ -70,6 +70,12 @@ cmp.setup({
 		["<CR>"] = cmp.mapping.confirm({ select = true }), -- accept currently selected item
 	},
 
+	performance = {
+		debounce = 300,
+		throttle = 60,
+		fetching_timeout = 200,
+	},
+
 	completion = { keyword_length = 3 },
 	sources = {
 		{ name = "path" },
