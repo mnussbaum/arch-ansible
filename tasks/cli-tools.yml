@@ -25,7 +25,6 @@
       - imv
       - iotop
       - jq
-      - lolcat
       - lsof
       - man-db
       - man-pages
