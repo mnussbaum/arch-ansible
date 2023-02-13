@@ -15,3 +15,4 @@
     name: "{{ item.partition_name | default(omit) }}"
   become: true
   loop: "{{ partitions | dict_values }}"
+  when: item.managed

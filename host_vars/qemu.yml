@@ -15,6 +15,7 @@ partitions:
     fs_options: ""
     mount_point: /mnt/boot/efi
     encrypted: false
+    managed: true
     flags:
       - esp
   boot:
@@ -30,6 +31,7 @@ partitions:
     fs_options: "-O ^has_journal"
     mount_point: /mnt/boot
     encrypted: false
+    managed: true
     flags: []
   root:
     number: 3
@@ -46,6 +48,7 @@ partitions:
     fs_options: "-O ^has_journal"
     mount_point: /mnt
     encrypted: true
+    managed: true
     flags: []
 
 mkinitcpio_modules:

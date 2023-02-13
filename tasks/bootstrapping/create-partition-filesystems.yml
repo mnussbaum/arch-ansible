@@ -8,3 +8,4 @@
     # Would be nice to add fs labels here set to the name
   become: true
   loop: "{{ partitions | dict_values }}"
+  when: item.managed

@@ -2,6 +2,22 @@
 grub: true
 
 partitions:
+  efi:
+    number: 1
+    physical_device: /dev/nvme0n1
+    partition_device: /dev/nvme0n1p1
+    partition_name: EFI system partitions
+    partition_label: gpt
+    start: 1049kB
+    end: 525MB
+    fstype: vfat
+    fs_options: ""
+    mount_point: /mnt/boot/efi
+    encrypted: false
+    managed: false
+    flags:
+      - boot
+      - esp
   boot:
     number: 7
     physical_device: /dev/nvme0n1
@@ -15,6 +31,7 @@ partitions:
     fs_options: "-O ^has_journal"
     mount_point: /mnt/boot
     encrypted: false
+    managed: true
     flags: []
   root:
     number: 8
@@ -31,6 +48,7 @@ partitions:
     fs_options: "-O ^has_journal"
     mount_point: /mnt
     encrypted: true
+    managed: true
     flags: []
 
 mkinitcpio_modules:

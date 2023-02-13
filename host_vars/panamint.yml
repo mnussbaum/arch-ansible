@@ -13,6 +13,7 @@ partitions:
     fstype: vfat
     mount_point: /tmp/panamint-boot
     encrypted: false
+    managed: true
     flags:
       - lba
       - boot
@@ -28,6 +29,7 @@ partitions:
     fstype: ext4
     mount_point: /var/lib/machines/panamint
     encrypted: true
+    managed: true
     flags: []
 
 mkinitcpio_modules: []
