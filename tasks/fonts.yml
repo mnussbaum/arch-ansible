@@ -10,7 +10,7 @@
       - gsfonts
       - libxft
       - ttf-cascadia-code
-      - nerd-fonts-noto
+      - ttf-noto-nerd
       - gucharmap
       - python-opentype-feature-freezer
   become: true
