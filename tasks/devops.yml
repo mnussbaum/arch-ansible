@@ -31,6 +31,12 @@
     groups: docker
     append: true
 
+- name: DevOps | Create docker config dir
+  file:
+    path: /etc/docker
+    state: directory
+  become: true
+
 - name: DevOps | Enable overlay2 driver
   become: true
   copy:
