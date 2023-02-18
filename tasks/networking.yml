@@ -121,3 +121,11 @@
     src: templates/restart-networking
     dest: /usr/local/bin/restart-networking
     mode: a+x
+
+- name: Networking | Wait for network to be online during bootstrapping
+  become: true
+  systemd:
+    state: started
+    enabled: true
+    name: systemd-networkd-wait-online.service
+  when: bootstrap is defined and bootstrap == "true"
