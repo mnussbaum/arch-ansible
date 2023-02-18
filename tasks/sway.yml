@@ -24,6 +24,7 @@
   package:
     state: present
     name:
+      - mesa
       - wlroots
       - sway
       - swaybg
@@ -49,7 +50,7 @@
 
 - name: sway | Install config
   template:
-    src: templates/sway_and_i3_config.j2
+    src: templates/sway_config.j2
     dest: "{{ user_config_dir }}/sway/config"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"

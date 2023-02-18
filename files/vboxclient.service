@@ -9,4 +9,4 @@ RemainAfterExit=true
 Type=oneshot
 
 [Install]
-WantedBy=i3-session.target
+WantedBy=sway-session.target

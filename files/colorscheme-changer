@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import os
-import socket
 import subprocess
 import sys
 
@@ -19,11 +18,6 @@ def _reload_wayland():
     subprocess.run(["systemctl", "--user", "restart", "waybar"], check=True)
 
     subprocess.run(["swaymsg", "reload"])
-
-
-def _reload_xorg():
-    subprocess.run(["systemctl", "--user", "restart", "feh.service"], check=True)
-    subprocess.run(["i3-msg", "reload"])
 
 
 def main():
@@ -51,7 +45,8 @@ def main():
     if os.environ["XDG_SESSION_TYPE"] == "wayland":
         _reload_wayland()
     else:
-        _reload_xorg()
+        print("can only run under wayland")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

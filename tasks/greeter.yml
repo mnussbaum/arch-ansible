@@ -45,7 +45,6 @@
     mode: a+x
   with_items:
     - start-sway
-    - start-i3
 
 - name: greeter | Enable greetd service
   become: true

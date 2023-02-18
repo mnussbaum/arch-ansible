@@ -17,11 +17,9 @@ set $term alacritty --command zsh -ic "exec tmux"
 set $menu wofi-toggle 'wofi --show run'
 set $passmenu wofi-toggle 'wofipassmenu'
 
-{% if item == "sway" %}
 ### Toggle tablet mode resizing
 bindswitch --locked tablet:off output * scale 2
 bindswitch --locked tablet:on output * scale 3
-{% endif %}
 
 ### Window rules
 
@@ -34,7 +32,6 @@ font pango:{{ font.monospace_family }} {{ font.size }}
 
 gaps inner 7
 gaps outer 2
-{% if item == "sway" %}
 gaps top 15
 
 output * bg {{ desktop_background }} fill
@@ -47,11 +44,9 @@ output {{ monitor.id }} position {{ monitor.position.x }} {{ monitor.position.y 
 output {{ monitor.id }} scale {{ monitor.scale }}
 {% endif %}
 {% endfor %}
-{% endif %}
 
 ### Input configuration
 
-{% if item == "sway" %}
 input * {
     # Keyboard configs
     repeat_delay {{ key_repeat.delay }}
@@ -63,7 +58,6 @@ input * {
     scroll_method two_finger
     tap enabled
 }
-{% endif %}
 
 ### Key bindings
 
@@ -78,24 +72,17 @@ bindsym $mod+space exec $menu
 bindsym $mod+slash exec $passmenu
 
 # Lockscreen
-{% if item == "sway" %}bindsym $mod+Print exec swaylock{% endif %}
-{% if item == "i3" %}bindsym $mod+Print exec i3lock{% endif %}
+bindsym $mod+Print exec swaylock
 
-{% if item == "sway" %}
 # Notifications
 bindsym $mod+Shift+d exec makoctl dismiss -a
-{% endif %}
 
-{% if item == "sway" %}
 # Drag floating windows by holding down $mod and left mouse button.
 # Resize them with right mouse button + $mod.
 # Despite the name, also works for non-floating windows.
 # Change normal to inverse to use left mouse button for resizing and right
 # mouse button for dragging.
 floating_modifier $mod normal
-{% elif item == "i3" %}
-floating_modifier $mod
-{% endif %}
 
 # reload the configuration file
 bindsym $mod+Shift+c reload
@@ -217,15 +204,6 @@ mode "resize" {
 
 {{ base16_i3['schemes'][base16_scheme]['i3']['client-properties']['base16-' + base16_scheme + '.config'] }}
 
-{% if item == "i3" -%}
-bar {
-  position top
-
-  {{ base16_i3['schemes'][base16_scheme]['i3']['bar-colors']['base16-' + base16_scheme + '.config'] }}
-}
-{% endif -%}
-
-
 bindsym XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
 bindsym XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
 bindsym XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
@@ -237,13 +215,11 @@ bindsym XF86AudioPrev exec playerctl previous
 bindsym XF86MonBrightnessUp exec busctl --user call org.clight.clight /org/clight/clight org.clight.clight IncBl "d" 0.05
 bindsym XF86MonBrightnessDown exec busctl --user call org.clight.clight /org/clight/clight org.clight.clight DecBl "d" 0.05
 
-{% if item == "sway" %}
 # Screenshot a selectable region
 bindsym $mod+Shift+Ctrl+1 exec grim -g "$(slurp)" - | wl-copy
 
 # Screenshot the current active monitor
 bindsym $mod+Shift+Ctrl+2 exec grim -o $(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') - | wl-copy
-{% endif %}
 
 exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK
 exec hash dbus-update-activation-environment 2>/dev/null && \
