@@ -16,8 +16,6 @@
       - firefox-ublock-origin
       - firefox-tridactyl
       - firefox-tridactyl-native-bin
-      - freshplayerplugin
-      - pepper-flash
   become: true
 
 - name: Firefox | Make default profile
@@ -69,18 +67,3 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
   tags: [base16]
-
-- name: Firefox | Configure flash plugin
-  copy:
-    remote_src: true
-    src: /usr/share/freshplayerplugin/freshwrapper.conf.example
-    dest: "{{ user_config_dir }}/freshwrapper.conf"
-    force: no
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-
-- name: Firefox | Enable hardware acceleration for flash plugin
-  lineinfile:
-    dest: "{{ user_config_dir }}/freshwrapper.conf"
-    regexp: "^enable_hwdec ="
-    line: "enable_hwdec = 1"
