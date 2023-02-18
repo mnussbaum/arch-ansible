@@ -6,6 +6,7 @@ partitions:
     number: 1
     physical_device: /dev/nvme0n1
     partition_device: /dev/nvme0n1p1
+    logical_device: /dev/nvme0n1p1
     partition_name: EFI system partitions
     partition_label: gpt
     start: 1049kB

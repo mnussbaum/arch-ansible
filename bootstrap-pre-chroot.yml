@@ -65,11 +65,5 @@
         dest: "{{ partitions['root'].mount_point }}/etc/fstab"
       become: true
 
-    # There's something weird going on where hostnamectl
-    # in the chroot doesn't modify the /etc/hostname
-    # file in the chroot, so the new hostname isn't
-    # persisted
-    - name: Set hostname in chroot
-      command: "arch-chroot {{ partitions['root'].mount_point }} hostnamectl set-hostname {{ new_hostname}}"
     - name: Set hostname file in chroot
       command: "arch-chroot {{ partitions['root'].mount_point }} sh -c 'echo -n {{ new_hostname}} > /etc/hostname'"
