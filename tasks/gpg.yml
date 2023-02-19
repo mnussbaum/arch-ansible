@@ -27,6 +27,14 @@
     group: "{{ user.group }}"
     mode: 0600
 
+- name: GPG | Install gpg-agent config
+  copy:
+    dest: "/home/{{ user.name }}/.gnupg/gpg-agent.conf"
+    src: files/gpg-agent.conf
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    mode: 0600
+
 # This value is derived from my SSH key. If rotating keys rederive this value
 # by empying the sshcontrol file and letting GPG repopulate it after `ssh-add`
 - name: GPG | Install sshcontrol config
