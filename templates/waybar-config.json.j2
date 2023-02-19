@@ -55,13 +55,15 @@
       "tooltip": false
     },
 
+{% if window_manager.waybar_thermal_zone_to_display is defined %}
     "temperature": {
-      "thermal-zone": 11,
+      "thermal-zone": {{ window_manager["waybar_thermal_zone_to_display"] }},
       "critical-threshold": 60,
       "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{temperatureF}°F ') }}",
       "format-critical": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{temperatureF}°F ') }}",
       "tooltip": false
     },
+{% endif %}
 
     "clock": {
       "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{:%a, %d %b %I:%M:%S}', last_block=True, position='right') }}",

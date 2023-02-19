@@ -115,6 +115,7 @@ optional_daemons:
   libinput_gestures: true
 
 window_manager:
+  waybar_thermal_zone_to_display: 7
   waybar_minimum_workspace_count: 5
   window_manager: sway
   windowing_system: wayland
