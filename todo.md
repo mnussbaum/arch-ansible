@@ -33,5 +33,4 @@ systemd as the init system`. Also locale commands commands
    all secrets missing
 1. fakeroot was missing even though it should have been installed by
    base-devel, was when I installed that package manually
-1. GRUB lockscreen isn't working
 1. Document or automate ~/.netrc and GOPRIVATE setup

@@ -21,9 +21,9 @@
       become: true
   vars:
     ansible_become: true
-    swapfile_path: /swapfile
-    swapfile_size_mb: "{{ ((power_image_size_bytes.stdout | int) / (1024**2)) | int }}"
-    swapfile_swappiness: "1"
+    swap_file_path: /swapfile
+    swap_file_size_mb: "{{ ((power_image_size_bytes.stdout | int) / (1024**2)) | int }}"
+    swap_swappiness: "1"
 
 - name: Swap | Get swapfile offset
   shell: filefrag -v /swapfile | awk '{gsub(/\./,""); if($1=="0:"){print $4}}'
