@@ -13,13 +13,28 @@
         # iso_build_dir: "<HARD CODE HERE FOR DEBUGING>"
     - set_fact:
         root_user_dir: "{{ iso_build_dir }}/airootfs/root"
-
-    - name: Populate temp dir
-      synchronize:
-        src: /usr/share/archiso/configs/releng/
-        dest: "{{ iso_build_dir }}"
+    - set_fact:
+        pacman_db_dest_dir: "{{ root_user_dir }}/pacman_dbs"
 
     - block:
+        - name: Populate temp dir
+          synchronize:
+            src: /usr/share/archiso/configs/releng/
+            dest: "{{ iso_build_dir }}"
+
+        - name: Create pacman DB directory
+          file:
+            path: "{{ pacman_db_dest_dir }}"
+            state: directory
+        - name: Add pacman DBs to allow pre-networking package presence checks
+          copy:
+            src: "/var/lib/pacman/sync/{{ item }}"
+            dest: "{{ pacman_db_dest_dir }}/{{ item }}"
+          loop:
+            - community.db
+            - core.db
+            - extra.db
+
         - name: Install files into root user dir
           import_tasks: tasks/bootstrapping/install-user-files.yml
           become: true
@@ -28,25 +43,16 @@
             ansible_dest_dir: "{{ root_user_dir }}/arch-ansible"
             user_name: root
 
-        - name: Add ansible package
+        - name: Add pacakges
           lineinfile:
             dest: "{{ iso_build_dir }}/packages.x86_64"
-            line: ansible
-
-        - name: Add git package
-          lineinfile:
-            dest: "{{ iso_build_dir }}/packages.x86_64"
-            line: git
-
-        - name: Add tmux package
-          lineinfile:
-            dest: "{{ iso_build_dir }}/packages.x86_64"
-            line: tmux
-
-        - name: Add os-prober package
-          lineinfile:
-            dest: "{{ iso_build_dir }}/packages.x86_64"
-            line: os-prober
+            line: "{{ item }}"
+          loop:
+            - base-devel
+            - ansible
+            - git
+            - tmux
+            - os-prober
 
         - name: Build ISO
           become: true

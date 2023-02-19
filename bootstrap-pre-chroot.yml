@@ -50,7 +50,23 @@
         src: files/pacman_bootstrap_mirrorlist
         dest: /etc/pacman.d/mirrorlist
 
+    - name: Create pacman DB directory
+      file:
+        path: /var/lib/pacman/sync
+        state: directory
+    - name: Install pacman DBs
+      copy:
+        src: ../pacman_dbs/{{ item }}
+        dest: /var/lib/pacman/sync/{{ item }}
+      loop:
+        - community.db
+        - core.db
+        - extra.db
+
     - import_tasks: tasks/networking.yml
+      vars:
+        networking:
+          wireless_interface: wlan0
     - import_tasks: tasks/bootstrap-packages.yml
 
     - name: Pacstrap
