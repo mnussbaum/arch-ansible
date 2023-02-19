@@ -42,3 +42,9 @@
   copy:
     src: files/docker-daemon.json
     dest: /etc/docker/daemon.json
+
+- name: Docker | Enable docker service socket activation
+  become: true
+  systemd:
+    enabled: true
+    name: docker.socket
