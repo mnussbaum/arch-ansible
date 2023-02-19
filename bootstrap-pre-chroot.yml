@@ -63,10 +63,14 @@
         - core.db
         - extra.db
 
+    - set_fact:
+        networks: "{{ networking['networks'] }}"
     - import_tasks: tasks/networking.yml
       vars:
         networking:
           wireless_interface: wlan0
+          networks: "{{ networks }}"
+
     - import_tasks: tasks/bootstrap-packages.yml
 
     - name: Pacstrap
