@@ -57,7 +57,7 @@ mkinitcpio_modules:
   - i915
 
 modprobe_files:
-  - intel.conf
+  - i915.conf
   - iwlwifi.conf
   - nvme.conf
 
