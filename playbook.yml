@@ -22,9 +22,7 @@
     - import_tasks: tasks/set-appearance-facts.yml
       tags: [bootstrap, base16, rebuild-boot-parition, nvim]
     - import_tasks: tasks/time.yml
-      tags: [bootstrap]
     - import_tasks: tasks/locale.yml
-      tags: [bootstrap]
     - import_tasks: tasks/bootstrap-packages.yml
       tags: [bootstrap]
     - import_tasks: tasks/swap.yml

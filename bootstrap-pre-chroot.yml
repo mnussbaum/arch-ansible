@@ -2,6 +2,8 @@
 ---
 - hosts: all
   tasks:
+    - import_tasks: tasks/time.yml
+    - import_tasks: tasks/locale.yml
     - import_tasks: tasks/bootstrapping/create-partitions.yml
     - import_tasks: tasks/bootstrapping/luks-format-and-open.yml
       tags: [rebuild-boot-parition, mount-partitions]
@@ -65,5 +67,5 @@
         dest: "{{ partitions['root'].mount_point }}/etc/fstab"
       become: true
 
-    - name: Set hostname file in chroot
-      command: "arch-chroot {{ partitions['root'].mount_point }} sh -c 'echo -n {{ new_hostname}} > /etc/hostname'"
+    - name: Configure bootstrapping facts in the chroot
+      command: "systemd-firstboot --root {{ partitions['root'].mount_point }} --copy-locale --copy-timezone --hostname {{ new_hostname }}"
