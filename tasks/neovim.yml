@@ -49,7 +49,9 @@
       - c
       - cpp
       - css
+      - diff
       - dockerfile
+      - git_rebase
       - go
       - gomod
       - gowork

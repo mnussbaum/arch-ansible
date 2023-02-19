@@ -13,4 +13,4 @@ vim.o.undofile = true
 vim.o.history = 500
 
 -- Preserve jump history
-vim.o.shada = "'100,\"100,:20,%,n$XDG_DATA_HOME/nvim/shada/main.shada"
+vim.o.shada = "'100,\"100,:20,%"
