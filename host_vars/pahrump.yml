@@ -79,17 +79,6 @@ networking:
       password: "{{ wifi_passwords['gens'] }}"
     - ssid: "Lilypad"
       password: "{{ wifi_passwords['joyces'] }}"
-    - ssid: "CBCI-9388"
-      password: "canvas3356baked"
-    - ssid: "Blue_Skye"
-      password: "HomeSweetHome_555"
-    - ssid: "FourSeasons"
-    # ssid="WeWorkWiFi"
-    # key_mgmt=WPA-EAP
-    # eap=PEAP
-    # identity="mike@equilibriumenergy.com"
-    # password="sod-dine-ante-moody"
-    # phase2="auth=MSCHAPV2"
 
 key_repeat:
   rate: 35
