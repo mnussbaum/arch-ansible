@@ -111,12 +111,12 @@ firefox:
   hidpi: true
 
 optional_daemons:
-  clightd: false
-  libinput_gestures: false
+  clightd: true
+  libinput_gestures: true
 
 window_manager:
   waybar_minimum_workspace_count: 5
   window_manager: sway
   windowing_system: wayland
 
-qemu_host: false
+qemu_host: true
