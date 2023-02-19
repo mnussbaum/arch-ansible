@@ -23,4 +23,5 @@
 ## Bugs
 
 1. Ansible files not owned by user post-install
+1. Secrets dir missing in ansible dir post-install
 1. Installing packages in pre-chroot fails due to missing pacman keys

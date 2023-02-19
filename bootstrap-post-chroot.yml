@@ -32,6 +32,7 @@
         ansible_host: /mnt
         ansible_connection: chroot
 
+    # FIX: arch-ansible dir is still owned by root
     - name: Set permission on arch-ansible copy
       file:
         path: "{{ arch_ansible_dest }}"
@@ -39,6 +40,7 @@
         owner: "{{ user.name }}"
         group: "{{ user.group }}"
 
+    # FIX: secrets dir doesn't exist still
     - name: Install secrets
       copy:
         src: "{{ item.src }}"
