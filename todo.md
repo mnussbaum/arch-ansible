@@ -12,7 +12,10 @@ Document how to:
 1. Fix the permissions on bin scripts in install media
 1. Repartition windows partition
 1. Specify partitions as sizes
-1. Make it easier to add a new host, vars and bin scripts, hosts.yml
+1. Make it easier to add a new host, vars, hosts.yml
 
 1. Ansible files not owned by user
 1. Document or automate ~/.netrc and GOPRIVATE setup
+1. Figure out what's up with the key issue
+1. vault-password isn't migrating from the USB to the final host correctly
+1. Wipe partitions and actually wipe data and try it all out
