@@ -54,6 +54,15 @@
             - tmux
             - os-prober
 
+        - name: Set permissions for live environment
+          lineinfile:
+            dest: "{{ iso_build_dir }}/profiledef.sh"
+            line: "{{ item }}"
+            insertafter: 'file_permissions=\('
+          loop:
+            - '["/root/arch-ansible/"]="0:0:0644"'
+            - '["/root/arch-ansible/bin/"]="0:0:0755"'
+
         - name: Build ISO
           become: true
           command: "mkarchiso -v -w {{ iso_build_dir }}/work -o {{ iso_build_dir }}/out {{ iso_build_dir }}"
