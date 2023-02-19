@@ -6,11 +6,14 @@
         user_home_dir: "{{ partitions['root'].mount_point }}/home/{{ user.name }}"
     - set_fact:
         arch_ansible_dest: "{{ user_home_dir }}/src/arch-ansible"
+    - set_fact:
         secrets_to_install:
           - src: secrets/gpg-keys/
             dest: "{{ user_home_dir }}/gpg-keys"
           - src: secrets/ssh-keys/
             dest: "{{ user_home_dir }}/.ssh"
+          - src: secrets/vault-password
+            dest: "{{ arch_ansible_dest }}/secrets/vault-password"
 
     - name: Copy over arch-ansible repo
       synchronize:
@@ -19,8 +22,10 @@
 
     - name: Delete secrets out of arch-ansible copy
       file:
-        path: "{{ arch_ansible_dest }}/secrets"
+        path: "{{ item }}"
         state: absent
+      with_fileglob:
+        - "{{ arch_ansible_dest }}/secrets/*"
 
     - name: Switch back into chroot to fix file permissions
       set_fact:
