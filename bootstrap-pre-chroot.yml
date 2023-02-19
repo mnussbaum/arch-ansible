@@ -64,7 +64,7 @@
         - extra.db
 
     - set_fact:
-        networks: "{{ networking['networks'] }}"
+        networks: "{{ networking['networks'] | default([]) }}"
     - import_tasks: tasks/networking.yml
       vars:
         networking:
