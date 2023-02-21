@@ -6,6 +6,7 @@
     name:
       - go
       - gopls
+      - golangci-lint
   become: yes
 
 - name: golang | Create gopath dirs
