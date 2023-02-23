@@ -6,7 +6,11 @@
 1. Setup a new machine
 1. What the different tag modes are
 1. Build a fresh install media
-1. Do ~/.netrc and GOPRIVATE setup, or automate it
+1. Document or automate installing secret files:
+   - ~/.netrc
+   - ~/.pgpass
+   - ~/.aws/credentials
+   - /etc/wireguard/eeek-wg0.conf
 
 ## Verify
 
@@ -16,6 +20,8 @@
 
 ## Nice to improve
 
+1. Move eeek-wg0 VPN name into configuration
+1. Configure GOPRIVATE
 1. Repartition windows partition
 1. Specify partitions as sizes
 1. Make it easier to add a new host, vars, hosts.yml

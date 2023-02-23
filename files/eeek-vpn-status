@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if ip link show eeek-wg0 2>/dev/null 1> /dev/null ; then
+  printf "💼"
+else
+  printf "✌"
+fi
+
+printf "\n"

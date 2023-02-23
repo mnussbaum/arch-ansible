@@ -78,7 +78,7 @@
       "idle_inhibitor",
       "custom/rotation-toggle",
       "custom/toggle-headphone-profile",
-      "custom/toggle-eeek-openvpn"
+      "custom/toggle-eeek-vpn"
     ],
 
     "modules-right": [
@@ -113,11 +113,11 @@
       "on-click": "toggle-headphone-profile",
     },
 
-    "custom/toggle-eeek-openvpn": {
-      "exec": "eeek-openvpn-status",
+    "custom/toggle-eeek-vpn": {
+      "exec": "eeek-vpn-status",
       "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{}', last_block=True, position='left') }}",
       "interval": 1,
-      "on-click": "toggle-eeek-openvpn",
+      "on-click": "toggle-eeek-vpn",
       "tooltip": false
     },
 

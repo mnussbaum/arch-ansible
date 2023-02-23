@@ -1,0 +1,7 @@
+#!/bin/bash
+
+if ip link show eeek-wg0 2> /dev/null 1> /dev/null ; then
+  pkexec wg-quick down eeek-wg0 > /dev/null
+else
+  pkexec wg-quick up eeek-wg0 > /dev/null
+fi

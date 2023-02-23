@@ -1,7 +1,0 @@
-#!/bin/bash
-
-if systemctl status openvpn-client@eeek.service > /dev/null ; then
-  systemctl stop openvpn-client@eeek.service > /dev/null
-else
-  systemctl start openvpn-client@eeek.service > /dev/null
-fi
