@@ -1,15 +1,23 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Postgres | Install packages
+- name: postgres | Install packages
   package:
     state: present
     name:
       - postgresql
   become: true
 
-- name: Postgres | Install psqlrc file
+- name: postgres | Install psqlrc file
   copy:
     src: files/psqlrc
     dest: "{{ user_home_dir }}/.psqlrc"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
+
+- name: postgres | Install pgpass file
+  template:
+    src: templates/pgpass
+    dest: "{{ user_home_dir }}/.pgpass"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    mode: "0600"

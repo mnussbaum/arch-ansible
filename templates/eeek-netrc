@@ -1,0 +1,3 @@
+machine gitlab.com
+  login __token__
+  password {{ lookup('pipe', 'pass show eq/gitlab_token') }}

@@ -1,0 +1,17 @@
+# vim:ft=yaml.ansible:
+---
+- name: eeek | Install packages
+  package:
+    state: present
+    name:
+      - wireguard-tools
+      - systemd-resolvconf
+  become: true
+
+- name: eeek | Install .netrc
+  template:
+    src: templates/eeek-netrc
+    dest: "{{ user_home_dir }}/.netrc"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    mode: "0600"
