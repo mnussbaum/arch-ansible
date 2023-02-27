@@ -11,11 +11,8 @@
   package:
     state: present
     name:
-      - base-devel
       - ccache
       - curl
-      - git
-      - lzop
   become: true
 
 - name: Packaging | Install makepkg.conf

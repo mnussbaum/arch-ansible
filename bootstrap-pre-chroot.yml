@@ -2,8 +2,6 @@
 ---
 - hosts: all
   tasks:
-    - import_tasks: tasks/time.yml
-    - import_tasks: tasks/locale.yml
     - import_tasks: tasks/bootstrapping/create-partitions.yml
     - import_tasks: tasks/bootstrapping/luks-format-and-open.yml
       tags: [rebuild-boot-parition, mount-partitions]
@@ -71,10 +69,8 @@
           wireless_interface: wlan0
           networks: "{{ networks }}"
 
-    - import_tasks: tasks/bootstrap-packages.yml
-
     - name: Pacstrap
-      command: "pacstrap {{ partitions['root'].mount_point }} base linux linux-firmware linux-headers python"
+      command: "pacstrap {{ partitions['root'].mount_point }} {{ bootstrap_packages | join(' ') }}"
       become: true
 
     - name: Generate fstab contents with mounts

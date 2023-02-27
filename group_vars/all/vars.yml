@@ -49,3 +49,24 @@ wallpaper:
   desktop_dir: /usr/share/backgrounds
   daytime_image: lost_coast_golden_path.jpg
   night_image: merch-mart.png
+
+bootstrap_packages:
+  - ansible
+  - archlinux-keyring
+  - base
+  - base-devel
+  - inetutils
+  - linux
+  - linux-headers
+  - linux-firmware
+  - lvm2
+  - python
+  - python-passlib
+  - rsync
+  - sudo
+  - vim
+  - zsh
+  - git
+  - lzop
+  - tmux
+  - os-prober

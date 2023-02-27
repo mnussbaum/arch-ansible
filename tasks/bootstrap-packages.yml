@@ -12,18 +12,4 @@
   become: true
   package:
     state: present
-    name:
-      - ansible
-      - archlinux-keyring
-      - base
-      - inetutils
-      - linux
-      - linux-headers
-      - linux-firmware
-      - lvm2
-      - python
-      - python-passlib
-      - rsync
-      - sudo
-      - vim
-      - zsh
+    name: "{{ bootstrap_packages }}"

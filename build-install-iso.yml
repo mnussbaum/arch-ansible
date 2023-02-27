@@ -47,12 +47,7 @@
           lineinfile:
             dest: "{{ iso_build_dir }}/packages.x86_64"
             line: "{{ item }}"
-          loop:
-            - base-devel
-            - ansible
-            - git
-            - tmux
-            - os-prober
+          loop: "{{ bootstrap_packages }}"
 
         - name: Set permissions for live environment
           lineinfile:

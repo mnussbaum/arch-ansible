@@ -17,6 +17,8 @@
 
 1. Automate installing secret files:
    - /etc/wireguard/eeek-wg0.conf
+   - ~/.aws/config
+   - ~/.kube/config
 1. Move eeek-wg0 VPN name into configuration
 1. Do an actual gpg import on private key during bootstrapping - https://blog.veloc1ty.de/2018/08/06/pgp-trust-key-non-interactive-with-ansible/
 1. Configure GOPRIVATE
@@ -28,4 +30,3 @@
 
 1. Ansible files not owned by user post-install
 1. Secrets dir missing in ansible dir post-install
-1. Installing packages in pre-chroot fails due to missing pacman keys
