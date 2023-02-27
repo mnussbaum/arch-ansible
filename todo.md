@@ -15,7 +15,7 @@
 
 ## Nice to improve
 
-1. Automate installing secret files:
+1. Automate installing secret and config files:
    - /etc/wireguard/eeek-wg0.conf
    - ~/.aws/config
    - ~/.kube/config
@@ -29,4 +29,3 @@
 ## Bugs
 
 1. Ansible files not owned by user post-install
-1. Secrets dir missing in ansible dir post-install

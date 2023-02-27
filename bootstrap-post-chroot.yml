@@ -3,9 +3,11 @@
 - hosts: all
   tasks:
     - set_fact:
-        user_home_dir: "{{ partitions['root'].mount_point }}/home/{{ user.name }}"
+        user_home_dir: "/home/{{ user.name }}"
     - set_fact:
         arch_ansible_dest: "{{ user_home_dir }}/src/arch-ansible"
+    - set_fact:
+        mounted_arch_ansible_dest: "{{ partitions['root'].mount_point }}{{ arch_ansible_dest }}"
     - set_fact:
         secrets_to_install:
           - src: secrets/gpg-keys/
@@ -18,14 +20,14 @@
     - name: Copy over arch-ansible repo
       synchronize:
         src: "{{ playbook_dir }}/"
-        dest: "{{ arch_ansible_dest }}"
+        dest: "{{ mounted_arch_ansible_dest }}"
 
     - name: Delete secrets out of arch-ansible copy
       file:
         path: "{{ item }}"
         state: absent
       with_fileglob:
-        - "{{ arch_ansible_dest }}/secrets/*"
+        - "{{ mounted_arch_ansible_dest }}/secrets/*"
 
     - name: Switch back into chroot to fix file permissions
       set_fact:
@@ -40,7 +42,14 @@
         owner: "{{ user.name }}"
         group: "{{ user.group }}"
 
-    # FIX: secrets dir doesn't exist still
+    - name: Create secrets destination directory
+      file:
+        path: "{{ arch_ansible_dest }}/secrets"
+        state: directory
+        mode: "0700"
+        owner: "{{ user.name }}"
+        group: "{{ user.group }}"
+
     - name: Install secrets
       copy:
         src: "{{ item.src }}"
@@ -50,3 +59,8 @@
         mode: "0600"
         directory_mode: "0700"
       loop: "{{ secrets_to_install }}"
+
+    - name: Switch connection back to local for post-chroot tasks
+      set_fact:
+        ansible_host: "{{ original_hostname }}"
+        ansible_connection: local
