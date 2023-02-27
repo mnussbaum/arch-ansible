@@ -1,16 +1,14 @@
 ## Document how to
 
-1. Build ISO
-1. Build/run QEMU VM ISO and VM
 1. Recover the boot partition
 1. Setup a new machine
 1. What the different tag modes are
-1. Build a fresh install media
 
 ## Verify
 
 1. Managed partition changes properly boot partitions
-1. Bootstrap secrets are installed properly
+1. Bootstrap secrets are installed and cleaned properly
+1. Arch-ansible (and subdirs) file and dir perms are right
 1. Wipe partitions and actually wipe data and try it all out
 
 ## Nice to improve
@@ -28,4 +26,4 @@
 
 ## Bugs
 
-1. Ansible files not owned by user post-install
+1. Fix networking in qemu post restart- http://ayekat.ch/blog/qemu-networkd maybe
