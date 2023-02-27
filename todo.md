@@ -16,7 +16,6 @@
 ## Nice to improve
 
 1. Automate installing secret files:
-   - ~/.aws/credentials
    - /etc/wireguard/eeek-wg0.conf
 1. Move eeek-wg0 VPN name into configuration
 1. Do an actual gpg import on private key during bootstrapping - https://blog.veloc1ty.de/2018/08/06/pgp-trust-key-non-interactive-with-ansible/

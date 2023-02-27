@@ -6,6 +6,7 @@
     name:
       - wireguard-tools
       - systemd-resolvconf
+      - tmate
   become: true
 
 - name: eeek | Install .netrc
