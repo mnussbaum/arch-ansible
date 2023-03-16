@@ -9,6 +9,7 @@
       - pipewire-alsa
       - pipewire-docs
       - pipewire-pulse
+      - sof-firmware
       - pavucontrol
       - gstreamer
       - gstreamer-vaapi
