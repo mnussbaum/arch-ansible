@@ -102,7 +102,7 @@
     - import_tasks: tasks/torrents.yml
     - import_tasks: tasks/devops.yml
     - import_tasks: tasks/archiso.yml
-    - import_tasks: tasks/zathura.yml
+    - import_tasks: tasks/pdf.yml
     - import_tasks: tasks/syncthing.yml
     - import_tasks: tasks/raspberry-pi-dev.yml
       when: ansible_architecture is not match("arm.*")
