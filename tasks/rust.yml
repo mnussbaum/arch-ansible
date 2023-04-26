@@ -5,7 +5,6 @@
     name:
       - rustup
       - rust-racer
-      - rust-analyzer
   become: true
 
 - name: Rust | Install rust nightly
@@ -22,3 +21,8 @@
   command: rustup component add rustfmt
   args:
     creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustfmt"
+
+- name: Rust | Install rust-analyzer
+  command: rustup component add rust-analyzer
+  args:
+    creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rust-analyzer"
