@@ -37,6 +37,7 @@
       - grim-git
       - slurp
       - xorg-xwayland
+      - dbus-broker-launch
   become: true
 
 - name: sway | Generate base16 configs
