@@ -9,16 +9,17 @@
       - freetype2
       - gsfonts
       - libxft
-      - ttf-cascadia-code
+      - ttf-cascadia-code-nerd
       - ttf-noto-nerd
       - gucharmap
-      - python-opentype-feature-freezer
+      # - python-opentype-feature-freezer
+      # Broken right now, use `pip install --upgrade opentype-feature-freezer`
   become: true
 
-- name: Fonts | Install Cascadia Code with cursive italics enabled
+- name: Fonts | Install Caskaydia Code with cursive italics enabled
   copy:
-    src: assets/CascadiaCodePLCursiveItalic.ttf
-    dest: /usr/share/fonts/TTF/CascadiaCodePLCursiveItalic.ttf
+    src: assets/CaskaydiaCoveNerdFont-Italic.ttf
+    dest: /usr/share/fonts/TTF/CaskaydiaCoveNerdFont-Italic.ttf
   become: true
 
 - name: Fonts | Enable LCD filter
