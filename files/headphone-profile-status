@@ -3,13 +3,12 @@
 set -o errexit
 set -o nounset
 
-printf "🎧"
 if pactl list | grep -q "Active Profile: a2dp-sink-aac" ; then
-  printf "🎶"
+  printf "󰋋🎶"
 elif pactl list | grep -q "Active Profile: headset-head-unit-msbc" ; then
-  printf "🎤"
+  printf "󰋋󰍮"
 else
-  printf "❎"
+  printf "󰟎"
 fi
 
 printf "\n"

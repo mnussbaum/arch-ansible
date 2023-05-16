@@ -20,7 +20,9 @@ class FilterModule(object):
         if first_block and position == "right":
             return f"""<span size=\\"large\\" color=\\"#{color}\\"></span><span background=\\"#{color}\\"> {text}</span>"""
         elif first_block and position == "left":
-            return f"""<span background=\\"#{color}\\"> {text}</span>"""
+            return (
+                f"""<span size=\\"large\\" background=\\"#{color}\\"> {text}</span>"""
+            )
         elif first_block:
             raise ValueError(
                 f"""If last_block is True a position of 'left' or 'right' must be passed. Given: {position}"""
