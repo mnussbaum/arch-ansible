@@ -7,6 +7,7 @@
     name:
       - clightd
       - clight
+      - upower
 
 - name: Brightness | Install clight config
   copy:
