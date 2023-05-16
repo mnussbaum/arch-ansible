@@ -79,6 +79,14 @@ networking:
       password: "{{ wifi_passwords['gens'] }}"
     - ssid: "Lilypad"
       password: "{{ wifi_passwords['joyces'] }}"
+    - ssid: "wmvnet"
+      password: "{{ wifi_passwords['varneys'] }}"
+    - ssid: "WeWorkWiFi"
+      key_mgmt: "WPA-EAP"
+      eap: "PEAP"
+      identity: "mike@equilibriumenergy.com"
+      password: "{{ wifi_passwords['we_work'] }}"
+      phase2: "auth=MSCHAPV2"
 
 key_repeat:
   rate: 35

@@ -43,14 +43,6 @@
     msg: "Skipping wpa_supplicant configuration since no network config is defined"
   when: networking is not defined
 
-- name: Generate WPA PSK
-  shell: "wpa_passphrase '{{ item.ssid }}' '{{ item.password }}'"
-  register: wpa_passphrase_results
-  no_log: true
-  changed_when: false
-  when: networking is defined and item.password is defined
-  loop: "{{ networking.networks }}"
-
 - name: Networking | Configure wpa_supplicant
   become: true
   template:

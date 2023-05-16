@@ -78,6 +78,8 @@ networking:
       password: "{{ wifi_passwords['gens'] }}"
     - ssid: "Lilypad"
       password: "{{ wifi_passwords['joyces'] }}"
+    - ssid: "wmvnet"
+      password: "{{ wifi_passwords['varneys'] }}"
 
 key_repeat:
   rate: 35
