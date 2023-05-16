@@ -1,9 +1,0 @@
-#!/bin/bash
-
-if systemctl status --user rot8 > /dev/null ; then
-  printf "若"
-else
-  printf "掠"
-fi
-
-printf "\n"
