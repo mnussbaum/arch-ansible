@@ -2,3 +2,6 @@
 success_symbol = "[•](bold red)[•](bold yellow)[•](bold blue)"
 error_symbol = "[•](bold red)[•](bold red)[•](bold red)"
 vicmd_symbol = "[•](bold red)[•](bold yellow)[•](bold blue)"
+
+[golang]
+symbol = "󱌧"
