@@ -7,8 +7,11 @@ country=US
 {% for network in (networking.networks | default([])) %}
 network={
   ssid="{{ network.ssid }}"
+  {%- if network.psk is defined %}
+  psk="{{ network.psk }}"
+  {%- endif %}
   {%- if network.password is defined %}
-  psk="{{ network.password }}"
+  password="{{ network.password }}"
   {%- endif %}
   {%- if network.key_mgmt is defined %}
   key_mgmt={{ network.key_mgmt }}
