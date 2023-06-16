@@ -50,7 +50,7 @@ networking:
   wireless_interface: wlan0
   networks:
     - ssid: "JazzHands2.4G"
-      password: "{{ wifi_passwords['jazz_hands'] }}"
+      psk: "{{ wifi_passwords['jazz_hands'] }}"
 
 window_manager:
   waybar_minimum_workspace_count: 5
