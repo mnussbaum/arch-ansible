@@ -1,6 +1,6 @@
 localhost:*:*:postgres:postgres
 127.0.0.1:*:*:postgres:postgres
 0.0.0.0:*:*:postgres:postgres
-{% for pgpass_secret in pgpass_secret_names %}
+{% for pgpass_secret in (pgpass_secret_names | default([])) %}
 {{ lookup('pipe', 'pass show ' ~ pgpass_secret) }}
 {%- endfor %}
