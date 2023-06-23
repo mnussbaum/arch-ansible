@@ -7,6 +7,7 @@
       - go
       - gopls
       - golangci-lint
+      - staticcheck
   become: yes
 
 - name: golang | Create gopath dirs
