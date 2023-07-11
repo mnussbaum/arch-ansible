@@ -117,6 +117,18 @@ window_manager:
   window_manager: sway
   windowing_system: wayland
 
+monitors:
+  - id: eDP-1
+    position:
+      x: 0
+      y: 0
+    scale: 2
+  - id: DP-3
+    position:
+      x: -1100
+      y: -1600
+    scale: 0.9
+
 qemu_host: true
 
 pgpass_secret_names:
