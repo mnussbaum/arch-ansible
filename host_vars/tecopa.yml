@@ -102,6 +102,12 @@ monitors:
       x: -1100
       y: -1600
     scale: 0.9
+  # For TV
+  # - id: DP-1
+  #   position:
+  #     x: -10100
+  #     y: -10600
+  #   scale: 1
 
 firefox:
   hidpi: true
