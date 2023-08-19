@@ -69,12 +69,6 @@
     src: templates/fonts-local.conf.j2
     dest: /etc/fonts/local.conf
 
-- name: Fonts | Fix console font setting
-  become: true
-  copy:
-    src: systemd-vconsole-setup.service
-    dest: /usr/lib/systemd/system/systemd-vconsole-setup.service
-
 - name: Fonts | Configure console font
   become: true
   copy:
