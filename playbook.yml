@@ -75,7 +75,7 @@
       tags: [nvim]
     - import_tasks: tasks/git.yml
     - import_tasks: tasks/ssh.yml
-    - import_tasks: tasks/alacritty.yml
+    - import_tasks: tasks/wezterm.yml
     - import_tasks: tasks/tmux.yml
     - import_tasks: tasks/power.yml
     - import_tasks: tasks/qemu-host.yml

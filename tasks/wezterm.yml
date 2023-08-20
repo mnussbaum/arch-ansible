@@ -1,0 +1,30 @@
+# vim:ft=yaml.ansible:
+---
+- name: wezterm | Install
+  package:
+    name: wezterm
+    state: present
+  become: true
+
+- name: wezterm | Create config dir
+  file:
+    path: "{{ user_config_dir }}/wezterm"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory
+
+- name: wezterm | Install color scheme file
+  template:
+    src: templates/wezterm_base16_colorscheme.yml.j2
+    dest: "{{ user_config_dir }}/wezterm/base16-{{ base16_scheme }}.yml"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+  tags: [base16]
+
+- name: wezterm | Install config
+  template:
+    src: templates/wezterm.lua.j2
+    dest: "{{ user_config_dir }}/wezterm/wezterm.lua"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+  tags: [base16]

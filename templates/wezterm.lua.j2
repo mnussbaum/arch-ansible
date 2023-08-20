@@ -1,0 +1,37 @@
+local wezterm = require("wezterm")
+
+local config = {}
+
+if wezterm.config_builder then
+  config = wezterm.config_builder()
+end
+
+config.window_background_opacity = {{ color_scheme_opacity }}
+config.enable_tab_bar = false
+config.font = wezterm.font_with_fallback({
+  {
+    family = "{{ font["monospace_family"] }}",
+    -- Enable cursive mode for Cascadia Code font
+    harfbuzz_features = { "calt=1", "ss01=1" },
+  },
+  "{{ font["emoji_family"] }}",
+})
+
+-- Enable block select
+config.mouse_bindings = {
+  {
+    event = { Down = { streak = 1, button = "Left" } },
+    mods = "CTRL",
+    action = wezterm.action.SelectTextAtMouseCursor("Block"),
+  },
+  {
+    event = { Drag = { streak = 1, button = "Left" } },
+    mods = "CTRL",
+    action = wezterm.action.ExtendSelectionToMouseCursor("Block"),
+  },
+}
+
+colors, metadata = wezterm.color.load_base16_scheme("{{ user_config_dir }}/wezterm/base16-{{ base16_scheme }}.yml")
+config.colors = colors
+
+return config
