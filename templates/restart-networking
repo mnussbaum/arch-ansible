@@ -4,7 +4,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-systemctl restart wpa_supplicant@{{ networking.wireless_interface }}.service
+systemctl restart iwd.service
 sleep 3
 
 systemctl restart systemd-networkd.service

@@ -6,7 +6,8 @@
     state: latest
     name:
       - wireless_tools
-      - wpa_supplicant
+      - iwd
+      - wpa-psk
 
 - name: Networking | Create systemd-resolved config directory
   become: true
@@ -40,38 +41,58 @@
     name: systemd-resolved.service
 
 - debug:
-    msg: "Skipping wpa_supplicant configuration since no network config is defined"
+    msg: "Skipping iwd configuration since no network config is defined"
   when: networking is not defined
 
-- name: Networking | Configure wpa_supplicant
+- name: Networking | Generate WPA PSKs
+  shell: "wpa-psk --iwd '{{ item.ssid }}' '{{ item.psk }}'"
+  register: wpa_psk_outputs
+  no_log: true
+  changed_when: false
+  when: networking is defined and item.psk is defined
+  loop: "{{ networking.networks }}"
+
+- name: Networking | Dictionarize WPA PSK outputs
+  set_fact:
+    wpa_psks: "{{ wpa_psks | default({}) | combine({item.item.ssid: item.stdout}) }}"
+  loop: "{{ wpa_psk_outputs.results }}"
+  no_log: true
+  when: item is not skipped
+
+- name: Networking | Create iwd config dir
+  become: true
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /var/lib/iwd
+    - /etc/iwd
+
+- name: Networking | Configure iwd networks
   become: true
   template:
-    src: templates/wpa_supplicant.conf.j2
-    dest: "/etc/wpa_supplicant/wpa_supplicant-{{ networking.wireless_interface }}.conf"
+    src: templates/iwd_network.conf.j2
+    dest: "/var/lib/iwd/{{ item.ssid }}.{% if item.psk is defined %}psk{% elif item.eap is defined %}8021x{% else %}open{% endif %}"
   when: networking is defined
+  no_log: true
+  loop: "{{ networking.networks }}"
+
+- name: Networking | Install iwd main config
+  become: true
+  copy:
+    src: files/iwd_main.conf
+    dest: /etc/iwd/main.conf
 
 # Bootstrapping the pi SD card network is defined but we can't start it up in
 # the container, hence the ternary
-- name: Networking | Start and enable wpa_supplicant for wireless interface
+- name: Networking | Start and enable iwd.service
   become: true
   systemd:
     state: "{{ (ansible_virtualization_role == 'guest') | ternary('stopped', 'started') }}"
     enabled: true
-    name: "wpa_supplicant@{{ networking.wireless_interface }}.service"
+    name: "iwd.service"
   when: networking is defined
 
-- name: Networking | Install force-network-online.service
-  become: true
-  copy:
-    src: files/force-network-online.service
-    dest: /etc/systemd/system/force-network-online.service
-
-- name: Networking | Enable force-network-online.service
-  become: true
-  systemd:
-    enabled: true
-    name: force-network-online.service
-    daemon-reload: true
 
 - name: Networking | Create network-online.target override dir
   become: true

@@ -1,0 +1,17 @@
+#jinja2: trim_blocks:False
+{%- if item.psk is defined -%}
+{{ wpa_psks[item.ssid] }}
+{%- endif %}
+{%- if item.password is defined -%}
+[Security]
+EAP-PEAP-Phase2-Password="{{ item.password }}"
+{%- endif %}
+{%- if item.eap is defined %}
+EAP-Method={{ item.eap }}
+{%- endif %}
+{%- if item.identity is defined %}
+EAP-Identity="{{ item.identity }}"
+{%- endif %}
+{%- if item.phase2 is defined %}
+EAP-PEAP-Phase2-Method="{{ item.phase2 }}"
+{%- endif -%}

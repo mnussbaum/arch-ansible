@@ -3,4 +3,4 @@ Name=eth0
 
 [Network]
 # Fixes Docker port forwarding
-IPMasquerade=yes
+IPMasquerade=ipv4
