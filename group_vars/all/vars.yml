@@ -11,6 +11,7 @@ font:
   sans_family: "NotoSans Nerd Font"
   serif_family: "NotoSerif Nerd Font"
   monospace_family: "CaskaydiaCove Nerd Font Mono"
+  emoji_family: "Noto Emoji"
   size: 20
   rofi_size: 10
   grub_graphical_size: 50

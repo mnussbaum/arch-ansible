@@ -11,9 +11,8 @@
       - libxft
       - ttf-cascadia-code-nerd
       - ttf-noto-nerd
+      - noto-fonts-emoji
       - gucharmap
-      # - python-opentype-feature-freezer
-      # Broken right now, use `pip install --upgrade opentype-feature-freezer`
   become: true
 
 - name: Fonts | Install Caskaydia Code with cursive italics enabled
