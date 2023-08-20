@@ -92,18 +92,6 @@ key_repeat:
   rate: 35
   delay: 250
 
-monitors:
-  - id: eDP-1
-    position:
-      x: 0
-      y: 0
-    scale: 2
-  - id: DP-1
-    position:
-      x: -1100
-      y: -1600
-    scale: 0.9
-
 firefox:
   hidpi: true
 
