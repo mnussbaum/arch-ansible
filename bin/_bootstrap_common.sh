@@ -13,3 +13,11 @@ bootstrap() {
     --tags bootstrap \
     $@
 }
+
+mount_partitions() {
+  NO_ASK_BECOME_PASS=1 \
+  ANSIBLE_PLAYBOOK=bootstrap.yml \
+    exec ./bin/ansible \
+    --tags mount-partitions \
+    $@
+}

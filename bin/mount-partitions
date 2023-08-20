@@ -3,16 +3,13 @@
 set -o errexit
 set -o nounset
 
+source bin/_bootstrap_common.sh
+
 if [[ "${1:-}" == "--help" ]] || [[ "${1:-}" == "-h" ]] ; then
-  echo 'Run ansible in an arch ISO on a physical machine to decrypt the root volume and mount it, and mount the boot partitions. Requires $hostname to be set' >&2
+  echo 'Run ansible in an arch ISO on a physical machine to decrypt the root volume and mount it, and mount the boot partitions. Requires $HOSTNAME to be set' >&2
   exit
 else
   set -o xtrace
 fi
 
-HOSTNAME=$hostname \
-NO_ASK_BECOME_PASS=1 \
-ANSIBLE_PLAYBOOK=bootstrap.yml \
-  exec ./bin/ansible \
-  --tags mount-partitions \
-  $@
+mount_partitions
