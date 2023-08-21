@@ -1,9 +1,0 @@
-#!/bin/bash
-
-set -o errexit
-set -o nounset
-
-source bin/_bootstrap_common.sh
-
-mount_partitions
-exec systemd-nspawn --boot --directory /mnt
