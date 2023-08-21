@@ -25,6 +25,8 @@
 1. Make it easier to add a new host, vars, hosts.yml
 1. Offline install from ISO
 1. Offline ISO build
+1. Fix yay installs prompting for pw when they shouldn't
+   in qemy
 
 ## Bugs
 
