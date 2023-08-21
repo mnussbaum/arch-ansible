@@ -1,0 +1,48 @@
+# vim:ft=yaml.ansible:
+---
+- name: enable network | Install packages
+  become: true
+  package:
+    state: latest
+    name:
+      - wireless_tools
+      - iwd
+
+- name: enable network | Install wpa-psk script
+  become: true
+  copy:
+    src: files/wpa-psk
+    dest: /usr/local/bin/wpa-psk
+    mode: a+x
+
+- name: enable network | Start and enable systemd-resolved
+  become: true
+  systemd:
+    state: started
+    enabled: true
+    name: systemd-resolved.service
+
+# Bootstrapping the pi SD card network is defined but we can't start it up in
+# the container, hence the ternary
+- name: enable network | Start and enable iwd.service
+  become: true
+  systemd:
+    state: "{{ (ansible_virtualization_role == 'guest') | ternary('stopped', 'started') }}"
+    enabled: true
+    name: iwd.service
+
+- name: enable network | Start and enable systemd-networkd
+  become: true
+  systemd:
+    state: started
+    enabled: true
+    name: systemd-networkd.service
+    daemon-reload: true
+
+- name: enable network | Wait for network to be online during bootstrapping
+  become: true
+  systemd:
+    state: started
+    enabled: true
+    name: systemd-networkd-wait-online.service
+  when: bootstrap is defined and bootstrap == "true"

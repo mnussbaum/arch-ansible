@@ -61,18 +61,6 @@
         - core.db
         - extra.db
 
-    # Instead of building the network configs here, install them into the
-    # right places on the live USB during image build. That avoids
-    # issues with wpa-psk not being available in the image. And simplifies the
-    # connectivity story overall
-    - set_fact:
-        networks: "{{ networking['networks'] | default([]) }}"
-    - import_tasks: tasks/networking.yml
-      vars:
-        networking:
-          wireless_interface: wlan0
-          networks: "{{ networks }}"
-
     - name: Pacstrap
       command: "pacstrap {{ partitions['root'].mount_point }} {{ bootstrap_packages | join(' ') }}"
       become: true

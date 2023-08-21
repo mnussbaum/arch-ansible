@@ -12,7 +12,9 @@
         iso_build_dir: "{{ iso_build_temp_dir.path }}"
         # iso_build_dir: "<HARD CODE HERE FOR DEBUGING>"
     - set_fact:
-        root_user_dir: "{{ iso_build_dir }}/airootfs/root"
+        airootfs: "{{ iso_build_dir }}/airootfs"
+    - set_fact:
+        root_user_dir: "{{ airootfs }}/root"
     - set_fact:
         pacman_db_dest_dir: "{{ root_user_dir }}/pacman_dbs"
 
@@ -34,6 +36,11 @@
             - community.db
             - core.db
             - extra.db
+
+        - name: Install network configuration
+          import_tasks: tasks/network_configuration.yml
+          vars:
+            network_install_root: "{{ airootfs }}"
 
         - name: Install files into root user dir
           import_tasks: tasks/bootstrapping/install-user-files.yml
