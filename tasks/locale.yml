@@ -1,6 +1,7 @@
 # vim:ft=yaml.ansible:
 ---
 - name: locale | Generate locales
+  become: true
   locale_gen:
     name: en_US.UTF-8
     state: present
