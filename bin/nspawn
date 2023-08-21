@@ -10,4 +10,6 @@ exec systemd-nspawn \
   --boot \
   --directory /mnt \
   --console interactive \
-  --machine "$HOSTNAME"
+  --machine "$HOSTNAME" \
+  --timezone off \
+  --resolv-conf off
