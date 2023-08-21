@@ -47,7 +47,7 @@ optional_daemons:
   libinput_gestures: false
 
 networking:
-  wireless_interface: wlan0
+  interface: wlan0
   networks:
     - ssid: "JazzHands2.4G"
       psk: "{{ wifi_passwords['jazz_hands'] }}"

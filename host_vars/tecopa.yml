@@ -64,7 +64,7 @@ modprobe_files:
   - nvme.conf
 
 networking:
-  wireless_interface: wlp60s0
+  interface: wlp60s0
   networks:
     - ssid: "JazzHandz"
       psk: "{{ wifi_passwords['jazz_hands'] }}"

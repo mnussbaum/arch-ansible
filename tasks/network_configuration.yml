@@ -72,12 +72,12 @@
     path: "{{ network_install_root }}/etc/systemd/system/systemd-networkd-wait-online.service.d"
     state: directory
 
-- name: networking configuration | Install systemd-networkd config for wifi interface
+- name: networking configuration | Install systemd-networkd config for primary interface
   become: true
   template:
-    src: templates/systemd-networkd-wifi-config.network.j2
-    dest: "{{ network_install_root }}/etc/systemd/network/25-{{ networking.wireless_interface }}.network"
-  when: networking.wireless_interface is defined
+    src: templates/systemd-networkd-config.network.j2
+    dest: "{{ network_install_root }}/etc/systemd/network/25-{{ networking.interface }}.network"
+  when: networking.interface is defined
 
 - name: networking configuration | Install systemd-networkd config for eth0 interface
   become: true
