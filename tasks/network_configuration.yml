@@ -43,7 +43,7 @@
   no_log: true
   when: item is not skipped
 
-- name: networking configuration | Create iwd config dir
+- name: networking configuration | Create network config dirs
   become: true
   file:
     path: "{{ item }}"
@@ -51,6 +51,7 @@
   loop:
     - "{{ network_install_root }}/var/lib/iwd"
     - "{{ network_install_root }}/etc/iwd"
+    - "{{ network_install_root }}/etc/wireguard"
 
 - name: networking configuration | Configure iwd networks
   become: true

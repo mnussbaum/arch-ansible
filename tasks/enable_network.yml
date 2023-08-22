@@ -7,6 +7,8 @@
     name:
       - wireless_tools
       - iwd
+      - wireguard-tools
+      - systemd-resolvconf
 
 - name: enable network | Install wpa-psk script
   become: true

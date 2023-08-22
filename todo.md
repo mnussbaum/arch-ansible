@@ -13,11 +13,6 @@
 
 ## Nice to improve
 
-1. Automate installing secret and config files:
-   - /etc/wireguard/eeek-wg0.conf
-   - ~/.aws/config
-   - ~/.kube/config
-1. Move eeek-wg0 VPN name into configuration
 1. Do an actual gpg import on private key during bootstrapping - https://blog.veloc1ty.de/2018/08/06/pgp-trust-key-non-interactive-with-ansible/
 1. Configure GOPRIVATE
 1. Repartition windows partition
@@ -26,7 +21,7 @@
 1. Offline install from ISO
 1. Offline ISO build
 1. Fix yay installs prompting for pw when they shouldn't
-   in qemy
+   in qemu
 
 ## Bugs
 

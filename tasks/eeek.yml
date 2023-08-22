@@ -4,8 +4,6 @@
   package:
     state: present
     name:
-      - wireguard-tools
-      - systemd-resolvconf
       - tmate
       - tctl
       - direnv
@@ -18,3 +16,24 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
     mode: "0600"
+
+- name: eeek | Install wireguard config
+  become: true
+  copy:
+    content: "{{ lookup('pipe', 'pass show eq/eeek-wg0.conf') }}"
+    dest: "/etc/wireguard/eeek-wg0.conf"
+    mode: "0644"
+
+- name: eeek | Make AWS config dir
+  file:
+    dest: "{{ user_home_dir }}/.aws"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: eeek | Install AWS config
+  copy:
+    content: "{{ lookup('pipe', 'pass show eq/aws.conf') }}"
+    dest: "{{ user_home_dir }}/.aws/config"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
