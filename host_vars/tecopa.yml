@@ -85,7 +85,7 @@ networking:
       eap: "PEAP"
       identity: "mike@equilibriumenergy.com"
       password: "{{ wifi_passwords['we_work'] }}"
-      phase2: "auth=MSCHAPV2"
+      phase2: "MSCHAPV2"
 
 key_repeat:
   rate: 35

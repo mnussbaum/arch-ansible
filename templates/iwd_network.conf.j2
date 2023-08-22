@@ -4,14 +4,15 @@
 {%- endif %}
 {%- if item.password is defined -%}
 [Security]
-EAP-PEAP-Phase2-Password="{{ item.password }}"
+EAP-PEAP-Phase2-Password={{ item.password }}
 {%- endif %}
 {%- if item.eap is defined %}
 EAP-Method={{ item.eap }}
 {%- endif %}
 {%- if item.identity is defined %}
-EAP-Identity="{{ item.identity }}"
+EAP-Identity={{ item.identity }}
+EAP-PEAP-Phase2-Identity={{ item.identity }}
 {%- endif %}
 {%- if item.phase2 is defined %}
-EAP-PEAP-Phase2-Method="{{ item.phase2 }}"
+EAP-PEAP-Phase2-Method={{ item.phase2 }}
 {%- endif -%}
