@@ -10,13 +10,6 @@
       - wireguard-tools
       - systemd-resolvconf
 
-- name: enable network | Install wpa-psk script
-  become: true
-  copy:
-    src: files/wpa-psk
-    dest: /usr/local/bin/wpa-psk
-    mode: a+x
-
 - name: enable network | Start and enable systemd-resolved
   become: true
   systemd:
