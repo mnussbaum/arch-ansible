@@ -5,7 +5,7 @@ set -o nounset
 
 card=`pactl list | grep "Name: bluez_card." | cut -d ' ' -f 2`
 
-if pactl list | grep -q "Active Profile: a2dp-sink-aac" ; then
+if pactl list | grep -q "Active Profile: a2dp-sink" ; then
   echo "Switching $card to mSBC..."
   pactl set-card-profile $card headset-head-unit-msbc
 else
