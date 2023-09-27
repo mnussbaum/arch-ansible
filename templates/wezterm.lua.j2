@@ -34,4 +34,6 @@ config.mouse_bindings = {
 colors, metadata = wezterm.color.load_base16_scheme("{{ user_config_dir }}/wezterm/base16-{{ base16_scheme }}.yml")
 config.colors = colors
 
+config.selection_word_boundary = " \t\n{}[]()\"'`{}[]().,;:"
+
 return config
