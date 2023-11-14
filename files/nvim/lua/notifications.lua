@@ -99,5 +99,5 @@ local lsp_severity_to_vim_severity = {
 }
 
 vim.lsp.handlers["window/showMessage"] = function(err, method, params, client_id)
-	vim.notify(method.message, lsp_severity_to_vim_severityeverity[params.type])
+	vim.notify(method.message, lsp_severity_to_vim_severity[params.type])
 end
