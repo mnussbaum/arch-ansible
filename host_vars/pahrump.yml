@@ -86,6 +86,8 @@ networking:
       identity: "mike@equilibriumenergy.com"
       password: "{{ wifi_passwords['we_work'] }}"
       phase2: "MSCHAPV2"
+    - ssid: "Oakland Center"
+      password: "{{ wifi_passwords['oakland_center'] }}"
 
 key_repeat:
   rate: 35
