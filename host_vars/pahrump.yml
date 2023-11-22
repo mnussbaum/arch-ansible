@@ -97,7 +97,7 @@ firefox:
   hidpi: true
 
 optional_daemons:
-  clightd: true
+  clightd: false
   libinput_gestures: true
 
 window_manager:
