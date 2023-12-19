@@ -43,6 +43,7 @@
       - xdg-utils
       - yajl
       - zip
+      - numbat-bin
 
 - name: CLI Tools | Install fzf helper scripts
   copy:
