@@ -3,13 +3,6 @@
 1. Setup a new machine
 1. What the different tag modes are
 
-## Verify
-
-1. Managed partition changes properly boot partitions
-1. Bootstrap secrets are installed and cleaned properly
-1. Arch-ansible (and subdirs) file and dir perms are right
-1. Wipe partitions and actually wipe data and try it all out
-
 ## Nice to improve
 
 1. Do an actual gpg import on private key during bootstrapping - https://blog.veloc1ty.de/2018/08/06/pgp-trust-key-non-interactive-with-ansible/
