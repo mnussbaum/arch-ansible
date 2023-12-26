@@ -170,6 +170,7 @@
   synchronize:
     src: files/nvim/lua/
     dest: "{{ nvim_config_dir }}/lua"
+    perms: false
 
 - name: nvim | Fix permission on nvim configs
   file:

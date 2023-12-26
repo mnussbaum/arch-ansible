@@ -45,6 +45,7 @@
   synchronize:
     dest: "{{ user_config_dir }}/zsh"
     src: files/zsh-configs/
+    perms: false
 
 - name: ZSH | Ensure zsh config owner is right
   file:

@@ -21,6 +21,7 @@
       synchronize:
         src: "{{ playbook_dir }}/"
         dest: "{{ mounted_arch_ansible_dest }}"
+        perms: false
 
     - name: Delete secrets out of arch-ansible copy
       file:

@@ -5,9 +5,11 @@
   file:
     path: "{{ wallpaper.desktop_dir }}"
     state: directory
+    mode: "0755"
 
 - name: Wallpaper | Install desktop background images
   become: true
   synchronize:
     src: assets/wallpaper/
     dest: "{{ wallpaper.desktop_dir }}"
+    perms: false

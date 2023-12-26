@@ -93,6 +93,7 @@
       synchronize:
         src: "{{ partitions['root'].mount_point }}/boot/"
         dest: "{{ partitions['boot'].mount_point }}"
+        perms: false
       become: true
       when: boot_dir_on_root.stat.exists
 

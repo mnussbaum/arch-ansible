@@ -30,7 +30,6 @@
    maybe
 1. Regenerate boot script isn't reinstalling grub
 1. Corrupted `/mnt/var/cache/pacman/pkg/*.tar.zst`
-1. All the files in src/arch-ansible on the new disk had the wrong permissions
 1. Treesitter errors on first nvim start
 1. Slow grub/luks decryption
 1. GPG keygrip is not consistent across devices, and maybe for that reason,

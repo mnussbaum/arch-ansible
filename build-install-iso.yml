@@ -23,6 +23,7 @@
           synchronize:
             src: /usr/share/archiso/configs/releng/
             dest: "{{ iso_build_dir }}"
+            perms: false
 
         - name: Create pacman DB directory
           file:

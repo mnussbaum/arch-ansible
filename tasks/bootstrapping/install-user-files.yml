@@ -8,6 +8,7 @@
   synchronize:
     src: "{{ playbook_dir }}/"
     dest: "{{ ansible_dest_dir }}"
+    perms: false
 
 - name: Fix permissions on arch-ansible repo
   file:

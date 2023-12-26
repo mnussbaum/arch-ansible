@@ -27,21 +27,25 @@
   synchronize:
     src: assets/grub-theme/fonts/
     dest: "{{ grub_theme_dir }}"
+    perms: false
 
 - name: Grub Theme | Install theme selection assets
   become: true
   synchronize:
     src: assets/grub-theme/select/
     dest: "{{ grub_theme_dir }}"
+    perms: false
 
 - name: Grub Theme | Install theme icons
   become: true
   synchronize:
     src: assets/grub-theme/icons/
     dest: "{{ grub_theme_dir }}/icons"
+    perms: false
 
 - name: Grub Theme | Install theme wallpaper
   become: true
   synchronize:
     src: assets/wallpaper/
     dest: "{{ grub_theme_dir }}"
+    perms: false
