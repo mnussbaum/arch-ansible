@@ -50,7 +50,7 @@
     - set_fact:
         ansible_facts:
           pkg_mgr: yay
-      tags: [nvim, base16]
+      tags: [nvim, base16, eeek]
     - import_tasks: tasks/gpg.yml
     - import_tasks: tasks/zsh.yml
     - name: Base16 | Generate color scheme vars
@@ -72,8 +72,6 @@
     - import_tasks: tasks/golang.yml
     - import_tasks: tasks/ruby.yml
     - import_tasks: tasks/frontend-dev.yml
-    - import_tasks: tasks/postgres.yml
-      tags: [eeek]
     - import_tasks: tasks/global-environment-configuration.yml
     - import_tasks: tasks/neovim.yml
       tags: [nvim]
@@ -112,4 +110,6 @@
     - import_tasks: tasks/firefox.yml
     - import_tasks: tasks/secrets.yml
     - import_tasks: tasks/eeek.yml
+      tags: [eeek]
+    - import_tasks: tasks/postgres.yml
       tags: [eeek]
