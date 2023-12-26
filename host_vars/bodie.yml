@@ -1,0 +1,123 @@
+---
+grub: true
+
+partitions:
+  efi:
+    number: 1
+    physical_device: /dev/nvme0n1
+    partition_device: /dev/nvme0n1p1
+    logical_device: /dev/nvme0n1p1
+    partition_name: EFI system partitions
+    partition_label: gpt
+    start: 1MiB
+    end: 241MiB
+    fstype: vfat
+    fs_options: ""
+    mount_point: /mnt/boot/efi
+    encrypted: false
+    managed: false
+    flags:
+      - boot
+      - esp
+  boot:
+    number: 7
+    physical_device: /dev/nvme0n1
+    partition_device: /dev/nvme0n1p7
+    logical_device: /dev/nvme0n1p7
+    partition_name: Grub
+    partition_label: gpt
+    start: 28979MiB
+    end: 29467MiB
+    fstype: ext4
+    fs_options: "-O ^has_journal"
+    mount_point: /mnt/boot
+    encrypted: false
+    managed: true
+    flags: []
+  root:
+    number: 8
+    physical_device: /dev/nvme0n1
+    partition_device: /dev/nvme0n1p8
+    logical_device: /dev/mapper/vgcrypt-root
+    volume_group_name: vgcrypt
+    logical_volume_name: root
+    partition_name: Arch Root
+    partition_label: gpt
+    start: 29467MiB
+    end: 957726MiB
+    fstype: ext4
+    fs_options: "-O ^has_journal"
+    mount_point: /mnt
+    encrypted: true
+    managed: true
+    flags: []
+
+mkinitcpio_modules:
+  - nvme_core
+  - nvme
+  - intel_agp
+  - i915
+
+modprobe_files:
+  - i915.conf
+  - iwlwifi.conf
+  - nvme.conf
+
+networking:
+  wireless_interface: wlan0
+
+  networks:
+    - ssid: "JazzHandz"
+      psk: "{{ wifi_passwords['jazz_hands'] }}"
+    - ssid: "No Pants No Problems"
+      psk: "{{ wifi_passwords['no_pants_no_problems'] }}"
+    - ssid: "HOME 0959-2.4"
+      psk: "{{ wifi_passwords['rehoboth'] }}"
+    - ssid: "nuttree"
+      psk: "{{ wifi_passwords['bethesda'] }}"
+    - ssid: "Sonic-3913"
+      psk: "{{ wifi_passwords['gens'] }}"
+    - ssid: "Lilypad"
+      psk: "{{ wifi_passwords['joyces'] }}"
+    - ssid: "wmvnet"
+      psk: "{{ wifi_passwords['varneys'] }}"
+    - ssid: "WeWorkWiFi"
+      key_mgmt: "WPA-EAP"
+      eap: "PEAP"
+      identity: "mike@equilibriumenergy.com"
+      password: "{{ wifi_passwords['we_work'] }}"
+      phase2: "auth=MSCHAPV2"
+
+key_repeat:
+  rate: 35
+  delay: 250
+
+monitors:
+  - id: eDP-1
+    position:
+      x: 0
+      y: 0
+    scale: 2
+  - id: DP-1
+    position:
+      x: -1100
+      y: -1600
+    scale: 0.9
+
+firefox:
+  hidpi: true
+
+optional_daemons:
+  clightd: true
+  libinput_gestures: true
+
+window_manager:
+  waybar_thermal_zone_to_display: 7
+  waybar_minimum_workspace_count: 5
+  window_manager: sway
+  windowing_system: wayland
+
+qemu_host: true
+
+pgpass_secret_names:
+  - eq/pgpass
