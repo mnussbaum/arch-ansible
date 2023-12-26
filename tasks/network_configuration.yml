@@ -50,6 +50,53 @@
   no_log: true
   when: item is not skipped
 
+- name: networking configuration | Dictionarize SSIDs
+  set_fact:
+    iwd_config_file_names: "{{ iwd_config_file_names | default({}) | combine({item.ssid: item.ssid}) }}"
+  changed_when: false
+  no_log: true
+  loop: "{{ networking.networks }}"
+
+- name: networking configuration | Generate hex-encoded iwd config file names for SSIDs with special characters
+  shell: "echo -n '{{ item.ssid }}' | od --address-radix=n --format=x1"
+  register: hex_encoded_ssids
+  changed_when: false
+  no_log: true
+  when: item.ssid is not regex('^[a-zA-Z0-9 \-_]+$')
+  loop: "{{ networking.networks }}"
+
+- name: networking configuration | Override iwd config file names for hex-encoded SSIDs
+  set_fact:
+    iwd_config_file_names: "{{ iwd_config_file_names | combine({item.item.ssid: '=' + item.stdout | replace(' ', '')}) }}"
+  changed_when: false
+  no_log: true
+  when: item is not skipped
+  loop: "{{ hex_encoded_ssids.results }}"
+
+- name: networking configuration | Generate iwd config file extensions for PSK networks
+  set_fact:
+    iwd_config_file_extensions: "{{ iwd_config_file_extensions | default({}) | combine({item.ssid: 'psk'}) }}"
+  changed_when: false
+  no_log: true
+  when: item.psk is defined
+  loop: "{{ networking.networks }}"
+
+- name: networking configuration | Generate iwd config file extensions for EAP networks
+  set_fact:
+    iwd_config_file_extensions: "{{ iwd_config_file_extensions | default({}) | combine({item.ssid: '8021x'}) }}"
+  changed_when: false
+  no_log: true
+  when: item.eap is defined
+  loop: "{{ networking.networks }}"
+
+- name: networking configuration | Generate iwd config file extensions for open networks
+  set_fact:
+    iwd_config_file_extensions: "{{ iwd_config_file_extensions | default({}) | combine({item.ssid: 'open'}) }}"
+  changed_when: false
+  no_log: true
+  when: item.psk is not defined and item.eap is not defined
+  loop: "{{ networking.networks }}"
+
 - name: networking configuration | Create network config dirs
   become: true
   file:
@@ -64,7 +111,7 @@
   become: true
   template:
     src: templates/iwd_network.conf.j2
-    dest: "{{ network_install_root }}/var/lib/iwd/{{ item.ssid }}.{% if item.psk is defined %}psk{% elif item.eap is defined %}8021x{% else %}open{% endif %}"
+    dest: "{{ network_install_root }}/var/lib/iwd/{{ iwd_config_file_names[item.ssid] }}.{{ iwd_config_file_extensions[item.ssid] }}"
   no_log: true
   loop: "{{ networking.networks }}"
 
