@@ -1,0 +1,15 @@
+# vim:ft=yaml.ansible:
+---
+- name: vconsole | Install custom keymap with caps lock mapped to escape for the console's sake
+  become: true
+  archive:
+    path: files/us-custom.map
+    dest: "{{ vconsole_install_root }}/usr/share/kbd/keymaps/i386/qwerty/us-custom.map.gz"
+    format: gz
+    mode: "u=rw,g=r,o=r"
+
+- name: vconsole | Configure console font
+  become: true
+  copy:
+    src: vconsole.conf
+    dest: "{{ vconsole_install_root }}/etc/vconsole.conf"

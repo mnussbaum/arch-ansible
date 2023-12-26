@@ -23,6 +23,8 @@
       tags: [bootstrap, base16, rebuild-boot-parition, nvim]
     - import_tasks: tasks/time.yml
     - import_tasks: tasks/locale.yml
+    - import_tasks: tasks/vconsole.yml
+      tags: [bootstrap]
     - import_tasks: tasks/bootstrap-packages.yml
       tags: [bootstrap]
     - import_tasks: tasks/swap.yml
@@ -40,8 +42,6 @@
       tags: [bootstrap]
     - import_tasks: tasks/network_configuration.yml
       tags: [bootstrap, networking]
-      vars:
-        network_install_root: ""
     - import_tasks: tasks/enable_network.yml
       tags: [bootstrap, networking]
     - import_tasks: tasks/reflector.yml

@@ -67,9 +67,3 @@
   template:
     src: templates/fonts-local.conf.j2
     dest: /etc/fonts/local.conf
-
-- name: Fonts | Configure console font
-  become: true
-  copy:
-    src: vconsole.conf
-    dest: /etc/vconsole.conf

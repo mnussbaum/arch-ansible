@@ -38,6 +38,10 @@
             - core.db
             - extra.db
 
+        - name: Install vconsole configuration
+          import_tasks: tasks/vconsole.yml
+          vars:
+            vconsole_install_root: "{{ airootfs }}"
         - name: Install network configuration
           import_tasks: tasks/network_configuration.yml
           vars:
