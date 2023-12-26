@@ -22,3 +22,10 @@
   template:
     src: templates/mkinitcpio.conf.j2
     dest: /etc/mkinitcpio.conf
+
+- name: mkinitcpio | Force mkinitcpio to run as handler
+  when: bootstrap is defined and bootstrap == "true"
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  debug:
+    msg: "Triggering mkinitcpio to run as an ansible handler"

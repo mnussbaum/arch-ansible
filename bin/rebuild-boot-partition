@@ -13,6 +13,6 @@ fi
 NO_ASK_BECOME_PASS=1 \
 ANSIBLE_PLAYBOOK=bootstrap.yml \
   exec ./bin/ansible \
-  -e bootstrap="true" \
+  --extra-vars bootstrap="true" \
   --tags rebuild-boot-parition \
   $@

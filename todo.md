@@ -3,6 +3,12 @@
 1. Setup a new machine
 1. What the different tag modes are
 
+## Verify
+
+1. Regenerate boot script reinstalls grub
+1. TTY and live USB caps lock remapped to escape
+1. Ansible repo file perms correct after fresh bootstrapping
+
 ## Nice to improve
 
 1. Do an actual gpg import on private key during bootstrapping - https://blog.veloc1ty.de/2018/08/06/pgp-trust-key-non-interactive-with-ansible/
@@ -18,7 +24,6 @@
 
 1. Fix networking in qemu post restart- http://ayekat.ch/blog/qemu-networkd
    maybe
-1. Regenerate boot script isn't reinstalling grub
 1. Corrupted `/mnt/var/cache/pacman/pkg/*.tar.zst`
 1. Treesitter errors on first nvim start
 1. Slow grub/luks decryption
