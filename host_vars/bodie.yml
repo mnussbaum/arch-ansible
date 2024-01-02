@@ -98,7 +98,7 @@ monitors:
       x: 0
       y: 0
     scale: 2
-  - id: DP-1
+  - id: DP-2
     position:
       x: -1100
       y: -1600
