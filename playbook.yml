@@ -97,7 +97,7 @@
     - import_tasks: tasks/gtk.yml
     - import_tasks: tasks/polkit.yml
     - import_tasks: tasks/brightness.yml
-    - import_tasks: tasks/audio-video.yml
+    - import_tasks: tasks/media.yml
     - import_tasks: tasks/bluetooth.yml
     - import_tasks: tasks/backup.yml
     - import_tasks: tasks/torrents.yml

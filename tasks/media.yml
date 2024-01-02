@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: AV | Install packages
+- name: media | Install packages
   become: true
   package:
     name:
@@ -22,9 +22,10 @@
       - mpv
       - xdg-desktop-portal
       - xdg-desktop-portal-wlr
+      - calibre
     state: present
 
-- name: AV | Create wireplumber config dirs
+- name: media | Create wireplumber config dirs
   become: true
   file:
     path: "{{ item }}"
@@ -33,27 +34,27 @@
     - /etc/wireplumber
     - /etc/wireplumber/bluetooth-lua.d
 
-- name: AV | Create wireplumber config to enable high quality bluetooth codecs
+- name: media | Create wireplumber config to enable high quality bluetooth codecs
   become: true
   copy:
     src: files/wireplumber-bluez-config.lua
     dest: /etc/wireplumber/bluetooth-lua.d/51-bluez-config.luad
 
-- name: AV | Install headphone profile toggle script
+- name: media | Install headphone profile toggle script
   become: true
   copy:
     src: files/toggle-headphone-profile
     dest: /usr/local/bin/toggle-headphone-profile
     mode: a+x
 
-- name: AV | Create mpv config dir
+- name: media | Create mpv config dir
   file:
     path: "{{ user_config_dir }}/mpv"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
     state: directory
 
-- name: AV | Create mpv config
+- name: media | Create mpv config
   copy:
     src: files/mpv.conf
     dest: "{{ user_config_dir }}/mpv/mpv.conf"
