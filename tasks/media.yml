@@ -38,7 +38,7 @@
   become: true
   copy:
     src: files/wireplumber-bluez-config.lua
-    dest: /etc/wireplumber/bluetooth-lua.d/51-bluez-config.luad
+    dest: /etc/wireplumber/bluetooth-lua.d/51-bluez-config.lua
 
 - name: media | Install headphone profile toggle script
   become: true
