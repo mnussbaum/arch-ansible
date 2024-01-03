@@ -27,6 +27,7 @@
    - Bat
    - Eza
    - Full zsh configs
+   - Git configs
    - fzf
    - ripgrep
 
@@ -45,3 +46,7 @@
 1. Needed to edit sudoers to allow yay installs without password or else
    ansible prompts with each package install
    https://github.com/kewlfft/ansible-aur#create-the-aur_builder-user
+1. In live image permissions are still screwed up, causing a git diff
+   - Not everything in bin is supposed to be executable, but we're making it so
+   - Some files/ are supposed to be executable, but they're not
+   - Some library and vendor file executable bits are swapped too
