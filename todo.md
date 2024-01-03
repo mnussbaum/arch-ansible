@@ -17,6 +17,7 @@
 1. Make it easier to add a new host, vars, hosts.yml
 1. Offline install from ISO
 1. Offline ISO build
+1. Move to systemd-boot
 1. Install more during early bootstrapping and live USB:
    - Powerline font
    - Neovim + packages + plugins
@@ -35,7 +36,6 @@
    maybe
 1. Corrupted `/mnt/var/cache/pacman/pkg/*.tar.zst`
 1. Treesitter errors on first nvim start
-1. Slow grub/luks decryption - Move to systemd-boot
 1. GPG keygrip is not consistent across devices, and maybe for that reason,
    maybe others, GPG/SSH setup is busted. Try replacing SSH agent with GPG
    agent entirely
