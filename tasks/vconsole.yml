@@ -1,5 +1,11 @@
 # vim:ft=yaml.ansible:
 ---
+- name: vconsole | Create keymap config dir
+  become: true
+  file:
+    path: "{{ vconsole_install_root }}/usr/share/kbd/keymaps/i386/qwerty"
+    state: directory
+
 - name: vconsole | Install custom keymap with caps lock mapped to escape for the console's sake
   become: true
   archive:
