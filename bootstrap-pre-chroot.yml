@@ -57,7 +57,6 @@
         src: ../pacman_dbs/{{ item }}
         dest: /var/lib/pacman/sync/{{ item }}
       loop:
-        - community.db
         - core.db
         - extra.db
 

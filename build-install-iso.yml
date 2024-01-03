@@ -34,7 +34,6 @@
             src: "/var/lib/pacman/sync/{{ item }}"
             dest: "{{ pacman_db_dest_dir }}/{{ item }}"
           loop:
-            - community.db
             - core.db
             - extra.db
 
