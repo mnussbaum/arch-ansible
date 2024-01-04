@@ -10,19 +10,19 @@
 - name: Rust | Install rust nightly
   command: rustup default nightly
   args:
-    creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu"
+    creates: "/home/{{ user.name }}/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu"
 
 - name: Rust | Install rust-src
   command: rustup component add rust-src
   args:
-    creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/src/rust"
+    creates: "/home/{{ user.name }}/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/src/rust"
 
 - name: Rust | Install rustfmt
   command: rustup component add rustfmt
   args:
-    creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rustfmt"
+    creates: "/home/{{ user.name }}/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rustfmt"
 
 - name: Rust | Install rust-analyzer
   command: rustup component add rust-analyzer
   args:
-    creates: "/home/{{ user.name }}/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/rust-analyzer"
+    creates: "/home/{{ user.name }}/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/bin/rust-analyzer"
