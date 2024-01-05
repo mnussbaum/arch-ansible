@@ -15,7 +15,7 @@ def _reload_wayland():
         ],
         check=True,
     )
-    subprocess.run(["systemctl", "--user", "reload", "waybar"], check=True)
+    subprocess.run(["systemctl", "--user", "restart", "waybar"], check=True)
 
     subprocess.run(["swaymsg", "reload"])
 
