@@ -81,6 +81,8 @@ networking:
       psk: "{{ wifi_passwords['joyces'] }}"
     - ssid: "wmvnet"
       psk: "{{ wifi_passwords['varneys'] }}"
+    - ssid: "Codi 7th Floor"
+      psk: "{{ wifi_passwords['codi_seventh_floor'] }}"
     - ssid: "WeWorkWiFi"
       key_mgmt: "WPA-EAP"
       eap: "PEAP"
