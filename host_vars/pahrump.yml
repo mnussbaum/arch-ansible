@@ -68,8 +68,8 @@ networking:
   networks:
     - ssid: "JazzHandz"
       psk: "{{ wifi_passwords['jazz_hands'] }}"
-    - ssid: "No Pants No Problems"
-      psk: "{{ wifi_passwords['no_pants_no_problems'] }}"
+    - ssid: "Buns of Steel"
+      psk: "{{ wifi_passwords['buns_of_steel'] }}"
     - ssid: "HOME 0959-2.4"
       psk: "{{ wifi_passwords['rehoboth'] }}"
     - ssid: "nuttree"
