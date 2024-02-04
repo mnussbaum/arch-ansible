@@ -9,6 +9,8 @@
       - direnv
       - python310
       - pre-commit
+      - scie-pants-bin
+      - slack-desktop
   become: true
 
 - name: eeek | Install .netrc
