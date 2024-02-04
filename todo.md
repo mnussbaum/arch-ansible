@@ -11,6 +11,7 @@
 
 ## Nice to improve
 
+1. Host groups to reduce host var duplication
 1. Do an actual gpg import on private key during bootstrapping - https://blog.veloc1ty.de/2018/08/06/pgp-trust-key-non-interactive-with-ansible/
 1. Repartition windows partition
 1. Specify partitions as sizes
