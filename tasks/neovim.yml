@@ -137,7 +137,7 @@
       - vscode-json-languageserver
       - yarn
       - tree-sitter
-      - stylua-bin
+      - stylua
   become: true
 
 - name: nvim | Install init.lua config
