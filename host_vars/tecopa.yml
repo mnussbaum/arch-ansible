@@ -94,13 +94,13 @@ key_repeat:
 monitors:
   - id: eDP-1
     position:
+      x: 950
+      y: 1600
+    scale: 2
+  - id: ASUSTek COMPUTER INC PA34V KBLMQS025309
+    position:
       x: 0
       y: 0
-    scale: 2
-  - id: DP-1
-    position:
-      x: -1100
-      y: -1600
     scale: 0.9
   # For TV
   # - id: DP-1

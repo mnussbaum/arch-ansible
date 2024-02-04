@@ -95,21 +95,21 @@ key_repeat:
   delay: 250
 
 monitors:
-  - id: eDP-1
+  - id: Sharp Corporation 0x1551 Unknown
+    position:
+      x: 950
+      y: 1600
+    scale: 2
+  - id: ASUSTek COMPUTER INC PA34V KBLMQS025309
     position:
       x: 0
-      y: 1580
-    scale: 2
-  - id: DP-2
-    position:
-      x: -1100
-      y: -1600
+      y: 0
     scale: 0.9
   - id: Samsung Electric Company LS27A40xU H4TW601355
     position:
-      x: 0
-      y: 500
-    scale: 1
+      x: 950
+      y: 1600
+    scale: 0.95
 
 firefox:
   hidpi: true
