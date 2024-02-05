@@ -211,11 +211,8 @@ bindsym XF86AudioPrev exec playerctl previous
 bindsym XF86MonBrightnessUp exec busctl --user call org.clight.clight /org/clight/clight org.clight.clight IncBl "d" 0.05
 bindsym XF86MonBrightnessDown exec busctl --user call org.clight.clight /org/clight/clight org.clight.clight DecBl "d" 0.05
 
-# Screenshot a selectable region
-bindsym $mod+Shift+Ctrl+1 exec grim -g "$(slurp)" - | wl-copy
-
-# Screenshot the current active monitor
-bindsym $mod+Shift+Ctrl+2 exec grim -o $(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') - | wl-copy
+# Screenshot a selectable region and open in editor
+bindsym $mod+Shift+p exec grim -g "$(slurp -c '#ff0000ff')" - | satty --filename - --fullscreen --output-filename ~/Downloads/screenshot-$(date '+%Y%m%d-%H:%M:%S').png
 
 exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK
 exec hash dbus-update-activation-environment 2>/dev/null && \
