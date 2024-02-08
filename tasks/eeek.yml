@@ -11,6 +11,7 @@
       - pre-commit
       - scie-pants-bin
       - slack-desktop
+      - amazon-ecr-credential-helper
   become: true
 
 - name: eeek | Install .netrc
