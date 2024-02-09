@@ -74,11 +74,13 @@ vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.s
 	width = 60,
 })
 
-for _, language_server in ipairs(require("language_servers")) do
-	require("lspconfig")[language_server].setup({
-		on_attach = on_attach,
+local default_lsp_setup = {
+	on_attach = on_attach,
 
-		-- Pull completions from LSP
-		capabilities = require("cmp_nvim_lsp").default_capabilities(),
-	})
+	-- Pull completions from LSP
+	capabilities = require("cmp_nvim_lsp").default_capabilities(),
+}
+
+for language_server_name, language_server_setup in pairs(require("language_servers")) do
+	require("lspconfig")[language_server_name].setup(vim.tbl_extend("force", default_lsp_setup, language_server_setup))
 end

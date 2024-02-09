@@ -1,6 +1,10 @@
 #jinja2: trim_blocks:False
 return {
 {%- for language_server in language_servers %}
-  "{{ language_server.name }}",
+  {{ language_server.name }} = {
+  {%- for language_server_arg, language_server_arg_value in (language_server["args"] | default ({})).items() %}
+    {{ language_server_arg }} = {{ language_server_arg_value | to_json | replace("[", "{") | replace("]", "}")  }},
+  {% endfor -%}
+  },
 {%- endfor %}
 }

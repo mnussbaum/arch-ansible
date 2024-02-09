@@ -78,11 +78,19 @@
       - name: highlight
     language_servers:
       - name: clangd
+        args:
+          filetypes:
+            - c
+            - cpp
+            - objc
+            - objcpp
+            - cuda
       - name: tsserver
       - name: gopls
       - name: pyright
       - name: solargraph
       - name: rust_analyzer
+      - name: bufls
     language_formatters:
       go:
         - goimports
@@ -138,6 +146,7 @@
       - yarn
       - tree-sitter
       - stylua
+      - buf-language-server-git
   become: true
 
 - name: nvim | Install init.lua config
