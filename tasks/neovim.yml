@@ -115,6 +115,8 @@
         - prettier
       yaml:
         - prettier
+      proto:
+        - buf_format
   tags: [base16]
 
 - name: nvim | Ensure nvim config and data dirs exist
@@ -147,6 +149,7 @@
       - tree-sitter
       - stylua
       - buf-language-server-git
+      - buf-bin
   become: true
 
 - name: nvim | Install init.lua config
