@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: DevOps | Enable loop kernel module
+- name: devops | Enable loop kernel module
   become: true
   notify:
     - Regenerate mkinitcpio ramdisk
@@ -8,7 +8,7 @@
     content: loop
     dest: /etc/modules-load.d/loop.conf
 
-- name: DevOps | Install packages
+- name: devops | Install packages
   become: yes
   package:
     state: present
@@ -16,6 +16,7 @@
       - docker
       - docker-buildx
       - docker-compose
+      - amazon-ecr-credential-helper
       - etcd
       - kubectl-bin
       - rancher-k3d-bin
@@ -25,27 +26,41 @@
       - terraform
       - redis
 
-- name: DevOps | Add user to docker group
+- name: devops | Add user to docker group
   become: true
   user:
     name: "{{ user.name }}"
     groups: docker
     append: true
 
-- name: DevOps | Create docker config dir
+- name: devops | Create docker config dir
   file:
     path: /etc/docker
     state: directory
   become: true
 
-- name: DevOps | Enable overlay2 driver
+- name: devops | Enable overlay2 driver
   become: true
   copy:
     src: files/docker-daemon.json
     dest: /etc/docker/daemon.json
 
-- name: Docker | Enable docker service socket activation
+- name: devops | Enable docker service socket activation
   become: true
   systemd:
     enabled: true
     name: docker.socket
+
+- name: devops | Create docker user config dir
+  file:
+    path: "{{ user_home_dir }}/.docker"
+    state: directory
+  owner: "{{ user.name }}"
+  group: "{{ user.group }}"
+
+- name: devops | Create docker user config file
+  copy:
+    src: files/docker-user-config.json
+    dest: "{{ user_home_dir }}/.docker/config.json"
+  owner: "{{ user.name }}"
+  group: "{{ user.group }}"
