@@ -39,6 +39,7 @@
       - satty-git
       - xorg-xwayland
       - dbus-broker-launch
+      - wdisplays
   become: true
 
 - name: sway | Generate base16 configs
