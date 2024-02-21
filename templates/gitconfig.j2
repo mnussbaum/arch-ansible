@@ -1,3 +1,6 @@
+[branch]
+  sort = committerdate
+
 [core]
   pager = delta
 
@@ -49,3 +52,27 @@
 
 [push]
   autoSetupRemote = true
+
+[rebase]
+  updateRefs = true
+
+[commit]
+  verbose = true
+
+[help]
+  autocorrect = 10
+
+[rerere]
+  enabled = true
+
+[diff]
+  algorithm = histogram
+
+[transfer]
+  fsckobjects = = true
+
+[fetch]
+  fsckobjects = = true
+
+[receive]
+  fsckObjects = = true
