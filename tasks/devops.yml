@@ -55,12 +55,12 @@
   file:
     path: "{{ user_home_dir }}/.docker"
     state: directory
-  owner: "{{ user.name }}"
-  group: "{{ user.group }}"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: devops | Create docker user config file
   copy:
     src: files/docker-user-config.json
     dest: "{{ user_home_dir }}/.docker/config.json"
-  owner: "{{ user.name }}"
-  group: "{{ user.group }}"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
