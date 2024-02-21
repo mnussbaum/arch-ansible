@@ -4,6 +4,7 @@
   package:
     state: present
     name:
+      - fuse2
       - restic
 
 # To take a backup:
