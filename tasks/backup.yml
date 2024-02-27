@@ -1,11 +1,18 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Backup | Install packages
+- name: backup | Install packages
   package:
     state: present
     name:
       - fuse2
       - restic
+
+- name: backup | Install restic backblaze backup script
+  become: true
+  copy:
+    src: files/restic-backblaze-backup
+    dest: /usr/local/bin/restic-backblaze-backup
+    mode: a+x
 
 # To take a backup:
 #
@@ -14,6 +21,13 @@
 #
 # TODO:
 #
-# * Backup to cloud provider on a regular basis
-# * Script backup and restore process
-# * Test backup and restore process regularly in VM
+# * Add systemd scheduled task to regularly execute the backup script
+# * Make the script configurable to work with a local USB backup in addition to
+#   the cloud
+# * Get the backblaze configuration into terraform. Connect ansible to TF output
+#   to pull the bucket name
+# * Script the seeding of data during initial bootstrapping by restoring from
+#   a backup
+# * Make the backup script pull data from systemd-creds, and integrate
+#   systemd-creds with pass. And trigger a system notification about why I'm
+#   being prompted to decrypt
