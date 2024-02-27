@@ -17,4 +17,5 @@ exec restic backup \
     --one-file-system \
     --cleanup-cache \
     ~/Sync \
-    ~/Documents
+    ~/Documents \
+    ~/Camera
