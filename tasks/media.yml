@@ -13,8 +13,11 @@
       - pavucontrol
       - gstreamer
       - gstreamer-vaapi
+      - gst-plugins-base
       - gst-plugins-good
+      - gst-plugin-pipewire
       - gst-libav
+      - gst-plugin-va
       - spotify
       - playerctl
       - wireplumber
@@ -23,6 +26,7 @@
       - xdg-desktop-portal
       - xdg-desktop-portal-wlr
       - calibre
+      - intel-media-driver
     state: present
 
 - name: media | Create wireplumber config dirs
