@@ -40,6 +40,8 @@
       - xorg-xwayland
       - dbus-broker-launch
       - wdisplays
+      - thunar
+      - tumbler # thumbnails for thunar
   become: true
 
 - name: sway | Generate base16 configs
