@@ -9,16 +9,10 @@
       - freetype2
       - gsfonts
       - libxft
-      - ttf-cascadia-code-nerd
+      - ttf-cascadia-code
       - ttf-noto-nerd
       - noto-fonts-emoji
       - gucharmap
-  become: true
-
-- name: Fonts | Install Caskaydia Code with cursive italics enabled
-  copy:
-    src: assets/CaskaydiaCoveNerdFont-Italic.ttf
-    dest: /usr/share/fonts/TTF/CaskaydiaCoveNerdFont-Italic.ttf
   become: true
 
 - name: Fonts | Enable LCD filter
