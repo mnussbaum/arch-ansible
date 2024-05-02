@@ -36,7 +36,7 @@
       - glfw-wayland  # Provides libs for GLFW apps
       - grim-git
       - slurp
-      - satty-git
+      - satty-bin
       - xorg-xwayland
       - dbus-broker-launch
       - wdisplays
