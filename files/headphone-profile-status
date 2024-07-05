@@ -5,7 +5,7 @@ set -o nounset
 
 if pactl list | grep -q "Active Profile: a2dp-sink" ; then
   printf "󰋋🎶"
-elif pactl list | grep -q "Active Profile: headset-head-unit-msbc" ; then
+elif pactl list | grep -q "Active Profile: headset-head-unit" ; then
   printf "󰋋󰍮"
 else
   printf "󰟎"
