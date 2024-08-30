@@ -17,7 +17,6 @@
       - docker-buildx
       - docker-compose
       - amazon-ecr-credential-helper
-      - etcd
       - kubectl-bin
       - rancher-k3d-bin
       - kubectx
