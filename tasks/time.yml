@@ -1,9 +1,9 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Time | Set timezone to America/Las_Angeles
+- name: Time | Set timezone
   become: true
   timezone:
-    name: America/Los_Angeles
+    name: "{{ timezone }}"
 
 - name: Time | Set hardware clock timezone to UTC
   become: true

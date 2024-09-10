@@ -51,6 +51,8 @@ wallpaper:
   daytime_image: lost_coast_golden_path.jpg
   night_image: merch-mart.png
 
+timezone: "America/New_York"
+
 # TODO: Instead of using per-task special case roots, replace all usage of root
 # dir in paths with some single thing configured here
 network_install_root: ""
