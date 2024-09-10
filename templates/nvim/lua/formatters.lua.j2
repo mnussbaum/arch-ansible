@@ -1,15 +1,25 @@
 #jinja2: trim_blocks:False
 return {
-  filetype = {
+  formatters_by_ft = {
   {%- for language, formatters in language_formatters.items() %}
     {{ language }} = {
       {%- for formatter in formatters %}
-      require("formatter.filetypes.{{ language }}").{{ formatter }},
+      "{{ formatter }}",
       {%- endfor %}
     },
   {%- endfor %}
-    ["*"] = {
-      require("formatter.filetypes.any").remove_trailing_whitespace
-    },
+    ["_"] = { "trim_whitespace" },
   },
+
+  default_format_opts = {
+    lsp_format = "fallback",
+  },
+
+  format_on_save = {
+    lsp_format = "fallback",
+    timeout_ms = 500,
+  },
+
+  notify_on_error = true,
+  notify_no_formatters = true,
 }

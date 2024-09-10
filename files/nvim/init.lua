@@ -1,5 +1,3 @@
-require("plugins")
-
 vim.g.mapleader = "\\"
 
 vim.opt.mouse = ""
