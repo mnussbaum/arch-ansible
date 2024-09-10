@@ -85,7 +85,7 @@
             - objc
             - objcpp
             - cuda
-      - name: tsserver
+      - name: ts_ls
       - name: gopls
       - name: pyright
       - name: solargraph
