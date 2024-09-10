@@ -40,7 +40,7 @@
       - name: "nvim-telescope/telescope.nvim"
         args:
           branch: "0.1.x"
-          requires:  "{{'nvim-lua/plenary.nvim'}}"
+          requires: "{{'nvim-lua/plenary.nvim'}}"
       - name: "nvim-telescope/telescope-fzf-native.nvim"
         args:
           run: make
@@ -77,6 +77,7 @@
     tree_sitter_options:
       - name: highlight
     language_servers:
+      - name: ansiblels
       - name: clangd
         args:
           filetypes:
@@ -139,6 +140,7 @@
     name:
       - nvim-packer-git
       - ansible-lint
+      - ansible-language-server
       - clang
       - ctags
       - neovim
