@@ -23,7 +23,7 @@
       "cpu",
       "memory",
       "temperature",
-      "custom/clock"
+      "clock"
     ],
 
     "battery": {
@@ -65,12 +65,11 @@
     },
 {% endif %}
 
-    "custom/clock": {
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{}', last_block=True, position='right') }}",
-      "tooltip": false,
-      "interval": 30,
-      "exec": "date +'%d %a %H:%M'"
-    },
+    "clock": {
+      "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{:%a, %d %b %I:%M:%S}', last_block=True, position='right') }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{:%I:%M}', last_block=True, position='right') }}",
+      "tooltip": false
+    }
   },
   {
     "layer": "top",
