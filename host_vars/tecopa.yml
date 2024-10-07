@@ -109,9 +109,6 @@ monitors:
   #     y: -10600
   #   scale: 1
 
-firefox:
-  hidpi: true
-
 optional_daemons:
   clightd: true
   libinput_gestures: true

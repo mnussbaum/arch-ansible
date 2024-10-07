@@ -68,9 +68,6 @@ key_repeat:
 monitors:
   id: Virtual-1
 
-firefox:
-  hidpi: false
-
 optional_daemons:
   clightd: false
   libinput_gestures: false

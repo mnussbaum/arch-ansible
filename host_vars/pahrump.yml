@@ -95,9 +95,6 @@ key_repeat:
   rate: 35
   delay: 250
 
-firefox:
-  hidpi: true
-
 optional_daemons:
   clightd: false
   libinput_gestures: true
