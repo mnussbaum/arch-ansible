@@ -33,10 +33,10 @@
       - libnotify
       - mako
       - wl-clipboard-git
-      - glfw-wayland  # Provides libs for GLFW apps
+      - glfw-wayland # Provides libs for GLFW apps
       - grim-git
       - slurp
-      - satty-bin
+      - satty
       - xorg-xwayland
       - dbus-broker-launch
       - wdisplays
