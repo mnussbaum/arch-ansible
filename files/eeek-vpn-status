@@ -1,6 +1,8 @@
 #!/bin/bash
 
-if ip link show eeek-wg0 2>/dev/null 1> /dev/null ; then
+warp_status=$(warp-cli status 2> /dev/null)
+
+if [[ $warp_status == *"Status update: Connected"* ]]; then
   printf "󱪐"
 else
   printf "✌"

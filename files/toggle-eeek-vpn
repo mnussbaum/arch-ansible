@@ -1,7 +1,12 @@
 #!/bin/bash
 
-if ip link show eeek-wg0 2> /dev/null 1> /dev/null ; then
-  pkexec wg-quick down eeek-wg0 > /dev/null
+warp_status=$(warp-cli status 2> /dev/null)
+
+if [[ $warp_status != *"Status update: Connected"* ]]; then
+  systemctl start warp-svc
+  sleep 1
+  warp-cli connect > /dev/null
 else
-  pkexec wg-quick up eeek-wg0 > /dev/null
+  warp-cli disconnect > /dev/null
+  systemctl stop warp-svc
 fi

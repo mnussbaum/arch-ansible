@@ -7,10 +7,11 @@
       - tmate
       - tctl
       - direnv
-      - python310
+      - python311
       - pre-commit
       - scie-pants-bin
       - slack-desktop
+      - cloudflare-warp-bin
   become: true
 
 - name: eeek | Install .netrc
@@ -20,13 +21,6 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
     mode: "0600"
-
-- name: eeek | Install wireguard config
-  become: true
-  copy:
-    content: "{{ lookup('pipe', 'pass show eq/eeek-wg0.conf') }}"
-    dest: "/etc/wireguard/eeek-wg0.conf"
-    mode: "0644"
 
 - name: eeek | Make AWS config dir
   file:
