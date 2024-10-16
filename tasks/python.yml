@@ -4,10 +4,9 @@
   package:
     state: present
     name:
-      - python-black
+      - ruff
       - pyright
       - python-pip
-      - python-pipenv
       - python-pylint
       - python-poetry
   become: true

@@ -107,7 +107,9 @@
       markdown:
         - prettier
       python:
-        - black
+        - ruff_format
+        - ruff_fix
+        - ruff_organize_imports
       ruby:
         - rubocop
       rust:
