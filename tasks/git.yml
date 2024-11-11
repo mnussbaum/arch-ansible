@@ -11,6 +11,12 @@
     state: present
   become: true
 
+- name: Git | Install mergiraf merge tool
+  package:
+    name: mergiraf
+    state: present
+  become: true
+
 - name: Git | Install gitconfig
   template:
     owner: "{{ user.name }}"
@@ -38,3 +44,10 @@
     group: "{{ user.group }}"
     src: files/eeek-gitconfig
     dest: "{{ user_config_dir }}/gitconfig/eeek"
+
+- name: Git | Install git attributes config
+  copy:
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    src: files/git-attributes
+    dest: "{{ user_home_dir }}/gitconfig/attributes"

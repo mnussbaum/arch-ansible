@@ -12,6 +12,13 @@
   features = base16-256
   line-numbers = true
 
+[merge "mergiraf"]
+    name = mergiraf
+    driver = mergiraf merge --git %O %A %B -s %S -x %X -y %Y -p %P
+
+[core]
+    attributesfile = {{ user_config_dir }}/gitconfig/attributes
+
 [merge]
   conflictstyle = zdiff3
 
