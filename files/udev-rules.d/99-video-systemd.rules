@@ -1,5 +1,5 @@
 # Enable systemd hooks into udev. This allows us to start the
-# calise systemd unit after the camera is available
+# camera dependent units after the camera is available
 
 KERNEL=="video0", SYMLINK="video0", TAG+="systemd"
 KERNEL=="video1", SYMLINK="video1", TAG+="systemd"

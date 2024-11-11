@@ -8,4 +8,11 @@
   become: true
   package:
     state: present
-    name: v4l2ucp
+    name:
+      - v4l2ucp
+      - libcamera
+      - gst-plugin-libcamera
+      - pipewire-libcamera
+      - libcamera-tools
+      - libcamera-ipa
+      - intel-ivsc-firmware
