@@ -5,26 +5,8 @@
   package:
     state: present
     name:
-      - clightd
-      - clight
+      - brightnessctl
       - upower
-  when: optional_daemons.clightd
-
-- name: Brightness | Install clight config
-  copy:
-    src: files/clight.conf
-    dest: "{{ user_config_dir }}/clight.conf"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-  when: optional_daemons.clightd
-
-- name: Brightness | Enable clightd service
-  become: true
-  when: optional_daemons.clightd
-  systemd:
-    enabled: true
-    name: clightd.service
-    daemon-reload: true
 
 - name: Brightness | Install day-or-night binary
   become: true
@@ -32,7 +14,6 @@
     src: files/day-or-night
     dest: /usr/local/bin/day-or-night
     mode: a+x
-  when: optional_daemons.clightd
 
 - name: Brightness | Install colorscheme-changer binary
   become: true
@@ -47,7 +28,6 @@
     dest: "{{ user_config_dir }}/systemd/user/colorscheme-changer.service"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
-  when: optional_daemons.clightd
 
 - name: Brightness | Install colorscheme-changer timer
   copy:
@@ -55,7 +35,6 @@
     dest: "{{ user_config_dir }}/systemd/user/colorscheme-changer.timer"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
-  when: optional_daemons.clightd
 
 - name: Brightness | Enable colorscheme-changer timer
   service:
@@ -66,7 +45,6 @@
     daemon-reload: true
   become: true
   become_user: "{{ user.name }}"
-  when: optional_daemons.clightd
 
 # The ansible copy module doesn't work on this device file :/
 # https://forum.floydhub.com/t/error-invalid-cross-device-link-when-copy-file-from-input-to-output-with-os-rename/100/3

@@ -6,8 +6,8 @@ set -o nounset
 if command -v day-or-night > /dev/null ; then
   appearance=$(day-or-night)
 else
-  appearance="night"
-fi
+  appearance="daytime"
+ fi
 
 maybe_ask_become_pass=""
 if [[ -z "${NO_ASK_BECOME_PASS:-}" ]] ; then

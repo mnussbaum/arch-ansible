@@ -110,7 +110,6 @@ monitors:
   #   scale: 1
 
 optional_daemons:
-  clightd: true
   libinput_gestures: true
 
 window_manager:

@@ -112,7 +112,6 @@ monitors:
     scale: 0.95
 
 optional_daemons:
-  clightd: true
   libinput_gestures: true
 
 window_manager:

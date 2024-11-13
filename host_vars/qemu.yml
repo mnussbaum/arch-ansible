@@ -69,7 +69,6 @@ monitors:
   id: Virtual-1
 
 optional_daemons:
-  clightd: false
   libinput_gestures: false
 
 window_manager:

@@ -96,7 +96,6 @@ key_repeat:
   delay: 250
 
 optional_daemons:
-  clightd: false
   libinput_gestures: true
 
 window_manager:
