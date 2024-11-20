@@ -5,6 +5,7 @@
   package:
     state: present
     name:
+      - wl-gammarelay
       - brightnessctl
       - upower
 
@@ -14,6 +15,23 @@
     src: files/day-or-night
     dest: /usr/local/bin/day-or-night
     mode: a+x
+
+- name: Brightness | Install wl-gammarelay service
+  copy:
+    src: files/wl-gammarelay.service
+    dest: "{{ user_config_dir }}/systemd/user/wl-gammarelay.service"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Brightness | Enable wl-gammarelay service
+  service:
+    name: wl-gammarelay.service
+    enabled: yes
+    state: started
+    scope: user
+    daemon-reload: true
+  become: true
+  become_user: "{{ user.name }}"
 
 - name: Brightness | Install colorscheme-changer binary
   become: true

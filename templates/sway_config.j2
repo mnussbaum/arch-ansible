@@ -212,6 +212,10 @@ bindsym --locked XF86AudioPrev exec playerctl previous
 bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
 bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
 
+bindsym --locked $mod+XF86MonBrightnessDown exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -1000
+bindsym --locked $mod+XF86MonBrightnessUp exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n +1000
+bindsym --locked $mod+Control+0 exec  busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500
+
 # Screenshot a selectable region and open in editor
 bindsym Print exec grim -g "$(slurp -c '#ff0000ff')" - | satty --filename - --fullscreen --output-filename ~/Downloads/screenshot-$(date '+%Y%m%d-%H:%M:%S').png
 
