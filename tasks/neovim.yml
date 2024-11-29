@@ -91,7 +91,7 @@
       - name: pyright
       - name: solargraph
       - name: rust_analyzer
-      - name: bufls
+      - name: buf_ls
     language_formatters:
       go:
         - goimports
@@ -152,7 +152,6 @@
       - yarn
       - tree-sitter
       - stylua
-      - buf-language-server-git
       - buf-bin
   become: true
 
