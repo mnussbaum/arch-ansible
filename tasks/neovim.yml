@@ -37,6 +37,7 @@
       - name: "hrsh7th/nvim-cmp"
       - name: "RRethy/nvim-base16"
       - name: "stevearc/conform.nvim"
+      - name: "cshuaimin/ssr.nvim"
       - name: "nvim-telescope/telescope.nvim"
         args:
           branch: "0.1.x"
