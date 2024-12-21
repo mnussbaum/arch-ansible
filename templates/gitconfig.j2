@@ -2,7 +2,9 @@
   sort = committerdate
 
 [core]
+  attributesfile = {{ user_config_dir}}/gitconfig/attributes
   pager = delta
+
 
 [interactive]
   diffFilter = delta --color-only
@@ -14,6 +16,10 @@
 
 [merge]
   conflictstyle = zdiff3
+
+[merge "mergiraf"]
+    name = mergiraf
+    driver = mergiraf merge --git %O %A %B -s %S -x %X -y %Y -p %P
 
 [diff]
   colorMoved = default
