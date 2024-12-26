@@ -18,4 +18,5 @@ exec restic backup \
     --cleanup-cache \
     ~/Sync \
     ~/Documents \
-    ~/Camera
+    ~/Camera \
+    ~/tiktoks
