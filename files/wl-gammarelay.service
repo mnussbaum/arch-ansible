@@ -5,7 +5,7 @@ PartOf=graphical-session.target
 
 [Service]
 ExecStart=/usr/bin/wl-gammarelay
-Restart=on-failure
+Restart=always
 RestartSec=1
 
 [Install]
