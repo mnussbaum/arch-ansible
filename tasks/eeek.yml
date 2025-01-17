@@ -4,8 +4,9 @@
   package:
     state: present
     name:
+      - tad-bin
       - tmate
-      - tctl
+      - temporal-cli
       - direnv
       - python311
       - pre-commit
