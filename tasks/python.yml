@@ -9,4 +9,19 @@
       - python-pip
       - python-pylint
       - python-poetry
+      - ptpython
   become: true
+
+- name: python | Create ptpython config dir
+  file:
+    path: "{{ user_config_dir }}/ptpython"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: python | Create ptpython config dir
+  copy:
+    src: files/ptpython_config.py
+    dest: "{{ user_config_dir }}/ptpython/config.py"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
