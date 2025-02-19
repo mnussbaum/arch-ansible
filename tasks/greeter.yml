@@ -6,7 +6,7 @@
     state: present
     name:
       - greetd
-      - greetd-gtkgreet-git
+      - greetd-gtkgreet
 
 - name: greeter | Create config dir
   become: true

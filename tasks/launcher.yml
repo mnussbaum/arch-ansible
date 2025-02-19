@@ -5,7 +5,7 @@
     state: present
     name:
       - rofi
-      - rofi-pass-git
+      - rofi-pass
       - wofi
       - wofipassmenu
   become: true
