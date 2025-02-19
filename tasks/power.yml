@@ -5,7 +5,7 @@
     state: present
     name:
       - ethtool
-      - powerstat-git
+      - powerstat
       - powertop
       - thermald
       - tlp
