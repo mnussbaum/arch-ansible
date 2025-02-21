@@ -29,7 +29,7 @@
       - sway
       - swaybg
       - swayidle
-      - swaylock-effects-git
+      - swaylock
       - libnotify
       - mako
       - wl-clipboard-git
