@@ -67,6 +67,21 @@
     state: link
   become: true
 
+# Async power management appears to be causing lock ups during suspend and resume
+- name: power | Disable async suspend and resume
+  copy:
+    src: files/disable-pm-async.service
+    dest: /etc/systemd/system/disable-pm-async.service
+  become: true
+
+- name: power | Enable service that disables async suspend and resume
+  service:
+    name: disable-pm-async.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  become: true
+
 - name: power | Create sysctl param directory
   become: true
   file:

@@ -1,0 +1,10 @@
+[Unit]
+Description=Disable async suspend/resume. Avoids lock ups
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=sh -c 'echo 0 > /sys/power/pm_async'
+
+[Install]
+WantedBy=multi-user.target
