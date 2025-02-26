@@ -5,7 +5,7 @@
     state: present
     name:
       - npm
-      - javascript-typescript-langserver
+      - typescript-language-server
       - prettier
       - vscode-css-languageserver
       - vscode-html-languageserver
