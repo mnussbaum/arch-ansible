@@ -25,9 +25,25 @@
       - mpv
       - xdg-desktop-portal
       - xdg-desktop-portal-wlr
+      - xdg-desktop-portal-gtk
       - calibre
       - intel-media-driver
+      - intel-ivsc-firmware
     state: present
+
+- name: media | Create XDG portal config dir
+  file:
+    path: "{{ user_config_dir }}/xdg-desktop-portal"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: media | Install XDG portal config file
+  copy:
+    src: files/sway-portals.conf
+    dest: "{{ user_config_dir }}/xdg-desktop-portal/sway-portals.conf"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: media | Create wireplumber config dirs
   become: true
@@ -37,6 +53,12 @@
   loop:
     - /etc/wireplumber
     - /etc/wireplumber/bluetooth-lua.d
+
+- name: media | Create wireplumber config to enable camera
+  become: true
+  copy:
+    src: files/wireplumber-99-libcamera.lua
+    dest: /etc/wireplumber/99-libcamera.lua
 
 - name: media | Create wireplumber config to enable high quality bluetooth codecs
   become: true

@@ -76,8 +76,11 @@ user_pref("signon.rememberSignons", false);
 // Restore session at startup
 user_pref("browser.startup.page", 3);
 
+user_pref("media.webrtc.camera.allow-pipewire", true);
+
 // Enable Webrender, remove this once it's on by default!
 user_pref("gfx.webrender.all", true);
+user_perf("gfx.webrender.compositor.force-enabled", true)
 
 // Enable pipelining
 user_pref("network.http.pipelining", true);
