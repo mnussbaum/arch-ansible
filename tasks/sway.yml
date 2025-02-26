@@ -32,7 +32,7 @@
       - swaylock
       - libnotify
       - mako
-      - wl-clipboard-git
+      - wl-clipboard
       - glfw-wayland # Provides libs for GLFW apps
       - grim-git
       - slurp
