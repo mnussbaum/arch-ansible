@@ -30,6 +30,7 @@
       - swaybg
       - swayidle
       - swaylock
+      - chayang
       - libnotify
       - mako
       - wl-clipboard
