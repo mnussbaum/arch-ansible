@@ -35,7 +35,7 @@
       - mako
       - wl-clipboard
       - glfw-wayland # Provides libs for GLFW apps
-      - grim-git
+      - grim
       - slurp
       - satty
       - xorg-xwayland
