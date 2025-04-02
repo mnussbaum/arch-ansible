@@ -46,6 +46,7 @@
       - numbat-bin
       - glow
     - - yazi
+      - xan
 
 - name: CLI Tools | Install fzf helper scripts
   copy:
