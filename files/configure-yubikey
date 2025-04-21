@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+read -s -p "Admin PIN: " PIN
+echo
+
+ykman openpgp keys set-touch aut on --force --admin-pin "$PIN"
+ykman openpgp keys set-touch sig on --force --admin-pin "$PIN"
+ykman openpgp keys set-touch dec on --force --admin-pin "$PIN"
+ykman openpgp keys set-touch att on --force --admin-pin "$PIN"
