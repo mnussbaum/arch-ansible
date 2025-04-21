@@ -9,7 +9,7 @@
   retries: 2
   become: true
   loop:
-    - - aws-cli-v2
+    - - aws-cli-bin
       - bat
       - bc
       - bfs
