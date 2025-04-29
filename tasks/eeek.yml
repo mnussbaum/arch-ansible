@@ -13,6 +13,7 @@
       - scie-pants-bin
       - slack-desktop
       - cloudflare-warp-bin
+      - pqrs-bin
   become: true
 
 - name: eeek | Install .netrc
