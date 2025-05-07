@@ -48,10 +48,7 @@
       - name: "stevearc/dressing.nvim"
       - name: "MunifTanjim/nui.nvim"
       - name: "MeanderingProgrammer/render-markdown.nvim"
-      - name: "yetone/avante.nvim"
-        args:
-          branch: "main"
-          run: "make"
+      - name: "olimorris/codecompanion.nvim"
     tree_sitter_plugins:
       - bash
       - c
