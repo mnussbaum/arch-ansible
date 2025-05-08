@@ -35,6 +35,14 @@
     group: "{{ user.group }}"
     mode: 0600
 
+- name: GPG | Install smart card daemon config
+  copy:
+    dest: "/home/{{ user.name }}/.gnupg/scdaemon.conf"
+    src: files/scdaemon.conf
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    mode: 0600
+
 # This value is derived from my SSH key. If rotating keys rederive this value
 # by empying the sshcontrol file and letting GPG repopulate it after `ssh-add`
 - name: GPG | Install sshcontrol config

@@ -4,10 +4,157 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-read -s -p "Admin PIN: " PIN
-echo
+# Derived from https://calbryant.uk/blog/how-to-get-the-best-out-of-your-yubikey-with-gpg
+# Must run with a primary GPG key available in ./gnupghome and with a single
+# yubikey attached.
+#
+# See generate-primary-gpg-key to generate a primary key
 
-ykman openpgp keys set-touch aut on --force --admin-pin "$PIN"
-ykman openpgp keys set-touch sig on --force --admin-pin "$PIN"
-ykman openpgp keys set-touch dec on --force --admin-pin "$PIN"
-ykman openpgp keys set-touch att on --force --admin-pin "$PIN"
+export GNUPGHOME="$(pwd)/gnupghome"
+if [[ ! -d "$GNUPGHOME" ]] ; then
+  echo "Must have a gnupghome directory"
+  exit 1
+fi
+
+email=$(git config --get user.email) || read -p "Email: " email
+
+function main {
+  secure_yubikey_settings_and_pins
+  write_certs_and_keys
+  install_certs_and_keys_on_yubikey
+}
+
+function secure_yubikey_settings_and_pins {
+  read -s -p "Set new admin PIN: " admin_pin
+  echo
+
+  ykman openpgp access change-admin-pin --admin-pin 12345678 \
+    --new-admin-pin "$admin_pin"
+
+  read -s -p "Set new user PIN: " user_pin
+  echo
+
+  ykman openpgp access change-pin --pin 123456 --new-pin "$user_pin"
+
+  ykman openpgp keys set-touch aut on --force --admin-pin "$admin_pin"
+  ykman openpgp keys set-touch sig on --force --admin-pin "$admin_pin"
+  ykman openpgp keys set-touch dec on --force --admin-pin "$admin_pin"
+  ykman openpgp keys set-touch att on --force --admin-pin "$admin_pin"
+}
+
+function write_certs_and_keys {
+  primary_key_fingerprint=$(gpg2 --list-key "$email" | grep -oE '[A-Z0-9]{40}')
+  read -s -p "GPG passphrase: " passphrase
+  echo
+
+  gpg2 --export --armor > gpg-pubkeys.asc
+  gpg2 --export-ssh-key "$email" > ssh-pubkey.txt
+  echo "$primary_key_fingerprint" > gpg-fingerprint.txt
+  echo "$primary_key_fingerprint" | tail -c 17 > gpg-keyid.txt # includes /n -- (long) key id is last 16 chara
+  echo "$passphrase" | gpg2 --pinentry-mode loopback \
+    --batch --no-tty --yes --passphrase-fd 0 --export-secret-key --armor \
+    "$email" > gpg-privkeys.asc
+}
+
+function install_certs_and_keys_on_yubikey {
+  read -s -p "GPG passphrase: " passphrase
+  echo
+
+  read -s -p "Yubikey admin PIN: " admin_pin
+  echo
+
+  declare -A subkey_ids
+
+  declare usage=""
+  declare subkey_id=""
+
+  while IFS= read -r line; do
+    IFS=":" read -r type _ _ _ keyid _ _ _ _ _ _ usage_flags <<< "$line"
+
+    if [[ "$type" == "ssb" ]]; then
+      subkey_id="$keyid"
+    elif [[ "$type" == "ssb" || "$type" == "sub" ]]; then
+      # Sometimes type might be "sub" too — safety check
+      subkey_id="$keyid"
+    fi
+
+    if [[ "$type" == "ssb" || "$type" == "sub" ]]; then
+      if [[ "$usage_flags" == *s* && -z "${subkey_ids[sign]:-}" ]]; then
+        subkey_ids[sign]="$subkey_id"
+      elif [[ "$usage_flags" == *e* && -z "${subkey_ids[enc]:-}" ]]; then
+        subkey_ids[enc]="$subkey_id"
+      elif [[ "$usage_flags" == *a* && -z "${subkey_ids[auth]:-}" ]]; then
+        subkey_ids[auth]="$subkey_id"
+      fi
+    fi
+  done < <(gpg --list-secret-keys --with-colons "$email")
+
+  expect -c "
+    set send_slow {10 .001}
+    set timeout 5
+    set ret 1
+    spawn gpg --homedir ${GNUPGHOME} --pinentry-mode loopback --edit-key ${email}
+
+    # Move Signature subkey
+    expect \"gpg>\"
+    send -s \"key ${subkey_ids[sign]}\r\"
+    expect \"gpg>\"
+    send -s \"keytocard\r\"
+    expect -- \"Your selection? \"
+    send -s \"1\r\"
+    expect \"Enter passphrase: \"
+    send -s \"${passphrase}\r\"
+    expect \"Enter passphrase: \"
+    send -s \"${admin_pin}\r\"
+    expect \"Enter passphrase: \"
+    send -s \"${admin_pin}\r\"
+    expect {
+      -re \"failed\"        { exit 1 }
+      -re \"gpg>\"          { send -s \"key ${subkey_ids[sign]}\r\" }
+      timeout               { exit 1 }
+    }
+
+    # Move encryption subkey
+    expect \"gpg>\"
+    send -s \"key ${subkey_ids[enc]}\r\"
+    expect \"gpg>\"
+    send -s \"keytocard\r\"
+    expect -- \"Your selection? \"
+    send -s \"2\r\"
+    expect \"Enter passphrase: \"
+    send -s \"${passphrase}\r\"
+    expect \"Enter passphrase: \"
+    send -s \"${admin_pin}\r\"
+    expect \"Enter passphrase: \"
+    send -s \"${admin_pin}\r\"
+    expect {
+      -re \"failed\"        { exit 1 }
+      -re \"gpg>\"          { send -s \"key ${subkey_ids[enc]}\r\" }
+      timeout               { exit 1 }
+    }
+
+    # Move authentication subkey
+    expect \"gpg>\"
+    send -s \"key ${subkey_ids[auth]}\r\"
+    expect \"gpg>\"
+    send -s \"keytocard\r\"
+    expect -- \"Your selection? \"
+    send -s \"3\r\"
+    expect \"Enter passphrase: \"
+    send -s \"${passphrase}\r\"
+    expect \"Enter passphrase: \"
+    send -s \"${admin_pin}\r\"
+    expect \"Enter passphrase: \"
+    send -s \"${admin_pin}\r\"
+    expect {
+      -re \"failed\"        { exit 1 }
+      -re \"gpg>\"          { send -s \"save\r\" }
+      timeout               { exit 1 }
+    }
+
+
+    expect eof
+    set ret 0"
+}
+
+main

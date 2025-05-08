@@ -1,0 +1,50 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# Derived from https://calbryant.uk/blog/how-to-get-the-best-out-of-your-yubikey-with-gpg
+
+if [[ "$(ls)" ]] ; then
+  echo "Must run in empty directory"
+  exit 1
+fi
+
+username=$(git config --get user.name) || read -p "Username: " username
+email=$(git config --get user.email) || read -p "Email: " email
+
+read -s -p "GPG passphrase: " passphrase
+echo
+
+export GNUPGHOME="$(pwd)/gnupghome"
+mkdir $GNUPGHOME
+cat << EOF >> $GNUPGHOME/scdaemon.conf
+disable-ccid
+pcsc-shared
+EOF
+
+chmod 0700 $GNUPGHOME
+
+cat <<EOF | gpg2 --batch --generate-key
+  Key-Type: eddsa
+  Key-Curve: ed25519
+  Key-Usage: cert,sign
+  Expire-Date: 0
+  Name-Real: $username
+  Name-Email: $email
+  Passphrase: $passphrase
+  %commit
+EOF
+
+primary_key_fingerprint=$(gpg2 --list-key "$email" | grep -oE '[A-Z0-9]{40}')
+
+echo "$passphrase" | gpg2 --pinentry-mode loopback \
+  --batch --no-tty --yes --passphrase-fd 0 \
+  --quick-add-key "$primary_key_fingerprint" cv25519 encrypt 0
+echo "$passphrase" | gpg2 --pinentry-mode loopback \
+  --batch --no-tty --yes --passphrase-fd 0 \
+  --quick-add-key "$primary_key_fingerprint" ed25519 sign 0
+echo "$passphrase" | gpg2 --pinentry-mode loopback \
+  --batch --no-tty --yes --passphrase-fd 0 \
+  --quick-add-key "$primary_key_fingerprint" ed25519 auth 0

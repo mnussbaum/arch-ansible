@@ -1,8 +1,8 @@
 # TODO
 
-- Separate primary key generation into its own script
+- Test how adding a new device will work with existing keys
+- Test how adding a new yubikey will work with existing devices
 - Add script for provisioning new computer
-- Add script for provisioning new yubikey
 - Install CCID and run SCCID daemon on install media
 - Set up yubikey on Android via https://github.com/drduh/YubiKey-Guide/issues/368#issuecomment-1414562947
 - Set up yubikey for disk decryption

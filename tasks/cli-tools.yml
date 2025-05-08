@@ -47,6 +47,7 @@
       - glow
     - - yazi
       - xan
+      - expect
 
 - name: CLI Tools | Install fzf helper scripts
   copy:
