@@ -10,7 +10,7 @@
       - pipewire-docs
       - pipewire-pulse
       - sof-firmware
-      - pavucontrol
+      - pwvucontrol
       - gstreamer
       - gstreamer-vaapi
       - gst-plugins-base
