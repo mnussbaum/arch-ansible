@@ -110,6 +110,11 @@ monitors:
       x: 950
       y: 1600
     scale: 0.95
+  - id: Dell Inc. DELL S3221QS 5SN17N3
+    position:
+      x: 0
+      y: 0
+    scale: 1
 
 optional_daemons:
   libinput_gestures: true
