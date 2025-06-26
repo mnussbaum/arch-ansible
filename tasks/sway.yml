@@ -25,7 +25,6 @@
     state: present
     name:
       - mesa
-      - wlroots
       - sway
       - swaybg
       - swayidle
