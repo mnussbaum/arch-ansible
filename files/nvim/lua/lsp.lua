@@ -29,27 +29,52 @@ local on_attach = function(client, bufnr)
 	vim.api.nvim_create_autocmd("CursorHold", {
 		buffer = bufnr,
 		callback = function()
-			vim.diagnostic.open_float()
+			vim.diagnostic.open_float(nil, {
+				focusable = false,
+				scope = "line",
+				close_events = {
+					"CursorMoved",
+					"CursorMovedI",
+					"BufLeave",
+					"BufHidden",
+					"FocusLost",
+					"InsertCharPre",
+					"WinLeave",
+				},
+			})
+		end,
+		group = hover_diagnostics_autogroup,
+	})
+
+	vim.api.nvim_create_autocmd("BufLeave", {
+		buffer = bufnr,
+		callback = function()
+			for _, win in ipairs(vim.api.nvim_list_wins()) do
+				local config = vim.api.nvim_win_get_config(win)
+				if config.relative ~= "" then
+					pcall(vim.api.nvim_win_close, win, true)
+				end
+			end
 		end,
 		group = hover_diagnostics_autogroup,
 	})
 end
 
-local signs = {
-	{ name = "DiagnosticSignError", text = "" },
-	{ name = "DiagnosticSignWarn", text = "" },
-	{ name = "DiagnosticSignHint", text = "" },
-	{ name = "DiagnosticSignInfo", text = "" },
-}
-
-for _, sign in ipairs(signs) do
-	vim.fn.sign_define(sign.name, { texthl = sign.name, text = sign.text, numhl = "" })
-end
-
 vim.diagnostic.config({
 	virtual_text = false,
 	signs = {
-		active = signs,
+		text = {
+			[vim.diagnostic.severity.ERROR] = " ",
+			[vim.diagnostic.severity.WARN] = " ",
+			[vim.diagnostic.severity.INFO] = "󰋼 ",
+			[vim.diagnostic.severity.HINT] = "󰌵 ",
+		},
+		numhl = {
+			[vim.diagnostic.severity.ERROR] = "",
+			[vim.diagnostic.severity.WARN] = "",
+			[vim.diagnostic.severity.HINT] = "",
+			[vim.diagnostic.severity.INFO] = "",
+		},
 	},
 	update_in_insert = true,
 	underline = true,
@@ -61,6 +86,15 @@ vim.diagnostic.config({
 		source = "always",
 		header = "",
 		prefix = "",
+		close_events = {
+			"CursorMoved",
+			"CursorMovedI",
+			"BufLeave",
+			"BufHidden",
+			"FocusLost",
+			"InsertCharPre",
+			"WinLeave",
+		},
 	},
 })
 
