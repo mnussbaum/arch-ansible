@@ -49,12 +49,9 @@ local on_attach = function(client, bufnr)
 	vim.api.nvim_create_autocmd("BufLeave", {
 		buffer = bufnr,
 		callback = function()
-			for _, win in ipairs(vim.api.nvim_list_wins()) do
-				local config = vim.api.nvim_win_get_config(win)
-				if config.relative ~= "" then
-					pcall(vim.api.nvim_win_close, win, true)
-				end
-			end
+			-- Only close diagnostic floating windows, not all floating windows
+			-- This prevents conflicts with Telescope and other plugins
+			vim.diagnostic.hide(nil, bufnr)
 		end,
 		group = hover_diagnostics_autogroup,
 	})
