@@ -45,7 +45,6 @@
       - name: "nvim-telescope/telescope-fzf-native.nvim"
         args:
           run: make
-      - name: "stevearc/dressing.nvim"
       - name: "MunifTanjim/nui.nvim"
       - name: "MeanderingProgrammer/render-markdown.nvim"
       - name: "olimorris/codecompanion.nvim"
