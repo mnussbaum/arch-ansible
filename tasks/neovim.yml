@@ -123,7 +123,7 @@
       yaml:
         - prettier
       proto:
-        - buf_format
+        - buf
   tags: [base16]
 
 - name: nvim | Ensure nvim config and data dirs exist
