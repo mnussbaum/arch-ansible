@@ -5,6 +5,7 @@
     state: present
     name:
       - libinput
+      - libinput-tools
       - libinput-gestures
       - wtype
   become: true
