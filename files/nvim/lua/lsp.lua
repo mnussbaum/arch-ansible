@@ -11,51 +11,57 @@ vim.keymap.set("n", "]d", vim.diagnostic.goto_next, opts)
 
 local hover_diagnostics_autogroup = vim.api.nvim_create_augroup("hover_diagnostics", {})
 
--- Use an on_attach function to only map the following keys after the language
--- server attaches to the current buffer
-local on_attach = function(client, bufnr)
-	local bufopts = { noremap = true, silent = true, buffer = bufnr }
-	vim.keymap.set("n", "gD", vim.lsp.buf.declaration, bufopts)
-	vim.keymap.set("n", "gd", vim.lsp.buf.definition, bufopts)
-	vim.keymap.set("n", "gi", vim.lsp.buf.implementation, bufopts)
-	vim.keymap.set("n", "gr", vim.lsp.buf.references, bufopts)
-	vim.keymap.set("n", "gt", vim.lsp.buf.type_definition, bufopts)
-	vim.keymap.set("n", "K", vim.lsp.buf.hover, bufopts)
-	vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help, bufopts)
-	vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, bufopts)
-	vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, bufopts)
-	vim.keymap.set("n", "<leader>f", vim.lsp.buf.format, bufopts)
+-- Set up keymaps and autocmds when LSP attaches to a buffer
+vim.api.nvim_create_autocmd("LspAttach", {
+	callback = function(args)
+		local bufnr = args.buf
+		local bufopts = { noremap = true, silent = true, buffer = bufnr }
 
-	vim.api.nvim_create_autocmd("CursorHold", {
-		buffer = bufnr,
-		callback = function()
-			vim.diagnostic.open_float(nil, {
-				focusable = false,
-				scope = "line",
-				close_events = {
-					"CursorMoved",
-					"CursorMovedI",
-					"BufLeave",
-					"BufHidden",
-					"FocusLost",
-					"InsertCharPre",
-					"WinLeave",
-				},
-			})
-		end,
-		group = hover_diagnostics_autogroup,
-	})
+		-- LSP keymaps
+		vim.keymap.set("n", "gD", vim.lsp.buf.declaration, bufopts)
+		vim.keymap.set("n", "gd", vim.lsp.buf.definition, bufopts)
+		vim.keymap.set("n", "gi", vim.lsp.buf.implementation, bufopts)
+		vim.keymap.set("n", "gr", vim.lsp.buf.references, bufopts)
+		vim.keymap.set("n", "gt", vim.lsp.buf.type_definition, bufopts)
+		vim.keymap.set("n", "K", vim.lsp.buf.hover, bufopts)
+		vim.keymap.set("n", "<C-k>", vim.lsp.buf.signature_help, bufopts)
+		vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, bufopts)
+		vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, bufopts)
+		vim.keymap.set("n", "<leader>f", vim.lsp.buf.format, bufopts)
 
-	vim.api.nvim_create_autocmd("BufLeave", {
-		buffer = bufnr,
-		callback = function()
-			-- Only close diagnostic floating windows, not all floating windows
-			-- This prevents conflicts with Telescope and other plugins
-			vim.diagnostic.hide(nil, bufnr)
-		end,
-		group = hover_diagnostics_autogroup,
-	})
-end
+		-- Show diagnostics on cursor hold
+		vim.api.nvim_create_autocmd("CursorHold", {
+			buffer = bufnr,
+			callback = function()
+				vim.diagnostic.open_float(nil, {
+					focusable = false,
+					scope = "line",
+					close_events = {
+						"CursorMoved",
+						"CursorMovedI",
+						"BufLeave",
+						"BufHidden",
+						"FocusLost",
+						"InsertCharPre",
+						"WinLeave",
+					},
+				})
+			end,
+			group = hover_diagnostics_autogroup,
+		})
+
+		-- Hide diagnostics when leaving buffer
+		vim.api.nvim_create_autocmd("BufLeave", {
+			buffer = bufnr,
+			callback = function()
+				-- Only close diagnostic floating windows, not all floating windows
+				-- This prevents conflicts with Telescope and other plugins
+				vim.diagnostic.hide(nil, bufnr)
+			end,
+			group = hover_diagnostics_autogroup,
+		})
+	end,
+})
 
 vim.diagnostic.config({
 	virtual_text = false,
@@ -105,13 +111,18 @@ vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.s
 	width = 60,
 })
 
-local default_lsp_setup = {
-	on_attach = on_attach,
-
-	-- Pull completions from LSP
-	capabilities = require("cmp_nvim_lsp").default_capabilities(),
-}
+local cmp_lsp_capabilities = require("cmp_nvim_lsp").default_capabilities()
 
 for language_server_name, language_server_setup in pairs(require("language_servers")) do
-	require("lspconfig")[language_server_name].setup(vim.tbl_extend("force", default_lsp_setup, language_server_setup))
+	-- Add custom overrides (like capabilities) if needed
+	local config = vim.tbl_extend("force", { capabilities = cmp_lsp_capabilities }, language_server_setup)
+
+	-- Only call vim.lsp.config if we have custom config beyond just capabilities
+	if next(language_server_setup) ~= nil then
+		vim.lsp.config(language_server_name, config)
+	else
+		vim.lsp.config(language_server_name, { capabilities = cmp_lsp_capabilities })
+	end
+
+	vim.lsp.enable(language_server_name)
 end
