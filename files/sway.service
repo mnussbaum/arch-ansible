@@ -5,6 +5,9 @@ Documentation=man:sway(5)
 BindsTo=graphical-session.target
 Wants=graphical-session-pre.target
 
+# Ensure DRM is fully initialized before sway starts
+After=systemd-udev-settle.service
+
 [Service]
 EnvironmentFile=-%h/.config/sway/env
 ExecStart=/usr/bin/sway
