@@ -1,0 +1,10 @@
+[Unit]
+Description=Flush {{ networking.interface }} IPv6 addresses before resume
+Before=sleep.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ip -6 addr flush dev {{ networking.interface }} scope global
+
+[Install]
+WantedBy=sleep.target

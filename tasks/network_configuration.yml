@@ -134,6 +134,13 @@
     dest: "{{ network_install_root }}/etc/systemd/network/25-{{ networking.interface }}.network"
   when: networking.interface is defined
 
+- name: networking configuration | Install resume fix IPv6 flush service
+  become: true
+  template:
+    src: templates/network-resume-ipv6-flush.service.j2
+    dest: "{{ network_install_root }}/etc/systemd/system/{{ networking.interface }}-resume-ipv6-flush.service"
+  when: networking.interface is defined
+
 - name: networking configuration | Install systemd-networkd config for eth0 interface
   become: true
   copy:
