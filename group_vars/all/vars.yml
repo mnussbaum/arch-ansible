@@ -34,7 +34,7 @@ font:
 idle_thresholds:
   lock_screen_delay_minutes: 5
   suspend_delay_minutes: 10
-  hibernate_delay_minutes: 45
+  hibernate_delay_minutes: 120
 
 base16:
   day_scheme: gruvbox-dark-hard
