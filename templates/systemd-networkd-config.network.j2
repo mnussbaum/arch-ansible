@@ -5,6 +5,11 @@ Name={{ networking.interface }}
 DHCP=yes
 IPv6AcceptRA=yes
 IgnoreCarrierLoss=3s
+KeepConfiguration=dhcp-on-stop
+
+[Link]
+RequiredForOnline=routable
 
 [IPv6AcceptRA]
 DHCPv6Client=yes
+Token=static:::1
