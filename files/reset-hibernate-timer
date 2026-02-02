@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# Avoid the system attempting to hibernate while resuming from an erroneously
+# long suspend
+
+case $1/$2 in
+  post/suspend|post/hibernate)
+    # When resuming, reset the hibernate timer
+    if [ -f /run/systemd/suspend-then-hibernate ]; then
+        rm -f /run/systemd/suspend-then-hibernate
+    fi
+    ;;
+esac

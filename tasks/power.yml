@@ -67,6 +67,20 @@
     state: link
   become: true
 
+- name: power | Create system-sleep script directory
+  become: true
+  file:
+    path: /usr/lib/systemd/system-sleep
+    state: directory
+
+# Avoid the system attempting to hibernate while resuming from an erroneously long suspend
+- name: power | Install reset-hibernate-timer script
+  copy:
+    src: files/reset-hibernate-timer
+    dest: /usr/lib/systemd/system-sleep/reset-hibernate-timer
+    mode: a+x
+  become: true
+
 # Async power management appears to be causing lock ups during suspend and resume
 - name: power | Disable async suspend and resume
   copy:
