@@ -18,7 +18,7 @@
     state: started
     daemon_reload: true
   become: true
-  when: ansible_virtualization_role != "guest"
+  when: ansible_facts["virtualization_role"] != "guest"
 
 - name: power | Configure TLP
   copy:

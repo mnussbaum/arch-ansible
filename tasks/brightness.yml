@@ -69,4 +69,4 @@
 - name: Brightness | Lengthen keyboard backlight timeout
   become: true
   shell: echo 1m > /sys/devices/platform/dell-laptop/leds/dell::kbd_backlight/stop_timeout
-  when: ansible_system_vendor == "Dell Inc." and lookup("file", "/sys/devices/platform/dell-laptop/leds/dell::kbd_backlight/stop_timeout") != "1m"
+  when: ansible_facts["system_vendor"] == "Dell Inc." and lookup("file", "/sys/devices/platform/dell-laptop/leds/dell::kbd_backlight/stop_timeout") != "1m"

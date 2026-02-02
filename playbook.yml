@@ -45,11 +45,10 @@
     - import_tasks: tasks/enable_network.yml
       tags: [bootstrap, networking]
     - import_tasks: tasks/reflector.yml
-      when: ansible_architecture is not match("arm.*")
+      when: ansible_facts["architecture"] is not match("arm.*")
     - import_tasks: tasks/packaging.yml
     - set_fact:
-        ansible_facts:
-          pkg_mgr: yay
+        ansible_facts: "{{ ansible_facts | combine({'pkg_mgr': 'yay'}) }}"
       tags: [nvim, base16, eeek]
     - import_tasks: tasks/gpg.yml
     - import_tasks: tasks/zsh.yml
@@ -83,9 +82,9 @@
     - import_tasks: tasks/qemu-host.yml
       when: qemu_host
     - import_tasks: tasks/qemu-guest.yml
-      when: ansible_virtualization_type == "kvm" and ansible_virtualization_role == "guest"
+      when: ansible_facts["virtualization_type"] == "kvm" and ansible_facts["virtualization_role"] == "guest"
     - import_tasks: tasks/virtualbox-guest.yml
-      when: ansible_virtualization_type == "virtualbox" and ansible_virtualization_role == "guest"
+      when: ansible_facts["virtualization_type"] == "virtualbox" and ansible_facts["virtualization_role"] == "guest"
     - import_tasks: tasks/fonts.yml
     - import_tasks: tasks/libinput.yml
     - import_tasks: tasks/wallpaper.yml
@@ -106,7 +105,7 @@
     - import_tasks: tasks/pdf.yml
     - import_tasks: tasks/syncthing.yml
     - import_tasks: tasks/raspberry-pi-dev.yml
-      when: ansible_architecture is not match("arm.*")
+      when: ansible_facts["architecture"] is not match("arm.*")
     - import_tasks: tasks/firefox.yml
     - import_tasks: tasks/secrets.yml
     - import_tasks: tasks/eeek.yml

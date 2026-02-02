@@ -22,7 +22,7 @@
 - name: enable network | Start and enable iwd.service
   become: true
   systemd:
-    state: "{{ (ansible_virtualization_role == 'guest') | ternary('stopped', 'started') }}"
+    state: "{{ (ansible_facts['virtualization_role'] == 'guest') | ternary('stopped', 'started') }}"
     enabled: true
     name: iwd.service
 

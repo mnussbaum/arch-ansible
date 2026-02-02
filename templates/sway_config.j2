@@ -1,4 +1,4 @@
-{% if ansible_virtualization_role == "guest" %}
+{% if ansible_facts["virtualization_role"] == "guest" %}
 set $mod Mod4
 {% else %}
 set $mod Mod1

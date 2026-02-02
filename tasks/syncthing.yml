@@ -28,7 +28,7 @@
 - name: syncthing | Enable syncthing user service
   become: true
   become_user: "{{ user.name }}"
-  when: ansible_virtualization_role != "guest"
+  when: ansible_facts["virtualization_role"] != "guest"
   systemd:
     enabled: true
     name: syncthing.service
