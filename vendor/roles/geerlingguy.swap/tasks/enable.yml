@@ -1,8 +1,8 @@
 ---
 - name: Ensure swap file exists.
-  command: >
-    {{ swap_file_create_command }}
-    creates='{{ swap_file_path }}'
+  shell: "{{ swap_file_create_command }}"
+  args:
+    creates: "{{ swap_file_path }}"
   register: swap_file_create
 
 - name: Set permissions on swap file.
@@ -11,6 +11,7 @@
     owner: root
     group: root
     mode: 0600
+  when: not ansible_check_mode
 
 - name: Make swap file if necessary.
   command: mkswap {{ swap_file_path }}

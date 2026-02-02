@@ -1,6 +1,11 @@
 ---
 - name: Disable swap (if configured).
-  command: swapoff -a
+  command: "swapoff {{ swap_file_path }}"
+  args:
+    removes: "{{ swap_file_path }}"
+  when:
+    - ansible_facts.memory_mb['swap']['total'] > 0
+    - not swap_test_mode
   tags: ['skip_ansible_lint']
 
 - name: Ensure swap file doesn't exist (if configured).

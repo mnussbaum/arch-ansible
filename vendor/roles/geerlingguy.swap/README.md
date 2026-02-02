@@ -1,6 +1,6 @@
 # Ansible Role: Swap
 
-[![Build Status](https://travis-ci.org/geerlingguy/ansible-role-swap.svg?branch=master)](https://travis-ci.org/geerlingguy/ansible-role-swap)
+[![CI](https://github.com/geerlingguy/ansible-role-swap/actions/workflows/ci.yml/badge.svg)](https://github.com/geerlingguy/ansible-role-swap/actions/workflows/ci.yml)
 
 An Ansible Role that configures swap space on Linux.
 
@@ -18,7 +18,7 @@ The location of the swap file on the server.
 
     swap_file_size_mb: '512'
 
-How large (in megabytes) to make the swap file.
+How large (in mebibytes) to make the swap file.
 
     swap_swappiness: '60'
 
