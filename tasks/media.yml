@@ -18,7 +18,6 @@
       - gst-plugin-pipewire
       - gst-libav
       - gst-plugin-va
-      - spotify
       - playerctl
       - wireplumber
       - lollypop
@@ -28,7 +27,6 @@
       - xdg-desktop-portal-gtk
       - calibre
       - intel-media-driver
-      - intel-ivsc-firmware
     state: present
 
 - name: media | Create XDG portal config dir
