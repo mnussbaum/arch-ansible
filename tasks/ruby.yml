@@ -7,7 +7,7 @@
       - ruby-irb
       - ruby-bundler
       - rubocop
-      - ruby-solargraph
+      - ruby-lsp
   become: true
 
 - name: Ruby | Install global gemrc

@@ -93,7 +93,7 @@
       - name: ts_ls
       - name: gopls
       - name: pyright
-      - name: solargraph
+      - name: ruby_lsp
       - name: rust_analyzer
       - name: buf_ls
     language_formatters:
