@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: python | Install pip
+- name: python | Install packages
   package:
     state: present
     name:
@@ -8,20 +8,5 @@
       - pyright
       - python-pip
       - python-pylint
-      - python-poetry
-      - ptpython
+      - uv
   become: true
-
-- name: python | Create ptpython config dir
-  file:
-    path: "{{ user_config_dir }}/ptpython"
-    state: directory
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-
-- name: python | Create ptpython config dir
-  copy:
-    src: files/ptpython_config.py
-    dest: "{{ user_config_dir }}/ptpython/config.py"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
