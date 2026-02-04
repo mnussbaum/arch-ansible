@@ -78,6 +78,7 @@
       - typescript
       - vim
       - yaml
+      - astro
     tree_sitter_options:
       - name: highlight
     language_servers:
