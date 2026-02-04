@@ -150,6 +150,7 @@
       - clang
       - ctags
       - neovim
+      - tree-sitter-cli
       - python-pynvim
       - yaml-language-server
       - vscode-json-languageserver
