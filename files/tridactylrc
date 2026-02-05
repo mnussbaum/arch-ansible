@@ -1,0 +1,2 @@
+bind <C-[> back
+bind <C-]> forward

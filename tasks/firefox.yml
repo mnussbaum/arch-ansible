@@ -67,3 +67,17 @@
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
   tags: [base16]
+
+- name: Firefox | Create tridactyl config directory
+  file:
+    path: "{{ user_config_dir }}/tridactyl"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Firefox | Create tridactyl config file
+  copy:
+    src: files/tridactylrc
+    dest: "{{ user_config_dir }}/tridactyl/tridactylrc"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
