@@ -12,7 +12,7 @@
       - sof-firmware
       - pwvucontrol
       - gstreamer
-      - gstreamer-vaapi
+      - gst-plugin-va
       - gst-plugins-base
       - gst-plugins-good
       - gst-plugin-pipewire
