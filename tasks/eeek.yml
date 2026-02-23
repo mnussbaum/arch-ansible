@@ -8,7 +8,7 @@
       - tmate
       - temporal-cli
       - direnv
-      - python311
+      - python312
       - pre-commit
       - scie-pants-bin
       - slack-desktop
