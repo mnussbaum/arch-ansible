@@ -37,19 +37,3 @@
     dest: "{{ user_home_dir }}/.aws/config"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
-
-- name: eeek | Make pip config dir
-  file:
-    dest: "{{ user_config_dir }}/pip"
-    state: directory
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-
-- name: eeek | Install pip config
-  copy:
-    content: |
-      [global]
-      index-url = https://gitlab.com/api/v4/projects/27825719/packages/pypi/simple
-    dest: "{{ user_config_dir }}/pip/pip.conf"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
