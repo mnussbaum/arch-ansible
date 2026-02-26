@@ -1,0 +1,2 @@
+SUBSYSTEM=="video4linux", KERNEL=="v4l-subdev*", ATTR{name}=="ov01a10*", \
+    ACTION=="add", RUN+="/usr/bin/v4l2-ctl -d /dev/$kernel --set-ctrl=digital_gain=2048"

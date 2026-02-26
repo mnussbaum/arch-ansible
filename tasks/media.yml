@@ -5,10 +5,13 @@
   package:
     name:
       - alsa-utils
+      - libcamera
+      - libcamera-ipa
       - pipewire
       - pipewire-alsa
       - pipewire-docs
       - pipewire-pulse
+      - pipewire-libcamera
       - sof-firmware
       - pwvucontrol
       - gstreamer
@@ -18,6 +21,7 @@
       - gst-plugin-pipewire
       - gst-libav
       - gst-plugin-va
+      - gst-plugin-libcamera
       - playerctl
       - wireplumber
       - lollypop
@@ -63,6 +67,25 @@
   copy:
     src: files/wireplumber-bluez-config.lua
     dest: /etc/wireplumber/bluetooth-lua.d/51-bluez-config.lua
+
+- name: media | Install IPu6 ov01a10 front-facing camera config file
+  become: true
+  copy:
+    src: files/ov01a10.yaml
+    dest: /usr/share/libcamera/ipa/simple/ov01a10.yaml
+
+- name: media | Install IPu6 ov01a10 udev config file to fix digital gain
+  become: true
+  copy:
+    src: files/99-ov01a10-digital-gain.rules
+    dest: /etc/udev/rules.d/99-ov01a10-digital-gain.rules
+
+- name: media | Install systemd-sleep hook to fix IPu6 camera after suspend/resume
+  become: true
+  copy:
+    src: files/ipu6-suspend.sh
+    dest: /usr/lib/systemd/system-sleep/ipu6-suspend.sh
+    mode: a+x
 
 - name: media | Install headphone profile toggle script
   become: true
