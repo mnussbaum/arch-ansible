@@ -3,3 +3,5 @@ bind <C-]> forward
 bind n findnext 1
 bind N findnext -1
 bind / fillcmdline find
+
+blacklistadd miro\.com
