@@ -48,6 +48,7 @@
       - name: "olimorris/codecompanion.nvim"
     tree_sitter_plugins:
       - bash
+      - beancount
       - c
       - cpp
       - css
@@ -95,6 +96,7 @@
       - name: ruby_lsp
       - name: rust_analyzer
       - name: buf_ls
+      - name: beancount
     language_formatters:
       go:
         - goimports
@@ -123,6 +125,8 @@
         - prettier
       proto:
         - buf
+      beancount:
+        - bean_format
   tags: [base16]
 
 - name: nvim | Ensure nvim config and data dirs exist
@@ -157,6 +161,7 @@
       - tree-sitter
       - stylua
       - buf-bin
+      - beancount-language-server
   become: true
 
 - name: nvim | Install init.lua config
