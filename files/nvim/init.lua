@@ -11,6 +11,9 @@ vim.cmd(":command! W w !sudo tee % > /dev/null")
 -- Make esc fast
 vim.o.ttimeoutlen = 0
 
+-- Enable filetype declarations
+vim.opt.modeline = true
+
 -- Source all lua directory files
 local paths = vim.split(vim.fn.glob("~/.config/nvim/lua/*lua"), "\n")
 
