@@ -62,6 +62,7 @@ modprobe_files:
   - i915.conf
   - iwlwifi.conf
   - nvme.conf
+  - no-psmouse.conf
 
 networking:
   wireless_interface: wlan0

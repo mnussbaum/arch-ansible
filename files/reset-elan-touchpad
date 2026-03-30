@@ -1,0 +1,15 @@
+#!/bin/sh
+# Rebind the Elan i2c touchpad after resume. Without this, pointer movement
+# works but clicking is delayed ~1-2 minutes while the touchpad firmware
+# reinitializes its button reporting path.
+case "$1" in
+    post)
+        driver=/sys/bus/i2c/drivers/i2c_hid_acpi
+        for dev in "$driver"/*/; do
+            devid=$(basename "$dev")
+            echo "$devid" > "$driver/unbind"
+            sleep 0.3
+            echo "$devid" > "$driver/bind"
+        done
+        ;;
+esac

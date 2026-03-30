@@ -81,6 +81,15 @@
     mode: a+x
   become: true
 
+# Elan i2c touchpad click reporting is delayed ~1-2 minutes after resume without this rebind
+- name: power | Install reset-elan-touchpad script
+  copy:
+    src: files/reset-elan-touchpad
+    dest: /usr/lib/systemd/system-sleep/reset-elan-touchpad
+    mode: a+x
+  become: true
+  when: ansible_facts["system_vendor"] == "Dell Inc." and ansible_facts["product_name"] is search("XPS")
+
 # Async power management appears to be causing lock ups during suspend and resume
 - name: power | Disable async suspend and resume
   copy:
