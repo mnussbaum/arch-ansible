@@ -141,9 +141,28 @@
     src: files/systemd-networkd-eth0-config.network
     dest: "{{ network_install_root }}/etc/systemd/network/eth0.network"
 
-- name: networking configuration | Install restart-networking script
+- name: networking configuration | Install networking.target
   become: true
   copy:
-    src: files/restart-networking
-    dest: "{{ network_install_root }}/usr/local/bin/restart-networking"
-    mode: a+x
+    src: files/networking.target
+    dest: "{{ network_install_root }}/etc/systemd/system/networking.target"
+
+- name: networking configuration | Create drop-in dirs for networking.target PartOf
+  become: true
+  file:
+    path: "{{ network_install_root }}/etc/systemd/system/{{ item }}.d"
+    state: directory
+  loop:
+    - iwd.service
+    - systemd-networkd.service
+    - systemd-resolved.service
+
+- name: networking configuration | Install networking.target PartOf drop-ins
+  become: true
+  copy:
+    src: files/networking-target-part-of.conf
+    dest: "{{ network_install_root }}/etc/systemd/system/{{ item }}.d/networking-target-part-of.conf"
+  loop:
+    - iwd.service
+    - systemd-networkd.service
+    - systemd-resolved.service
