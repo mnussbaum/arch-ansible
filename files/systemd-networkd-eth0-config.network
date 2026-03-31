@@ -4,3 +4,6 @@ Name=eth0
 [Network]
 # Fixes Docker port forwarding
 IPMasquerade=ipv4
+
+[Link]
+RequiredForOnline=no

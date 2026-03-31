@@ -121,12 +121,6 @@
     src: files/iwd_main.conf
     dest: "{{ network_install_root }}/etc/iwd/main.conf"
 
-- name: networking configuration | Create network-online.target override dir
-  become: true
-  file:
-    path: "{{ network_install_root }}/etc/systemd/system/systemd-networkd-wait-online.service.d"
-    state: directory
-
 - name: networking configuration | Install systemd-networkd config for primary interface
   become: true
   template:
@@ -146,14 +140,6 @@
   copy:
     src: files/systemd-networkd-eth0-config.network
     dest: "{{ network_install_root }}/etc/systemd/network/eth0.network"
-
-# This override allows network-online.target to be reached even though eth0
-# interfaces are never connected
-- name: networking configuration | Configure network-online.target to only wait for a single interface
-  become: true
-  copy:
-    src: files/systemd-networkd-wait-for-only-one-interface.conf
-    dest: "{{ network_install_root }}/etc/systemd/system/systemd-networkd-wait-online.service.d/wait-for-only-one-interface.conf"
 
 - name: networking configuration | Install restart-networking script
   become: true
