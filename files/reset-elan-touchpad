@@ -2,14 +2,37 @@
 # Rebind the Elan i2c touchpad after resume. Without this, pointer movement
 # works but clicking is delayed ~1-2 minutes while the touchpad firmware
 # reinitializes its button reporting path.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+graphical_user() {
+    loginctl list-sessions --no-legend \
+        | awk '$3 != "" {print $3; exit}'
+}
+
+libinput_gestures() {
+    local user uid
+    user=$(graphical_user) || return 0
+    uid=$(id -u "$user" 2>/dev/null) || return 0
+    XDG_RUNTIME_DIR=/run/user/"$uid" \
+        systemctl --user -M "${user}@" "$1" libinput-gestures.service || true
+}
+
 case "$1" in
+    pre)
+        libinput_gestures stop
+        ;;
     post)
         driver=/sys/bus/i2c/drivers/i2c_hid_acpi
         for dev in "$driver"/*/; do
+            [ -L "${dev%/}/driver" ] || continue
             devid=$(basename "$dev")
             echo "$devid" > "$driver/unbind"
             sleep 0.3
             echo "$devid" > "$driver/bind"
         done
+        libinput_gestures start
         ;;
 esac
