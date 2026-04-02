@@ -33,6 +33,13 @@ case "$1" in
             sleep 0.3
             echo "$devid" > "$driver/bind"
         done
-        libinput_gestures start
+        # Start in background with retries - the user session D-Bus socket
+        # may not be ready immediately after resume
+        {
+            for i in 1 2 3 4 5; do
+                sleep 2
+                libinput_gestures start && break
+            done
+        } &
         ;;
 esac
