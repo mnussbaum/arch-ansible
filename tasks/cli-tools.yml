@@ -43,7 +43,7 @@
       - xdg-utils
       - yajl
       - zip
-      - numbat-bin
+      - numbat
       - glow
     - - yazi
       - xan
