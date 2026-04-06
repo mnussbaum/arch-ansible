@@ -113,3 +113,4 @@
     - import_tasks: tasks/postgres.yml
       tags: [eeek]
     - import_tasks: tasks/beancount.yml
+    - import_tasks: tasks/claude.yml

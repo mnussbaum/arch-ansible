@@ -1,0 +1,22 @@
+# vim:ft=yaml.ansible:
+---
+- name: Claude | Install packages
+  package:
+    state: present
+    name:
+      - claude-code
+  become: true
+
+- name: Claude | Ensure ~/.claude dir exists
+  file:
+    path: "{{ user_home_dir }}/.claude"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Claude | Install settings
+  copy:
+    src: files/claude_settings.json
+    dest: "{{ user_home_dir }}/.claude/settings.json"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
