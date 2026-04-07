@@ -54,6 +54,10 @@ end
 
 vim.lsp.handlers["$/progress"] = function(_, result, ctx)
 	local client_id = ctx.client_id
+	local client = vim.lsp.get_client_by_id(client_id)
+	if client and client.name == "pyright" then
+		return
+	end
 
 	local val = result.value
 
@@ -67,7 +71,7 @@ vim.lsp.handlers["$/progress"] = function(_, result, ctx)
 		local message = format_message(val.message, val.percentage)
 
 		notif_data.notification = vim.notify(message, "info", {
-			title = format_title(val.title, vim.lsp.get_client_by_id(client_id).name),
+			title = format_title(val.title, client.name),
 			icon = spinner_frames[1],
 			timeout = false,
 			hide_from_history = false,
@@ -82,7 +86,7 @@ vim.lsp.handlers["$/progress"] = function(_, result, ctx)
 		})
 	elseif val.kind == "end" and notif_data then
 		notif_data.notification = vim.notify(val.message and format_message(val.message) or "Complete", "info", {
-			icon = "",
+			icon = "",
 			replace = notif_data.notification,
 			timeout = 1000,
 		})
