@@ -4,7 +4,6 @@
     nvim_config_dir: "{{ user_config_dir }}/nvim"
     nvim_data_dir: "{{ user_data_dir }}/nvim"
     vim_plugins:
-      - name: "wbthomason/packer.nvim"
       - name: "preservim/vimux"
       - name: "itchyny/lightline.vim"
       - name: "janko-m/vim-test"
@@ -21,12 +20,11 @@
       - name: "terrortylor/nvim-comment"
       - name: "farmergreg/vim-lastplace"
       - name: "nvim-treesitter/nvim-treesitter"
-        args:
-          branch: "main"
-          run: ":TSUpdateSync"
+        post_hook_cmd: "TSUpdate"
       - name: "neovim/nvim-lspconfig"
       - name: "rcarriga/nvim-notify"
       - name: "L3MON4D3/LuaSnip"
+        post_hook_system: "make install_jsregexp"
       - name: "stevearc/dressing.nvim"
       - name: "hrsh7th/cmp-nvim-lsp"
       - name: "hrsh7th/cmp-buffer"
@@ -37,12 +35,10 @@
       - name: "RRethy/nvim-base16"
       - name: "stevearc/conform.nvim"
       - name: "cshuaimin/ssr.nvim"
+      - name: "nvim-lua/plenary.nvim"
       - name: "nvim-telescope/telescope.nvim"
-        args:
-          requires: "{{'nvim-lua/plenary.nvim'}}"
       - name: "nvim-telescope/telescope-fzf-native.nvim"
-        args:
-          run: make
+        post_hook_system: "make"
       - name: "MunifTanjim/nui.nvim"
       - name: "MeanderingProgrammer/render-markdown.nvim"
       - name: "olimorris/codecompanion.nvim"
@@ -147,7 +143,6 @@
   package:
     state: present
     name:
-      - nvim-packer-git
       - ansible-lint
       - ansible-language-server
       - clang
@@ -179,17 +174,6 @@
     owner: "{{ user.name }}"
   register: plugin_config
 
-- name: nvim | Configure packer
-  copy:
-    src: files/nvim/lua/packer_init.lua
-    dest: "{{ nvim_config_dir }}/lua/packer_init.lua"
-    group: "{{ user.group }}"
-    owner: "{{ user.name }}"
-
-- name: nvim | Install nvim plugins
-  command: nvim --headless -n -c "autocmd User PackerComplete quitall" -c "PackerSync"
-  when: plugin_config.changed
-
 - name: nvim | Install nvim file configs
   synchronize:
     src: files/nvim/lua/
@@ -202,6 +186,20 @@
     recurse: true
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
+
+- name: nvim | Install pack headless install script
+  copy:
+    src: nvim/pack_headless_install.lua
+    dest: "{{ nvim_config_dir }}/pack_headless_install.lua"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: nvim | Install nvim plugins
+  command: >
+    nvim --headless -u NONE
+    -c "source {{ nvim_config_dir }}/lua/pack_init.lua"
+    -c "luafile {{ nvim_config_dir }}/pack_headless_install.lua"
+  when: plugin_config.changed
 
 # Would be nice to install treesitter plugins on change, but requires one of:
 # https://github.com/nvim-treesitter/nvim-treesitter/pull/2085

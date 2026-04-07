@@ -2,10 +2,16 @@
 return {
 {%- for plugin in vim_plugins %}
   {
-    "{{ plugin['name'] }}",
-    {%- for plugin_arg, plugin_arg_value in (plugin['args'] | default ({})).items() %}
-    {{ plugin_arg }} = "{{ plugin_arg_value }}",
-    {%- endfor %}
+    src = "https://github.com/{{ plugin['name'] }}",
+{%- if plugin.version is defined %}
+    version = "{{ plugin.version }}",
+{%- endif %}
+{%- if plugin.post_hook_cmd is defined %}
+    post_hook_cmd = "{{ plugin.post_hook_cmd }}",
+{%- endif %}
+{%- if plugin.post_hook_system is defined %}
+    post_hook_system = "{{ plugin.post_hook_system }}",
+{%- endif %}
   },
 {%- endfor %}
 }
