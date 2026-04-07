@@ -13,7 +13,6 @@ font:
   monospace_family: "Cascadia Code NF"
   emoji_family: "Noto Emoji"
   size: 20
-  rofi_size: 10
   grub_graphical_size: 50
 
 # Cursive italic font generated via:
