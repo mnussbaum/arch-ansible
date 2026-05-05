@@ -19,8 +19,7 @@
       - name: "tpope/vim-fugitive"
       - name: "terrortylor/nvim-comment"
       - name: "farmergreg/vim-lastplace"
-      - name: "nvim-treesitter/nvim-treesitter"
-        post_hook_cmd: "TSUpdate"
+      - name: "arborist-ts/arborist.nvim"
       - name: "neovim/nvim-lspconfig"
       - name: "rcarriga/nvim-notify"
       - name: "L3MON4D3/LuaSnip"
@@ -74,8 +73,6 @@
       - vim
       - yaml
       - astro
-    tree_sitter_options:
-      - name: highlight
     language_servers:
       - name: ansiblels
       - name: clangd
@@ -200,10 +197,6 @@
     -c "source {{ nvim_config_dir }}/lua/pack_init.lua"
     -c "luafile {{ nvim_config_dir }}/pack_headless_install.lua"
   when: plugin_config.changed
-
-# Would be nice to install treesitter plugins on change, but requires one of:
-# https://github.com/nvim-treesitter/nvim-treesitter/pull/2085
-# https://github.com/nvim-treesitter/nvim-treesitter/issues/2900
 
 - name: nvim | Configure base16 colorscheme
   template:
