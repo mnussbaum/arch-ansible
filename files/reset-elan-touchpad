@@ -16,76 +16,35 @@ graphical_user() {
         | awk '$3 != "" {print $3; exit}'
 }
 
-libinput_gestures() {
-    local user uid
-    user=$(graphical_user) || return 1
-    if [ -z "$user" ]; then
-        log "$1: no graphical user session found yet"
-        return 1
-    fi
-    uid=$(id -u "$user" 2>/dev/null) || return 1
-    log "$1: running as user=$user uid=$uid"
-    local out
-    out=$(XDG_RUNTIME_DIR=/run/user/"$uid" \
-        systemctl --user -M "${user}@" "$1" libinput-gestures.service 2>&1)
-    local rc=$?
-    if [ $rc -eq 0 ]; then
-        [ -z "$out" ] || log "$1: systemctl: $out"
-    else
-        log "$1: systemctl exited $rc: $out"
-    fi
-    return $rc
-}
-
 case "$1" in
-    pre)
-        log "pre: stopping libinput-gestures"
-        libinput_gestures stop || true
-        ;;
     post)
         driver=/sys/bus/i2c/drivers/i2c_hid_acpi
+        rebound=0
         for dev in "$driver"/*/; do
             [ -L "${dev%/}/driver" ] || continue
             devid=$(basename "$dev")
+            log "post: rebinding $devid"
             echo "$devid" > "$driver/unbind"
             sleep 0.3
             echo "$devid" > "$driver/bind"
+            rebound=$((rebound + 1))
         done
-        # Start libinput-gestures with retries via a transient systemd unit so
-        # it isn't killed when the sleep hook cgroup is torn down on resume.
-        # Reset any stale unit from a previous failed attempt before starting.
-        systemctl reset-failed libinput-gestures-resume.service 2>/dev/null || true
-        systemd-run --no-block \
-            --unit=libinput-gestures-resume \
-            --description="Restart libinput-gestures after resume" \
-            /bin/sh -c '
-                log() { logger -t reset-elan-touchpad "$*"; }
-                graphical_user() {
-                    loginctl list-sessions --no-legend \
-                        | awk "\$3 != \"\" {print \$3; exit}"
-                }
-                log "post: starting retry loop"
-                for i in $(seq 1 20); do
-                    log "post: sleeping before attempt $i"
-                    sleep 5
-                    user=$(graphical_user) || true
-                    if [ -z "$user" ]; then
-                        log "post: attempt $i: no graphical user session yet"
-                        continue
-                    fi
-                    uid=$(id -u "$user" 2>/dev/null) || continue
-                    log "post: attempt $i: running as user=$user uid=$uid"
-                    out=$(XDG_RUNTIME_DIR=/run/user/"$uid" \
-                        systemctl --user -M "${user}@" start libinput-gestures.service 2>&1)
-                    rc=$?
-                    if [ $rc -eq 0 ]; then
-                        log "post: start succeeded on attempt $i"
-                        exit 0
-                    fi
-                    log "post: attempt $i: systemctl exited $rc: $out"
-                done
-                log "post: all start attempts failed"
-                exit 1
-            '
+        log "post: rebound $rebound device(s)"
+        # Kill libinput-gestures so systemd restarts it fresh via
+        # Restart=on-failure, picking up the newly rebound device.
+        # D-Bus is unreliable in the post-resume system hook context so we
+        # avoid systemctl and let systemd handle the restart automatically.
+        user=$(graphical_user) || true
+        if [ -n "$user" ]; then
+            pid=$(pgrep -f -u "$user" libinput-gestures 2>/dev/null) || true
+            if [ -n "$pid" ]; then
+                log "post: killing libinput-gestures pid=$pid (user=$user)"
+                kill -9 $pid && log "post: killed, systemd will restart fresh"
+            else
+                log "post: libinput-gestures not running as $user (stopped or failed — check 'systemctl --user status libinput-gestures')"
+            fi
+        else
+            log "post: no graphical user session found"
+        fi
         ;;
 esac
