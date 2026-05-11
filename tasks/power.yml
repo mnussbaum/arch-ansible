@@ -53,6 +53,18 @@
     dest: /etc/systemd/logind.conf
   become: true
 
+- name: power | Create systemd system.conf drop-in directory
+  become: true
+  file:
+    path: /etc/systemd/system.conf.d
+    state: directory
+
+- name: power | Set systemd stop timeout to avoid hanging shutdown
+  copy:
+    src: files/systemd-timeouts.conf
+    dest: /etc/systemd/system.conf.d/timeouts.conf
+  become: true
+
 - name: power | Install systemd sleep config
   template:
     src: templates/systemd-sleep.conf.j2
