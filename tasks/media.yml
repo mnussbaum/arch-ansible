@@ -54,7 +54,7 @@
     state: directory
   loop:
     - /etc/wireplumber
-    - /etc/wireplumber/bluetooth-lua.d
+    - /etc/wireplumber/wireplumber.conf.d
 
 - name: media | Create wireplumber config to enable camera
   become: true
@@ -62,11 +62,11 @@
     src: files/wireplumber-99-libcamera.lua
     dest: /etc/wireplumber/99-libcamera.lua
 
-- name: media | Create wireplumber config to enable high quality bluetooth codecs
+- name: media | Create wireplumber config to fix bluetooth mic pops and enable high quality codecs
   become: true
   copy:
-    src: files/wireplumber-bluez-config.lua
-    dest: /etc/wireplumber/bluetooth-lua.d/51-bluez-config.lua
+    src: files/wireplumber-bluez-config.conf
+    dest: /etc/wireplumber/wireplumber.conf.d/51-bluez-config.conf
 
 - name: media | Install IPu6 ov01a10 front-facing camera config file
   become: true
