@@ -17,7 +17,7 @@ ANSIBLE_PLAYBOOK=build-install-iso.yml \
   ./bin/ansible \
   -e iso_output_file="$qemu_install_iso"
 
-cp /usr/share/ovmf/x64/OVMF_VARS.fd "$qemu_ovmf_vars_file"
+cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "$qemu_ovmf_vars_file"
 
 echo "Starting qemu..."
 exec bin/run-qemu-install-iso
