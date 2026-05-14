@@ -38,11 +38,7 @@
    maybe
 1. Corrupted `/mnt/var/cache/pacman/pkg/*.tar.zst`
 1. Treesitter errors on first nvim start
-1. GPG keygrip is not consistent across devices, and maybe for that reason,
-   maybe others, GPG/SSH setup is busted. Try replacing SSH agent with GPG
-   agent entirely
 1. Had to reinstall gcr to make pinentry work, otherwise missing object file
-1. Need to explicitly gpg trust own public key
 1. Missing eeek ssh keys
 1. Needed to edit sudoers to allow yay installs without password or else
    ansible prompts with each package install

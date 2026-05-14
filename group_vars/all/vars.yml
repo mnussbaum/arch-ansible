@@ -5,7 +5,7 @@ user:
   shell: /usr/bin/zsh
   email: michaelnussbaum08@gmail.com
   password: "{{ user_password }}"
-  pass_gpg_key: "mnussbaum (Password Store)"
+  pass_gpg_key: "mnussbaum <michaelnussbaum08@gmail.com>"
 
 font:
   sans_family: "NotoSans Nerd Font"

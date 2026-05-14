@@ -8,8 +8,21 @@
     state: directory
 
 - name: SSH | Install config
-  template:
+  copy:
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
-    src: templates/ssh-config.j2
+    src: files/ssh-config
     dest: "{{ user_home_dir }}/.ssh/config"
+
+- name: SSH | Export GPG auth key as SSH public key
+  become_user: "{{ user.name }}"
+  shell: gpg --export-ssh-key "{{ user.pass_gpg_key }}" > "{{ user_home_dir }}/.ssh/gpg-auth-key.pub"
+  args:
+    creates: "{{ user_home_dir }}/.ssh/gpg-auth-key.pub"
+
+- name: SSH | Set permissions on GPG auth SSH public key
+  file:
+    path: "{{ user_home_dir }}/.ssh/gpg-auth-key.pub"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    mode: "0644"

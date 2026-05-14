@@ -1,15 +1,14 @@
 Host github.com
   Hostname github.com
-  User {{ user.name }}
-  IdentityFile ~/.ssh/id_rsa
+  User git
 
 Host github.com-eeek
   Hostname github.com
-  User {{ user.name }}
-  IdentityFile ~/.ssh/id_rsa_equilibrium
+  User git
 
 Host *
   AddKeysToAgent yes
   IdentitiesOnly yes
+  IdentityFile ~/.ssh/gpg-auth-key.pub
   PreferredAuthentications publickey
   Compression yes

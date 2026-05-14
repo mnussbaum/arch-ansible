@@ -4,16 +4,18 @@
   package:
     state: present
     name:
+      - ccid
       - gnupg
       - imagemagick
       - pcsclite
       - qrencode
+      - yubikey-manager
       - zbar
   become: true
 
 - name: GPG | Create config dir
   file:
-    path: "/home/{{ user.name }}/.gnupg"
+    path: "{{ user_home_dir }}/.gnupg"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
     mode: 0700
@@ -21,7 +23,7 @@
 
 - name: GPG | Install config
   copy:
-    dest: "/home/{{ user.name }}/.gnupg/gpg.conf"
+    dest: "{{ user_home_dir }}/.gnupg/gpg.conf"
     src: files/gpg.conf
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
@@ -29,21 +31,26 @@
 
 - name: GPG | Install gpg-agent config
   copy:
-    dest: "/home/{{ user.name }}/.gnupg/gpg-agent.conf"
+    dest: "{{ user_home_dir }}/.gnupg/gpg-agent.conf"
     src: files/gpg-agent.conf
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
     mode: 0600
 
-# This value is derived from my SSH key. If rotating keys rederive this value
-# by empying the sshcontrol file and letting GPG repopulate it after `ssh-add`
-- name: GPG | Install sshcontrol config
+- name: GPG | Install scdaemon config
   copy:
-    dest: "/home/{{ user.name }}/.gnupg/sshcontrol"
-    content: "B72091CA763D99BC9A060A220F08763AC1836687 0\n\n"
+    dest: "{{ user_home_dir }}/.gnupg/scdaemon.conf"
+    src: files/scdaemon.conf
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
     mode: 0600
+
+- name: GPG | Enable pcscd service
+  become: true
+  systemd:
+    name: pcscd.service
+    enabled: true
+    state: started
 
 - name: GPG | Find gpg-agent user service configs
   find:
@@ -70,10 +77,3 @@
     scope: user
     daemon-reload: true
   with_items: "{{ gpg_agent_service_configs.files }}"
-
-- name: GPG | Add backup/restore script
-  copy:
-    src: files/gpg-key-backup-restore
-    dest: /usr/local/bin/gpg-key-backup-restore
-    mode: a+x
-  become: true

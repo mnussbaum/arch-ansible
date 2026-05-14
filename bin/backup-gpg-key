@@ -1,0 +1,47 @@
+#!/bin/bash
+# Copies the primary GPG key to a second LUKS-encrypted USB for redundancy.
+#
+# Usage: bin/backup-gpg-key <source-device> <dest-device>
+#
+# WARNING: <dest-device> will be formatted and all existing data wiped.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source bin/_gpg_common.sh
+
+SOURCE_DEVICE="${1:?Usage: $0 <source-device> <dest-device>}"
+DEST_DEVICE="${2:?Usage: $0 <source-device> <dest-device>}"
+
+SOURCE_MAPPER="gpg-offline-usb-source"
+DEST_MAPPER="gpg-offline-usb-dest"
+SOURCE_MOUNT=$(mktemp -d)
+DEST_MOUNT=$(mktemp -d)
+
+cleanup() {
+  sudo umount "$SOURCE_MOUNT" 2>/dev/null || true
+  sudo umount "$DEST_MOUNT" 2>/dev/null || true
+  rmdir "$SOURCE_MOUNT" "$DEST_MOUNT" 2>/dev/null || true
+  sudo cryptsetup close "$SOURCE_MAPPER" 2>/dev/null || true
+  sudo cryptsetup close "$DEST_MAPPER" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+echo "==> Opening source USB $SOURCE_DEVICE..."
+sudo cryptsetup open "$SOURCE_DEVICE" "$SOURCE_MAPPER"
+sudo mount "/dev/mapper/$SOURCE_MAPPER" "$SOURCE_MOUNT"
+
+echo "==> Formatting destination USB $DEST_DEVICE with LUKS encryption..."
+sudo cryptsetup luksFormat "$DEST_DEVICE"
+sudo cryptsetup open "$DEST_DEVICE" "$DEST_MAPPER"
+sudo mkfs.ext4 -F "/dev/mapper/$DEST_MAPPER"
+sudo mount "/dev/mapper/$DEST_MAPPER" "$DEST_MOUNT"
+sudo chown "$(id -u):$(id -g)" "$DEST_MOUNT"
+
+echo "==> Copying key files..."
+cp "$SOURCE_MOUNT/primary-key.asc" "$DEST_MOUNT/primary-key.asc"
+cp "$SOURCE_MOUNT/revocation-cert.asc" "$DEST_MOUNT/revocation-cert.asc"
+
+echo ""
+echo "==> Done. Store the backup USB in a separate physical location."

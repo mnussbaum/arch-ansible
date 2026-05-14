@@ -1,0 +1,56 @@
+#!/bin/bash
+# Renews GPG subkey expiry and reprograms any number of YubiKeys.
+#
+# Usage: bin/renew-gpg-subkeys <device>
+#
+# <device>: encrypted USB block device containing primary-key.asc (e.g. /dev/sdb)
+#
+# Run annually with the offline USB plugged in. The primary key is imported into
+# a temporary GNUPGHOME so the main keyring is never touched. After the
+# ceremony, files/gpg-pubkey.asc is updated with the new expiry and should
+# be committed.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source bin/_gpg_common.sh
+
+DEVICE="${1:?Usage: $0 <device>}"
+
+RENEWAL_HOME=$(mktemp -d)
+SUBKEY_BACKUP=$(mktemp)
+
+cleanup() {
+  close_usb
+  rm -rf "$RENEWAL_HOME"
+  rm -f "$SUBKEY_BACKUP"
+}
+trap cleanup EXIT
+
+setup_gnupghome "$RENEWAL_HOME"
+export GNUPGHOME="$RENEWAL_HOME"
+
+open_usb "$DEVICE"
+
+echo "==> Importing primary key from USB..."
+"${GPG_BATCH[@]}" --import "$USB_MOUNT/primary-key.asc"
+
+FINGERPRINT=$(gpg --list-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')
+echo "==> Fingerprint: $FINGERPRINT"
+
+echo "==> Extending all subkey expiry by 1 year..."
+"${GPG_BATCH[@]}" --yes --quick-set-expire "$FINGERPRINT" 1y "*"
+
+echo "==> Exporting updated public key to files/gpg-pubkey.asc..."
+gpg --armor --export "$FINGERPRINT" > files/gpg-pubkey.asc
+
+echo "==> Creating encrypted subkey backup..."
+"${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" | \
+  gpg --yes --armor --symmetric --cipher-algo AES256 --output "$SUBKEY_BACKUP"
+
+program_all_yubikeys
+
+echo ""
+echo "Commit the updated public key:"
+echo "  git add files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys'"

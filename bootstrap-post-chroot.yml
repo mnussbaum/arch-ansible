@@ -12,8 +12,6 @@
         secrets_to_install:
           - src: secrets/gpg-keys/
             dest: "{{ user_home_dir }}/gpg-keys"
-          - src: secrets/ssh-keys/
-            dest: "{{ user_home_dir }}/.ssh"
           - src: secrets/vault-password
             dest: "{{ arch_ansible_dest }}/secrets/vault-password"
 
@@ -60,6 +58,17 @@
         mode: "0600"
         directory_mode: "0700"
       loop: "{{ secrets_to_install }}"
+
+    - name: GPG | Import public key into new machine keyring
+      become_user: "{{ user.name }}"
+      command: gpg --import "{{ user_home_dir }}/gpg-keys/public-key.asc"
+      environment:
+        GNUPGHOME: "{{ user_home_dir }}/.gnupg"
+
+    - name: GPG | Remove temporary key staging directory
+      file:
+        path: "{{ user_home_dir }}/gpg-keys"
+        state: absent
 
     - name: Switch connection back to local for post-chroot tasks
       set_fact:
