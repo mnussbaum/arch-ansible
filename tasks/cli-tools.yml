@@ -32,7 +32,7 @@
       - ncdu
       - net-tools
       - parallel
-      - gnu-netcat
+      - openbsd-netcat
     - - openssh
       - ripgrep
       - ruby
@@ -49,6 +49,7 @@
       - xan
       - fd
       - yq
+      - curl
 
 - name: CLI Tools | Install fzf helper scripts
   copy:
