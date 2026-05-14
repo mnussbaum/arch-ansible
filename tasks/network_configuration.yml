@@ -41,12 +41,12 @@
   no_log: true
   changed_when: false
   when: item.psk is defined
-  loop: "{{ networking.networks }}"
+  loop: "{{ networking.networks | default([]) }}"
 
 - name: networking configuration | Dictionarize WPA PSK outputs
   set_fact:
     wpa_psks: "{{ wpa_psks | default({}) | combine({item.item.ssid: item.stdout}) }}"
-  loop: "{{ wpa_psk_outputs.results }}"
+  loop: "{{ wpa_psk_outputs.results | default([]) }}"
   no_log: true
   when: item is not skipped
 
@@ -55,7 +55,7 @@
     iwd_config_file_names: "{{ iwd_config_file_names | default({}) | combine({item.ssid: item.ssid}) }}"
   changed_when: false
   no_log: true
-  loop: "{{ networking.networks }}"
+  loop: "{{ networking.networks | default([]) }}"
 
 - name: networking configuration | Generate hex-encoded iwd config file names for SSIDs with special characters
   shell: "echo -n '{{ item.ssid }}' | od --address-radix=n --format=x1"
@@ -63,7 +63,7 @@
   changed_when: false
   no_log: true
   when: item.ssid is not regex('^[a-zA-Z0-9 \-_]+$')
-  loop: "{{ networking.networks }}"
+  loop: "{{ networking.networks | default([]) }}"
 
 - name: networking configuration | Override iwd config file names for hex-encoded SSIDs
   set_fact:
@@ -79,7 +79,7 @@
   changed_when: false
   no_log: true
   when: item.psk is defined
-  loop: "{{ networking.networks }}"
+  loop: "{{ networking.networks | default([]) }}"
 
 - name: networking configuration | Generate iwd config file extensions for EAP networks
   set_fact:
@@ -87,7 +87,7 @@
   changed_when: false
   no_log: true
   when: item.eap is defined
-  loop: "{{ networking.networks }}"
+  loop: "{{ networking.networks | default([]) }}"
 
 - name: networking configuration | Generate iwd config file extensions for open networks
   set_fact:
@@ -95,7 +95,7 @@
   changed_when: false
   no_log: true
   when: item.psk is not defined and item.eap is not defined
-  loop: "{{ networking.networks }}"
+  loop: "{{ networking.networks | default([]) }}"
 
 - name: networking configuration | Create network config dirs
   become: true
@@ -113,7 +113,7 @@
     src: templates/iwd_network.conf.j2
     dest: "{{ network_install_root }}/var/lib/iwd/{{ iwd_config_file_names[item.ssid] }}.{{ iwd_config_file_extensions[item.ssid] }}"
   no_log: true
-  loop: "{{ networking.networks }}"
+  loop: "{{ networking.networks | default([]) }}"
 
 - name: networking configuration | Install iwd main config
   become: true
