@@ -21,3 +21,12 @@
     state: started
     daemon-reload: true
   become: true
+
+- name: qemu guest | Mount virtfs shared directory
+  become: true
+  mount:
+    path: /mnt/host_shared
+    src: host_shared
+    fstype: 9p
+    opts: trans=virtio,version=9p2000.L,rw
+    state: mounted

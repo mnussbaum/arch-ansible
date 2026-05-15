@@ -4,6 +4,9 @@
 1. Repartition windows partition
 1. Specify partitions as sizes
 1. Make it easier to add a new host, vars, hosts.yml
+
+### Live image
+
 1. Offline install from ISO
 1. Offline ISO build
 1. Move to systemd-boot
