@@ -27,10 +27,6 @@
 
 ## Bugs
 
-1. In live image permissions are still screwed up, causing a git diff
-   - Not everything in bin is supposed to be executable, but we're making it so
-   - Some files/ are supposed to be executable, but they're not
-   - Some library and vendor file executable bits are swapped too
 1. machinectl depends on disutils which was removed in python 3.12
 1. During boostrapping, after reboot, caps lock isn't remapped to escape until sway is available
 1. During boostrapping Firefox setup fails until sway is available

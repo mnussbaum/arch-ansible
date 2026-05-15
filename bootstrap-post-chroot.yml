@@ -31,11 +31,13 @@
         ansible_host: /mnt
         ansible_connection: chroot
 
-    - name: Set permission on arch-ansible copy
+    - name: Set permissions on arch-ansible copy
+      shell: "chmod -R u=rwX,go= {{ arch_ansible_dest | quote }}"
+
+    - name: Set ownership on arch-ansible copy
       file:
         path: "{{ arch_ansible_dest }}"
         recurse: true
-        mode: "0700"
         owner: "{{ user.name }}"
         group: "{{ user.group }}"
 
