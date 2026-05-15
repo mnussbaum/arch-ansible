@@ -9,7 +9,9 @@
 
 - name: Wallpaper | Install desktop background images
   become: true
-  synchronize:
-    src: assets/wallpaper/
-    dest: "{{ wallpaper.desktop_dir }}"
-    perms: false
+  copy:
+    src: "{{ item }}"
+    dest: "{{ wallpaper.desktop_dir }}/"
+    mode: "0644"
+  with_fileglob:
+    - assets/wallpaper/*

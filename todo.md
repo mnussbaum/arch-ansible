@@ -34,7 +34,6 @@
 1. machinectl depends on disutils which was removed in python 3.12
 1. During boostrapping, after reboot, caps lock isn't remapped to escape until sway is available
 1. During boostrapping Firefox setup fails until sway is available
-1. greeter background is missing in qemu VMs
 1. yubikey isn't making it into qemu VMs
 
 ## Tasks

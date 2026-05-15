@@ -30,9 +30,13 @@
 
 - name: greeter | Install templated files
   tags: [base16]
+  become: true
   template:
     src: templates/greetd-{{ item }}.j2
     dest: /etc/greetd/{{ item }}
+    owner: greeter
+    group: greeter
+    mode: "0644"
   with_items:
     - sway-config
     - style.css
