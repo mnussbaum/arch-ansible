@@ -1,3 +1,4 @@
 Defaults timestamp_timeout=30
 
 %wheel ALL=(ALL) ALL
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/pacman

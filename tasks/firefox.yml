@@ -12,7 +12,7 @@
     state: present
     name:
       - firefox
-      - mozlz4
+      - mozlz4-bin
       - firefox-ublock-origin
       - firefox-tridactyl
       - firefox-tridactyl-native-bin

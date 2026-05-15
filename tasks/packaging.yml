@@ -12,11 +12,39 @@
     src: templates/makepkg.conf.j2
     dest: "{{ user_home_dir }}/.makepkg.conf"
 
-- name: Packaging | Install yay
+- name: Packaging | Check if yay is installed
+  command: pacman -Qi yay
+  register: yay_installed
+  failed_when: false
+  changed_when: false
+
+- name: Packaging | Install yay build dependencies
+  become: true
   package:
     state: present
-    name: yay
+    name: go
+  when: yay_installed.rc != 0
+
+- name: Packaging | Clone yay from AUR
   become: true
+  become_user: "{{ user.name }}"
+  git:
+    repo: https://aur.archlinux.org/yay.git
+    dest: /tmp/yay-aur
+  when: yay_installed.rc != 0
+
+- name: Packaging | Build yay
+  become: true
+  become_user: "{{ user.name }}"
+  command: makepkg --noconfirm
+  args:
+    chdir: /tmp/yay-aur
+  when: yay_installed.rc != 0
+
+- name: Packaging | Install yay
+  become: true
+  shell: pacman -U --noconfirm /tmp/yay-aur/yay-*.pkg.tar.lzo
+  when: yay_installed.rc != 0
 
 - name: Packaging | Install pacman config
   become: true

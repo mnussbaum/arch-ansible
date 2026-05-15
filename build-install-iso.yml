@@ -25,6 +25,12 @@
             dest: "{{ iso_build_dir }}"
             perms: false
 
+        - name: Ignore iptables-legacy to resolve libxtables provider conflict
+          lineinfile:
+            path: "{{ iso_build_dir }}/pacman.conf"
+            regexp: '^#?IgnorePkg'
+            line: 'IgnorePkg = iptables-legacy'
+
         - name: Create pacman DB directory
           file:
             path: "{{ pacman_db_dest_dir }}"

@@ -6,6 +6,29 @@
 
 - hosts: all
   tasks:
+    - name: Bind mount filesystems into chroot
+      become: true
+      command: mount --bind "{{ item }}" "{{ partitions['root'].mount_point }}{{ item }}"
+      loop:
+        - /proc
+        - /sys
+        - /dev
+        - /dev/pts
+        - /run
+      tags: [bootstrap]
+
+    - name: Check if efivars is available
+      stat:
+        path: /sys/firmware/efi/efivars
+      register: efivars_stat
+      tags: [bootstrap]
+
+    - name: Bind mount efivars into chroot for grub-install
+      become: true
+      command: mount --bind /sys/firmware/efi/efivars "{{ partitions['root'].mount_point }}/sys/firmware/efi/efivars"
+      when: efivars_stat.stat.exists
+      tags: [bootstrap]
+
     - name: Set facts for chroot playbook execution
       set_fact:
         original_hostname: "{{ ansible_host }}"
@@ -22,6 +45,19 @@
       set_fact:
         ansible_host: "{{ original_hostname }}"
         ansible_connection: local
+      tags: [bootstrap]
+
+    - name: Unmount bind mounts from chroot
+      become: true
+      command: umount --lazy "{{ partitions['root'].mount_point }}{{ item }}"
+      loop:
+        - /sys/firmware/efi/efivars
+        - /run
+        - /dev/pts
+        - /dev
+        - /sys
+        - /proc
+      failed_when: false
       tags: [bootstrap]
 
 - name: Run post-chroot tasks

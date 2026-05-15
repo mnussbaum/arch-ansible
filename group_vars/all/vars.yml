@@ -65,6 +65,7 @@ bootstrap_packages:
   - inetutils
   - linux
   - linux-headers
+  - mkinitcpio
   - linux-firmware
   - lvm2
   - python
@@ -78,4 +79,5 @@ bootstrap_packages:
   - tmux
   - os-prober
   - iwd
+  - iptables
   - wireless_tools

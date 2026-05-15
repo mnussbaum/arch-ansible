@@ -6,7 +6,12 @@ set -o xtrace
 
 source bin/_qemu_common.sh
 
+cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "$qemu_ovmf_vars_file"
+
 exec qemu-system-x86_64 \
   "${common_qemu_args[@]}" \
-  -drive file=$qemu_image_file,format=qcow2 \
-  -cdrom "$qemu_install_iso"
+  "${yubikey_usb_args[@]}" \
+  -drive "file=$qemu_image_file,format=qcow2" \
+  "${gpg_usb_args[@]}" \
+  -drive "if=none,id=cdrom0,file=$qemu_install_iso,media=cdrom" \
+  -device ide-cd,drive=cdrom0,bootindex=0

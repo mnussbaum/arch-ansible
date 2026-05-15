@@ -52,6 +52,13 @@
     enabled: true
     state: started
 
+- name: GPG | Add user to pcscd group for YubiKey USB access
+  become: true
+  user:
+    name: "{{ user.name }}"
+    groups: pcscd
+    append: yes
+
 - name: GPG | Find gpg-agent user service configs
   find:
     paths: "/usr/share/doc/gnupg/examples/systemd-user"
