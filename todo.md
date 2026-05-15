@@ -7,7 +7,6 @@
 
 ### Live image
 
-1. Offline install from ISO
 1. Offline ISO build
 1. Move to systemd-boot
 1. Install more (or everything) during early bootstrapping and live USB:

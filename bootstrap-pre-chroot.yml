@@ -61,7 +61,7 @@
         - extra.db
 
     - name: Pacstrap
-      command: "pacstrap {{ partitions['root'].mount_point }} {{ bootstrap_packages | join(' ') }}"
+      command: "pacstrap -c {{ partitions['root'].mount_point }} {{ bootstrap_packages | join(' ') }}"
       become: true
 
     - name: Generate fstab contents with mounts
