@@ -37,3 +37,12 @@
     dest: "{{ user_home_dir }}/.aws/config"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
+
+- name: eeek | Install equilibrium SSH private key
+  copy:
+    content: "{{ lookup('pipe', 'pass show eq/ssh-key') }}"
+    dest: "{{ user_home_dir }}/.ssh/id_rsa_equilibrium"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    mode: "0600"
+  no_log: true

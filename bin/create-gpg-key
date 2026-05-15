@@ -6,7 +6,7 @@
 # <device>: USB block device to format and encrypt (e.g. /dev/sdb).
 #           WARNING: this wipes the device.
 #
-# The key UID is read from the Ansible variable user.pass_gpg_key.
+# The key UID is read from the Ansible variable user.gpg_key_uid.
 # After completion:
 #   - files/gpg-pubkey.asc is written (commit it)
 #   - <device> holds primary-key.asc and revocation-cert.asc (store offline)
@@ -21,9 +21,9 @@ source bin/_gpg_common.sh
 
 DEVICE="${1:?Usage: $0 <device>}"
 
-KEY_UID=$(yq -r '.user.pass_gpg_key' group_vars/all/vars.yml)
+KEY_UID=$(yq -r '.user.gpg_key_uid' group_vars/all/vars.yml)
 if [[ -z "$KEY_UID" || "$KEY_UID" == "null" ]]; then
-  echo "Error: could not read user.pass_gpg_key from group_vars/all/vars.yml" >&2
+  echo "Error: could not read user.gpg_key_uid from group_vars/all/vars.yml" >&2
   exit 1
 fi
 
@@ -63,16 +63,32 @@ echo "==> Backing up primary key to USB..."
 echo "==> Exporting public key to files/gpg-pubkey.asc..."
 gpg --armor --export "$FINGERPRINT" > files/gpg-pubkey.asc
 
-echo "==> Creating encrypted subkey backup for YubiKey programming..."
-"${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" | \
-  gpg --yes --armor --symmetric --cipher-algo AES256 --output "$SUBKEY_BACKUP"
+echo "==> Creating subkey backup for YubiKey programming..."
+"${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
 
 program_all_yubikeys
+
+echo "==> Enrolling auth subkey keygrip in group_vars/all/gpg_auth_keygrips.yml..."
+KEYGRIP=$(gpg --with-keygrip --list-keys "$FINGERPRINT" | \
+  awk '/\[A\]/{found=1} found && /Keygrip/{print $NF; exit}')
+python3 - "$KEYGRIP" <<'PYEOF'
+import sys, yaml
+keygrip = sys.argv[1]
+filepath = 'group_vars/all/gpg_auth_keygrips.yml'
+with open(filepath) as f:
+    data = yaml.safe_load(f) or {}
+keygrips = data.setdefault('gpg_auth_ssh_keygrips', [])
+if keygrip not in keygrips:
+    keygrips.append(keygrip)
+    with open(filepath, 'w') as f:
+        yaml.dump(data, f, default_flow_style=False)
+PYEOF
 
 echo "    Fingerprint: $FINGERPRINT"
 echo ""
 echo "Next steps:"
 echo "  1. Add the SSH public key to GitHub/GitLab:"
 echo "       gpg --export-ssh-key $FINGERPRINT"
-echo "  2. Commit the public key:"
-echo "       git add files/gpg-pubkey.asc && git commit -m 'Add GPG public key'"
+echo "  2. Commit the public key and keygrips:"
+echo "       git add files/gpg-pubkey.asc group_vars/all/gpg_auth_keygrips.yml"
+echo "       git commit -m 'Add GPG public key'"

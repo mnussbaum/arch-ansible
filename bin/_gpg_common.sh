@@ -16,6 +16,29 @@ setup_gnupghome() {
   local gnupghome="$1"
   chmod 700 "$gnupghome"
   cp files/scdaemon.conf "$gnupghome/scdaemon.conf"
+
+  # Pinentry script that supplies the card admin PIN without prompting.
+  # _write_card_admin_pin() must be called before any card operations.
+  local pin_file="$gnupghome/card-admin-pin"
+  local pinentry="$gnupghome/pinentry.sh"
+  cat > "$pinentry" << PINENTRY_EOF
+#!/bin/bash
+echo "OK Pleased to meet you"
+while IFS= read -r line; do
+    case "\$line" in
+        GETPIN) printf 'D %s\nOK\n' "\$(cat '$pin_file')" ;;
+        BYE)    echo "OK"; exit 0 ;;
+        *)      echo "OK" ;;
+    esac
+done
+PINENTRY_EOF
+  chmod +x "$pinentry"
+  printf 'pinentry-program %s\n' "$pinentry" > "$gnupghome/gpg-agent.conf"
+}
+
+_write_card_admin_pin() {
+  printf '%s' "$YUBIKEY_CURRENT_ADMIN_PIN" > "$GNUPGHOME/card-admin-pin"
+  chmod 600 "$GNUPGHOME/card-admin-pin"
 }
 
 format_and_open_usb() {
@@ -49,48 +72,69 @@ close_usb() {
 }
 
 program_yubikey() {
-  # Subkey order: 1=[S], 2=[E], 3=[A]
-  # [S] and [A] require slot selection (1 and 3); [E] has only one slot.
-  # Does not use GPG_BATCH: the YubiKey PIN must go through normal pinentry,
-  # not the loopback passphrase used for the ephemeral GPG key.
+  # Set all three card slots to Curve25519 variants before moving keys.
+  # Slots default to rsa2048 and must be changed to accept ed25519/cv25519.
+  # This clears any existing keys in those slots, so all three are re-programmed.
   printf '%s\n' \
-    'key 1' 'keytocard' '1' 'key 1' \
-    'key 2' 'keytocard' 'key 2' \
-    'key 3' 'keytocard' '3' 'key 3' \
+    'admin' \
+    'key-attr' \
+    '2' '1' 'y' \
+    '2' '1' 'y' \
+    '2' '1' 'y' \
+    'quit' | \
+    gpg --no-tty --command-fd 0 --card-edit
+
+  # Move all three subkeys in one session. Subkey order: 1=[S], 2=[E], 3=[A].
+  # The auto-PIN pinentry (set up in setup_gnupghome) satisfies admin PIN
+  # requests without prompting, so the PIN is available for each keytocard call.
+  printf '%s\n' \
+    'key 1' 'keytocard' '1' \
+    'key 1' 'key 2' 'keytocard' '2' \
+    'key 2' 'key 3' 'keytocard' '3' \
     'save' | \
     gpg --yes --no-tty --command-fd 0 --edit-key "$FINGERPRINT"
 }
 
 restore_subkeys() {
   "${GPG_BATCH[@]}" --yes --delete-secret-key "$FINGERPRINT"
-  gpg --decrypt "$SUBKEY_BACKUP" | "${GPG_BATCH[@]}" --import
+  "${GPG_BATCH[@]}" --import "$SUBKEY_BACKUP"
+}
+
+_collect_pin_config() {
+  # Sets globals used by change_yubikey_pins. Called once for all cards.
+  echo "==> PIN configuration (applies to all YubiKeys)"
+  echo "    Current PINs — enter the defaults (123456 / 12345678) for a fresh card:"
+  read -r -s -p "  Current user PIN: " YUBIKEY_CURRENT_USER_PIN; echo
+  read -r -s -p "  Current admin PIN: " YUBIKEY_CURRENT_ADMIN_PIN; echo
+  echo "    New PINs:"
+  local user_pin2 admin_pin2
+  while true; do
+    read -r -s -p "  New user PIN (min 6 chars): " YUBIKEY_NEW_USER_PIN; echo
+    read -r -s -p "  Confirm new user PIN: " user_pin2; echo
+    [[ "$YUBIKEY_NEW_USER_PIN" == "$user_pin2" ]] && break
+    echo "  PINs do not match, try again."
+  done
+  while true; do
+    read -r -s -p "  New admin PIN (min 8 chars): " YUBIKEY_NEW_ADMIN_PIN; echo
+    read -r -s -p "  Confirm new admin PIN: " admin_pin2; echo
+    [[ "$YUBIKEY_NEW_ADMIN_PIN" == "$admin_pin2" ]] && break
+    echo "  PINs do not match, try again."
+  done
 }
 
 change_yubikey_pins() {
-  # Prompts for new PINs (with confirmation); ykman prompts for the current
-  # PINs interactively so this works regardless of whether the card is at
-  # factory defaults or already has custom PINs.
   echo "==> Setting YubiKey PINs..."
-  local user_pin user_pin2 admin_pin admin_pin2
-  while true; do
-    read -r -s -p "  New user PIN (min 6 chars): " user_pin; echo
-    read -r -s -p "  Confirm user PIN: " user_pin2; echo
-    [[ "$user_pin" == "$user_pin2" ]] && break
-    echo "  PINs do not match, try again."
-  done
-  while true; do
-    read -r -s -p "  New admin PIN (min 8 chars): " admin_pin; echo
-    read -r -s -p "  Confirm admin PIN: " admin_pin2; echo
-    [[ "$admin_pin" == "$admin_pin2" ]] && break
-    echo "  PINs do not match, try again."
-  done
-  echo "  Enter the CURRENT user PIN when prompted (default: 123456):"
-  ykman openpgp access change-pin --new-pin "$user_pin"
-  echo "  Enter the CURRENT admin PIN when prompted (default: 12345678):"
-  ykman openpgp access change-admin-pin --new-admin-pin "$admin_pin"
+  ykman openpgp access change-pin \
+    --pin "$YUBIKEY_CURRENT_USER_PIN" \
+    --new-pin "$YUBIKEY_NEW_USER_PIN"
+  ykman openpgp access change-admin-pin \
+    --admin-pin "$YUBIKEY_CURRENT_ADMIN_PIN" \
+    --new-admin-pin "$YUBIKEY_NEW_ADMIN_PIN"
 }
 
 program_all_yubikeys() {
+  _collect_pin_config
+  _write_card_admin_pin
   local key_number=1
   while true; do
     echo ""

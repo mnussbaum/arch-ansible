@@ -68,6 +68,41 @@
     group: "{{ user.group }}"
   with_items: "{{ gpg_agent_service_configs.files }}"
 
+- name: GPG | Check if GPG key is in keyring
+  become: true
+  become_user: "{{ user.name }}"
+  command: gpg --list-keys "{{ user.gpg_key_uid }}"
+  register: gpg_key_check
+  failed_when: false
+  changed_when: false
+
+- name: GPG | Import public key
+  become: true
+  become_user: "{{ user.name }}"
+  command: gpg --import
+  args:
+    stdin: "{{ lookup('file', 'files/gpg-pubkey.asc') }}"
+  when: gpg_key_check.rc != 0
+
+- name: GPG | Set ultimate trust on own key
+  become: true
+  become_user: "{{ user.name }}"
+  shell: |
+    fingerprint=$(gpg --list-keys --with-colons "{{ user.gpg_key_uid }}" | awk -F: '/^fpr/{print $10; exit}')
+    [[ -n "$fingerprint" ]] && echo "$fingerprint:6:" | gpg --import-ownertrust || true
+  args:
+    executable: /bin/bash
+  changed_when: false
+
+- name: GPG | Register YubiKey SSH keygrips in sshcontrol
+  become: true
+  become_user: "{{ user.name }}"
+  lineinfile:
+    path: "{{ user_home_dir }}/.gnupg/sshcontrol"
+    line: "{{ item }} 0"
+    create: yes
+  loop: "{{ gpg_auth_ssh_keygrips }}"
+
 - name: GPG | Enable gpg-agent user services
   become: true
   become_user: "{{ user.name }}"
@@ -77,3 +112,26 @@
     scope: user
     daemon-reload: true
   with_items: "{{ gpg_agent_service_configs.files }}"
+
+- name: GPG | Kill gpg daemons to release keybox SQLite connections
+  become: true
+  become_user: "{{ user.name }}"
+  command: gpgconf --kill all
+  failed_when: false
+  changed_when: false
+
+- name: GPG | Find stale lock files
+  find:
+    paths: "{{ user_home_dir }}/.gnupg"
+    patterns:
+      - "*.lock"
+      - ".#*"
+    hidden: true
+  register: gpg_lock_files
+  changed_when: false
+
+- name: GPG | Remove stale lock files
+  file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ gpg_lock_files.files }}"

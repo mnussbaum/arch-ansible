@@ -1,8 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- set_fact:
-    gpg_keys_dir: "{{ ansible_dest_dir }}/secrets/gpg-keys"
-
 - name: Copy over arch-ansible repo
   synchronize:
     src: "{{ playbook_dir }}/"
@@ -31,16 +28,3 @@
     owner: "{{ user_name }}"
     group: "{{ user_name }}"
 
-- name: Create gpg-keys dir
-  file:
-    path: "{{ gpg_keys_dir }}"
-    state: directory
-    owner: "{{ user_name }}"
-    group: "{{ user_name }}"
-
-- name: Copy GPG public key
-  copy:
-    src: files/gpg-pubkey.asc
-    dest: "{{ gpg_keys_dir }}/public-key.asc"
-    owner: "{{ user_name }}"
-    group: "{{ user_name }}"

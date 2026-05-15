@@ -45,9 +45,8 @@ echo "==> Extending all subkey expiry by 1 year..."
 echo "==> Exporting updated public key to files/gpg-pubkey.asc..."
 gpg --armor --export "$FINGERPRINT" > files/gpg-pubkey.asc
 
-echo "==> Creating encrypted subkey backup..."
-"${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" | \
-  gpg --yes --armor --symmetric --cipher-algo AES256 --output "$SUBKEY_BACKUP"
+echo "==> Creating subkey backup..."
+"${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
 
 program_all_yubikeys
 
