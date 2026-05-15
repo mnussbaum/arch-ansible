@@ -1,0 +1,44 @@
+#!/bin/sh
+# After resume from hibernate, i915 takes time to reinitialize the display
+# pipeline, causing wlroots atomic commits to return EBUSY for several minutes.
+# Toggling DPMS forces sway to do a full re-modeset once the GPU is ready,
+# which unblocks rendering without disabling atomic modesetting.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+log() {
+    logger -t sway-resume-dpms "$*"
+}
+
+graphical_user() {
+    loginctl list-sessions --no-legend \
+        | awk '$3 != "" {print $3; exit}'
+}
+
+case "$1" in
+    post)
+        user=$(graphical_user) || true
+        if [ -z "$user" ]; then
+            log "post: no graphical user session found"
+            exit 0
+        fi
+        uid=$(id -u "$user")
+        swaysock=$(ls /run/user/"$uid"/sway-ipc.*.sock 2>/dev/null | head -1) || true
+        if [ -z "$swaysock" ]; then
+            log "post: no sway socket found for user=$user"
+            exit 0
+        fi
+        log "post: waiting for i915 to reinitialize before toggling DPMS (user=$user)"
+        sleep 5
+        log "post: toggling DPMS off"
+        su -c "SWAYSOCK=$swaysock swaymsg 'output * dpms off'" "$user" \
+            || log "post: dpms off failed (sway may not be running)"
+        sleep 1
+        log "post: toggling DPMS on"
+        su -c "SWAYSOCK=$swaysock swaymsg 'output * dpms on'" "$user" \
+            || log "post: dpms on failed"
+        log "post: DPMS toggle complete"
+        ;;
+esac

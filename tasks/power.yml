@@ -93,6 +93,15 @@
     mode: a+x
   become: true
 
+# After resume from hibernate, i915 takes time to reinitialize, causing wlroots
+# atomic commits to return EBUSY. Toggle DPMS to force a clean re-modeset.
+- name: power | Install sway-resume-dpms script
+  copy:
+    src: files/sway-resume-dpms
+    dest: /usr/lib/systemd/system-sleep/sway-resume-dpms
+    mode: a+x
+  become: true
+
 # Elan i2c touchpad click reporting is delayed ~1-2 minutes after resume without this rebind
 - name: power | Install reset-elan-touchpad script
   copy:
