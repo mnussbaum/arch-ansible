@@ -65,7 +65,7 @@ modprobe_files:
   - no-psmouse.conf
 
 networking:
-  wireless_interface: wlan0
+  interface: wlan0
 
   networks:
     - ssid: "JazzHandz"

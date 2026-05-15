@@ -166,3 +166,10 @@
     - iwd.service
     - systemd-networkd.service
     - systemd-resolved.service
+
+- name: networking configuration | Install iwd after-interface drop-in
+  become: true
+  template:
+    src: templates/iwd-after-interface.conf.j2
+    dest: "{{ network_install_root }}/etc/systemd/system/iwd.service.d/after-interface.conf"
+  when: networking.interface is defined
