@@ -9,7 +9,6 @@
 1. How to back up GPG USB
 1. How to run a normal ansible run
 1. What the different ansible tag modes are for
-1. A recovery plan
 
 ## Nice to improve
 
@@ -51,5 +50,4 @@
 - Test full gpg creation script
 - Rebuild install media with final state
 - Prepare physical recovery packages
-- Follow the recovery plan to validate it
 - Label physical media

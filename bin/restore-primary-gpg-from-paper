@@ -1,0 +1,64 @@
+#!/bin/bash
+# Programs new YubiKeys and creates a new LUKS-encrypted primary key USB from
+# a GPG key already imported into GNUPGHOME. Use this after reconstructing the
+# primary key from the paper recovery guide (public key QR + paperkey QR).
+#
+# Usage: bin/restore-primary-gpg-from-paper <device>
+#
+# <device>: blank USB to format with LUKS as the new primary key backup.
+#           WARNING: this wipes the device.
+#
+# Before running:
+#   gpg --import pubkey.asc
+#   paperkey --pubring pubkey.asc --secrets secrets.raw | gpg --import
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source bin/_gpg_common.sh
+
+DEVICE="${1:?Usage: $0 <device>}"
+SUBKEY_BACKUP=$(mktemp)
+
+cleanup() {
+  close_usb
+  rm -f "$SUBKEY_BACKUP"
+}
+trap cleanup EXIT
+
+FINGERPRINT=$(gpg --list-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')
+if [[ -z "$FINGERPRINT" ]]; then
+  echo "Error: no GPG key found in GNUPGHOME=${GNUPGHOME:-~/.gnupg}" >&2
+  echo "Import the primary key first:" >&2
+  echo "  paperkey --pubring pubkey.asc --secrets secrets.raw | gpg --import" >&2
+  exit 1
+fi
+echo "==> Found key: $FINGERPRINT"
+
+# Set up auto-PIN pinentry in GNUPGHOME for non-interactive YubiKey programming.
+setup_gnupghome "${GNUPGHOME:-$HOME/.gnupg}"
+
+format_and_open_usb "$DEVICE"
+
+echo "==> Backing up primary key to USB..."
+"${GPG_BATCH[@]}" --armor --export-secret-keys "$FINGERPRINT" > "$USB_MOUNT/primary-key.asc"
+
+echo "==> Generating revocation certificate..."
+printf 'y\n0\n\ny\n' | gpg --command-fd 0 --gen-revoke "$FINGERPRINT" > "$USB_MOUNT/revocation-cert.asc"
+
+echo "==> Exporting public key to files/gpg-pubkey.asc..."
+gpg --armor --export "$FINGERPRINT" > files/gpg-pubkey.asc
+
+echo "==> Creating subkey backup for YubiKey programming..."
+"${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
+
+program_all_yubikeys
+
+echo ""
+echo "Next steps:"
+echo "  1. Store $DEVICE offline in a separate location from any other backup."
+echo "  2. Regenerate the paper recovery guide:"
+echo "       bin/print-gpg-recovery-guide $DEVICE"
+echo "  3. Commit the updated keygrips:"
+echo "       git add group_vars/all/gpg_auth_keygrips.yml && git commit"

@@ -1,0 +1,208 @@
+#!/bin/bash
+# Generates a printable GPG key recovery guide as a PDF.
+#
+# Requires the LUKS-encrypted primary key USB. Run from the repo root.
+#
+# Usage: bin/generate-gpg-recovery-guide <primary-key-usb-device> [output.pdf]
+#
+# Store the PDF (or a printed copy) separately from the USB drives and YubiKeys.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source bin/_gpg_common.sh
+
+DEVICE="${1:?Usage: $0 <primary-key-usb-device> [output.pdf]}"
+OUTPUT="${2:-secrets/gpg-recovery-guide.pdf}"
+HTML_TMP=$(mktemp --suffix=.html)
+PUBKEY_FILE="files/gpg-pubkey.asc"
+VAULT_PASSWORD_FILE="secrets/vault-password"
+
+if [[ ! -f "$PUBKEY_FILE" ]]; then
+  echo "Error: $PUBKEY_FILE not found — run from repo root." >&2
+  exit 1
+fi
+if [[ ! -f "$VAULT_PASSWORD_FILE" ]]; then
+  echo "Error: $VAULT_PASSWORD_FILE not found — run from repo root." >&2
+  exit 1
+fi
+
+RECOVERY_HOME=$(mktemp -d)
+SECRET_RAW_FILE=$(mktemp)
+cleanup() {
+  close_usb
+  rm -rf "$RECOVERY_HOME"
+  rm -f "$HTML_TMP" "$SECRET_RAW_FILE"
+}
+trap cleanup EXIT
+
+setup_gnupghome "$RECOVERY_HOME"
+export GNUPGHOME="$RECOVERY_HOME"
+
+open_usb "$DEVICE"
+
+echo "==> Importing primary key..."
+gpg --batch --import "$USB_MOUNT/primary-key.asc"
+
+FINGERPRINT=$(gpg --list-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')
+FINGERPRINT_DISPLAY=$(echo "$FINGERPRINT" | sed 's/.\{4\}/& /g;s/ $//' | \
+  awk '{print substr($0,1,24)"\n"substr($0,25)}')
+UID_STRING=$(gpg --with-colons --list-keys | awk -F: '/^uid/{print $10; exit}')
+
+echo "==> Generating public key QR code..."
+PUBKEY_QR_B64=$(qrencode -t PNG -l L -s 5 -o - < "$PUBKEY_FILE" | base64 -w 0)
+PUBKEY_TEXT=$(cat "$PUBKEY_FILE")
+
+echo "==> Generating private key paperkey encoding..."
+gpg --batch --export-secret-keys "$FINGERPRINT" | paperkey --output-type raw > "$SECRET_RAW_FILE"
+PAPERKEY_B64=$(base64 -w 64 < "$SECRET_RAW_FILE")
+
+VAULT_PASSWORD=$(cat "$VAULT_PASSWORD_FILE")
+GENERATED=$(date)
+
+cat > "$HTML_TMP" << HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GPG Key Recovery Guide</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 740px; margin: 40px auto; padding: 0 24px; color: #000; font-size: 13px; line-height: 1.6; }
+  h1 { font-size: 1.4em; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 4px; }
+  h2 { font-size: 1.1em; margin-top: 2em; border-bottom: 1px solid #999; padding-bottom: 3px; }
+  h3 { font-size: 1em; margin-top: 1.5em; margin-bottom: 6px; }
+  .generated { color: #555; font-size: 0.85em; margin-bottom: 1.5em; font-family: monospace; }
+  .uid { font-family: monospace; font-size: 1.05em; background: #f5f5f5; padding: 8px 12px; border: 1px solid #ccc; }
+  .fingerprint { font-family: monospace; font-size: 1.05em; letter-spacing: 0.12em; background: #f5f5f5; padding: 12px; border: 1px solid #ccc; white-space: pre; }
+  .secret-box { border: 2px solid #000; padding: 12px 16px; margin: 16px 0; }
+  .secret-box .label { font-weight: bold; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .secret-box .value { font-family: monospace; font-size: 1.2em; word-break: break-all; }
+  .two-col { display: flex; gap: 24px; align-items: flex-start; margin: 12px 0; }
+  .qr-block { flex-shrink: 0; text-align: center; }
+  .qr-block img { display: block; image-rendering: pixelated; border: 1px solid #ccc; }
+  .qr-block .caption { font-size: 0.8em; color: #555; margin-top: 5px; }
+  .mono { font-family: monospace; white-space: pre-wrap; font-size: 0.72em; background: #f5f5f5; padding: 10px; border: 1px solid #ccc; word-break: break-all; flex: 1; page-break-inside: avoid; }
+  ol li, ul li { margin-bottom: 9px; }
+  code { font-family: monospace; background: #f0f0f0; padding: 1px 5px; border: 1px solid #ddd; font-size: 0.95em; }
+  .pagebreak { page-break-before: always; }
+  @media print { body { margin: 16px; } }
+</style>
+</head>
+<body>
+
+<h1>GPG Key Recovery Guide</h1>
+<div class="generated">Generated: $GENERATED &nbsp;|&nbsp; $UID_STRING</div>
+
+<p>This document guides you through recoverying your root GPG private key, building subkeys from it,
+and using those subkeys to access your passwords and machine provisioning repos.
+Keep this document in a physically separate location from the USB drives and YubiKeys.</p>
+
+<h2>Identity</h2>
+<div class="uid">$UID_STRING</div>
+
+<h2>Primary Key Fingerprint</h2>
+<div class="fingerprint">$FINGERPRINT_DISPLAY</div>
+
+<h2>Ansible Vault Password</h2>
+<div class="secret-box">
+  <div class="label">Used by Ansible to decrypt its checked in secrets vault. Must be installed on new machines</div>
+  <div class="value">$VAULT_PASSWORD</div>
+</div>
+
+<h2>GPG Root Public Key</h2>
+<div class="qr-block" style="margin: 12px 0;">
+  <img src="data:image/png;base64,$PUBKEY_QR_B64" width="230" height="230" alt="Public key QR">
+  <div class="caption">ASCII-armored public key</div>
+</div>
+<div class="mono">$PUBKEY_TEXT</div>
+
+<h2>GPG Root Private Key (paperkey format)</h2>
+<p>Paperkey encodes only the secret bytes of the private key. Reconstructing the
+full private key also requires the public key above.</p>
+<div class="mono">$PAPERKEY_B64</div>
+
+<h2>Recovery Procedure</h2>
+
+<p>You need: this document, a temporary machine with internet, a blank USB drive
+for the new primary key backup, and at least one new YubiKey.</p>
+
+<h3>Step 1 — Reconstruct the GPG private key</h3>
+<p>On the temporary machine, install: <code>gnupg paperkey git pass</code></p>
+<ol>
+  <li>Save the public key ASCII armor from above into a file and import it:
+    <br><code>cat > pubkey.asc</code> &nbsp;(paste, then Ctrl-D)
+    <br><code>gpg --import pubkey.asc</code></li>
+  <li>Save the paperkey base64 from above and decode it to raw bytes:
+    <br><code>cat > secrets.b64</code> &nbsp;(paste, then Ctrl-D)
+    <br><code>base64 -d secrets.b64 > secrets.raw</code></li>
+  <li>Export the public key as binary and reconstruct the full private key:
+    <br><code>gpg --export > pubkey.gpg</code>
+    <br><code>paperkey --pubring pubkey.gpg --secrets secrets.raw --input-type raw | gpg --import</code></li>
+  <li>Verify the key and all subkeys are present:
+    <br><code>gpg --list-secret-keys</code></li>
+</ol>
+
+<h3>Step 2 — Set up SSH authentication via gpg-agent</h3>
+<ol>
+  <li>Configure gpg-agent to support SSH:
+    <br><code>echo "enable-ssh-support" >> ~/.gnupg/gpg-agent.conf</code>
+    <br><code>gpg-connect-agent reloadagent /bye</code></li>
+  <li>Point SSH at gpg-agent:
+    <br><code>export SSH_AUTH_SOCK=\$(gpgconf --list-dirs agent-ssh-socket)</code></li>
+  <li>Register the authentication subkey keygrip for SSH:
+    <br><code>gpg --with-keygrip --list-secret-keys | awk '/\[A\]/{found=1} found &amp;&amp; /Keygrip/{print \$NF " 0"; exit}' >> ~/.gnupg/sshcontrol</code></li>
+  <li>Verify GitHub and GitLab access:
+    <br><code>ssh -T git@github.com</code>
+    <br><code>ssh -T git@gitlab.com</code></li>
+</ol>
+
+<h3>Step 3 — Clone the password store and Ansible repo</h3>
+<ol>
+  <li>Clone the password store:
+    <br><code>git clone git@gitlab.com:mnussbaum/password-store.git ~/.password-store</code></li>
+  <li>Verify pass can decrypt entries:
+    <br><code>pass show nintendo.com</code></li>
+  <li>Clone the Ansible repo:
+    <br><code>git clone git@github.com:mnussbaum/arch-ansible.git && cd arch-ansible</code></li>
+  <li>Write the vault password from the top of this document:
+    <br><code>mkdir -p secrets && echo '&lt;vault-password&gt;' > secrets/vault-password</code></li>
+</ol>
+
+<h3>Step 4 — Create a new primary key USB and program new YubiKeys</h3>
+<ol>
+  <li>From the arch-ansible repo, run the restore script with a blank USB:
+    <br><code>./bin/restore-primary-gpg-from-paper /dev/sdX</code>
+    <br>This backs up the key to the USB and programs any number of YubiKeys.
+    If no YubiKey is available, type <code>done</code> at the first prompt to skip
+    programming and only create the USB backup. Program cards later by re-running
+    this script when they arrive.</li>
+</ol>
+
+<h3>Step 5 — Bootstrap the new machine</h3>
+<ol>
+  <li>Build a bootable install image:
+    <br><code>./bin/build-live-usb</code></li>
+  <li>Boot the target machine from the USB and run the bootstrap:
+    <br><code>./bin/bootstrap-physical</code></li>
+  <li>Reboot into the new system. If using a YubiKey, plug it in. Otherwise,
+    import the private key from the primary key USB:
+    <br><code>sudo cryptsetup open /dev/sdX gpg-usb</code>
+    <br><code>sudo mount /dev/mapper/gpg-usb /mnt</code>
+    <br><code>gpg --import /mnt/primary-key.asc</code>
+    <br><code>sudo umount /mnt &amp;&amp; sudo cryptsetup close gpg-usb</code></li>
+  <li>Run Ansible:
+    <br><code>cd ~/src/arch-ansible &amp;&amp; ./bin/ansible</code></li>
+</ol>
+
+<p>Regenerate this document if the primary GPG key is replaced or the vault
+password changes: <code>./bin/generate-gpg-recovery-guide /dev/sdX</code></p>
+
+</body>
+</html>
+HTML
+
+echo "==> Rendering PDF..."
+chromium --headless --disable-gpu --print-to-pdf="$OUTPUT" "$HTML_TMP" 2>/dev/null
+
+echo "==> Written to $OUTPUT"
