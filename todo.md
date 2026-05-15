@@ -1,15 +1,3 @@
-## To document
-
-1. How to build new install USB
-1. How to build new primary GPG USB
-1. How to provision new yubikeys
-1. How to provision a new machine
-1. How to provision a new qemu instance
-1. How to use yubikeys
-1. How to back up GPG USB
-1. How to run a normal ansible run
-1. What the different ansible tag modes are for
-
 ## Nice to improve
 
 1. Host groups to reduce host var duplication
@@ -31,6 +19,8 @@
    - Git configs
    - fzf
    - ripgrep
+   - pass
+1. Put password store on ISO. Use it instead of vault. Verify it works with yubikey
 
 ## Bugs
 
