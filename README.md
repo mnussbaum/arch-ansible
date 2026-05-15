@@ -20,7 +20,7 @@ have its PINs changed from the defaults during programming.
 After running:
 
 1. Add the SSH public key to GitHub/GitLab: `gpg --export-ssh-key <fingerprint>`
-2. Commit the public key: `git add files/gpg-pubkey.asc && git commit`
+2. Commit: `git add files/gpg-pubkey.asc group_vars/all/gpg_auth_keygrips.yml && git commit`
 
 ### Back up the key to a second USB
 
