@@ -7,7 +7,6 @@
 
 ### Live image
 
-1. Offline ISO build
 1. Move to systemd-boot
 1. Install more (or everything) during early bootstrapping and live USB:
    - Powerline font
@@ -30,6 +29,7 @@
 1. During boostrapping, after reboot, caps lock isn't remapped to escape until sway is available
 1. During boostrapping Firefox setup fails until sway is available
 1. yubikey isn't making it into qemu VMs
+1. Machine name is hardcodied in restic backup script
 
 ## Tasks
 

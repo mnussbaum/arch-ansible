@@ -124,11 +124,26 @@ full private key also requires the public key above.</p>
 
 <h2>Recovery Procedure</h2>
 
-<p>You need: this document, a temporary machine with internet, a blank USB drive
-for the new primary key backup, and at least one new YubiKey.</p>
+<p>You need: this document, a temporary machine with internet, and three blank USB
+drives — one for a temporary Arch Linux environment, one for the primary key
+backup, and one for the install image. A YubiKey is ideal but not required; without
+one the private key is imported directly from the backup USB on the new machine.</p>
 
-<h3>Step 1 — Reconstruct the GPG private key</h3>
-<p>On the temporary machine, install: <code>gnupg paperkey git pass</code></p>
+<h3>Step 1 — Get a temporary Arch Linux environment</h3>
+<p>All subsequent steps run from an Arch Linux live session. The ISO builder requires
+Arch Linux — this is the fastest path on a borrowed or newly purchased machine:</p>
+<ol>
+  <li>Download the official Arch Linux ISO from <code>archlinux.org</code> and write it to a blank USB:
+    <br>Linux/Mac: <code>dd bs=4M if=archlinux-*.iso of=/dev/sdX oflag=sync status=progress</code>
+    <br>Windows: use Rufus</li>
+  <li>Boot from that USB. If on WiFi, connect first:
+    <br><code>iwctl station wlan0 connect &lt;SSID&gt;</code></li>
+  <li>Install all required tools:
+    <br><code>pacman -Sy --noconfirm gnupg paperkey pass git ansible archiso rsync yubikey-manager pcsclite ccid</code>
+    <br><code>systemctl start pcscd</code></li>
+</ol>
+
+<h3>Step 2 — Reconstruct the GPG private key</h3>
 <ol>
   <li>Save the public key ASCII armor from above into a file and import it:
     <br><code>cat > pubkey.asc</code> &nbsp;(paste, then Ctrl-D)
@@ -143,7 +158,7 @@ for the new primary key backup, and at least one new YubiKey.</p>
     <br><code>gpg --list-secret-keys</code></li>
 </ol>
 
-<h3>Step 2 — Set up SSH authentication via gpg-agent</h3>
+<h3>Step 3 — Set up SSH authentication via gpg-agent</h3>
 <ol>
   <li>Configure gpg-agent to support SSH:
     <br><code>echo "enable-ssh-support" >> ~/.gnupg/gpg-agent.conf</code>
@@ -157,21 +172,24 @@ for the new primary key backup, and at least one new YubiKey.</p>
     <br><code>ssh -T git@gitlab.com</code></li>
 </ol>
 
-<h3>Step 3 — Clone the password store and Ansible repo</h3>
+<h3>Step 4 — Clone the password store and Ansible repo</h3>
 <ol>
   <li>Clone the password store:
     <br><code>git clone git@gitlab.com:mnussbaum/password-store.git ~/.password-store</code></li>
   <li>Verify pass can decrypt entries:
-    <br><code>pass show nintendo.com</code></li>
+    <br><code>pass ls</code> &nbsp;(pick any entry, then verify it decrypts)
+    <br><code>pass show &lt;any-entry&gt;</code></li>
   <li>Clone the Ansible repo:
     <br><code>git clone git@github.com:mnussbaum/arch-ansible.git && cd arch-ansible</code></li>
   <li>Write the vault password from the top of this document:
     <br><code>mkdir -p secrets && echo '&lt;vault-password&gt;' > secrets/vault-password</code></li>
 </ol>
 
-<h3>Step 4 — Create a new primary key USB and program new YubiKeys</h3>
+<h3>Step 5 — Create a new primary key USB and program new YubiKeys</h3>
 <ol>
-  <li>From the arch-ansible repo, run the restore script with a blank USB:
+  <li>Identify the blank USB for the primary key backup (not the Arch live USB):
+    <br><code>lsblk</code>
+    <br>Then run the restore script with that device:
     <br><code>./bin/restore-primary-gpg-from-paper /dev/sdX</code>
     <br>This backs up the key to the USB and programs any number of YubiKeys.
     If no YubiKey is available, type <code>done</code> at the first prompt to skip
@@ -179,11 +197,23 @@ for the new primary key backup, and at least one new YubiKey.</p>
     this script when they arrive.</li>
 </ol>
 
-<h3>Step 5 — Bootstrap the new machine</h3>
+<h3>Step 6 — Bootstrap the new machine</h3>
 <ol>
-  <li>Build a bootable install image:
-    <br><code>./bin/build-live-usb</code></li>
-  <li>Boot the target machine from the USB and run the bootstrap:
+  <li>Add the new machine to the Ansible inventory before building the ISO — it gets
+    baked in. In hosts.yml, add under <code>all.hosts</code>:
+    <br><code>&lt;hostname&gt;:</code>
+    <br><code>&nbsp;&nbsp;ansible_connection: local</code>
+    <br>Then create a host vars file using bodie.yml as a starting point:
+    <br><code>cp host_vars/bodie.yml host_vars/&lt;hostname&gt;.yml</code>
+    <br>Edit it to set the correct values for the new machine (disk devices, partition UUIDs, user config, etc.).</li>
+  <li>Identify the blank USB to write the install image to (not the Arch live USB you booted from):
+    <br><code>lsblk</code>
+    <br>Set HOSTNAME to match the entry added to hosts.yml, then build and write the install image:
+    <br><code>export HOSTNAME=&lt;hostname&gt;</code>
+    <br><code>./bin/build-live-usb -e iso_output_file=/dev/sdX</code></li>
+  <li>Boot the target machine from the install USB, then run the bootstrap:
+    <br><code>cd /root/arch-ansible</code>
+    <br><code>export HOSTNAME=&lt;hostname&gt;</code>
     <br><code>./bin/bootstrap-physical</code></li>
   <li>Reboot into the new system. If using a YubiKey, plug it in. Otherwise,
     import the private key from the primary key USB:
