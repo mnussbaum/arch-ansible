@@ -60,8 +60,10 @@ GRUB_ENABLE_CRYPTODISK=y
 
 {% if partitions["root"].encrypted %}
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} cryptdevice={{ partitions['root'].partition_device }}:{{ partitions['root'].volume_group_name }}"
+{% if ansible_facts["virtualization_role"] != "guest" %}
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume={{ partitions['root'].logical_device }}"
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"
+{% endif %}
 {% endif %}
 
 {% if "nvme" in partitions["root"].physical_device %}
