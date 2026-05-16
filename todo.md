@@ -29,7 +29,7 @@
 1. During boostrapping, after reboot, caps lock isn't remapped to escape until sway is available
 1. During boostrapping Firefox setup fails until sway is available
 1. yubikey isn't making it into qemu VMs
-1. Machine name is hardcodied in restic backup script
+1. Machine name is hardcoded in restic backup script
 
 ## Tasks
 
