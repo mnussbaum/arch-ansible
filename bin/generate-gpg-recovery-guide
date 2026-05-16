@@ -175,7 +175,7 @@ Arch Linux — this is the fastest path on a borrowed or newly purchased machine
 <h3>Step 4 — Clone the password store and Ansible repo</h3>
 <ol>
   <li>Clone the password store:
-    <br><code>git clone git@gitlab.com:mnussbaum/password-store.git ~/.password-store</code></li>
+    <br><code>mkdir -p ~/.local/share && git clone git@gitlab.com:mnussbaum/password-store.git ~/.local/share/password-store</code></li>
   <li>Verify pass can decrypt entries:
     <br><code>pass ls</code> &nbsp;(pick any entry, then verify it decrypts)
     <br><code>pass show &lt;any-entry&gt;</code></li>

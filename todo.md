@@ -21,7 +21,8 @@
    - fzf
    - ripgrep
    - pass
-1. Put password store on ISO. Use it instead of vault. Verify it works with yubikey
+1. Replace vault with pass
+   - Need to figure out yubikey in qemu and bootstrapping story
 
 ## Bugs
 

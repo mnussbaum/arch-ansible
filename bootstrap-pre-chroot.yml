@@ -74,6 +74,19 @@
         dest: "{{ partitions['root'].mount_point }}/etc/fstab"
       become: true
 
+    - name: Create password-store parent directory on provisioned machine
+      file:
+        path: "{{ partitions['root'].mount_point }}/home/{{ user.name }}/.local/share"
+        state: directory
+        mode: "0755"
+      become: true
+
+    - name: Copy password-store from install media to provisioned machine
+      synchronize:
+        src: /root/password-store/
+        dest: "{{ partitions['root'].mount_point }}/home/{{ user.name }}/.local/share/password-store"
+        perms: false
+
     - name: Configure bootstrapping facts in the chroot
       command: |
         systemd-firstboot --root {{ partitions['root'].mount_point }}

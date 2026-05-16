@@ -41,6 +41,13 @@
         owner: "{{ user.name }}"
         group: "{{ user.group }}"
 
+    - name: Set ownership on password-store
+      file:
+        path: "/home/{{ user.name }}/.local/share/password-store"
+        recurse: true
+        owner: "{{ user.name }}"
+        group: "{{ user.group }}"
+
     - name: Create secrets destination directory
       file:
         path: "{{ arch_ansible_dest }}/secrets"

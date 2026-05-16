@@ -60,6 +60,26 @@
             ansible_dest_dir: "{{ root_user_dir }}/arch-ansible"
             user_name: root
 
+        - name: Check if password-store is available locally
+          stat:
+            path: "{{ ansible_env.HOME }}/.local/share/password-store"
+          register: local_password_store
+
+        - name: Copy password-store into ISO from local machine
+          synchronize:
+            src: "{{ ansible_env.HOME }}/.local/share/password-store/"
+            dest: "{{ root_user_dir }}/password-store"
+            perms: false
+          when: local_password_store.stat.exists
+
+        - name: Clone password-store into ISO from remote
+          git:
+            repo: git@gitlab.com:mnussbaum/password-store.git
+            dest: "{{ root_user_dir }}/password-store"
+            accept_hostkey: yes
+            update: false
+          when: not local_password_store.stat.exists
+
         - name: Add pacakges
           lineinfile:
             dest: "{{ iso_build_dir }}/packages.x86_64"
