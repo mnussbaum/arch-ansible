@@ -33,11 +33,11 @@ case "$1" in
         log "post: waiting for i915 to reinitialize before toggling DPMS (user=$user)"
         sleep 5
         log "post: toggling DPMS off"
-        su -c "SWAYSOCK=$swaysock swaymsg 'output * dpms off'" "$user" \
+        su -c "swaymsg -s '$swaysock' 'output * dpms off'" "$user" \
             || log "post: dpms off failed (sway may not be running)"
         sleep 1
         log "post: toggling DPMS on"
-        su -c "SWAYSOCK=$swaysock swaymsg 'output * dpms on'" "$user" \
+        su -c "swaymsg -s '$swaysock' 'output * dpms on'" "$user" \
             || log "post: dpms on failed"
         log "post: DPMS toggle complete"
         ;;
