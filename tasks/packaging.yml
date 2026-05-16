@@ -27,15 +27,17 @@
 
 - name: Packaging | Clone yay from AUR
   become: true
-  become_user: "{{ user.name }}"
+  become_user: "{{ yay_build_user | default(user.name) }}"
   git:
     repo: https://aur.archlinux.org/yay.git
     dest: /tmp/yay-aur
+  retries: 3
+  delay: 5
   when: yay_installed.rc != 0
 
 - name: Packaging | Build yay
   become: true
-  become_user: "{{ user.name }}"
+  become_user: "{{ yay_build_user | default(user.name) }}"
   command: makepkg --noconfirm
   args:
     chdir: /tmp/yay-aur
@@ -43,7 +45,7 @@
 
 - name: Packaging | Install yay
   become: true
-  shell: pacman -U --noconfirm /tmp/yay-aur/yay-*.pkg.tar.lzo
+  shell: pacman -U --noconfirm /tmp/yay-aur/yay-*.pkg.tar.zst
   when: yay_installed.rc != 0
 
 - name: Packaging | Install pacman config
@@ -51,3 +53,4 @@
   copy:
     src: files/pacman.conf
     dest: /etc/pacman.conf
+  when: not (iso_build | default(false))

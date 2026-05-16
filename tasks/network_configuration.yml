@@ -22,7 +22,7 @@
     path: "{{ network_install_root }}/etc/resolv.conf"
     force: true
     state: link
-  when: ansible_connection != "chroot"
+  when: ansible_connection != "chroot" and not (iso_build | default(false))
 
 - name: networking configuration | Set defaults if network configuration is empty
   set_fact:

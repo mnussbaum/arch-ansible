@@ -13,7 +13,7 @@
     - mnussbaum.firefox_ext_sideloader
   tasks:
     - set_fact:
-        user_home_dir: "/home/{{ user.name }}"
+        user_home_dir: "{{ user_home_dir | default('/home/' + user.name) }}"
       tags: [bootstrap, base16, nvim, eeek]
     - set_fact:
         user_config_dir: "{{ user_home_dir }}/.config"
@@ -40,6 +40,7 @@
     - import_tasks: tasks/trim.yml
     - import_tasks: tasks/user.yml
       tags: [bootstrap]
+      when: not (iso_build | default(false))
     - import_tasks: tasks/network_configuration.yml
       tags: [bootstrap, networking]
     - import_tasks: tasks/enable_network.yml
@@ -50,6 +51,7 @@
     - set_fact:
         ansible_facts: "{{ ansible_facts | combine({'pkg_mgr': 'yay'}) }}"
       tags: [nvim, base16, eeek]
+      when: not (iso_build | default(false))
     - import_tasks: tasks/gpg.yml
     - import_tasks: tasks/zsh.yml
     - name: Base16 | Generate color scheme vars

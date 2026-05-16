@@ -17,10 +17,6 @@
         root_user_dir: "{{ airootfs }}/root"
     - set_fact:
         pacman_db_dest_dir: "{{ root_user_dir }}/pacman_dbs"
-    - set_fact:
-        iso_pkg_cache: /var/cache/pacman/pkg
-    - set_fact:
-        iso_pkg_cache: "{{ playbook_dir }}/iso_pkg_cache"
 
     - block:
         - name: Populate temp dir
@@ -79,18 +75,74 @@
             - '["/root/arch-ansible/"]="0:0:0644"'
             - '["/root/arch-ansible/bin/"]="0:0:0755"'
 
-        - name: Index local package cache as a pacman repository
-          become: true
-          shell: repo-add {{ (iso_pkg_cache + '/local.db.tar.gz') | quote }} {{ iso_pkg_cache | quote }}/*.pkg.tar.*
+        - name: Write customize_airootfs.sh to configure live environment via ansible
+          copy:
+            dest: "{{ airootfs }}/root/customize_airootfs.sh"
+            mode: "0755"
+            content: |
+              #!/bin/bash
+              set -e
 
-        - name: Add local repository to ISO build pacman configuration
-          blockinfile:
-            path: "{{ iso_build_dir }}/pacman.conf"
-            insertbefore: '\[core\]'
-            block: |
-              [local]
-              SigLevel = Optional TrustAll
-              Server = file://{{ iso_pkg_cache }}
+              # Wrap systemctl to skip start/stop/restart in chroot — enable/disable
+              # still works so services come up correctly on first boot.
+              mv /usr/bin/systemctl /usr/bin/systemctl.orig
+              cat > /usr/bin/systemctl << 'EOF'
+              #!/bin/bash
+              case "${1:-}" in
+                start|stop|restart|reload|try-restart|try-reload-or-restart|condrestart|force-reload)
+                  echo "systemctl: skipping '$*' in chroot" >&2
+                  exit 0
+                  ;;
+                *)
+                  exec /usr/bin/systemctl.orig "$@"
+                  ;;
+              esac
+              EOF
+              chmod +x /usr/bin/systemctl
+
+              # Pacman 6.1+ uses /proc/mounts for disk space and cachedir checks,
+              # but /proc is bind-mounted from the host in the chroot so mount
+              # point detection fails. Disable CheckSpace and redirect the cache
+              # to a known tmpfs path to work around both issues.
+              mkdir -p /tmp/pkg-cache
+              sed -i '/^\[options\]/a CacheDir = /tmp/pkg-cache' /etc/pacman.conf
+              sed -i 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf
+
+              pacman-key --init
+              pacman-key --populate archlinux
+
+              # The chroot work dir is on nosuid /tmp so sudo's setuid bit
+              # doesn't work. We're already root, so delegate via runuser for
+              # user switches and exec directly otherwise.
+              mv /usr/bin/sudo /usr/bin/sudo.orig
+              cat > /usr/bin/sudo << 'EOF'
+              #!/bin/bash
+              target_user=""
+              while [[ $# -gt 0 ]]; do
+                case "$1" in
+                  -u) target_user="$2"; shift 2 ;;
+                  -g|-C|-T|-p|-r|-t) shift 2 ;;
+                  --) shift; break ;;
+                  -*) shift ;;
+                  *) break ;;
+                esac
+              done
+              if [[ -n "$target_user" && "$target_user" != "root" ]]; then
+                exec runuser -u "$target_user" -- "$@"
+              else
+                exec "$@"
+              fi
+              EOF
+              chmod +x /usr/bin/sudo
+
+              # Create a non-root user for AUR builds (makepkg refuses root).
+              useradd -m aur_builder
+              echo "aur_builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/aur_builder
+
+              cd /root/arch-ansible
+              HOSTNAME=install_media NO_ASK_BECOME_PASS=1 ./bin/ansible
+
+              mv /usr/bin/systemctl.orig /usr/bin/systemctl
 
         - name: Build ISO
           become: true
@@ -122,8 +174,3 @@
             path: "{{ iso_build_dir }}"
             state: absent
 
-        - name: Remove local package repository index from system cache
-          become: true
-          file:
-            path: "{{ iso_pkg_cache }}/local.db.tar.gz"
-            state: absent

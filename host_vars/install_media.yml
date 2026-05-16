@@ -1,0 +1,45 @@
+---
+iso_build: true
+
+user:
+  name: root
+  group: root
+  shell: /usr/bin/zsh
+  gpg_key_uid: ""
+
+user_home_dir: /root
+
+yay_build_user: aur_builder
+
+gpg_auth_ssh_keygrips: []
+
+grub: false
+
+partitions: {}
+
+mkinitcpio_modules: []
+
+modprobe_files: []
+
+networking:
+  interface: wlan0
+  networks: []
+
+key_repeat:
+  rate: 35
+  delay: 250
+
+monitors: []
+
+optional_daemons:
+  libinput_gestures: false
+
+window_manager:
+  waybar_thermal_zone_to_display: 0
+  waybar_minimum_workspace_count: 1
+  window_manager: sway
+  windowing_system: wayland
+
+qemu_host: false
+
+pgpass_secret_names: []
