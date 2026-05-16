@@ -43,7 +43,7 @@
 
 - name: Packaging | Install yay
   become: true
-  shell: pacman -U --noconfirm /tmp/yay-aur/yay-*.pkg.tar.lzo
+  shell: pacman -U --noconfirm /tmp/yay-aur/yay-*.pkg.tar.zst
   when: yay_installed.rc != 0
 
 - name: Packaging | Install pacman config

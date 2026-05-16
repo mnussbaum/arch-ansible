@@ -17,10 +17,6 @@
         root_user_dir: "{{ airootfs }}/root"
     - set_fact:
         pacman_db_dest_dir: "{{ root_user_dir }}/pacman_dbs"
-    - set_fact:
-        iso_pkg_cache: /var/cache/pacman/pkg
-    - set_fact:
-        iso_pkg_cache: "{{ playbook_dir }}/iso_pkg_cache"
 
     - block:
         - name: Populate temp dir
@@ -79,19 +75,6 @@
             - '["/root/arch-ansible/"]="0:0:0644"'
             - '["/root/arch-ansible/bin/"]="0:0:0755"'
 
-        - name: Index local package cache as a pacman repository
-          become: true
-          shell: repo-add {{ (iso_pkg_cache + '/local.db.tar.gz') | quote }} {{ iso_pkg_cache | quote }}/*.pkg.tar.*
-
-        - name: Add local repository to ISO build pacman configuration
-          blockinfile:
-            path: "{{ iso_build_dir }}/pacman.conf"
-            insertbefore: '\[core\]'
-            block: |
-              [local]
-              SigLevel = Optional TrustAll
-              Server = file://{{ iso_pkg_cache }}
-
         - name: Build ISO
           become: true
           command: "mkarchiso -v -w {{ iso_build_dir }}/work -o {{ iso_build_dir }}/out {{ iso_build_dir }}"
@@ -120,10 +103,4 @@
           become: true
           file:
             path: "{{ iso_build_dir }}"
-            state: absent
-
-        - name: Remove local package repository index from system cache
-          become: true
-          file:
-            path: "{{ iso_pkg_cache }}/local.db.tar.gz"
             state: absent
