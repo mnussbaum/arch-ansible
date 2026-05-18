@@ -30,15 +30,26 @@ case "$1" in
             log "post: no sway socket found for user=$user"
             exit 0
         fi
-        log "post: waiting for i915 to reinitialize before toggling DPMS (user=$user)"
-        sleep 5
-        log "post: toggling DPMS off"
-        su -c "swaymsg -s '$swaysock' 'output * dpms off'" "$user" \
-            || log "post: dpms off failed (sway may not be running)"
-        sleep 1
-        log "post: toggling DPMS on"
-        su -c "swaymsg -s '$swaysock' 'output * dpms on'" "$user" \
-            || log "post: dpms on failed"
-        log "post: DPMS toggle complete"
+        log "post: scheduling DPMS toggle (user=$user)"
+        # Run in background so the hook exits immediately and doesn't block resume.
+        # Retry until sway accepts the command: sway re-acquires DRM devices ~13s
+        # after resume, but our first attempt at ~6s gets a quick error response.
+        (
+            attempt=0
+            while [ "$attempt" -lt 20 ]; do
+                attempt=$((attempt + 1))
+                sleep 3
+                if su -c "swaymsg -s '$swaysock' 'output * dpms off'" "$user" 2>/dev/null; then
+                    logger -t sway-resume-dpms "post: dpms off succeeded (attempt $attempt)"
+                    sleep 1
+                    su -c "swaymsg -s '$swaysock' 'output * dpms on'" "$user" \
+                        || logger -t sway-resume-dpms "post: dpms on failed"
+                    logger -t sway-resume-dpms "post: DPMS toggle complete"
+                    exit 0
+                fi
+                logger -t sway-resume-dpms "post: dpms off not ready (attempt $attempt), retrying"
+            done
+            logger -t sway-resume-dpms "post: dpms toggle failed after 20 attempts"
+        ) &
         ;;
 esac
