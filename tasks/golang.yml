@@ -5,17 +5,8 @@
     state: present
     name:
       - go
+      - goimports-reviser-bin
       - gopls
       - golangci-lint
       - staticcheck
   become: yes
-
-- name: golang | Create gopath dirs
-  file:
-    path: "/home/{{ user.name }}/go/{{ item }}"
-    state: directory
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-  with_items:
-    - src
-    - bin

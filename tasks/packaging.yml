@@ -13,27 +13,20 @@
     dest: "{{ user_home_dir }}/.makepkg.conf"
 
 - name: Packaging | Check if yay is installed
-  command: pacman -Qi yay
+  shell: which yay
   register: yay_installed
   failed_when: false
   changed_when: false
 
-- name: Packaging | Install yay build dependencies
-  become: true
-  package:
-    state: present
-    name: go
-  when: yay_installed.rc != 0
-
-- name: Packaging | Clone yay from AUR
+- name: Packaging | Clone yay-bin from AUR
   become: true
   become_user: "{{ user.name }}"
   git:
-    repo: https://aur.archlinux.org/yay.git
+    repo: https://aur.archlinux.org/yay-bin.git
     dest: /tmp/yay-aur
   when: yay_installed.rc != 0
 
-- name: Packaging | Build yay
+- name: Packaging | Build yay-bin
   become: true
   become_user: "{{ user.name }}"
   command: makepkg --noconfirm -f
@@ -41,9 +34,9 @@
     chdir: /tmp/yay-aur
   when: yay_installed.rc != 0
 
-- name: Packaging | Install yay
+- name: Packaging | Install yay-bin
   become: true
-  shell: pacman -U --noconfirm /tmp/yay-aur/yay-*.pkg.tar.lzo
+  shell: pacman -U --noconfirm /tmp/yay-aur/yay-bin-*.pkg.tar.lzo
   when: yay_installed.rc != 0
 
 - name: Packaging | Install pacman config

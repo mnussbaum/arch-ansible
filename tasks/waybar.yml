@@ -43,10 +43,18 @@
     scope: user
     daemon-reload: true
 
-- name: Install waybar-sway-workspace-output-manager
+- name: Build waybar-sway-workspace-output-manager
   command: cargo install --git=https://github.com/mnussbaum/waybar-sway-workspace-output-manager
   args:
     creates: "/home/{{ user.name }}/.cargo/bin/waybar-sway-workspace-output-manager"
+
+- name: Install waybar-sway-workspace-output-manager
+  copy:
+    src: "/home/{{ user.name }}/.cargo/bin/waybar-sway-workspace-output-manager"
+    dest: /usr/local/bin/waybar-sway-workspace-output-manager
+    mode: "0755"
+    remote_src: true
+  become: true
 
 - name: Waybar | Create waybar-sway-workspace-output-manager config dir
   file:
