@@ -125,6 +125,46 @@ This extends all subkey expiry by one year, exports the updated public key to
 git add files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys'
 ```
 
+### 2FA codes
+
+TOTP codes are stored in the YubiKey OATH applet, separate from the password store. This
+preserves genuine two-factor separation: compromising the password store doesn't expose
+TOTP seeds. The OATH applet is password-protected; the password is set during YubiKey
+provisioning.
+
+Seeds are backed up as `otpauth://` URIs in `oath-accounts.txt` on the primary GPG USB.
+They are automatically loaded onto each YubiKey during `create-gpg-key` and
+`renew-gpg-subkeys`. The recovery guide PDF includes QR codes and base32 secrets for a curated set of
+critical accounts (defined in `CRITICAL_TOTPS` in `bin/generate-gpg-recovery-guide`),
+so those accounts can be restored from paper alone without the USB.
+
+**Import from Aegis**
+
+Export from Aegis: Menu → Export → Plain text backup (unencrypted JSON), then:
+
+```
+./bin/import-aegis-export <device> <aegis-export.json>
+```
+
+Converts the Aegis JSON to `otpauth://` URIs, backs them up to the USB, and loads them
+onto the YubiKey. Delete the export file from your phone after running.
+
+**Add a single account**
+
+```
+./bin/add-oath-account <device>
+./bin/add-oath-account <device> --qr <screenshot.png>   # decode from a QR image
+```
+
+Backs up the seed to USB and adds it to the currently connected YubiKey.
+
+**Generate codes**
+
+```
+ykman oath accounts code           # list all accounts with current codes
+ykman oath accounts code <name>    # code for a specific account
+```
+
 ### Back up the GPG USB
 
 Keep a second encrypted copy of the primary GPG USB in a separate physical location:

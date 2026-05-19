@@ -1,0 +1,104 @@
+#!/bin/bash
+# Imports TOTP accounts from an Aegis JSON export into the USB seed backup
+# and programs them onto the YubiKey OATH applet.
+#
+# Usage: bin/import-aegis-export <device> <aegis-export.json>
+#
+# Export from Aegis: Menu (top-right) → Export → Plain text backup.
+# Delete the export file from your phone after running this script.
+#
+# Non-TOTP entries (HOTP, Steam) are skipped with a warning.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source bin/_gpg_common.sh
+
+DEVICE="${1:?Usage: $0 <device> <aegis-export.json>}"
+AEGIS_JSON="${2:?Usage: $0 <device> <aegis-export.json>}"
+
+cleanup() { close_usb; }
+trap cleanup EXIT
+
+open_usb "$DEVICE"
+
+OATH_FILE="$USB_MOUNT/oath-accounts.txt"
+
+echo "==> Converting Aegis export to otpauth:// URIs..."
+URIS=$(python3 - "$AEGIS_JSON" <<'PYEOF'
+import sys, json, urllib.parse
+
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+
+entries = data.get("db", data).get("entries", [])
+
+for entry in entries:
+    if entry.get("type") != "totp":
+        print(f"# Skipped ({entry.get('type','?')}): {entry.get('issuer','')} {entry.get('name','')}", file=sys.stderr)
+        continue
+
+    name   = entry.get("name", "")
+    issuer = entry.get("issuer", "")
+    info   = entry.get("info", {})
+    secret = info.get("secret", "")
+    algo   = info.get("algo", "SHA1")
+    digits = info.get("digits", 6)
+    period = info.get("period", 30)
+
+    label_decoded = f"{issuer}:{name}" if (issuer and name) else (issuer or name)
+    label_decoded = label_decoded.rstrip(":")
+    if not label_decoded:
+        print(f"Warning: skipping entry with empty label (issuer={issuer!r}, name={name!r})", file=sys.stderr)
+        continue
+    if len(label_decoded.encode()) > 64:
+        label_decoded = label_decoded.encode()[:64].decode("utf-8", errors="ignore")
+        print(f"Warning: label truncated to '{label_decoded}'", file=sys.stderr)
+    label  = urllib.parse.quote(label_decoded, safe="")
+    params = {"secret": secret}
+    if issuer:          params["issuer"]    = issuer
+    if algo   != "SHA1": params["algorithm"] = algo
+    if digits != 6:      params["digits"]    = digits
+    if period != 30:     params["period"]    = period
+
+    print(f"otpauth://totp/{label}?{urllib.parse.urlencode(params)}")
+PYEOF
+)
+
+if [[ -z "$URIS" ]]; then
+  echo "Error: no TOTP entries found in $AEGIS_JSON" >&2
+  exit 1
+fi
+
+COUNT=$(printf '%s\n' "$URIS" | wc -l)
+echo "==> Found $COUNT TOTP account(s)."
+
+echo "==> Backing up seeds to USB..."
+# Deduplicate: only append URIs not already present, then sort the file.
+while IFS= read -r uri; do
+  grep -qxF "$uri" "$OATH_FILE" 2>/dev/null || echo "$uri" >> "$OATH_FILE"
+done <<< "$URIS"
+sort -uo "$OATH_FILE" "$OATH_FILE"
+
+echo "==> Loading onto YubiKey OATH applet (touch required for each code)..."
+while IFS= read -r uri; do
+  encoded_label="${uri#otpauth://totp/}"
+  encoded_label="${encoded_label%%\?*}"
+  echo "  Adding: $(python3 -c "import urllib.parse,sys; print(urllib.parse.unquote(sys.argv[1]))" "$encoded_label")"
+  ykman oath accounts uri --touch --force "$uri"
+done <<< "$URIS"
+
+echo "==> Setting OATH application password..."
+local_oath_pw2=""
+while true; do
+  read -r -s -p "  New OATH password: " OATH_PASSWORD; echo
+  read -r -s -p "  Confirm OATH password: " local_oath_pw2; echo
+  [[ "$OATH_PASSWORD" == "$local_oath_pw2" ]] && break
+  echo "  Passwords do not match, try again."
+done
+ykman oath access change --new-password "$OATH_PASSWORD"
+
+echo ""
+echo "==> Done. Delete the Aegis export file from your device."
+echo "    Generate codes: ykman oath accounts code"

@@ -54,6 +54,62 @@ echo "==> Generating public key QR code..."
 PUBKEY_QR_B64=$(qrencode -t PNG -l L -s 5 -o - < "$PUBKEY_FILE" | base64 -w 0)
 PUBKEY_TEXT=$(cat "$PUBKEY_FILE")
 
+echo "==> Generating 2FA OATH section..."
+OATH_SECTION=""
+OATH_FILE="$USB_MOUNT/oath-accounts.txt"
+if [[ -f "$OATH_FILE" ]]; then
+  OATH_SECTION=$(python3 - "$OATH_FILE" <<'PYEOF'
+import sys, urllib.parse, base64, subprocess
+
+CRITICAL_TOTPS = {
+    "Backblaze:michaelnussbaum08@gmail.com",
+    "GitHub:mnussbaum",
+    "GitLab:gitlab.com:gitlab.com_michaelnussbaum08@gmail.com",
+    "Google:michaelnussbaum08@gmail.com",
+    "Yahoo:michaelnussbaum08@yahoo.com",
+    "Ubiquiti SSO:michael.nussbaum",
+}
+
+entries = []
+with open(sys.argv[1]) as f:
+    for line in f:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        p = urllib.parse.urlparse(line)
+        params = dict(urllib.parse.parse_qsl(p.query))
+        label = urllib.parse.unquote(p.path.lstrip('/'))
+        if label not in CRITICAL_TOTPS:
+            continue
+        qr = subprocess.run(
+            ['qrencode', '-t', 'PNG', '-s', '3', '-l', 'M', '-o', '-', line],
+            capture_output=True)
+        entries.append({
+            'label':  label,
+            'secret': params.get('secret', ''),
+            'qr_b64': base64.b64encode(qr.stdout).decode(),
+        })
+
+grid_items = ''.join(
+    f'<div style="text-align:center;width:130px">'
+    f'<img src="data:image/png;base64,{e["qr_b64"]}" width="120" style="border:1px solid #ccc;display:block">'
+    f'<div style="font-size:0.68em;margin-top:3px;word-break:break-all">{e["label"]}</div>'
+    f'<div style="font-family:monospace;font-size:0.62em;margin-top:2px;word-break:break-all;color:#333">{e["secret"]}</div>'
+    f'</div>'
+    for e in entries
+)
+print(f'''
+<h2>Critical 2FA / TOTP Accounts</h2>
+<p>The accounts below are a curated subset of critical services — not a full backup of all
+2FA accounts. Scan each QR code with any authenticator app to re-enroll. The base32
+string beneath each code is the raw TOTP secret; it can be entered manually if the QR
+code is unreadable.</p>
+<div style="display:flex;flex-wrap:wrap;gap:14px;margin:12px 0">{grid_items}</div>
+''')
+PYEOF
+  )
+fi
+
 echo "==> Generating private key paperkey encoding..."
 gpg --batch --export-secret-keys "$FINGERPRINT" | paperkey --output-type raw > "$SECRET_RAW_FILE"
 PAPERKEY_B64=$(base64 -w 64 < "$SECRET_RAW_FILE")
@@ -121,6 +177,8 @@ Keep this document in a physically separate location from the USB drives and Yub
 <p>Paperkey encodes only the secret bytes of the private key. Reconstructing the
 full private key also requires the public key above.</p>
 <div class="mono">$PAPERKEY_B64</div>
+
+$OATH_SECTION
 
 <h2>Recovery Procedure</h2>
 

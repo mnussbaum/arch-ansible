@@ -101,8 +101,8 @@ restore_subkeys() {
 }
 
 _collect_pin_config() {
-  # Sets globals used by change_yubikey_pins. Called once for all cards.
-  echo "==> PIN configuration (applies to all YubiKeys)"
+  # Sets globals used by change_yubikey_pins and set_oath_password. Called once for all cards.
+  echo "==> PIN and password configuration (applies to all YubiKeys)"
   echo "    Current PINs — enter the defaults (123456 / 12345678) for a fresh card:"
   read -r -s -p "  Current user PIN: " YUBIKEY_CURRENT_USER_PIN; echo
   read -r -s -p "  Current admin PIN: " YUBIKEY_CURRENT_ADMIN_PIN; echo
@@ -120,6 +120,14 @@ _collect_pin_config() {
     [[ "$YUBIKEY_NEW_ADMIN_PIN" == "$admin_pin2" ]] && break
     echo "  PINs do not match, try again."
   done
+  echo "    OATH password (required by Yubico Authenticator to access 2FA codes):"
+  local oath_pw2
+  while true; do
+    read -r -s -p "  New OATH password: " YUBIKEY_OATH_PASSWORD; echo
+    read -r -s -p "  Confirm OATH password: " oath_pw2; echo
+    [[ "$YUBIKEY_OATH_PASSWORD" == "$oath_pw2" ]] && break
+    echo "  Passwords do not match, try again."
+  done
 }
 
 change_yubikey_pins() {
@@ -130,6 +138,32 @@ change_yubikey_pins() {
   ykman openpgp access change-admin-pin \
     --admin-pin "$YUBIKEY_CURRENT_ADMIN_PIN" \
     --new-admin-pin "$YUBIKEY_NEW_ADMIN_PIN"
+}
+
+load_oath_accounts() {
+  local oath_file="$USB_MOUNT/oath-accounts.txt"
+  if [[ ! -f "$oath_file" ]]; then
+    echo "==> No OATH seed backup found on USB, skipping."
+    return
+  fi
+  echo "==> Loading OATH accounts onto YubiKey..."
+  local count=0
+  while IFS= read -r uri || [[ -n "$uri" ]]; do
+    [[ -z "$uri" || "$uri" == \#* ]] && continue
+    ykman oath accounts uri --touch --force "$uri"
+    count=$(( count + 1 ))
+  done < "$oath_file"
+  echo "    Loaded $count OATH account(s)."
+}
+
+reset_oath_applet() {
+  echo "==> Resetting OATH applet..."
+  ykman oath reset --force
+}
+
+set_oath_password() {
+  echo "==> Setting OATH application password..."
+  ykman oath access change --new-password "$YUBIKEY_OATH_PASSWORD"
 }
 
 program_all_yubikeys() {
@@ -150,6 +184,9 @@ program_all_yubikeys() {
     echo "==> Programming YubiKey $key_number..."
     program_yubikey
     change_yubikey_pins
+    reset_oath_applet
+    load_oath_accounts
+    set_oath_password
 
     (( key_number++ ))
   done

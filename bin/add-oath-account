@@ -1,0 +1,69 @@
+#!/bin/bash
+# Adds a TOTP account to the YubiKey OATH applet and backs up the seed to USB.
+#
+# Usage: bin/add-oath-account <device>
+#        bin/add-oath-account <device> --qr <image>
+#
+# <device>: LUKS-encrypted USB holding the GPG root key and OATH seed backup
+# --qr <image>: decode the otpauth:// URI from a QR code image via zbarimg
+#
+# Without --qr, paste a full otpauth:// URI or enter fields manually.
+# Seeds are stored in oath-accounts.txt on the USB. This file is used by
+# program_all_yubikeys (via create-gpg-key and renew-gpg-subkeys) to restore
+# accounts when provisioning a replacement YubiKey.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+source bin/_gpg_common.sh
+
+DEVICE="${1:?Usage: $0 <device> [--qr <image>]}"
+
+cleanup() { close_usb; }
+trap cleanup EXIT
+
+open_usb "$DEVICE"
+
+OATH_FILE="$USB_MOUNT/oath-accounts.txt"
+
+read -r -s -p "OATH application password: " OATH_PASSWORD; echo
+
+if [[ "${2:-}" == "--qr" ]]; then
+  QR_IMAGE="${3:?--qr requires an image path}"
+  URI=$(zbarimg --quiet --raw "$QR_IMAGE" | grep '^otpauth://' | head -1)
+  if [[ -z "$URI" ]]; then
+    echo "Error: no otpauth:// URI found in $QR_IMAGE" >&2
+    exit 1
+  fi
+  echo "==> Decoded: $URI"
+else
+  echo "Paste a full otpauth:// URI, or press Enter to enter fields manually:"
+  read -r -p "URI (leave blank for manual entry): " URI
+  if [[ -z "$URI" ]]; then
+    read -r -p "Account name (e.g. github:mnussbaum): " ACCT_NAME
+    read -r -p "Issuer (e.g. GitHub, optional): " ISSUER
+    read -r -s -p "TOTP secret (base32): " SECRET; echo
+    URI=$(python3 - "$ACCT_NAME" "${ISSUER:-}" "$SECRET" <<'PYEOF'
+import sys, urllib.parse
+name, issuer, secret = sys.argv[1], sys.argv[2], sys.argv[3]
+if issuer:
+    label = urllib.parse.quote(f"{issuer}:{name}", safe="")
+    print(f"otpauth://totp/{label}?secret={secret}&issuer={urllib.parse.quote(issuer, safe='')}")
+else:
+    label = urllib.parse.quote(name, safe="")
+    print(f"otpauth://totp/{label}?secret={secret}")
+PYEOF
+    )
+  fi
+fi
+
+echo "==> Adding to YubiKey OATH applet (touch required for each code)..."
+ykman oath accounts uri --password "$OATH_PASSWORD" --touch --force "$URI"
+
+echo "==> Backing up seed to USB..."
+echo "$URI" >> "$OATH_FILE"
+echo "    Appended to $OATH_FILE"
+
+echo ""
+echo "Generate codes: ykman oath accounts code"

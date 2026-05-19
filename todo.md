@@ -38,4 +38,3 @@
 - Rebuild install media with final state
 - Prepare physical recovery packages
 - Label physical media
-- Figure out 2fa backup and handling

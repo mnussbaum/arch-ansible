@@ -42,6 +42,9 @@ sudo chown "$(id -u):$(id -g)" "$DEST_MOUNT"
 echo "==> Copying key files..."
 cp "$SOURCE_MOUNT/primary-key.asc" "$DEST_MOUNT/primary-key.asc"
 cp "$SOURCE_MOUNT/revocation-cert.asc" "$DEST_MOUNT/revocation-cert.asc"
+if [[ -f "$SOURCE_MOUNT/oath-accounts.txt" ]]; then
+  cp "$SOURCE_MOUNT/oath-accounts.txt" "$DEST_MOUNT/oath-accounts.txt"
+fi
 
 echo ""
 echo "==> Done. Store the backup USB in a separate physical location."
