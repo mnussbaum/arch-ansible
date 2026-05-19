@@ -53,6 +53,7 @@ offline otherwise.
 ```
 
 This will:
+
 1. Format and LUKS-encrypt `<device>`
 2. Generate a new Ed25519 primary key (cert-only, no expiry)
 3. Add three subkeys (sign, encrypt, auth), each expiring in 1 year
@@ -190,12 +191,8 @@ Plug in a USB drive (will be written to `/dev/sda`) and run:
    filesystems, runs `pacstrap`, sets the hostname, then runs the main playbook in a
    chroot.
 
-3. Reboot and log back in. Run `./bin/ansible` until it fails because tasks require a
+3. Reboot and log back in. Run `./bin/ansible` to complete provisioning
    running desktop environment.
-
-4. Log out and back in to start the DE.
-
-5. Run `./bin/ansible` one final time to complete provisioning.
 
 ### Provision a new QEMU instance
 
@@ -218,6 +215,8 @@ Plug in a USB drive (will be written to `/dev/sda`) and run:
    ```
    ./bin/run-qemu
    ```
+
+4. Within the VM run `./bin/ansible` to complete provisioning
 
 ## Maintenance
 
@@ -247,13 +246,13 @@ To override the appearance:
 
 Tags limit which tasks run, useful for faster iteration on a specific subsystem.
 
-| Tag | Tasks run |
-|-----|-----------|
-| `bootstrap` | Initial setup only: users, packages, networking, partitioning helpers |
+| Tag                      | Tasks run                                                                                        |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| `bootstrap`              | Initial setup only: users, packages, networking, partitioning helpers                            |
 | `rebuild-boot-partition` | Regenerate GRUB config and mkinitcpio initramfs; use to repair a broken boot partition or kernel |
-| `base16` | Regenerate all color-scheme files across every app |
-| `nvim` | Neovim configuration and plugins |
-| `networking` | Network configuration (iwd, systemd-networkd, resolved) |
+| `base16`                 | Regenerate all color-scheme files across every app                                               |
+| `nvim`                   | Neovim configuration and plugins                                                                 |
+| `networking`             | Network configuration (iwd, systemd-networkd, resolved)                                          |
 
 Example:
 

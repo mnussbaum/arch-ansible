@@ -19,11 +19,11 @@
   become: true
 
 - name: Firefox | Make default profile
-  command: "firefox -CreateProfile 'default {{ user_home_dir }}/.mozilla/firefox/default.profile'"
-  args:
-    creates: "{{ user_home_dir }}/.mozilla/firefox/default.profile"
-  become: true
-  become_user: "{{ user.name }}"
+  file:
+    path: "{{ user_home_dir }}/.mozilla/firefox/default.profile"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
 
 - name: Firefox | Configure firefox profiles.ini
   copy:
