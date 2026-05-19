@@ -5,8 +5,6 @@
     state: present
     name:
       - tad-bin
-      - tmate
-      - temporal-cli
       - direnv
       - python312
       - pre-commit
