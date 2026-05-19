@@ -36,14 +36,14 @@
 - name: Packaging | Build yay
   become: true
   become_user: "{{ user.name }}"
-  command: makepkg --noconfirm
+  command: makepkg --noconfirm -f
   args:
     chdir: /tmp/yay-aur
   when: yay_installed.rc != 0
 
 - name: Packaging | Install yay
   become: true
-  shell: pacman -U --noconfirm /tmp/yay-aur/yay-*.pkg.tar.zst
+  shell: pacman -U --noconfirm /tmp/yay-aur/yay-*.pkg.tar.lzo
   when: yay_installed.rc != 0
 
 - name: Packaging | Install pacman config
