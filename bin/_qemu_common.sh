@@ -25,6 +25,12 @@ if [[ -f "$qemu_gpg_usb_file" ]]; then
   gpg_usb_args=("-drive" "file=$qemu_gpg_usb_file,format=raw")
 fi
 
+system_disk_args=(
+  "-device" "virtio-scsi-pci,id=scsi0"
+  "-drive" "if=none,id=hd0,file=$qemu_image_file,format=qcow2"
+  "-device" "scsi-hd,bus=scsi0.0,drive=hd0"
+)
+
 mkdir -p "$qemu_shared_dir"
 
 common_qemu_args=(

@@ -7,5 +7,5 @@ source bin/_qemu_common.sh
 exec qemu-system-x86_64 \
   "${common_qemu_args[@]}" \
   "${yubikey_usb_args[@]}" \
-  -drive "file=$qemu_image_file,format=qcow2" \
-  "${gpg_usb_args[@]}"
+  "${gpg_usb_args[@]}" \
+  "${system_disk_args[@]}"
