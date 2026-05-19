@@ -30,7 +30,6 @@
 1. During boostrapping, after reboot, caps lock isn't remapped to escape until sway is available
 1. yubikey isn't making it into qemu VMs
 1. Machine name is hardcoded in restic backup script
-1. In live image git diff from wrong perms. bin/\_gpg_common.sh old 644, new 755, files/toggle-bluetooth, other executable files/, library/yay, vendor/roles/\* old 755, new 644.
 
 ## Tasks
 
@@ -39,3 +38,4 @@
 - Rebuild install media with final state
 - Prepare physical recovery packages
 - Label physical media
+- Test accessing yubikey from live ISO on physical machine

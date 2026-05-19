@@ -1,25 +1,18 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Copy over arch-ansible repo
-  synchronize:
-    src: "{{ playbook_dir }}/"
+- name: Clone arch-ansible repo
+  git:
+    repo: "{{ playbook_dir }}"
     dest: "{{ ansible_dest_dir }}"
-    perms: false
+    version: HEAD
 
-- name: Fix permissions on arch-ansible repo
+- name: Fix ownership on arch-ansible repo
   file:
     state: directory
     path: "{{ ansible_dest_dir }}"
     owner: "{{ user_name }}"
     group: "{{ user_name }}"
     recurse: true
-
-- name: Make arch-ansible bin scripts executable
-  file:
-    path: "{{ item }}"
-    mode: a+x
-  with_fileglob:
-    - "{{ ansible_dest_dir }}/bin/*"
 
 - name: Add tmux config
   copy:

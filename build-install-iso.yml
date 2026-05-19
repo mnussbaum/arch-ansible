@@ -87,15 +87,6 @@
             line: "{{ item }}"
           loop: "{{ bootstrap_packages }}"
 
-        - name: Set permissions for live environment
-          lineinfile:
-            dest: "{{ iso_build_dir }}/profiledef.sh"
-            line: "{{ item }}"
-            insertafter: 'file_permissions=\('
-          loop:
-            - '["/root/arch-ansible/"]="0:0:0644"'
-            - '["/root/arch-ansible/bin/"]="0:0:0755"'
-
         - name: Create bootstrap pkg-cache in ISO
           file:
             path: "{{ airootfs }}/root/pkg-cache"
