@@ -6,6 +6,7 @@
       tempfile:
         state: directory
         suffix: archiso-build
+        path: /var/tmp
       register: iso_build_temp_dir
 
     - set_fact:
@@ -94,6 +95,24 @@
           loop:
             - '["/root/arch-ansible/"]="0:0:0644"'
             - '["/root/arch-ansible/bin/"]="0:0:0755"'
+
+        - name: Create bootstrap pkg-cache in ISO
+          file:
+            path: "{{ airootfs }}/root/pkg-cache"
+            state: directory
+          become: true
+
+        - name: Download bootstrap packages to local cache
+          command: pacman -Sw --noconfirm {{ bootstrap_packages | join(' ') }}
+          become: true
+
+        - name: Copy bootstrap packages into ISO pkg-cache
+          shell: >
+            find /var/cache/pacman/pkg -name '{{ item }}-[0-9]*.pkg.tar.zst*'
+            -exec cp {} "{{ airootfs }}/root/pkg-cache/" \;
+          loop: "{{ bootstrap_packages }}"
+          become: true
+          changed_when: true
 
         - name: Build ISO
           become: true

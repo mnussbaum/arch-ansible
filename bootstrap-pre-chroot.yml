@@ -60,6 +60,17 @@
         - core.db
         - extra.db
 
+    - name: Add pkg-cache as pacman CacheDir
+      lineinfile:
+        path: /etc/pacman.conf
+        insertafter: '^\[options\]'
+        line: 'CacheDir = /root/pkg-cache/'
+      become: true
+
+    - name: Expand live environment cowspace for package downloads
+      command: mount -o remount,size=4G /run/archiso/cowspace
+      become: true
+
     - name: Pacstrap
       command: "pacstrap -c {{ partitions['root'].mount_point }} {{ bootstrap_packages | join(' ') }}"
       become: true

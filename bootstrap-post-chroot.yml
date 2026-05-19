@@ -66,6 +66,15 @@
         directory_mode: "0700"
       loop: "{{ secrets_to_install }}"
 
+    - name: Fix home directory ownership
+      become: true
+      file:
+        path: "/home/{{ user.name }}"
+        owner: "{{ user.name }}"
+        group: "{{ user.group }}"
+        recurse: true
+        state: directory
+
     - name: Switch connection back to local for post-chroot tasks
       set_fact:
         ansible_host: "{{ original_hostname }}"
