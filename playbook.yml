@@ -78,6 +78,7 @@
     - import_tasks: tasks/ssh.yml
     - import_tasks: tasks/wezterm.yml
     - import_tasks: tasks/tmux.yml
+    - import_tasks: tasks/secrets.yml
     - import_tasks: tasks/power.yml
     - import_tasks: tasks/qemu-host.yml
       when: qemu_host
@@ -107,7 +108,6 @@
     - import_tasks: tasks/raspberry-pi-dev.yml
       when: ansible_facts["architecture"] is not match("arm.*")
     - import_tasks: tasks/firefox.yml
-    - import_tasks: tasks/secrets.yml
     - import_tasks: tasks/eeek.yml
       tags: [eeek]
     - import_tasks: tasks/postgres.yml

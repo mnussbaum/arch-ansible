@@ -1,0 +1,13 @@
+[Unit]
+Description=Backblaze restic backup
+Wants=network.target
+After=network.target
+
+[Service]
+Type=oneshot
+LoadCredential=%H_restic_backblaze_key:%t/pass-credential-%H_restic_backblaze_key.socket
+LoadCredential=%H_restic_backblaze_key_id:%t/pass-credential-%H_restic_backblaze_key_id.socket
+LoadCredential=restic_backup_password:%t/pass-credential-restic_backup_password.socket
+ExecStartPre=/usr/bin/notify-send --urgency=normal -a "Backblaze Backup" "Backblaze backup starting" "You might be prompted for credentials"
+ExecStopPost=/bin/sh -c 'if [ "$$SERVICE_RESULT" = "success" ]; then /usr/bin/notify-send --urgency=normal -a "Backblaze Backup" "Backblaze backup complete" "Successfully completed"; else /usr/bin/notify-send --urgency=critical -a "Backblaze Backup" "Backblaze backup failed" "$$SERVICE_RESULT"; fi'
+ExecStart=/usr/local/bin/restic-backblaze-backup

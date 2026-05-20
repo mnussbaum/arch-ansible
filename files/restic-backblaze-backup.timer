@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Backblaze restic backup daily
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=30m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

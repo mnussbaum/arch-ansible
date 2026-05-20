@@ -6,6 +6,7 @@
     name:
       - fuse2
       - restic
+  become: true
 
 - name: backup | Install restic backblaze backup script
   become: true
@@ -14,6 +15,41 @@
     dest: /usr/local/bin/restic-backblaze-backup
     mode: a+x
 
+- name: backup | Install restic backblaze backup service
+  copy:
+    src: files/restic-backblaze-backup.service
+    dest: "{{ user_config_dir }}/systemd/user/restic-backblaze-backup.service"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: backup | Install restic backblaze backup timer
+  copy:
+    src: files/restic-backblaze-backup.timer
+    dest: "{{ user_config_dir }}/systemd/user/restic-backblaze-backup.timer"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: backup | Enable restic backblaze credential sockets
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: "pass-credential@{{ item }}.socket"
+    scope: user
+    daemon-reload: true
+  loop:
+    - "{{ inventory_hostname }}_restic_backblaze_key"
+    - "{{ inventory_hostname }}_restic_backblaze_key_id"
+    - restic_backup_password
+
+- name: backup | Enable restic backblaze backup timer
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: restic-backblaze-backup.timer
+    scope: user
+    daemon-reload: true
 # To take a backup:
 #
 # * sudo mount /dev/sda1 /tmp/usb
@@ -21,13 +57,9 @@
 #
 # TODO:
 #
-# * Add systemd scheduled task to regularly execute the backup script
 # * Make the script configurable to work with a local USB backup in addition to
 #   the cloud
 # * Get the backblaze configuration into terraform. Connect ansible to TF output
 #   to pull the bucket name
 # * Script the seeding of data during initial bootstrapping by restoring from
 #   a backup
-# * Make the backup script pull data from systemd-creds, and integrate
-#   systemd-creds with pass. And trigger a system notification about why I'm
-#   being prompted to decrypt

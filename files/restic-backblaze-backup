@@ -5,9 +5,10 @@ set -o nounset
 set -o pipefail
 
 export RESTIC_REPOSITORY="b2:mnussbaum-machine-backups"
-export B2_ACCOUNT_KEY="$(pass backblaze_keys/bodie_restic_backup_key)"
-export B2_ACCOUNT_ID="$(pass backblaze_keys/bodie_restic_backup_key_id)"
-export RESTIC_PASSWORD_COMMAND="pass show restic_backup_password"
+hostname_short="$(hostname -s)"
+export B2_ACCOUNT_KEY="$(cat "${CREDENTIALS_DIRECTORY}/${hostname_short}_restic_backblaze_key")"
+export B2_ACCOUNT_ID="$(cat "${CREDENTIALS_DIRECTORY}/${hostname_short}_restic_backblaze_key_id")"
+export RESTIC_PASSWORD_FILE="${CREDENTIALS_DIRECTORY}/restic_backup_password"
 
 # I manually ran "restic init" with these configs first
 
