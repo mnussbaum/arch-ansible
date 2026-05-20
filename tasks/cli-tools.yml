@@ -50,6 +50,7 @@
       - fd
       - yq
       - curl
+      - socat
 
 - name: CLI Tools | Install fzf helper scripts
   copy:
