@@ -14,6 +14,22 @@
     group: "{{ user_name }}"
     recurse: true
 
+- name: Create secrets dir in arch-ansible repo
+  file:
+    path: "{{ ansible_dest_dir }}/secrets"
+    state: directory
+    mode: "0700"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
+
+- name: Copy vault-password into arch-ansible repo
+  copy:
+    src: "{{ playbook_dir }}/secrets/vault-password"
+    dest: "{{ ansible_dest_dir }}/secrets/vault-password"
+    mode: "0600"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
+
 - name: Add tmux config
   copy:
     src: tmux.conf

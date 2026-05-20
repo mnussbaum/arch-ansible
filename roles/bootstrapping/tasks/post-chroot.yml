@@ -13,6 +13,18 @@
     dest: "{{ mounted_arch_ansible_dest }}"
     version: HEAD
 
+- name: Create secrets dir on provisioned machine
+  file:
+    path: "{{ mounted_arch_ansible_dest }}/secrets"
+    state: directory
+    mode: "0700"
+
+- name: Copy vault-password to provisioned machine
+  copy:
+    src: "{{ playbook_dir }}/secrets/vault-password"
+    dest: "{{ mounted_arch_ansible_dest }}/secrets/vault-password"
+    mode: "0600"
+
 - name: Switch back into chroot to fix file permissions
   set_fact:
     ansible_host: /mnt

@@ -109,6 +109,26 @@
           become: true
           changed_when: true
 
+        - name: Install customize_airootfs.sh to restore exact git-tracked permissions
+          copy:
+            dest: "{{ airootfs }}/root/customize_airootfs.sh"
+            mode: "0755"
+            content: |
+              #!/bin/bash
+              set -e
+              git -C /root/arch-ansible ls-files -z --stage | \
+              while IFS= read -r -d '' line; do
+                  mode="${line:0:6}"
+                  file="${line##*$'\t'}"
+                  if [[ "$mode" == "100755" ]]; then
+                      chmod 755 "/root/arch-ansible/$file"
+                  else
+                      chmod 644 "/root/arch-ansible/$file"
+                  fi
+              done
+              chmod 700 /root/arch-ansible/secrets
+              chmod 600 /root/arch-ansible/secrets/vault-password
+
         - name: Build ISO
           become: true
           command: "mkarchiso -v -w {{ iso_build_dir }}/work -o {{ iso_build_dir }}/out {{ iso_build_dir }}"
