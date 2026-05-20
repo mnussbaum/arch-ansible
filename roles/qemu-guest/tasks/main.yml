@@ -30,3 +30,40 @@
     fstype: 9p
     opts: trans=virtio,version=9p2000.L,rw
     state: mounted
+
+- name: qemu guest | Load vsock modules
+  become: true
+  copy:
+    content: "vsock\nvmw_vsock_virtio_transport"
+    dest: /etc/modules-load.d/vsock.conf
+
+- name: qemu guest | Deploy pcscd vsock forwarding service
+  become: true
+  copy:
+    src: pcscd-vsock-forward.service
+    dest: /etc/systemd/system/pcscd-vsock-forward.service
+    mode: "0644"
+
+- name: qemu guest | Enable pcscd vsock forwarding service
+  become: true
+  systemd:
+    name: pcscd-vsock-forward.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: qemu guest | Mask pcscd service
+  become: true
+  systemd:
+    name: pcscd.service
+    masked: true
+    enabled: false
+    state: stopped
+
+- name: qemu guest | Mask pcscd socket
+  become: true
+  systemd:
+    name: pcscd.socket
+    masked: true
+    enabled: false
+    state: stopped

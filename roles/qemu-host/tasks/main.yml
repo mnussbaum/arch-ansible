@@ -22,3 +22,11 @@
   copy:
     content: "virtio"
     dest: "/etc/modules-load.d/virtio.conf"
+
+- name: qemu host | Enable vhost_vsock module
+  become: true
+  notify:
+    - Regenerate mkinitcpio ramdisk
+  copy:
+    content: "vhost_vsock"
+    dest: "/etc/modules-load.d/vhost_vsock.conf"

@@ -81,3 +81,7 @@ bootstrap_packages:
   - iwd
   - iptables
   - wireless_tools
+  - socat
+  - pass
+  - pcsclite
+  - ccid

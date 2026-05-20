@@ -40,3 +40,5 @@
 - Label physical media
 - Test accessing yubikey from live ISO on physical machine
 - Remove 2fa backups from pass
+- Rotate back blaze bodie key
+- Test offline iso build and install

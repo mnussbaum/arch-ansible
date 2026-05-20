@@ -4,8 +4,11 @@ set -o errexit
 set -o nounset
 
 source bin/_qemu_common.sh
-exec qemu-system-x86_64 \
+
+start_pcscd_vsock_relay
+trap stop_pcscd_vsock_relay EXIT INT TERM
+
+qemu-system-x86_64 \
   "${common_qemu_args[@]}" \
-  "${yubikey_usb_args[@]}" \
   "${gpg_usb_args[@]}" \
   "${system_disk_args[@]}"

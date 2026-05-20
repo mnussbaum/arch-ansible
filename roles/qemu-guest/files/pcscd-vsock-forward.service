@@ -1,0 +1,19 @@
+[Unit]
+Description=Forward pcscd socket from QEMU host via vsock
+DefaultDependencies=no
+After=sysinit.target
+Before=pcscd.socket pcscd.service
+ConditionVirtualization=kvm
+Conflicts=pcscd.service pcscd.socket
+
+[Service]
+Type=simple
+RuntimeDirectory=pcscd
+RuntimeDirectoryMode=0755
+ExecStartPre=-/bin/rm -f /run/pcscd/pcscd.comm
+ExecStart=/usr/bin/socat UNIX-LISTEN:/run/pcscd/pcscd.comm,fork,reuseaddr,mode=0777 VSOCK-CONNECT:2:62001
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
