@@ -1,0 +1,20 @@
+# vim:ft=yaml.ansible:
+---
+- name: GTK | Install themes
+  become: true
+  package:
+    state: present
+    name:
+      - gnome-themes-extra
+
+- name: GTK | Create config dir
+  become: true
+  file:
+    path: /etc/gtk-3.0
+    state: directory
+
+- name: GTK | Install config
+  become: true
+  template:
+    src: gtk_3_0_settings.ini.j2
+    dest: /etc/gtk-3.0/settings.ini

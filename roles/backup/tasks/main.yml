@@ -1,0 +1,65 @@
+# vim:ft=yaml.ansible:
+---
+- name: backup | Install packages
+  package:
+    state: present
+    name:
+      - fuse2
+      - restic
+  become: true
+
+- name: backup | Install restic backblaze backup script
+  become: true
+  copy:
+    src: restic-backblaze-backup
+    dest: /usr/local/bin/restic-backblaze-backup
+    mode: a+x
+
+- name: backup | Install restic backblaze backup service
+  copy:
+    src: restic-backblaze-backup.service
+    dest: "{{ user_config_dir }}/systemd/user/restic-backblaze-backup.service"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: backup | Install restic backblaze backup timer
+  copy:
+    src: restic-backblaze-backup.timer
+    dest: "{{ user_config_dir }}/systemd/user/restic-backblaze-backup.timer"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: backup | Enable restic backblaze credential sockets
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: "pass-credential@{{ item }}.socket"
+    scope: user
+    daemon-reload: true
+  loop:
+    - "{{ inventory_hostname }}_restic_backblaze_key"
+    - "{{ inventory_hostname }}_restic_backblaze_key_id"
+    - restic_backup_password
+
+- name: backup | Enable restic backblaze backup timer
+  become: true
+  become_user: "{{ user.name }}"
+  systemd:
+    enabled: true
+    name: restic-backblaze-backup.timer
+    scope: user
+    daemon-reload: true
+# To take a backup:
+#
+# * sudo mount /dev/sda1 /tmp/usb
+# * sudo restic --repo /tmp/usb backup ~/{Desktop,Documents,Sync,.password-store,.ssh,.gnupg}
+#
+# TODO:
+#
+# * Make the script configurable to work with a local USB backup in addition to
+#   the cloud
+# * Get the backblaze configuration into terraform. Connect ansible to TF output
+#   to pull the bucket name
+# * Script the seeding of data during initial bootstrapping by restoring from
+#   a backup

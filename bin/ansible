@@ -14,6 +14,10 @@ if [[ -z "${NO_ASK_BECOME_PASS:-}" ]] ; then
   maybe_ask_become_pass="--ask-become-pass"
 fi
 
+# Compile pyc files to avoid race condition errors on initial run compiling
+# concurrent roles
+ansible --version >/dev/null 2>&1
+
 exec ansible-playbook "${ANSIBLE_PLAYBOOK:-playbook.yml}" \
   --verbose \
   --limit ${HOSTNAME:-$(hostname)} \

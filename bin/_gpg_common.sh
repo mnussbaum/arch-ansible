@@ -15,7 +15,7 @@ USB_MOUNT=""
 setup_gnupghome() {
   local gnupghome="$1"
   chmod 700 "$gnupghome"
-  cp files/scdaemon.conf "$gnupghome/scdaemon.conf"
+  cp roles/gpg/files/scdaemon.conf "$gnupghome/scdaemon.conf"
 
   # Pinentry script that supplies the card admin PIN without prompting.
   # _write_card_admin_pin() must be called before any card operations.

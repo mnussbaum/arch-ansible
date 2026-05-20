@@ -1,0 +1,60 @@
+# vim:ft=yaml.ansible:
+---
+- name: user | Create wheel group
+  become: true
+  group: name=wheel state=present
+
+- name: user | Configure sudoers
+  become: true
+  copy:
+    src: "ansible_sudoers"
+    dest: /etc/sudoers.d/ansible
+    validate: "/usr/bin/visudo -cf %s"
+
+- name: user | Create individual user group
+  become: true
+  group:
+    name: "{{ user.group }}"
+    state: present
+
+- name: user | Create user
+  become: true
+  user:
+    name: "{{ user.name }}"
+    group: "{{ user.group }}"
+    groups:
+      - "{{ user.group }}"
+      - input
+      - wheel
+    password: "{{ user.password | password_hash('sha512') }}"
+    shell: "{{ user.shell }}"
+    update_password: on_create
+    append: true
+
+- name: user | Create data dir
+  file:
+    path: "{{ user_data_dir }}"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory
+
+- name: user | Create user config dir
+  file:
+    path: "{{ user_config_dir }}"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory
+
+- name: user | Create user source code dir
+  file:
+    path: "/home/{{ user.name }}/src"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory
+
+- name: user | Create user systemd dir
+  file:
+    path: "{{ user_config_dir }}/systemd/user"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory

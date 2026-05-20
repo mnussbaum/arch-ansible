@@ -45,16 +45,20 @@
             - extra.db
 
         - name: Install vconsole configuration
-          import_tasks: tasks/vconsole.yml
+          import_role:
+            name: vconsole
           vars:
             vconsole_install_root: "{{ airootfs }}"
         - name: Install network configuration
-          import_tasks: tasks/network_configuration.yml
+          import_role:
+            name: network_configuration
           vars:
             network_install_root: "{{ airootfs }}"
 
         - name: Install files into root user dir
-          import_tasks: tasks/bootstrapping/install-user-files.yml
+          import_role:
+            name: bootstrapping
+            tasks_from: install-user-files
           become: true
           vars:
             user_home_dir: "{{ root_user_dir }}"

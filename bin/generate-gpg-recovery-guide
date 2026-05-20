@@ -16,7 +16,7 @@ source bin/_gpg_common.sh
 DEVICE="${1:?Usage: $0 <primary-key-usb-device> [output.pdf]}"
 OUTPUT="${2:-secrets/gpg-recovery-guide.pdf}"
 HTML_TMP=$(mktemp --suffix=.html)
-PUBKEY_FILE="files/gpg-pubkey.asc"
+PUBKEY_FILE="roles/gpg/files/gpg-pubkey.asc"
 VAULT_PASSWORD_FILE="secrets/vault-password"
 
 if [[ ! -f "$PUBKEY_FILE" ]]; then

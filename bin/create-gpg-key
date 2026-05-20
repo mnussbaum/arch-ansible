@@ -8,7 +8,7 @@
 #
 # The key UID is read from the Ansible variable user.gpg_key_uid.
 # After completion:
-#   - files/gpg-pubkey.asc is written (commit it)
+#   - roles/gpg/files/gpg-pubkey.asc is written (commit it)
 #   - <device> holds primary-key.asc and revocation-cert.asc (store offline)
 #
 # Run bin/renew-gpg-subkeys annually to extend subkey expiry.
@@ -60,8 +60,8 @@ echo "    Store $DEVICE's revocation-cert.asc separately from the primary key."
 echo "==> Backing up primary key to USB..."
 "${GPG_BATCH[@]}" --armor --export-secret-keys "$FINGERPRINT" > "$USB_MOUNT/primary-key.asc"
 
-echo "==> Exporting public key to files/gpg-pubkey.asc..."
-gpg --armor --export "$FINGERPRINT" > files/gpg-pubkey.asc
+echo "==> Exporting public key to roles/gpg/files/gpg-pubkey.asc..."
+gpg --armor --export "$FINGERPRINT" > roles/gpg/files/gpg-pubkey.asc
 
 echo "==> Creating subkey backup for YubiKey programming..."
 "${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
@@ -90,5 +90,5 @@ echo "Next steps:"
 echo "  1. Add the SSH public key to GitHub/GitLab:"
 echo "       gpg --export-ssh-key $FINGERPRINT"
 echo "  2. Commit the public key and keygrips:"
-echo "       git add files/gpg-pubkey.asc group_vars/all/gpg_auth_keygrips.yml"
+echo "       git add roles/gpg/files/gpg-pubkey.asc group_vars/all/gpg_auth_keygrips.yml"
 echo "       git commit -m 'Add GPG public key'"

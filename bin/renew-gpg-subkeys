@@ -7,7 +7,7 @@
 #
 # Run annually with the offline USB plugged in. The primary key is imported into
 # a temporary GNUPGHOME so the main keyring is never touched. After the
-# ceremony, files/gpg-pubkey.asc is updated with the new expiry and should
+# ceremony, roles/gpg/files/gpg-pubkey.asc is updated with the new expiry and should
 # be committed.
 
 set -o errexit
@@ -42,8 +42,8 @@ echo "==> Fingerprint: $FINGERPRINT"
 echo "==> Extending all subkey expiry by 1 year..."
 "${GPG_BATCH[@]}" --yes --quick-set-expire "$FINGERPRINT" 1y "*"
 
-echo "==> Exporting updated public key to files/gpg-pubkey.asc..."
-gpg --armor --export "$FINGERPRINT" > files/gpg-pubkey.asc
+echo "==> Exporting updated public key to roles/gpg/files/gpg-pubkey.asc..."
+gpg --armor --export "$FINGERPRINT" > roles/gpg/files/gpg-pubkey.asc
 
 echo "==> Creating subkey backup..."
 "${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
@@ -52,4 +52,4 @@ program_all_yubikeys
 
 echo ""
 echo "Commit the updated public key:"
-echo "  git add files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys'"
+echo "  git add roles/gpg/files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys'"

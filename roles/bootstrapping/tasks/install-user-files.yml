@@ -1,0 +1,23 @@
+# vim:ft=yaml.ansible:
+---
+- name: Clone arch-ansible repo
+  git:
+    repo: "{{ playbook_dir }}"
+    dest: "{{ ansible_dest_dir }}"
+    version: HEAD
+
+- name: Fix ownership on arch-ansible repo
+  file:
+    state: directory
+    path: "{{ ansible_dest_dir }}"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
+    recurse: true
+
+- name: Add tmux config
+  copy:
+    src: tmux.conf
+    dest: "{{ user_home_dir }}/.tmux.conf"
+    owner: "{{ user_name }}"
+    group: "{{ user_name }}"
+

@@ -1,0 +1,33 @@
+# vim:ft=yaml.ansible:
+---
+- name: pdf | Install packages
+  package:
+    state: present
+    name:
+      - zathura
+      - zathura-pdf-poppler
+      - xournalpp
+  become: true
+
+- name: pdf | Create zathura config dir
+  file:
+    path: "{{ user_config_dir }}/zathura"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    state: directory
+
+- name: pdf | Generate base16 zathura configs
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: zathura
+    schemes_source: "{{ base16['schemes_source'] }}"
+    templates_source: "{{ base16['templates_source'] }}"
+  register: base16_zathura
+  tags: [base16]
+
+- name: pdf | Install zathura config
+  template:
+    src: zathurarc.j2
+    dest: "{{ user_config_dir }}/zathura/zathurarc"
+  tags: [base16]

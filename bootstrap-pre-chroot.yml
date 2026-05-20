@@ -2,105 +2,23 @@
 ---
 - hosts: all
   tasks:
-    - import_tasks: tasks/bootstrapping/create-partitions.yml
-    - import_tasks: tasks/bootstrapping/luks-format-and-open.yml
+    - import_role:
+        name: bootstrapping
+        tasks_from: create-partitions
+    - import_role:
+        name: bootstrapping
+        tasks_from: luks-format-and-open
       tags: [rebuild-boot-parition, mount-partitions]
-
-    - name: Create physical volumes and volume groups for encrypted partitions
-      lvg:
-        vg: "{{ item.volume_group_name }}"
-        pvs: "/dev/mapper/{{ item.volume_group_name }}"
-      become: true
-      loop: "{{ partitions | dict_values }}"
-      when: item.encrypted
-
-    # This is apparently not idempotent for partition 3
-    # claims "Sorry, no shrinking of root to 0 permitted"
-    - name: Create logical volumes for encrypted partitions
-      lvol:
-        vg: "{{ item.volume_group_name }}"
-        lv: "{{ item.logical_volume_name }}"
-        size: 100%VG
-        shrink: false
-      become: true
-      loop: "{{ partitions | dict_values }}"
-      when: item.encrypted
-
-    # This is primarily useful for rebuilding and mounting the boot partition,
-    # but shouldn't hurt initial bootstrapping
-    - name: Activate logical volumes for encrypted partitions
-      lvol:
-        vg: "{{ item.volume_group_name }}"
-        lv: "{{ item.logical_volume_name }}"
-        active: true
-      become: true
-      loop: "{{ partitions | dict_values }}"
-      when: item.encrypted
+    - import_role:
+        name: bootstrapping
+        tasks_from: setup-lvm
+    - import_role:
+        name: bootstrapping
+        tasks_from: create-partition-filesystems
+    - import_role:
+        name: bootstrapping
+        tasks_from: mount-partitions
       tags: [rebuild-boot-parition, mount-partitions]
-
-    - import_tasks: tasks/bootstrapping/create-partition-filesystems.yml
-
-    - import_tasks: tasks/bootstrapping/mount-partitions.yml
-      tags: [rebuild-boot-parition, mount-partitions]
-
-    - name: Install pacman mirrorlist
-      copy:
-        src: files/pacman_bootstrap_mirrorlist
-        dest: /etc/pacman.d/mirrorlist
-
-    - name: Create pacman DB directory
-      file:
-        path: /var/lib/pacman/sync
-        state: directory
-    - name: Install pacman DBs
-      copy:
-        src: ../pacman_dbs/{{ item }}
-        dest: /var/lib/pacman/sync/{{ item }}
-      loop:
-        - core.db
-        - extra.db
-
-    - name: Add pkg-cache as pacman CacheDir
-      lineinfile:
-        path: /etc/pacman.conf
-        insertafter: '^\[options\]'
-        line: 'CacheDir = /root/pkg-cache/'
-      become: true
-
-    - name: Expand live environment cowspace for package downloads
-      command: mount -o remount,size=4G /run/archiso/cowspace
-      become: true
-
-    - name: Pacstrap
-      command: "pacstrap -c {{ partitions['root'].mount_point }} {{ bootstrap_packages | join(' ') }}"
-      become: true
-
-    - name: Generate fstab contents with mounts
-      command: "genfstab -U -p {{ partitions['root'].mount_point }}"
-      register: genfstab_result
-
-    - name: Write fstab file in chroot
-      copy:
-        content: "{{ genfstab_result.stdout }}"
-        dest: "{{ partitions['root'].mount_point }}/etc/fstab"
-      become: true
-
-    - name: Create password-store parent directory on provisioned machine
-      file:
-        path: "{{ partitions['root'].mount_point }}/home/{{ user.name }}/.local/share"
-        state: directory
-        mode: "0755"
-      become: true
-
-    - name: Copy password-store from install media to provisioned machine
-      synchronize:
-        src: /root/password-store/
-        dest: "{{ partitions['root'].mount_point }}/home/{{ user.name }}/.local/share/password-store"
-        perms: false
-
-    - name: Configure bootstrapping facts in the chroot
-      command: |
-        systemd-firstboot --root {{ partitions['root'].mount_point }}
-        --copy-locale
-        --copy-timezone
-        --hostname {{ new_hostname }}
+    - import_role:
+        name: bootstrapping
+        tasks_from: pacstrap

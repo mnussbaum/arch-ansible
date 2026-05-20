@@ -26,7 +26,9 @@
 - hosts: all
   tasks:
     - name: Install files into new user's home dir
-      import_tasks: tasks/bootstrapping/install-user-files.yml
+      import_role:
+        name: bootstrapping
+        tasks_from: install-user-files
       tags: [bootstrap]
       become: true
       vars:

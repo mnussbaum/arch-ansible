@@ -1,0 +1,32 @@
+# vim:ft=yaml.ansible:
+---
+- name: Ruby | Install packages
+  package:
+    state: present
+    name:
+      - ruby-irb
+      - ruby-bundler
+      - rubocop
+      - ruby-lsp
+  become: true
+
+- name: Ruby | Install global gemrc
+  become: true
+  copy:
+    src: gemrc
+    dest: /etc/gemrc
+
+- name: Ruby | Install irb config
+  copy:
+    src: irbrc
+    dest: "/home/{{ user.name }}/.irbrc"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Ruby | Install rubocop config
+  become: true
+  copy:
+    src: rubocop.yml
+    dest: "/home/{{ user.name }}/.rubocop.yml"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"

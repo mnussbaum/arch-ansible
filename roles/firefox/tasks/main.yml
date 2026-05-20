@@ -1,0 +1,83 @@
+# vim:ft=yaml.ansible:
+---
+- name: Firefox | Install HW acceleration driver packages
+  become: true
+  package:
+    state: present
+    name: libva-intel-driver
+  when: ansible_facts["architecture"] is not match("arm.*")
+
+- name: Firefox | Install packages
+  package:
+    state: present
+    name:
+      - firefox
+      - mozlz4-bin
+      - firefox-ublock-origin
+      - firefox-tridactyl
+      - firefox-tridactyl-native-bin
+  become: true
+
+- name: Firefox | Make default profile
+  file:
+    path: "{{ user_home_dir }}/.mozilla/firefox/default.profile"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Firefox | Configure firefox profiles.ini
+  copy:
+    dest: "{{ user_home_dir }}/.mozilla/firefox/profiles.ini"
+    src: firefox-profiles.ini
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Firefox | Sideload install extensions
+  firefox_ext_sideloader:
+    path: "{{ item }}"
+  with_fileglob:
+    - /usr/lib/firefox/browser/extensions/*.xpi
+
+- name: Firefox | Configure firefox user.js
+  template:
+    dest: "{{ user_home_dir }}/.mozilla/firefox/default.profile/user.js"
+    src: firefox-user.js.j2
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Firefox | Create chrome config dir
+  file:
+    path: "{{ user_home_dir }}/.mozilla/firefox/default.profile/chrome"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Firefox | Configure firefox userChrome.css
+  template:
+    dest: "{{ user_home_dir }}/.mozilla/firefox/default.profile/chrome/userChrome.css"
+    src: firefox-userChrome.css.j2
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+  tags: [base16]
+
+- name: Firefox | Configure firefox userContent.css
+  template:
+    dest: "{{ user_home_dir }}/.mozilla/firefox/default.profile/chrome/userContent.css"
+    src: firefox-userContent.css.j2
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+  tags: [base16]
+
+- name: Firefox | Create tridactyl config directory
+  file:
+    path: "{{ user_config_dir }}/tridactyl"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
+- name: Firefox | Create tridactyl config file
+  copy:
+    src: tridactylrc
+    dest: "{{ user_config_dir }}/tridactyl/tridactylrc"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"

@@ -47,8 +47,8 @@ echo "==> Backing up primary key to USB..."
 echo "==> Generating revocation certificate..."
 printf 'y\n0\n\ny\n' | gpg --command-fd 0 --gen-revoke "$FINGERPRINT" > "$USB_MOUNT/revocation-cert.asc"
 
-echo "==> Exporting public key to files/gpg-pubkey.asc..."
-gpg --armor --export "$FINGERPRINT" > files/gpg-pubkey.asc
+echo "==> Exporting public key to roles/gpg/files/gpg-pubkey.asc..."
+gpg --armor --export "$FINGERPRINT" > roles/gpg/files/gpg-pubkey.asc
 
 echo "==> Creating subkey backup for YubiKey programming..."
 "${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
