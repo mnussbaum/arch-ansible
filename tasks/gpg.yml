@@ -76,6 +76,17 @@
     group: "{{ user.group }}"
   with_items: "{{ gpg_agent_service_configs.files }}"
 
+- name: GPG | Deploy public key file
+  become: true
+  become_user: "{{ user.name }}"
+  copy:
+    src: files/gpg-pubkey.asc
+    dest: "{{ user_home_dir }}/.gnupg/pubkey.asc"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    mode: 0600
+  register: gpg_pubkey_file
+
 - name: GPG | Check if GPG key is in keyring
   become: true
   become_user: "{{ user.name }}"
@@ -87,10 +98,8 @@
 - name: GPG | Import public key
   become: true
   become_user: "{{ user.name }}"
-  command: gpg --import
-  args:
-    stdin: "{{ lookup('file', 'files/gpg-pubkey.asc') }}"
-  when: gpg_key_check.rc != 0
+  command: gpg --import "{{ user_home_dir }}/.gnupg/pubkey.asc"
+  when: gpg_pubkey_file.changed or gpg_key_check.rc != 0
 
 - name: GPG | Set ultimate trust on own key
   become: true
