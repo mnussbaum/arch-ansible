@@ -27,12 +27,10 @@ auth subkey.
 
 ```
 bin/            Bootstrap and key ceremony scripts
-tasks/          Ansible task files (one per subsystem)
-tasks/bootstrapping/  Disk partition, LUKS, and filesystem tasks
+roles/          Ansible roles (one per subsystem, each with tasks/, files/, templates/)
+roles/bootstrapping/  Disk partition, LUKS, and filesystem tasks
 host_vars/      Per-machine configuration (partitions, monitors, WiFi)
 group_vars/     Shared variables (user, fonts, theming, packages)
-files/          Static config files deployed by Ansible
-templates/      Jinja2 templates for generated configs
 secrets/        Ansible Vault password (secrets themselves are encrypted in group_vars/)
 vendor/roles/   External Ansible roles
 assets/         Wallpapers, fonts, GRUB theme assets
@@ -306,7 +304,7 @@ Example:
 When developing new configuration:
 
 1. Make changes directly on the machine to verify they work.
-2. Encode the changes in the relevant task file under `tasks/`.
+2. Encode the changes in the relevant role under `roles/`.
 3. Revert the direct changes (or use a fresh QEMU instance).
 4. Run Ansible and confirm the configuration applies correctly.
 5. Run Ansible a second time and confirm it is idempotent (no changes reported).

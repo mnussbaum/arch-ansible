@@ -39,5 +39,4 @@
 - Prepare physical recovery packages
 - Label physical media
 - Test accessing yubikey from live ISO on physical machine
-- Test ISO perms changes
 - Remove 2fa backups from pass
