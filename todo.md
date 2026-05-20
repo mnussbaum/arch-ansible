@@ -4,7 +4,7 @@
 1. Repartition windows partition
 1. Specify partitions as sizes
 1. Make it easier to add a new host, vars, hosts.yml
-1. Host specific secret structure in pass
+1. Host specific secret structure in pass. Document host specific secrets
 
 ### Live image
 
