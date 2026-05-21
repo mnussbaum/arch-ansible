@@ -37,6 +37,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+REAL_GNUPGHOME="${GNUPGHOME:-$HOME/.gnupg}"
 setup_gnupghome "$RENEWAL_HOME"
 export GNUPGHOME="$RENEWAL_HOME"
 
@@ -62,6 +63,18 @@ echo "==> Backing up primary key to USB..."
 
 echo "==> Exporting public key to roles/gpg/files/gpg-pubkey.asc..."
 gpg --armor --export "$FINGERPRINT" > roles/gpg/files/gpg-pubkey.asc
+
+echo "==> Migrating pass store to new key..."
+PASS_DIR="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+if [[ -d "$PASS_DIR" ]]; then
+  echo "    Found store at $PASS_DIR."
+  echo "    You may be prompted for your current YubiKey PIN to decrypt existing entries."
+  GNUPGHOME="$REAL_GNUPGHOME" gpg --import roles/gpg/files/gpg-pubkey.asc
+  GNUPGHOME="$REAL_GNUPGHOME" pass init "$FINGERPRINT"
+  echo "==> Pass store migrated."
+else
+  echo "    No pass store found at $PASS_DIR, skipping."
+fi
 
 echo "==> Creating subkey backup for YubiKey programming..."
 "${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
