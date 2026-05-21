@@ -31,25 +31,30 @@ case "$1" in
             exit 0
         fi
         log "post: scheduling DPMS toggle (user=$user)"
-        # Run in background so the hook exits immediately and doesn't block resume.
-        # Retry until sway accepts the command: sway re-acquires DRM devices ~13s
-        # after resume, but our first attempt at ~6s gets a quick error response.
-        (
-            attempt=0
-            while [ "$attempt" -lt 20 ]; do
-                attempt=$((attempt + 1))
-                sleep 3
-                if su -c "swaymsg -s '$swaysock' 'output * dpms off'" "$user" 2>/dev/null; then
-                    logger -t sway-resume-dpms "post: dpms off succeeded (attempt $attempt)"
-                    sleep 1
-                    su -c "swaymsg -s '$swaysock' 'output * dpms on'" "$user" \
-                        || logger -t sway-resume-dpms "post: dpms on failed"
-                    logger -t sway-resume-dpms "post: DPMS toggle complete"
-                    exit 0
-                fi
-                logger -t sway-resume-dpms "post: dpms off not ready (attempt $attempt), retrying"
-            done
-            logger -t sway-resume-dpms "post: dpms toggle failed after 20 attempts"
-        ) &
+        # Spawn the retry loop as an independent transient unit so it survives
+        # past systemd-suspend-then-hibernate.service exit. A bare & subshell
+        # is killed when systemd cleans up the sleep service's cgroup (~3s after
+        # the post hook fires), before the first swaymsg attempt can run.
+        systemd-run --no-block --collect \
+            /usr/lib/systemd/system-sleep/sway-resume-dpms dpms-toggle "$user" "$swaysock"
+        ;;
+    dpms-toggle)
+        user="$2"
+        swaysock="$3"
+        attempt=0
+        while [ "$attempt" -lt 20 ]; do
+            attempt=$((attempt + 1))
+            sleep 3
+            if su -c "swaymsg -s '$swaysock' 'output * dpms off'" "$user" 2>/dev/null; then
+                log "dpms off succeeded (attempt $attempt)"
+                sleep 1
+                su -c "swaymsg -s '$swaysock' 'output * dpms on'" "$user" \
+                    || log "dpms on failed"
+                log "DPMS toggle complete"
+                exit 0
+            fi
+            log "dpms off not ready (attempt $attempt), retrying"
+        done
+        log "dpms toggle failed after 20 attempts"
         ;;
 esac
