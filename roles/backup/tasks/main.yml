@@ -15,6 +15,13 @@
     dest: /usr/local/bin/restic-backblaze-backup
     mode: a+x
 
+- name: backup | Install restic backblaze backup notify service
+  copy:
+    src: restic-backblaze-backup-notify.service
+    dest: "{{ user_config_dir }}/systemd/user/restic-backblaze-backup-notify.service"
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+
 - name: backup | Install restic backblaze backup service
   copy:
     src: restic-backblaze-backup.service

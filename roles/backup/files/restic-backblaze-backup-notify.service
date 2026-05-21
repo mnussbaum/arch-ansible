@@ -1,0 +1,6 @@
+[Unit]
+Description=Backblaze restic backup start notification
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/notify-send --urgency=normal -a "Backblaze Backup" "Backblaze backup starting" "You might be prompted for credentials"
