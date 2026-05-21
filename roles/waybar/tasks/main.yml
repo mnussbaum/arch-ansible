@@ -44,6 +44,8 @@
     daemon-reload: true
 
 - name: Build waybar-sway-workspace-output-manager
+  become: true
+  become_user: "{{ user.name }}"
   command: cargo install --git=https://github.com/mnussbaum/waybar-sway-workspace-output-manager
   args:
     creates: "/home/{{ user.name }}/.cargo/bin/waybar-sway-workspace-output-manager"

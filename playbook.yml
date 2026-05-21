@@ -5,9 +5,11 @@
     - name: Regenerate grub.cfg
       command: grub-mkconfig -o /boot/grub/grub.cfg
       become: true
+      when: not (live_iso | default(false))
     - name: Regenerate mkinitcpio ramdisk
       command: mkinitcpio -p linux
       become: true
+      when: not (live_iso | default(false))
   roles:
     - mnussbaum.base16-builder-ansible
     - mnussbaum.firefox_ext_sideloader
@@ -46,6 +48,7 @@
     - import_role:
         name: mkinitcpio
       tags: [bootstrap, rebuild-boot-parition]
+      when: not (live_iso | default(false))
     - import_role:
         name: trim
     - import_role:
@@ -116,7 +119,7 @@
       when: qemu_host
     - import_role:
         name: qemu-guest
-      when: ansible_facts["virtualization_type"] == "kvm" and ansible_facts["virtualization_role"] == "guest"
+      when: (ansible_facts["virtualization_type"] == "kvm" and ansible_facts["virtualization_role"] == "guest") or (qemu_live_iso | default(false))
     - import_role:
         name: virtualbox-guest
       when: ansible_facts["virtualization_type"] == "virtualbox" and ansible_facts["virtualization_role"] == "guest"
@@ -164,12 +167,14 @@
     - import_role:
         name: firefox
     - import_role:
-        name: eeek
-      tags: [eeek]
-    - import_role:
-        name: postgres
-      tags: [eeek]
+        name: claude
     - import_role:
         name: beancount
     - import_role:
-        name: claude
+        name: eeek
+      tags: [eeek]
+      when: not (live_iso | default(false))
+    - import_role:
+        name: postgres
+      tags: [eeek]
+      when: not (live_iso | default(false))

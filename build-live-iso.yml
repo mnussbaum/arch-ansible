@@ -1,0 +1,233 @@
+# vim:ft=yaml.ansible:
+---
+- hosts: all
+  tasks:
+    - name: Create temp build dir
+      tempfile:
+        state: directory
+        suffix: archiso-live-build
+        path: /var/tmp
+      register: iso_build_temp_dir
+
+    - set_fact:
+        iso_build_dir: "{{ iso_build_temp_dir.path }}"
+    - set_fact:
+        airootfs: "{{ iso_build_dir }}/airootfs"
+    - set_fact:
+        live_user_home: "{{ airootfs }}/home/{{ user.name }}"
+
+    - block:
+        - name: Populate temp dir from releng
+          synchronize:
+            src: /usr/share/archiso/configs/releng/
+            dest: "{{ iso_build_dir }}"
+            perms: false
+
+        - name: Ignore iptables-legacy to resolve libxtables provider conflict
+          lineinfile:
+            path: "{{ iso_build_dir }}/pacman.conf"
+            regexp: '^#?IgnorePkg'
+            line: 'IgnorePkg = iptables-legacy'
+
+        - name: Add ansible deps and bootstrap_packages to packages.x86_64
+          lineinfile:
+            dest: "{{ iso_build_dir }}/packages.x86_64"
+            line: "{{ item }}"
+          loop: "{{ bootstrap_packages + ['ansible', 'python-passlib'] }}"
+
+        - name: Install network configuration into airootfs overlay
+          import_role:
+            name: network_configuration
+          vars:
+            network_install_root: "{{ airootfs }}"
+
+        - name: Copy arch-ansible repo into airootfs overlay
+          synchronize:
+            src: "{{ playbook_dir }}/"
+            dest: "{{ live_user_home }}/arch-ansible"
+            perms: false
+            rsync_opts:
+              - "--exclude=.git"
+
+        - name: Create secrets dir in arch-ansible copy
+          become: true
+          file:
+            path: "{{ live_user_home }}/arch-ansible/secrets"
+            state: directory
+            mode: "0700"
+
+        - name: Copy vault password into arch-ansible copy
+          become: true
+          copy:
+            src: "{{ playbook_dir }}/secrets/vault-password"
+            dest: "{{ live_user_home }}/arch-ansible/secrets/vault-password"
+            mode: "0600"
+
+        - name: Check if password-store is available locally
+          stat:
+            path: "{{ ansible_env.HOME }}/.local/share/password-store"
+          register: local_password_store
+
+        - name: Create user data dir in airootfs overlay for password-store
+          become: true
+          file:
+            path: "{{ live_user_home }}/.local/share"
+            state: directory
+            mode: "0755"
+          when: local_password_store.stat.exists
+
+        - name: Pre-copy password-store so secrets git clone is skipped offline
+          become: true
+          synchronize:
+            src: "{{ ansible_env.HOME }}/.local/share/password-store/"
+            dest: "{{ live_user_home }}/.local/share/password-store"
+            perms: false
+          when: local_password_store.stat.exists
+
+        - name: Write customize_airootfs.sh to run ansible inside the chroot
+          become: true
+          copy:
+            dest: "{{ airootfs }}/root/customize_airootfs.sh"
+            mode: "0755"
+            content: |
+              #!/bin/bash
+              set -eo pipefail
+              exec 2>&1
+
+              echo "=== Live ISO build: installing systemctl shim ==="
+
+              # Wrap systemctl so ansible service tasks don't fail in the chroot
+              # (no running systemd). Enable/disable pass through to create real
+              # unit symlinks. Status checks are faked as active so ansible
+              # doesn't retry or abort after a service "start".
+              # User-scope enables are no-ops; WantedBy symlinks created below.
+              mv /usr/bin/systemctl /usr/bin/systemctl.real
+              cat > /usr/bin/systemctl << 'SHIM_EOF'
+              #!/bin/bash
+              REAL=/usr/bin/systemctl.real
+              subcommand=""
+              for arg in "$@"; do
+                case "$arg" in
+                  --user|--system|--global|--now|-*) continue ;;
+                  *) subcommand="$arg"; break ;;
+                esac
+              done
+              case "$subcommand" in
+                start|stop|restart|reload|try-restart|force-reload|condrestart)
+                  echo "[live-iso-build] systemctl $* (no-op in chroot)" >&2; exit 0 ;;
+                daemon-reload)
+                  echo "[live-iso-build] daemon-reload (no-op in chroot)" >&2; exit 0 ;;
+                show)
+                  echo "ActiveState=active"
+                  echo "SubState=running"
+                  echo "LoadState=loaded"
+                  echo "ActiveEnterTimestamp=Wed 2024-01-01 00:00:00 UTC"
+                  echo "UnitFileState=enabled"
+                  echo "UnitFilePreset=enabled"
+                  echo "NeedDaemonReload=no"
+                  exit 0 ;;
+                is-active) echo "active"; exit 0 ;;
+                enable)
+                  if [[ "$*" == *"--user"* ]]; then
+                    echo "[live-iso-build] systemctl --user enable (no-op, symlinks created later)" >&2; exit 0
+                  fi
+                  exec "$REAL" "$@" ;;
+                is-enabled)
+                  if [[ "$*" == *"--user"* ]]; then echo "enabled"; exit 0; fi
+                  exec "$REAL" "$@" ;;
+                *) exec "$REAL" "$@" ;;
+              esac
+              SHIM_EOF
+              chmod +x /usr/bin/systemctl
+
+              echo "=== Live ISO build: configuring pacman for chroot ==="
+              # arch-chroot runs on overlayfs; pacman can't determine mount points
+              # for disk-space checks or the default cachedir. Redirect the cache to
+              # /tmp (always a plain tmpfs) and disable CheckSpace entirely.
+              mkdir -p /tmp/pacman-cache
+              sed -i '/^\[options\]/a CacheDir = /tmp/pacman-cache' /etc/pacman.conf
+              sed -i 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf
+
+              echo "=== Live ISO build: initializing pacman keyring ==="
+              pacman-key --init
+              pacman-key --populate archlinux
+
+              echo "=== Live ISO build: generating locale ==="
+              locale-gen
+
+              echo "=== Live ISO build: running ansible playbook ==="
+              cd /home/{{ user.name }}/arch-ansible
+              ansible --version >/dev/null 2>&1
+              ansible-playbook playbook.yml \
+                --connection local \
+                --limit live \
+                --extra-vars "appearance=daytime{% if inventory_hostname == 'qemu' %} qemu_live_iso=true{% endif %}"
+
+              echo "=== Live ISO build: restoring systemctl ==="
+              mv /usr/bin/systemctl.real /usr/bin/systemctl
+
+              echo "=== Live ISO build: creating user service symlinks ==="
+              # ansible's user-scope systemctl enable calls were no-ops above.
+              # Recreate WantedBy symlinks by reading each unit's [Install] section.
+              USER_SYSTEMD="/home/{{ user.name }}/.config/systemd/user"
+              if [[ -d "$USER_SYSTEMD" ]]; then
+                shopt -s nullglob
+                for unit_file in "$USER_SYSTEMD"/*.service "$USER_SYSTEMD"/*.socket \
+                                 "$USER_SYSTEMD"/*.timer "$USER_SYSTEMD"/*.path; do
+                  in_install=false
+                  while IFS= read -r line; do
+                    if [[ "$line" == "[Install]" ]]; then
+                      in_install=true
+                    elif [[ "$line" == \[* ]]; then
+                      in_install=false
+                    elif $in_install && [[ "$line" == WantedBy=* ]]; then
+                      for target in ${line#WantedBy=}; do
+                        mkdir -p "$USER_SYSTEMD/${target}.wants"
+                        ln -sf "../$(basename "$unit_file")" \
+                               "$USER_SYSTEMD/${target}.wants/$(basename "$unit_file")"
+                        echo "  enabled: $(basename "$unit_file") -> ${target}.wants/"
+                      done
+                    fi
+                  done < "$unit_file"
+                done
+              fi
+
+              echo "=== Live ISO build: fixing home dir ownership ==="
+              # Files pre-copied into the airootfs overlay start owned by root.
+              # Fix the entire home tree now that ansible has created the user.
+              chown -R "{{ user.name }}:{{ user.group }}" "/home/{{ user.name }}"
+
+              echo "=== Live ISO build: fixing arch-ansible secrets permissions ==="
+              chmod 700 /home/{{ user.name }}/arch-ansible/secrets
+              chmod 600 /home/{{ user.name }}/arch-ansible/secrets/vault-password
+
+              echo "=== Live ISO build: complete ==="
+
+        - name: Build ISO
+          become: true
+          command: "mkarchiso -v -w {{ iso_build_dir }}/work -o {{ iso_build_dir }}/out {{ iso_build_dir }}"
+          args:
+            chdir: "{{ iso_build_dir }}"
+
+        - name: Inspect built images
+          register: built_images
+          find:
+            paths: "{{ iso_build_dir }}/out"
+            patterns: "*.iso"
+
+        - name: Fail if there isn't exactly one image found
+          when: built_images.matched != 1
+          fail:
+            msg: "Incorrect image file count in {{ iso_build_dir }}/out"
+
+        - name: Write out ISO file
+          become: true
+          command: "dd bs=4M if={{ item.path }} of={{ iso_output_file }} oflag=sync"
+          loop: "{{ built_images.files }}"
+
+      always:
+        - name: Cleanup
+          become: true
+          file:
+            path: "{{ iso_build_dir }}"
+            state: absent

@@ -29,7 +29,7 @@
     src: host_shared
     fstype: 9p
     opts: trans=virtio,version=9p2000.L,rw
-    state: mounted
+    state: "{{ 'present' if (live_iso | default(false)) else 'mounted' }}"
 
 - name: qemu guest | Load vsock modules
   become: true

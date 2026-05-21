@@ -1,0 +1,27 @@
+---
+grub: false
+live_iso: true
+qemu_live_iso: false
+qemu_host: false
+
+mkinitcpio_modules: []
+modprobe_files: []
+
+key_repeat:
+  rate: 35
+  delay: 250
+
+monitors: []
+
+optional_daemons:
+  libinput_gestures: false
+
+window_manager:
+  waybar_minimum_workspace_count: 5
+  window_manager: sway
+  windowing_system: wayland
+
+networking:
+  networks: []
+
+pgpass_secret_names: []

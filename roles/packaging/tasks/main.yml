@@ -18,6 +18,17 @@
   failed_when: false
   changed_when: false
 
+- name: Packaging | Fix home dir ownership before yay runs in chroot
+  become: true
+  when: live_iso | default(false)
+  file:
+    path: "{{ user_home_dir }}"
+    state: directory
+    owner: "{{ user.name }}"
+    group: "{{ user.group }}"
+    mode: "0755"
+    recurse: yes
+
 - name: Packaging | Clone yay-bin from AUR
   become: true
   become_user: "{{ user.name }}"
@@ -44,3 +55,15 @@
   copy:
     src: pacman.conf
     dest: /etc/pacman.conf
+  when: not (live_iso | default(false))
+
+- name: Packaging | Install yay wrapper for chroot builds
+  become: true
+  when: live_iso | default(false)
+  copy:
+    dest: /usr/local/bin/yay
+    mode: "0755"
+    content: |
+      #!/bin/bash
+      mkdir -p /tmp/yay-build
+      exec /usr/bin/yay --builddir /tmp/yay-build "$@"

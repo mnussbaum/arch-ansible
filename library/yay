@@ -135,7 +135,18 @@ def install_packages(module, pkgs, state):
   message = ''
 
   sudo_user = get_sudo_user(module)
-  cmd = 'sudo -u %s yay --noconfirm -S %s'
+
+  # When running as root (e.g., inside a chroot build), yay's default cache
+  # dir ($HOME/.cache/yay) may not be writable by the sudo target user.
+  # Pass an explicit world-writable build dir via absolute yay path so the
+  # call works regardless of PATH resolution or env inheritance.
+  if os.getuid() == 0:
+    yay_build_dir = '/tmp/yay-build'
+    os.makedirs(yay_build_dir, exist_ok=True)
+    os.chmod(yay_build_dir, 0o777)
+    cmd = 'sudo -u %%s /usr/bin/yay --builddir %s --noconfirm -S %%s' % yay_build_dir
+  else:
+    cmd = 'sudo -u %s yay --noconfirm -S %s'
 
   for pkg in pkgs:
     installed, updated, latest_error = query_package(module, pkg, state)

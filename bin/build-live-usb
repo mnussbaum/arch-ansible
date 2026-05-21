@@ -3,7 +3,7 @@
 set -o errexit
 set -o nounset
 
-ANSIBLE_PLAYBOOK=build-install-iso.yml \
+ANSIBLE_PLAYBOOK=build-live-iso.yml \
   exec ./bin/ansible \
   -e iso_output_file=/dev/sda \
   $@

@@ -29,8 +29,14 @@
       - xdg-desktop-portal
       - xdg-desktop-portal-wlr
       - xdg-desktop-portal-gtk
-      - calibre-bin
       - intel-media-driver
+    state: present
+
+- name: media | Install calibre-bin
+  become: true
+  when: not (live_iso | default(false))
+  package:
+    name: calibre-bin
     state: present
 
 - name: media | Create XDG portal config dir
