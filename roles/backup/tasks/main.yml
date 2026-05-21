@@ -45,8 +45,8 @@
     scope: user
     daemon-reload: true
   loop:
-    - "{{ inventory_hostname }}_restic_backblaze_key"
-    - "{{ inventory_hostname }}_restic_backblaze_key_id"
+    - "{{ inventory_hostname }}-restic_backblaze_key"
+    - "{{ inventory_hostname }}-restic_backblaze_key_id"
     - restic_backup_password
 
 - name: backup | Enable restic backblaze backup timer

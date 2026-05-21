@@ -5,7 +5,6 @@
 1. Specify partitions as sizes
 1. Make it easier to add a new host, vars, hosts.yml
 1. Structured secrets
-   1. Host specific secret dir for restic keys
    1. Wifi secrets dir to replace vault
    1. Document secret setup in new host adding docs
 
@@ -29,3 +28,7 @@
 - Label physical media
 - Remove 2fa backups from pass
 - Test offline iso build and install
+
+## In the middle
+
+- Of building fancy QEMU ISO
