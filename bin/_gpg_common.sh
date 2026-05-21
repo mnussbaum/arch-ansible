@@ -12,6 +12,9 @@ GPG_BATCH=(gpg --batch --pinentry-mode loopback --passphrase "")
 USB_MAPPER="gpg-offline-usb"
 USB_MOUNT=""
 
+OLD_USB_MAPPER="gpg-offline-usb-old"
+OLD_USB_MOUNT=""
+
 setup_gnupghome() {
   local gnupghome="$1"
   chmod 700 "$gnupghome"
@@ -71,6 +74,23 @@ close_usb() {
   sudo cryptsetup close "$USB_MAPPER" 2>/dev/null || true
 }
 
+open_old_usb() {
+  local device="$1"
+  OLD_USB_MOUNT=$(mktemp -d)
+  echo "==> Opening existing root key USB $device..."
+  sudo cryptsetup open "$device" "$OLD_USB_MAPPER"
+  sudo mount "/dev/mapper/$OLD_USB_MAPPER" "$OLD_USB_MOUNT"
+}
+
+close_old_usb() {
+  if [[ -n "$OLD_USB_MOUNT" ]]; then
+    sudo umount "$OLD_USB_MOUNT" 2>/dev/null || true
+    rmdir "$OLD_USB_MOUNT" 2>/dev/null || true
+    OLD_USB_MOUNT=""
+  fi
+  sudo cryptsetup close "$OLD_USB_MAPPER" 2>/dev/null || true
+}
+
 program_yubikey() {
   # Set all three card slots to Curve25519 variants before moving keys.
   # Slots default to rsa2048 and must be changed to accept ed25519/cv25519.
@@ -78,9 +98,9 @@ program_yubikey() {
   printf '%s\n' \
     'admin' \
     'key-attr' \
-    '2' '1' 'y' \
-    '2' '1' 'y' \
-    '2' '1' 'y' \
+    '2' '1' \
+    '2' '1' \
+    '2' '1' \
     'quit' | \
     gpg --no-tty --command-fd 0 --card-edit
 
@@ -96,17 +116,18 @@ program_yubikey() {
 }
 
 restore_subkeys() {
-  "${GPG_BATCH[@]}" --yes --delete-secret-key "$FINGERPRINT"
+  # Remove stub files without killing the agent. Killing the agent would clear
+  # the passphrase cache; keytocard would then call the pinentry which returns
+  # the card admin PIN instead of the empty key passphrase, causing it to fail.
+  # gpg-agent reads key material from disk on each operation so removing the
+  # stub files and importing fresh material is sufficient.
+  rm -f "$GNUPGHOME/private-keys-v1.d"/*.key
   "${GPG_BATCH[@]}" --import "$SUBKEY_BACKUP"
 }
 
-_collect_pin_config() {
-  # Sets globals used by change_yubikey_pins and set_oath_password. Called once for all cards.
-  echo "==> PIN and password configuration (applies to all YubiKeys)"
-  echo "    Current PINs — enter the defaults (123456 / 12345678) for a fresh card:"
-  read -r -s -p "  Current user PIN: " YUBIKEY_CURRENT_USER_PIN; echo
-  read -r -s -p "  Current admin PIN: " YUBIKEY_CURRENT_ADMIN_PIN; echo
-  echo "    New PINs:"
+_collect_new_pin_config() {
+  # Sets target PIN/password globals applied to every YubiKey. Called once before the loop.
+  echo "==> New PIN configuration (will be applied to all YubiKeys)"
   local user_pin2 admin_pin2
   while true; do
     read -r -s -p "  New user PIN (min 6 chars): " YUBIKEY_NEW_USER_PIN; echo
@@ -167,14 +188,29 @@ set_oath_password() {
 }
 
 program_all_yubikeys() {
-  _collect_pin_config
-  _write_card_admin_pin
+  _collect_new_pin_config
   local key_number=1
   while true; do
+    gpgconf --kill scdaemon
     echo ""
     echo "Plug in YubiKey $key_number and press Enter, or type 'done' to finish..."
     read -r response
     [[ "$response" == "done" ]] && break
+
+    until gpg --card-status > /dev/null 2>&1; do
+      echo "    Card not detected — re-insert the YubiKey and press Enter to retry..."
+      read -r _ignored
+    done
+
+    echo "==> Resetting OpenPGP applet..."
+    ykman openpgp reset --force
+    gpgconf --kill scdaemon
+    until gpg --card-status > /dev/null 2>&1; do
+      sleep 1
+    done
+    YUBIKEY_CURRENT_USER_PIN="123456"
+    YUBIKEY_CURRENT_ADMIN_PIN="12345678"
+    _write_card_admin_pin
 
     if [[ $key_number -gt 1 ]]; then
       echo "==> Restoring subkeys from backup for YubiKey $key_number..."

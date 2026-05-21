@@ -1,15 +1,21 @@
 #!/bin/bash
 # Creates a new GPG key and programs any number of YubiKeys.
 #
-# Usage: bin/create-gpg-key <device>
+# Usage: bin/create-gpg-key <device> (<existing-key-device> | <totp-file>)
 #
-# <device>: USB block device to format and encrypt (e.g. /dev/sdb).
-#           WARNING: this wipes the device.
+# <device>:              USB block device to format and encrypt (e.g. /dev/sdb).
+#                        WARNING: this wipes the device.
+# <existing-key-device>: LUKS-encrypted USB containing a previous primary-key.asc
+#                        and oath-accounts.txt. Migrates pass store using the old
+#                        primary key directly (no YubiKey required for decryption)
+#                        and copies TOTP accounts from the USB.
+# <totp-file>:           Plain text file of otpauth:// URIs (one per line).
+#                        Pass store migration requires the old YubiKey to be present.
 #
 # The key UID is read from the Ansible variable user.gpg_key_uid.
 # After completion:
 #   - roles/gpg/files/gpg-pubkey.asc is written (commit it)
-#   - <device> holds primary-key.asc and revocation-cert.asc (store offline)
+#   - <device> holds primary-key.asc, revocation-cert.asc, and oath-accounts.txt
 #
 # Run bin/renew-gpg-subkeys annually to extend subkey expiry.
 
@@ -19,7 +25,8 @@ set -o pipefail
 
 source bin/_gpg_common.sh
 
-DEVICE="${1:?Usage: $0 <device>}"
+DEVICE="${1:?Usage: $0 <device> (<existing-key-device> | <totp-file>)}"
+SOURCE="${2:?Usage: $0 <device> (<existing-key-device> | <totp-file>)}"
 
 KEY_UID=$(yq -r '.user.gpg_key_uid' group_vars/all/vars.yml)
 if [[ -z "$KEY_UID" || "$KEY_UID" == "null" ]]; then
@@ -29,11 +36,14 @@ fi
 
 RENEWAL_HOME=$(mktemp -d)
 SUBKEY_BACKUP=$(mktemp)
+MIGRATION_HOME=""
 
 cleanup() {
   close_usb
+  close_old_usb
   rm -rf "$RENEWAL_HOME"
   rm -f "$SUBKEY_BACKUP"
+  [[ -n "$MIGRATION_HOME" ]] && rm -rf "$MIGRATION_HOME"
 }
 trap cleanup EXIT
 
@@ -42,6 +52,9 @@ setup_gnupghome "$RENEWAL_HOME"
 export GNUPGHOME="$RENEWAL_HOME"
 
 format_and_open_usb "$DEVICE"
+if [[ -b "$SOURCE" ]]; then
+  open_old_usb "$SOURCE"
+fi
 
 echo "==> Creating primary key for: $KEY_UID"
 "${GPG_BATCH[@]}" --quick-gen-key "$KEY_UID" ed25519 cert never
@@ -68,12 +81,41 @@ echo "==> Migrating pass store to new key..."
 PASS_DIR="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
 if [[ -d "$PASS_DIR" ]]; then
   echo "    Found store at $PASS_DIR."
-  echo "    You may be prompted for your current YubiKey PIN to decrypt existing entries."
   GNUPGHOME="$REAL_GNUPGHOME" gpg --import roles/gpg/files/gpg-pubkey.asc
-  GNUPGHOME="$REAL_GNUPGHOME" pass init "$FINGERPRINT"
+  echo "$FINGERPRINT:6:" | GNUPGHOME="$REAL_GNUPGHOME" gpg --import-ownertrust
+  if [[ -b "$SOURCE" ]]; then
+    echo "    Decrypting with old primary key from USB (no YubiKey required)..."
+    MIGRATION_HOME=$(mktemp -d)
+    chmod 700 "$MIGRATION_HOME"
+    GNUPGHOME="$MIGRATION_HOME" gpg --batch --pinentry-mode loopback --passphrase "" \
+      --import "$OLD_USB_MOUNT/primary-key.asc"
+    GNUPGHOME="$MIGRATION_HOME" gpg --batch --import roles/gpg/files/gpg-pubkey.asc
+    OLD_FINGERPRINT=$(GNUPGHOME="$MIGRATION_HOME" gpg --list-secret-keys --with-colons \
+      | awk -F: '/^fpr/{print $10; exit}')
+    printf '%s:6:\n%s:6:\n' "$OLD_FINGERPRINT" "$FINGERPRINT" \
+      | GNUPGHOME="$MIGRATION_HOME" gpg --import-ownertrust
+    GNUPGHOME="$MIGRATION_HOME" pass init "$FINGERPRINT"
+  else
+    echo "    You may be prompted for your current YubiKey PIN to decrypt existing entries."
+    GNUPGHOME="$REAL_GNUPGHOME" pass init "$FINGERPRINT"
+  fi
   echo "==> Pass store migrated."
 else
   echo "    No pass store found at $PASS_DIR, skipping."
+fi
+
+echo "==> Copying TOTP accounts to USB..."
+if [[ -b "$SOURCE" ]]; then
+  if [[ -f "$OLD_USB_MOUNT/oath-accounts.txt" ]]; then
+    cp "$OLD_USB_MOUNT/oath-accounts.txt" "$USB_MOUNT/oath-accounts.txt"
+    echo "    Copied from existing root key USB."
+  else
+    echo "    No oath-accounts.txt on existing root key USB, skipping."
+  fi
+  close_old_usb
+else
+  cp "$SOURCE" "$USB_MOUNT/oath-accounts.txt"
+  echo "    Copied from $SOURCE."
 fi
 
 echo "==> Creating subkey backup for YubiKey programming..."
@@ -105,3 +147,9 @@ echo "       gpg --export-ssh-key $FINGERPRINT"
 echo "  2. Commit the public key and keygrips:"
 echo "       git add roles/gpg/files/gpg-pubkey.asc group_vars/all/gpg_auth_keygrips.yml"
 echo "       git commit -m 'Add GPG public key'"
+echo "  3. Android (Password Store + OpenKeychain + NFC YubiKey):"
+echo "       a. Transfer roles/gpg/files/gpg-pubkey.asc to phone and import in OpenKeychain"
+echo "       b. Tap YubiKey to phone — OpenKeychain links the card to the imported key"
+echo "       c. In Password Store, sync the repo — it reads .gpg-id and picks up the new key"
+echo "       d. For SSH git auth: enable OpenKeychain SSH agent in Password Store settings;"
+echo "          each pull/push will require a YubiKey tap"
