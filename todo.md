@@ -21,14 +21,9 @@
 
 ## Tasks
 
-- Back up primary key
-- Test full gpg creation script
-- Remove 2fa backups from pass
 - Rebuild install media with final state
 - Label physical media
 - Test offline iso build and install
 - Prepare physical recovery packages
-
-## In the middle
-
-- Of building fancy QEMU ISO
+- Remove 2fa backups from pass
+- Remove old 2fa app and data from phone
