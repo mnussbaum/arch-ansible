@@ -14,12 +14,12 @@ log() {
 
 graphical_session() {
     loginctl list-sessions --no-legend \
-        | awk '$5 == "seat0" {print $1; exit}'
+        | awk '$4 == "seat0" {print $1; exit}'
 }
 
 graphical_user() {
     loginctl list-sessions --no-legend \
-        | awk '$5 == "seat0" {print $3; exit}'
+        | awk '$4 == "seat0" {print $3; exit}'
 }
 
 case "$1" in
