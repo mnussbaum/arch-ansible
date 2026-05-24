@@ -1,14 +1,11 @@
 # vim:ft=yaml.ansible:
 ---
-- name: devops | Enable loop kernel module
-  become: true
-  notify:
-    - Regenerate mkinitcpio ramdisk
+- name: Enable loop kernel module
   copy:
     content: loop
     dest: /etc/modules-load.d/loop.conf
 
-- name: devops | Install packages
+- name: Install packages
   become: yes
   package:
     state: present
@@ -25,41 +22,33 @@
       - terraform
       - redis
 
-- name: devops | Add user to docker group
-  become: true
+- name: Add user to docker group
   user:
     name: "{{ user.name }}"
     groups: docker
     append: true
 
-- name: devops | Create docker config dir
+- name: Create docker daemon config dir
   file:
     path: /etc/docker
     state: directory
-  become: true
 
-- name: devops | Enable overlay2 driver
-  become: true
+- name: Enable overlay2 driver
   copy:
     src: docker-daemon.json
     dest: /etc/docker/daemon.json
 
-- name: devops | Enable docker service socket activation
-  become: true
+- name: Enable docker service socket activation
   systemd:
     enabled: true
     name: docker.socket
 
-- name: devops | Create docker user config dir
+- name: Create docker client config dir
   file:
-    path: "{{ user_home_dir }}/.docker"
+    path: /etc/xdg/docker
     state: directory
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
 
-- name: devops | Create docker user config file
+- name: Install docker client config
   copy:
     src: docker-user-config.json
-    dest: "{{ user_home_dir }}/.docker/config.json"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/xdg/docker/config.json

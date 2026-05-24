@@ -1,24 +1,20 @@
 # vim:ft=yaml.ansible:
 ---
-- name: user | Create wheel group
-  become: true
+- name: Create wheel group
   group: name=wheel state=present
 
-- name: user | Configure sudoers
-  become: true
+- name: Configure sudoers
   copy:
     src: "ansible_sudoers"
     dest: /etc/sudoers.d/ansible
     validate: "/usr/bin/visudo -cf %s"
 
-- name: user | Create individual user group
-  become: true
+- name: Create individual user group
   group:
     name: "{{ user.group }}"
     state: present
 
-- name: user | Create user
-  become: true
+- name: Create user
   user:
     name: "{{ user.name }}"
     group: "{{ user.group }}"
@@ -31,30 +27,3 @@
     update_password: on_create
     append: true
 
-- name: user | Create data dir
-  file:
-    path: "{{ user_data_dir }}"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    state: directory
-
-- name: user | Create user config dir
-  file:
-    path: "{{ user_config_dir }}"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    state: directory
-
-- name: user | Create user source code dir
-  file:
-    path: "/home/{{ user.name }}/src"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    state: directory
-
-- name: user | Create user systemd dir
-  file:
-    path: "{{ user_config_dir }}/systemd/user"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    state: directory

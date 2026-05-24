@@ -1,0 +1,11 @@
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Target = usr/lib/systemd/user/*
+
+[Action]
+Description = Skipping systemd daemon-reload in build environment
+When = PostTransaction
+Exec = /usr/bin/true

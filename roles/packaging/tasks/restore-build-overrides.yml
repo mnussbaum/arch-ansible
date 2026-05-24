@@ -1,0 +1,61 @@
+# vim:ft=yaml.ansible:
+---
+- name: Restore real sudo
+  copy:
+    src: /usr/bin/sudo.real
+    dest: /usr/bin/sudo
+    remote_src: true
+    mode: preserve
+
+- name: Remove sudo backup
+  file:
+    path: /usr/bin/sudo.real
+    state: absent
+
+- name: Restore real systemctl
+  copy:
+    src: /usr/bin/systemctl.real
+    dest: /usr/bin/systemctl
+    remote_src: true
+    mode: preserve
+
+- name: Remove systemctl backup
+  file:
+    path: /usr/bin/systemctl.real
+    state: absent
+
+- name: Restore real systemd-run
+  copy:
+    src: /usr/bin/systemd-run.real
+    dest: /usr/bin/systemd-run
+    remote_src: true
+    mode: preserve
+
+- name: Remove systemd-run backup
+  file:
+    path: /usr/bin/systemd-run.real
+    state: absent
+
+- name: Restore real makepkg
+  copy:
+    src: /usr/bin/makepkg.real
+    dest: /usr/bin/makepkg
+    remote_src: true
+    mode: preserve
+
+- name: Remove makepkg backup
+  file:
+    path: /usr/bin/makepkg.real
+    state: absent
+
+- name: Restore systemd user daemon-reload hook
+  copy:
+    src: /usr/share/libalpm/hooks/30-systemd-daemon-reload-user.hook.bak
+    dest: /usr/share/libalpm/hooks/30-systemd-daemon-reload-user.hook
+    remote_src: true
+
+- name: Remove user daemon-reload hook backup
+  file:
+    path: /usr/share/libalpm/hooks/30-systemd-daemon-reload-user.hook.bak
+    state: absent
+

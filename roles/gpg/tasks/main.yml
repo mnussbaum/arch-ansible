@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: GPG | Install packages
+- name: Install packages
   package:
     state: present
     name:
@@ -12,9 +12,8 @@
       - qrencode
       - yubikey-manager
       - zbar
-  become: true
 
-- name: GPG | Create config dir
+- name: Create config dir
   file:
     path: "{{ user_home_dir }}/.gnupg"
     owner: "{{ user.name }}"
@@ -22,7 +21,7 @@
     mode: 0700
     state: directory
 
-- name: GPG | Install config
+- name: Install config
   copy:
     dest: "{{ user_home_dir }}/.gnupg/gpg.conf"
     src: gpg.conf
@@ -30,7 +29,7 @@
     group: "{{ user.group }}"
     mode: 0600
 
-- name: GPG | Install gpg-agent config
+- name: Install gpg-agent config
   copy:
     dest: "{{ user_home_dir }}/.gnupg/gpg-agent.conf"
     src: gpg-agent.conf
@@ -38,7 +37,7 @@
     group: "{{ user.group }}"
     mode: 0600
 
-- name: GPG | Install scdaemon config
+- name: Install scdaemon config
   copy:
     dest: "{{ user_home_dir }}/.gnupg/scdaemon.conf"
     src: scdaemon.conf
@@ -46,21 +45,19 @@
     group: "{{ user.group }}"
     mode: 0600
 
-- name: GPG | Enable pcscd service
-  become: true
+- name: Enable pcscd service
   systemd:
     name: pcscd.service
     enabled: true
-    state: started
+    state: "{{ svc_start_state }}"
 
-- name: GPG | Add user to pcscd group for YubiKey USB access
-  become: true
+- name: Add user to pcscd group for YubiKey USB access
   user:
     name: "{{ user.name }}"
     groups: pcscd
     append: yes
 
-- name: GPG | Find gpg-agent user service configs
+- name: Find gpg-agent user service configs
   find:
     paths: "/usr/share/doc/gnupg/examples/systemd-user"
     excludes: "README"
@@ -68,15 +65,13 @@
   changed_when: false
   register: gpg_agent_service_configs
 
-- name: GPG | Install gpg-agent user service configs
+- name: Install gpg-agent user service configs
   copy:
-    dest: "{{ user_config_dir }}/systemd/user/{{ item.path | basename }}"
+    dest: "/etc/systemd/user/{{ item.path | basename }}"
     src: "{{ item.path }}"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
   with_items: "{{ gpg_agent_service_configs.files }}"
 
-- name: GPG | Deploy public key file
+- name: Deploy public key file
   become: true
   become_user: "{{ user.name }}"
   copy:
@@ -87,7 +82,7 @@
     mode: 0600
   register: gpg_pubkey_file
 
-- name: GPG | Check if GPG key is in keyring
+- name: Check if GPG key is in keyring
   become: true
   become_user: "{{ user.name }}"
   command: gpg --list-keys "{{ user.gpg_key_uid }}"
@@ -95,13 +90,13 @@
   failed_when: false
   changed_when: false
 
-- name: GPG | Import public key
+- name: Import public key
   become: true
   become_user: "{{ user.name }}"
   command: gpg --import "{{ user_home_dir }}/.gnupg/pubkey.asc"
   when: gpg_pubkey_file.changed or gpg_key_check.rc != 0
 
-- name: GPG | Set ultimate trust on own key
+- name: Set ultimate trust on own key
   become: true
   become_user: "{{ user.name }}"
   shell: |
@@ -111,7 +106,7 @@
     executable: /bin/bash
   changed_when: false
 
-- name: GPG | Register YubiKey SSH keygrips in sshcontrol
+- name: Register YubiKey SSH keygrips in sshcontrol
   become: true
   become_user: "{{ user.name }}"
   lineinfile:
@@ -120,24 +115,24 @@
     create: yes
   loop: "{{ gpg_auth_ssh_keygrips }}"
 
-- name: GPG | Enable gpg-agent user services
+- name: Enable gpg-agent user services
   become: true
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: "{{ item.path | basename }}"
-    scope: user
-    daemon-reload: true
+    scope: global
+    daemon-reload: "{{ svc_daemon_reload }}"
   with_items: "{{ gpg_agent_service_configs.files }}"
 
-- name: GPG | Kill gpg daemons to release keybox SQLite connections
+- name: Kill gpg daemons to release keybox SQLite connections
   become: true
   become_user: "{{ user.name }}"
   command: gpgconf --kill all
   failed_when: false
   changed_when: false
 
-- name: GPG | Find stale lock files
+- name: Find stale lock files
   find:
     paths: "{{ user_home_dir }}/.gnupg"
     patterns:
@@ -147,7 +142,7 @@
   register: gpg_lock_files
   changed_when: false
 
-- name: GPG | Remove stale lock files
+- name: Remove stale lock files
   file:
     path: "{{ item.path }}"
     state: absent

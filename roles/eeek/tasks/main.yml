@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: eeek | Install packages
+- name: Install packages
   package:
     state: present
     name:
@@ -12,9 +12,8 @@
       - slack-desktop
       - cloudflare-warp-bin
       - pqrs-bin
-  become: true
 
-- name: eeek | Install .netrc
+- name: Install .netrc
   template:
     src: eeek-netrc
     dest: "{{ user_home_dir }}/.netrc"
@@ -22,21 +21,21 @@
     group: "{{ user.group }}"
     mode: "0600"
 
-- name: eeek | Make AWS config dir
+- name: Make AWS config dir
   file:
     dest: "{{ user_home_dir }}/.aws"
     state: directory
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
-- name: eeek | Install AWS config
+- name: Install AWS config
   copy:
     content: "{{ lookup('pipe', 'pass show eq/aws.conf') }}"
     dest: "{{ user_home_dir }}/.aws/config"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
 
-- name: eeek | Install equilibrium SSH private key
+- name: Install equilibrium SSH private key
   copy:
     content: "{{ lookup('pipe', 'pass show eq/ssh-key') }}"
     dest: "{{ user_home_dir }}/.ssh/id_rsa_equilibrium"

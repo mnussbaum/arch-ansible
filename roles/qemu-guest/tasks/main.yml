@@ -1,69 +1,55 @@
 # vim:ft=yaml.ansible:
 ---
-- name: qemu guest | Blacklist coretemp module
-  become: true
-  notify:
-    - Regenerate mkinitcpio ramdisk
+- name: Blacklist coretemp module
   copy:
     content: "blacklist coretemp"
     dest: "/etc/modprobe.d/blacklist_coretemp.conf"
 
-- name: qemu guest | Install guest agent package
-  package:
-    state: present
-    name: qemu-guest-agent
-  become: true
+- name: Create qemu-guest-agent drop-in directory
+  file:
+    path: /etc/systemd/system/qemu-guest-agent.service.d
+    state: directory
 
-- name: qemu guest | Enable qemu guest agent service
+- name: Add ConditionVirtualization drop-in for qemu-guest-agent
+  copy:
+    src: qemu-guest-agent-condition.conf
+    dest: /etc/systemd/system/qemu-guest-agent.service.d/condition.conf
+    mode: "0644"
+
+- name: Enable qemu guest agent service
   service:
     name: qemu-guest-agent.service
     enabled: yes
-    state: started
-    daemon-reload: true
-  become: true
+    state: "{{ svc_start_state }}"
+    daemon-reload: "{{ svc_daemon_reload }}"
 
-- name: qemu guest | Mount virtfs shared directory
-  become: true
-  mount:
-    path: /mnt/host_shared
-    src: host_shared
-    fstype: 9p
-    opts: trans=virtio,version=9p2000.L,rw
-    state: mounted
+- name: Deploy host_shared mount unit
+  copy:
+    src: mnt-host_shared.mount
+    dest: /etc/systemd/system/mnt-host_shared.mount
+    mode: "0644"
 
-- name: qemu guest | Load vsock modules
-  become: true
+- name: Enable host_shared mount unit
+  systemd:
+    name: mnt-host_shared.mount
+    enabled: true
+    daemon_reload: "{{ svc_daemon_reload }}"
+
+- name: Load vsock modules
   copy:
     content: "vsock\nvmw_vsock_virtio_transport"
     dest: /etc/modules-load.d/vsock.conf
 
-- name: qemu guest | Deploy pcscd vsock forwarding service
-  become: true
+- name: Deploy pcscd vsock forwarding service
   copy:
     src: pcscd-vsock-forward.service
     dest: /etc/systemd/system/pcscd-vsock-forward.service
     mode: "0644"
 
-- name: qemu guest | Enable pcscd vsock forwarding service
-  become: true
+- name: Enable pcscd vsock forwarding service
   systemd:
     name: pcscd-vsock-forward.service
     enabled: true
-    state: started
-    daemon_reload: true
+    state: "{{ svc_start_state }}"
+    daemon_reload: "{{ svc_daemon_reload }}"
 
-- name: qemu guest | Mask pcscd service
-  become: true
-  systemd:
-    name: pcscd.service
-    masked: true
-    enabled: false
-    state: stopped
-
-- name: qemu guest | Mask pcscd socket
-  become: true
-  systemd:
-    name: pcscd.socket
-    masked: true
-    enabled: false
-    state: stopped

@@ -222,4 +222,4 @@ bindsym Print exec grim -g "$(slurp -c '#ff0000ff')" - | satty --filename - --fu
 exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK
 exec hash dbus-update-activation-environment 2>/dev/null && \
   dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK
-exec systemctl --user start --no-block {{ item }}-session.target
+exec systemctl --user start --no-block sway-session.target

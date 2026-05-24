@@ -1,0 +1,27 @@
+#!/bin/bash
+# Wipes a LUKS FIDO2 keyslot from the root partition (use after losing a YubiKey).
+# TPM2 or another enrolled key authenticates the wipe.
+#
+# Usage: bin/revoke-luks-yubikey <slot>
+#
+# Run cryptsetup luksDump /dev/sdX to find the slot number of the lost key.
+# Run bin/enroll-yubikeys afterwards to enroll a replacement YubiKey.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+SLOT="${1:?Usage: $0 <slot>}"
+
+DEVICE=$(cryptsetup status cryptroot 2>/dev/null | awk '/device:/{print $2}') || true
+if [[ -z "$DEVICE" ]]; then
+  echo "Error: cryptroot not active" >&2
+  exit 1
+fi
+
+echo "Current LUKS keyslots on $DEVICE:"
+cryptsetup luksDump "$DEVICE" | grep -E 'Keyslot|Type:|State:'
+echo ""
+echo "==> Wiping slot $SLOT (you will be prompted to authenticate)..."
+systemd-cryptenroll --wipe-slot="$SLOT" "$DEVICE"
+echo "==> Slot $SLOT wiped. Run bin/enroll-yubikeys <device> to enroll a replacement."

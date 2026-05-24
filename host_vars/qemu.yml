@@ -1,55 +1,7 @@
 ---
-grub: true
-
-partitions:
-  efi:
-    number: 1
-    physical_device: /dev/sda
-    partition_device: /dev/sda1
-    logical_device: /dev/sda1
-    partition_name: EFI
-    partition_label: gpt
-    start: 0%
-    end: 261MiB
-    fstype: vfat
-    fs_options: ""
-    mount_point: /mnt/boot/efi
-    encrypted: false
-    managed: true
-    flags:
-      - esp
-  boot:
-    number: 2
-    physical_device: /dev/sda
-    partition_device: /dev/sda2
-    logical_device: /dev/sda2
-    partition_name: Grub
-    partition_label: gpt
-    start: 261MiB
-    end: 773MiB
-    fstype: ext4
-    fs_options: "-O ^has_journal"
-    mount_point: /mnt/boot
-    encrypted: false
-    managed: true
-    flags: []
-  root:
-    number: 3
-    physical_device: /dev/sda
-    partition_device: /dev/sda3
-    logical_device: /dev/mapper/vgcrypt-root
-    volume_group_name: vgcrypt
-    logical_volume_name: root
-    partition_name: Arch Root
-    partition_label: gpt
-    start: 773MiB
-    end: 100%
-    fstype: ext4
-    fs_options: "-O ^has_journal"
-    mount_point: /mnt
-    encrypted: true
-    managed: true
-    flags: []
+disk:
+  device: /dev/sda
+  partition_uuid: 669ab9d2-2cac-4690-bf87-03cdc177fb45
 
 mkinitcpio_modules:
   - nvme

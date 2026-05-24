@@ -1,19 +1,33 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Appearance facts | Set night appearance
+- name: Set night appearance
   when: appearance is undefined or appearance == "night"
   set_fact:
     base16_scheme: "{{ base16.night_scheme }}"
     base16_scheme_family: "{{ base16.night_scheme_family }}"
     wallpaper_filename: "{{ wallpaper.night_image }}"
 
-- name: Appearance facts | Set daytime appearance
+- name: Set daytime appearance
   when: appearance is defined and appearance == "daytime"
   set_fact:
     base16_scheme: "{{ base16.day_scheme }}"
     base16_scheme_family: "{{ base16.day_scheme_family }}"
     wallpaper_filename: "{{ wallpaper.daytime_image }}"
 
-- name: Appearance facts | Set wallpaper path
+- name: Set wallpaper path
   set_fact:
     desktop_background: "{{ wallpaper.desktop_dir }}/{{ wallpaper_filename }}"
+
+- name: Generate base16 color scheme vars
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: []
+    schemes_source: "{{ base16['schemes_source'] }}"
+    templates_source: "{{ base16['templates_source'] }}"
+  register: generated_base16_scheme
+
+- name: Set color scheme vars
+  set_fact:
+    color_scheme_vars: "{{ generated_base16_scheme['schemes'][base16_scheme]['scheme-variables'] }}"
+    color_scheme_opacity: "0.7"

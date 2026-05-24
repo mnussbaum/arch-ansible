@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: beancount | Install packages
+- name: Install packages
   package:
     state: present
     name:

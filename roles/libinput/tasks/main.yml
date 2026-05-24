@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: libinput | Install packages
+- name: Install packages
   package:
     state: present
     name:
@@ -8,26 +8,23 @@
       - libinput-tools
       - libinput-gestures
       - wtype
-  become: true
 
-- name: libinput | Install libinput-gestures service
-  become: true
+- name: Install libinput-gestures service
   copy:
-    dest: "{{ user_config_dir }}/systemd/user/libinput-gestures.service"
+    dest: /etc/systemd/user/libinput-gestures.service
     src: libinput-gestures.service
 
-- name: libinput | Install libinput-gestures.conf
-  become: true
+- name: Install libinput-gestures.conf
   copy:
-    dest: "{{ user_config_dir }}/libinput-gestures.conf"
+    dest: /etc/libinput-gestures.conf
     src: libinput-gestures.conf
 
-- name: libinput | Enable libinput-gestures service
+- name: Enable libinput-gestures service
   become: true
   become_user: "{{ user.name }}"
   when: optional_daemons.libinput_gestures
   systemd:
     enabled: true
     name: libinput-gestures.service
-    scope: user
-    daemon-reload: true
+    scope: global
+    daemon-reload: "{{ svc_daemon_reload }}"

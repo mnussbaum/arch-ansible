@@ -187,6 +187,18 @@ set_oath_password() {
   ykman oath access change --new-password "$YUBIKEY_OATH_PASSWORD"
 }
 
+enroll_luks_fido2() {
+  local device
+  device=$(cryptsetup status cryptroot 2>/dev/null | awk '/device:/{print $2}') || true
+  if [[ -z "$device" ]]; then
+    echo "==> cryptroot not active — skipping LUKS FIDO2 enrollment."
+    return
+  fi
+  echo "==> Enrolling FIDO2 keyslot on $device (touch YubiKey when prompted)..."
+  systemd-cryptenroll --fido2-device=auto "$device"
+  echo "    FIDO2 keyslot enrolled."
+}
+
 program_all_yubikeys() {
   _collect_new_pin_config
   local key_number=1
@@ -223,6 +235,7 @@ program_all_yubikeys() {
     reset_oath_applet
     load_oath_accounts
     set_oath_password
+    enroll_luks_fido2
 
     (( key_number++ ))
   done

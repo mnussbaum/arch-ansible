@@ -1,0 +1,22 @@
+#!/bin/bash
+# In nspawn build containers systemd-run can't connect to the system bus.
+# Strip its flags and exec the wrapped command directly instead.
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --)
+            shift; break ;;
+        -p|--property|-E|--setenv|-d|--description|-u|--unit|-G|--gid|-U|--uid|--slice|--working-directory)
+            shift 2 ;;
+        --service-type=*|--property=*|--setenv=*|--description=*|--unit=*|\
+        --gid=*|--uid=*|--slice=*|--working-directory=*)
+            shift ;;
+        --wait|--pipe|--collect|--remain-after-exit|--send-sighup|\
+        --no-block|--quiet|-q|--same-dir|-D|--pty|-P)
+            shift ;;
+        -*)
+            shift ;;
+        *)
+            break ;;
+    esac
+done
+exec "$@"

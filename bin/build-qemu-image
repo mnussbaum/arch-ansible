@@ -5,23 +5,10 @@ set -o nounset
 
 source bin/_qemu_common.sh
 
-mkdir -p "$qemu_data_dir"
-
-rm -f "$qemu_image_file"
-qemu-img create -f qcow2 "$qemu_image_file" 64G
-
-rm -f "$qemu_install_iso"
-qemu-img create -f raw "$qemu_install_iso" 12G
+mkdir -p "$images_dir"
 
 if [[ ! -f "$qemu_gpg_usb_file" ]]; then
   qemu-img create -f raw "$qemu_gpg_usb_file" 1G
 fi
 
-HOSTNAME=qemu ANSIBLE_PLAYBOOK=build-install-iso.yml \
-  ./bin/ansible \
-  -e iso_output_file="$qemu_install_iso"
-
-cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "$qemu_ovmf_vars_file"
-
-echo "Starting qemu..."
-exec bin/run-qemu-install-iso
+exec bin/build-persistent-image qemu "$@"

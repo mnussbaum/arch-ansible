@@ -1,8 +1,7 @@
 # vim:ft=yaml.ansible:
 ---
-- name: trim | Enable periodic TRIM
-  become: true
+- name: Enable periodic TRIM
   service:
     name: fstrim.timer
     enabled: yes
-    state: started
+    state: "{{ svc_start_state }}"

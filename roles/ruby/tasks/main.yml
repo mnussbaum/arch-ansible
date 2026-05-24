@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Ruby | Install packages
+- name: Install packages
   package:
     state: present
     name:
@@ -8,25 +8,28 @@
       - ruby-bundler
       - rubocop
       - ruby-lsp
-  become: true
 
-- name: Ruby | Install global gemrc
-  become: true
+- name: Install global gemrc
   copy:
     src: gemrc
     dest: /etc/gemrc
 
-- name: Ruby | Install irb config
+- name: Create irb config dir
+  file:
+    path: /etc/xdg/irb
+    state: directory
+
+- name: Install irb config
   copy:
     src: irbrc
-    dest: "/home/{{ user.name }}/.irbrc"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/xdg/irb/irbrc
 
-- name: Ruby | Install rubocop config
-  become: true
+- name: Create rubocop config dir
+  file:
+    path: /etc/xdg/rubocop
+    state: directory
+
+- name: Install rubocop config
   copy:
     src: rubocop.yml
-    dest: "/home/{{ user.name }}/.rubocop.yml"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/xdg/rubocop/config.yml

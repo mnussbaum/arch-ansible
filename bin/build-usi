@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+
+refresh_cache=""
+output_arg=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      echo "Build the USI (Unified System Image)." >&2
+      echo "Usage: $0 [--refresh-cache] [output-device]" >&2
+      echo "  Without an output device, builds to \$usi_image_file for testing with mkosi vm." >&2
+      echo "  --refresh-cache  Bust the mkosi incremental cache and do a full rebuild." >&2
+      exit
+      ;;
+    --refresh-cache) refresh_cache="--incremental=no" ;;
+    *) output_arg="$1" ;;
+  esac
+  shift
+done
+
+source bin/_qemu_common.sh
+
+luks_passphrase=$(
+  ansible-vault view group_vars/all/secrets.yml \
+    --vault-password-file secrets/vault-password \
+    | python3 -c "import sys,yaml; d=yaml.safe_load(sys.stdin); print(d['luks_passphrase'])"
+)
+
+mkdir -p "$images_dir"
+
+if [[ -n "$output_arg" ]]; then
+  mkosi \
+    --directory=mkosi.images/usi \
+    --output-directory="$images_dir" \
+    --credential="luks.passphrase=$luks_passphrase" \
+    ${refresh_cache:+"$refresh_cache"} \
+    burn "$output_arg"
+else
+  mkosi \
+    --directory=mkosi.images/usi \
+    --output-directory="$images_dir" \
+    --credential="luks.passphrase=$luks_passphrase" \
+    ${refresh_cache:+"$refresh_cache"}
+fi

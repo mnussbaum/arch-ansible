@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Fonts | Install packages
+- name: Install packages
   package:
     state: present
     name:
@@ -13,51 +13,43 @@
       - ttf-noto-nerd
       - noto-fonts-emoji
       - gucharmap
-  become: true
 
-- name: Fonts | Enable LCD filter
+- name: Enable LCD filter
   file:
     src: /usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf
     dest: /etc/fonts/conf.d/11-lcdfilter-default.conf
     state: link
-  become: true
 
-- name: Fonts | Enable sub-pixel rendering
+- name: Enable sub-pixel rendering
   file:
     src: /usr/share/fontconfig/conf.avail/10-sub-pixel-rgb.conf
     dest: /etc/fonts/conf.d/10-sub-pixel-rgb.conf
     state: link
-  become: true
 
-- name: Fonts | Disable slight hinting default
+- name: Disable slight hinting default
   file:
     path: /etc/fonts/conf.d/10-hinting-slight.conf
     state: absent
-  become: true
 
-- name: Fonts | Enable crisper fonts with full hinting
+- name: Enable crisper fonts with full hinting
   file:
     src: /usr/share/fontconfig/conf.avail/10-hinting-full.conf
     dest: /etc/fonts/conf.d/10-hinting-full.conf
     state: link
-  become: true
 
-- name: Fonts | Disable bitmap fonts
+- name: Disable bitmap fonts
   file:
     src: /usr/share/fontconfig/conf.avail/70-no-bitmaps.conf
     dest: /etc/fonts/conf.d/70-no-bitmaps.conf
     state: link
-  become: true
 
-- name: Fonts | Enable subpixel autohinting with freetype2
-  become: true
+- name: Enable subpixel autohinting with freetype2
   lineinfile:
     dest: "/etc/profile.d/freetype2.sh"
     regexp: ".*export FREETYPE_PROPERTIES=.*"
     line: 'export FREETYPE_PROPERTIES="truetype:interpreter-version=40"'
 
-- name: Fonts | Set font family choices
-  become: true
+- name: Set font family choices
   template:
     src: fonts-local.conf.j2
     dest: /etc/fonts/local.conf

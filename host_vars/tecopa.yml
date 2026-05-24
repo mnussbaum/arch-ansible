@@ -1,56 +1,7 @@
 ---
-grub: true
-
-partitions:
-  efi:
-    number: 1
-    physical_device: /dev/nvme0n1
-    partition_device: /dev/nvme0n1p1
-    logical_device: /dev/nvme0n1p1
-    partition_name: EFI system partitions
-    partition_label: gpt
-    start: 1049kB
-    end: 525MB
-    fstype: vfat
-    fs_options: ""
-    mount_point: /mnt/boot/efi
-    encrypted: false
-    managed: false
-    flags:
-      - boot
-      - esp
-  boot:
-    number: 7
-    physical_device: /dev/nvme0n1
-    partition_device: /dev/nvme0n1p7
-    logical_device: /dev/nvme0n1p7
-    partition_name: Grub
-    partition_label: gpt
-    start: 77414MiB
-    end: 77902MiB
-    fstype: ext4
-    fs_options: "-O ^has_journal"
-    mount_point: /mnt/boot
-    encrypted: false
-    managed: true
-    flags: []
-  root:
-    number: 8
-    physical_device: /dev/nvme0n1
-    partition_device: /dev/nvme0n1p8
-    logical_device: /dev/mapper/vgcrypt-root
-    volume_group_name: vgcrypt
-    logical_volume_name: root
-    partition_name: Arch Root
-    partition_label: gpt
-    start: 77902MiB
-    end: 476822MiB
-    fstype: ext4
-    fs_options: "-O ^has_journal"
-    mount_point: /mnt
-    encrypted: true
-    managed: true
-    flags: []
+disk:
+  device: /dev/nvme0n1
+  partition_uuid: ebcc5f0f-6ee8-458f-af11-1418182eabc4
 
 mkinitcpio_modules:
   - nvme_core

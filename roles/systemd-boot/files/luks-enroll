@@ -1,0 +1,43 @@
+#!/bin/bash
+set -euo pipefail
+
+MARKER=/var/lib/luks-enrolled
+PASS_FILE=$(mktemp /run/luks-enroll-passphrase.XXXXXX)
+
+cleanup() { rm -f "$PASS_FILE"; }
+trap cleanup EXIT
+chmod 600 "$PASS_FILE"
+
+# Discover the LUKS device from the root mount (DPS names it luks-<partition-uuid>)
+ROOT_MAPPER=$(findmnt --noheadings --output=SOURCE /)
+LUKS_NAME=${ROOT_MAPPER##*/}
+DEVICE=$(cryptsetup status "$LUKS_NAME" | awk '/device:/ {print $2}')
+if [[ -z "$DEVICE" ]]; then
+    echo "luks-enroll: could not determine LUKS device from root mapper $LUKS_NAME" >&2
+    exit 1
+fi
+
+# Read bootstrap passphrase written by mkosi into the ESP credential store
+if [[ -f /efi/loader/credentials/luks.passphrase ]]; then
+    cp /efi/loader/credentials/luks.passphrase "$PASS_FILE"
+else
+    systemd-ask-password "Bootstrap LUKS passphrase" >"$PASS_FILE"
+fi
+
+# Enroll TPM2 sealed to PCR 7 (Secure Boot state)
+systemd-cryptenroll \
+    --tpm2-device=auto \
+    --tpm2-pcrs=7 \
+    --unlock-key-file="$PASS_FILE" \
+    "$DEVICE"
+
+# Generate recovery key — print and store with the machine's GPG paper backup
+systemd-cryptenroll \
+    --recovery-key \
+    --unlock-key-file="$PASS_FILE" \
+    "$DEVICE"
+
+# Wipe the bootstrap passphrase slot; TPM2 auto-authenticates from here on
+systemd-cryptenroll --wipe-slot=password "$DEVICE"
+
+touch "$MARKER"

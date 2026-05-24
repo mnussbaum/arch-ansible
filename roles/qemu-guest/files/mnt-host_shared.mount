@@ -1,0 +1,14 @@
+[Unit]
+Description=QEMU host shared virtfs directory
+ConditionVirtualization=kvm
+DefaultDependencies=no
+After=local-fs.target
+
+[Mount]
+What=host_shared
+Where=/mnt/host_shared
+Type=9p
+Options=trans=virtio,version=9p2000.L,rw
+
+[Install]
+WantedBy=multi-user.target

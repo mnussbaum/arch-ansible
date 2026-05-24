@@ -1,32 +1,22 @@
 ---
-- name: qemu host | Install packages
+- name: Install packages
   package:
     state: present
     name:
       - qemu-desktop
       - edk2-ovmf
-  become: true
 
-- name: qemu host | Enable kvm CPU pass-through
-  become: true
-  notify:
-    - Regenerate mkinitcpio ramdisk
+- name: Enable kvm CPU pass-through
   copy:
     content: "options kvm_intel nested=1"
     dest: "/etc/modprobe.d/kvm_intel.conf"
 
-- name: qemu host | Enable virtio module
-  become: true
-  notify:
-    - Regenerate mkinitcpio ramdisk
+- name: Enable virtio module
   copy:
     content: "virtio"
     dest: "/etc/modules-load.d/virtio.conf"
 
-- name: qemu host | Enable vhost_vsock module
-  become: true
-  notify:
-    - Regenerate mkinitcpio ramdisk
+- name: Enable vhost_vsock module
   copy:
     content: "vhost_vsock"
     dest: "/etc/modules-load.d/vhost_vsock.conf"

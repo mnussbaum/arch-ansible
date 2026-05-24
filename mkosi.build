@@ -1,0 +1,9 @@
+#!/bin/bash
+set -euo pipefail
+
+pacman --root "$DESTDIR" -U --needed --noconfirm /work/src/yay-pkg/yay-bin-[0-9]*.pkg.tar.lzo
+
+CARGO_HOME=/tmp/cargo-home cargo install \
+    --no-track \
+    --root "$DESTDIR/usr/local" \
+    --git https://github.com/mnussbaum/waybar-sway-workspace-output-manager

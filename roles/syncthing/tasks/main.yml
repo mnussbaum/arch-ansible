@@ -1,36 +1,31 @@
 # vim:ft=yaml.ansible:
 ---
-- name: syncthing | Install packages
+- name: Install packages
   package:
     state: present
     name:
       - syncthing
-  become: true
 
-- name: syncthing | Create systemd service override dir
+- name: Create systemd service override dir
   file:
-    path: "{{ user_config_dir }}/systemd/user/syncthing.service.d"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    path: /etc/systemd/user/syncthing.service.d
     state: directory
 
-- name: syncthing | Add systemd override to set Nice=19
+- name: Add systemd override to set Nice=19
   copy:
-    dest: "{{ user_config_dir }}/systemd/user/syncthing.service.d/10-low-priority.conf"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/systemd/user/syncthing.service.d/10-low-priority.conf
     content: |
       [Service]
       Nice=19
       IOSchedulingClass=2
       IOSchedulingPriority=7
 
-- name: syncthing | Enable syncthing user service
+- name: Enable syncthing user service
   become: true
   become_user: "{{ user.name }}"
   when: ansible_facts["virtualization_role"] != "guest"
   systemd:
     enabled: true
     name: syncthing.service
-    scope: user
-    daemon-reload: true
+    scope: global
+    daemon-reload: "{{ svc_daemon_reload }}"

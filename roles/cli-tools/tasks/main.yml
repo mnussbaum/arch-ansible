@@ -1,15 +1,10 @@
 # vim:ft=yaml.ansible:
 ---
-# Split these into multiple groups to avoid sudo timeout on initial
-# install
-- name: CLI Tools | Install packages
+- name: Install packages
   package:
     state: present
-    name: "{{ item }}"
-  retries: 2
-  become: true
-  loop:
-    - - aws-cli-bin
+    name:
+      - aws-cli-bin
       - bat
       - bc
       - bfs
@@ -19,7 +14,7 @@
       - figlet
       - fwupd
       - fzf
-    - - htop
+      - htop
       - hwinfo
       - imv
       - iotop
@@ -32,7 +27,7 @@
       - net-tools
       - parallel
       - openbsd-netcat
-    - - openssh
+      - openssh
       - ripgrep
       - ruby
       - strace
@@ -44,23 +39,22 @@
       - zip
       - numbat
       - glow
-    - - yazi
+      - yazi
       - xan
       - fd
       - yq
       - curl
       - socat
 
-- name: CLI Tools | Install fzf helper scripts
+- name: Install fzf helper scripts
   copy:
     dest: "/usr/local/bin/{{ item | basename }}"
     src: "{{ item }}"
     mode: a+x
-  become: true
   with_fileglob:
     - fzf_helpers/*
 
-- name: CLI Tools | Generate base16-fzf config
+- name: Generate base16-fzf config
   base16_builder:
     scheme: "{{ base16_scheme }}"
     scheme_family: "{{ base16_scheme_family }}"
@@ -70,47 +64,33 @@
   register: base16_fzf
   tags: [base16]
 
-- name: CLI Tools | Write base16-fzf config to a file
+- name: Write base16-fzf config to a file
   copy:
     content: "{{ base16_fzf['schemes'][base16_scheme]['fzf']['sh']['base16-' + base16_scheme + '.sh'] }}"
-    dest: "{{ user_config_dir }}/zsh/fzf-base16.zsh"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/zsh/fzf-base16.zsh
   tags: [base16]
 
-- name: CLI Tools | Create bat config dir
-  become: true
+- name: Create bat config dir
   file:
-    path: "{{ user_config_dir }}/bat"
+    path: /etc/xdg/bat
     state: directory
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
 
-- name: CLI Tools | Write bat config file
+- name: Write bat config file
   copy:
     src: bat-config
-    dest: "{{ user_config_dir }}/bat/config"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/xdg/bat/config
 
-- name: CLI Tools | Create ripgrep config dir
-  become: true
+- name: Create ripgrep config dir
   file:
-    path: "{{ user_config_dir }}/ripgrep"
+    path: /etc/xdg/ripgrep
     state: directory
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
 
-- name: CLI Tools | Write ripgrep config file
+- name: Write ripgrep config file
   copy:
     src: ripgrep-config
-    dest: "{{ user_config_dir }}/ripgrep/config"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/xdg/ripgrep/config
 
-- name: CLI Tools | Write inputrc config file
+- name: Write inputrc config file
   copy:
     src: inputrc
-    dest: "{{ user_home_dir }}/.inputrc"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/inputrc

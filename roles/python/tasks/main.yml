@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: python | Install packages
+- name: Install packages
   package:
     state: present
     name:
@@ -9,4 +9,3 @@
       - python-pip
       - python-pylint
       - uv
-  become: true

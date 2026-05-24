@@ -1,0 +1,16 @@
+#!/bin/bash
+# When root in nspawn: strip sudo flags and exec directly.
+# When non-root (build user calling sudo for pacman): delegate to real sudo.
+if [[ $EUID -ne 0 ]]; then
+    # setgroups() is restricted in some nspawn configs; --preserve-groups skips it.
+    exec /usr/bin/sudo.real --preserve-groups "$@"
+fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --) shift; break ;;
+        -u|--user|-g|--group|-p|--prompt|-r|--role|-t|--type|-c|--context|-T|--command-timeout|-C|--close-from) shift 2 ;;
+        -*) shift ;;
+        *) break ;;
+    esac
+done
+exec "$@"

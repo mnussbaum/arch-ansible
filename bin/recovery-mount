@@ -1,0 +1,35 @@
+#!/bin/bash
+set -euo pipefail
+
+TARGET=/mnt
+
+# Discover the LUKS partition
+DEVICE=$(blkid -t TYPE=crypto_LUKS -o device | head -1)
+if [[ -z "$DEVICE" ]]; then
+    echo "recovery-mount: no LUKS partition found" >&2
+    exit 1
+fi
+echo "LUKS partition: $DEVICE"
+
+# Discover the ESP on the same disk
+PARENT=$(lsblk -no PKNAME "$DEVICE")
+ESP=$(blkid -t TYPE=vfat -o device | grep "^/dev/${PARENT}" | head -1)
+
+# Open the LUKS container — try enrolled tokens (FIDO2) first, then prompt
+if cryptsetup status cryptroot &>/dev/null; then
+    echo "cryptroot already open"
+elif cryptsetup open --token-only "$DEVICE" cryptroot 2>/dev/null; then
+    echo "Opened via enrolled token"
+else
+    echo "No token succeeded; enter recovery key:"
+    cryptsetup open "$DEVICE" cryptroot
+fi
+
+mount /dev/mapper/cryptroot "$TARGET"
+
+if [[ -n "$ESP" ]]; then
+    mkdir -p "$TARGET/efi"
+    mount "$ESP" "$TARGET/efi"
+fi
+
+exec arch-chroot "$TARGET"

@@ -1,14 +1,12 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Wallpaper | Create directory
-  become: true
+- name: Create directory
   file:
     path: "{{ wallpaper.desktop_dir }}"
     state: directory
     mode: "0755"
 
-- name: Wallpaper | Install desktop background images
-  become: true
+- name: Install desktop background images
   copy:
     src: "{{ item }}"
     dest: "{{ wallpaper.desktop_dir }}/"

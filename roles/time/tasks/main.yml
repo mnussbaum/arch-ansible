@@ -1,21 +1,18 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Time | Set timezone
-  become: true
+- name: Set timezone
   timezone:
     name: "{{ timezone }}"
 
-- name: Time | Set hardware clock timezone to UTC
-  become: true
+- name: Set hardware clock timezone to UTC
   timezone:
     hwclock: UTC
 
-- name: Time | Check timedatectl NTP status
+- name: Check timedatectl NTP status
   command: timedatectl status
   register: timedatectl_ntp_status
   changed_when: false
 
-- name: Time | Enable timedatectl NTP
+- name: Enable timedatectl NTP
   command: timedatectl set-ntp true
-  become: true
   when: "'System clock synchronized: no' in timedatectl_ntp_status.stdout"

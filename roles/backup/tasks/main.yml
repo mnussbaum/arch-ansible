@@ -1,62 +1,54 @@
 # vim:ft=yaml.ansible:
 ---
-- name: backup | Install packages
+- name: Install packages
   package:
     state: present
     name:
       - fuse2
       - restic
-  become: true
 
-- name: backup | Install restic backblaze backup script
-  become: true
+- name: Install restic backblaze backup script
   copy:
     src: restic-backblaze-backup
     dest: /usr/local/bin/restic-backblaze-backup
     mode: a+x
 
-- name: backup | Install restic backblaze backup notify service
+- name: Install restic backblaze backup notify service
   copy:
     src: restic-backblaze-backup-notify.service
-    dest: "{{ user_config_dir }}/systemd/user/restic-backblaze-backup-notify.service"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/systemd/user/restic-backblaze-backup-notify.service
 
-- name: backup | Install restic backblaze backup service
+- name: Install restic backblaze backup service
   copy:
     src: restic-backblaze-backup.service
-    dest: "{{ user_config_dir }}/systemd/user/restic-backblaze-backup.service"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/systemd/user/restic-backblaze-backup.service
 
-- name: backup | Install restic backblaze backup timer
+- name: Install restic backblaze backup timer
   copy:
     src: restic-backblaze-backup.timer
-    dest: "{{ user_config_dir }}/systemd/user/restic-backblaze-backup.timer"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/systemd/user/restic-backblaze-backup.timer
 
-- name: backup | Enable restic backblaze credential sockets
+- name: Enable restic backblaze credential sockets
   become: true
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: "pass-credential@{{ item }}.socket"
-    scope: user
-    daemon-reload: true
+    scope: global
+    daemon-reload: "{{ svc_daemon_reload }}"
   loop:
     - "{{ inventory_hostname }}-restic_backblaze_key"
     - "{{ inventory_hostname }}-restic_backblaze_key_id"
     - restic_backup_password
 
-- name: backup | Enable restic backblaze backup timer
+- name: Enable restic backblaze backup timer
   become: true
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: restic-backblaze-backup.timer
-    scope: user
-    daemon-reload: true
+    scope: global
+    daemon-reload: "{{ svc_daemon_reload }}"
 # To take a backup:
 #
 # * sudo mount /dev/sda1 /tmp/usb

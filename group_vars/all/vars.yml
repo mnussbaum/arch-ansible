@@ -43,7 +43,6 @@ base16:
   schemes_source: "https://github.com/mnussbaum/base16-schemes-source"
   templates_source: "https://github.com/mnussbaum/base16-templates-source"
 
-grub_theme_dir: /boot/grub/themes/custom
 
 wallpaper:
   desktop_dir: /usr/share/backgrounds
@@ -59,6 +58,7 @@ vconsole_install_root: ""
 
 bootstrap_packages:
   - ansible
+  - mkosi
   - archlinux-keyring
   - base
   - base-devel
@@ -67,7 +67,6 @@ bootstrap_packages:
   - linux-headers
   - mkinitcpio
   - linux-firmware
-  - lvm2
   - python
   - python-passlib
   - rsync
@@ -77,7 +76,6 @@ bootstrap_packages:
   - git
   - lzop
   - tmux
-  - os-prober
   - iwd
   - iptables
   - wireless_tools

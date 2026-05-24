@@ -1,22 +1,17 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Claude | Install packages
+- name: Install packages
   package:
     state: present
     name:
       - claude-code
-  become: true
 
-- name: Claude | Ensure ~/.claude dir exists
+- name: Create skel claude config dir
   file:
-    path: "{{ user_home_dir }}/.claude"
+    path: /etc/skel/.claude
     state: directory
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
 
-- name: Claude | Install settings
+- name: Install settings into skel
   copy:
     src: claude_settings.json
-    dest: "{{ user_home_dir }}/.claude/settings.json"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/skel/.claude/settings.json

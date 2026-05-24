@@ -1,26 +1,21 @@
 # vim:ft=yaml.ansible:
 ---
-- name: sway | Create config dirs
+- name: Create config dirs
   file:
-    path: "{{ user_config_dir }}/{{ item }}"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    path: "{{ item }}"
     state: directory
   with_items:
-    - mako
-    - sway
-    - swaylock
+    - /etc/sway
+    - /etc/swaylock
+    - /etc/xdg/mako
   tags: [base16]
 
-- name: sway | Install sway env file
-  become: true
+- name: Install sway env file
   copy:
     src: sway-env
-    dest: "{{ user_config_dir }}/sway/env"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/sway/env
 
-- name: sway | Install sway packages
+- name: Install sway packages
   package:
     state: present
     name:
@@ -41,9 +36,8 @@
       - wdisplays
       - thunar
       - tumbler # thumbnails for thunar
-  become: true
 
-- name: sway | Generate base16 configs
+- name: Generate base16 configs
   base16_builder:
     scheme: "{{ base16_scheme }}"
     scheme_family: "{{ base16_scheme_family }}"
@@ -53,27 +47,19 @@
   register: base16_i3
   tags: [base16]
 
-- name: sway | Install config
+- name: Install config
   template:
     src: sway_config.j2
-    dest: "{{ user_config_dir }}/sway/config"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/sway/config
   tags: [base16]
-  with_items:
-    - sway
 
-- name: sway | Install swaylock config
+- name: Install swaylock config
   template:
     src: swaylock_config.j2
-    dest: "{{ user_config_dir }}/swaylock/config"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/swaylock/config
   tags: [base16]
-  with_items:
-    - sway
 
-- name: sway | Generate mako base16 config
+- name: Generate mako base16 config
   base16_builder:
     scheme: "{{ base16_scheme }}"
     scheme_family: "{{ base16_scheme_family }}"
@@ -83,36 +69,30 @@
   register: base16_mako
   tags: [base16]
 
-- name: sway | Write mako config to a file
+- name: Write mako config to a file
   template:
     src: mako.j2
-    dest: "{{ user_config_dir }}/mako/config"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/xdg/mako/config
   tags: [base16]
 
-- name: Sway | Install services
+- name: Install services
   copy:
     src: "{{ item }}"
-    dest: "{{ user_config_dir }}/systemd/user/{{ item }}"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: "/etc/systemd/user/{{ item }}"
   with_items:
     - sway-session.target
     - sway.service
 
-- name: Sway | Install swayidle service
+- name: Install swayidle service
   template:
     src: swayidle.service.j2
-    dest: "{{ user_config_dir }}/systemd/user/swayidle.service"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: "/etc/systemd/user/swayidle.service"
 
-- name: Sway | Enable swayidle
+- name: Enable swayidle
   become: true
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: swayidle.service
-    scope: user
-    daemon-reload: true
+    scope: global
+    daemon-reload: "{{ svc_daemon_reload }}"

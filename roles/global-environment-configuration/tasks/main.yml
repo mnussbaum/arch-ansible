@@ -1,19 +1,16 @@
 # vim:ft=yaml.ansible:
 ---
-- name: global environment configuration | Install /etc/environment
+- name: Install /etc/environment
   copy:
     src: etc_environment
     dest: /etc/environment
-  become: true
 
-- name: global environment configuration | Install /etc/locale.conf
+- name: Install /etc/locale.conf
   copy:
     src: etc_locale.conf
     dest: /etc/locale.conf
-  become: true
 
-- name: global environment configuration | Install shell profile files
-  become: true
+- name: Install shell profile files
   copy:
     dest: "/etc/profile.d/{{ item | basename }}"
     src: "{{ item }}"
@@ -21,8 +18,7 @@
   with_fileglob:
     - profile.d/*
 
-- name: global environment configuration | Install global ZSH configs sourcing /etc/profile
-  become: true
+- name: Install global ZSH configs sourcing /etc/profile
   copy:
     dest: "{{ item }}"
     src: source_etc_profile
