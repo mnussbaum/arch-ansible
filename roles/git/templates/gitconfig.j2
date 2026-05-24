@@ -2,7 +2,7 @@
   sort = committerdate
 
 [core]
-  attributesfile = {{ user_config_dir}}/gitconfig/attributes
+  attributesfile = /etc/gitconfig.d/attributes
   pager = delta
 
 
@@ -29,11 +29,11 @@
   useConfigOnly = true
 
 [include]
-  path = {{ user_data_dir }}/delta-themes.gitconfig
-  path = {{ user_config_dir }}/gitconfig/personal
+  path = /usr/local/share/delta-themes.gitconfig
+  path = /etc/gitconfig.d/personal
 
-[includeIf "gitdir:~/src/eeek/"]
-  path = {{ user_config_dir }}/gitconfig/eeek
+[includeIf "gitdir:~/Projects/eeek/"]
+  path = /etc/gitconfig.d/eeek
 
 [color]
   ui = auto

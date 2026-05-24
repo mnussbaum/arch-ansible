@@ -3,3 +3,7 @@ EDITOR=nvim
 VISUAL=nvim
 PAGER=less
 MOZ_LEGACY_PROFILES=1
+DOCKER_CONFIG=/etc/xdg/docker
+IRBRC=/etc/xdg/irb/irbrc
+PSQLRC=/etc/xdg/psql/psqlrc
+RUBOCOP_OPTS=--config /etc/xdg/rubocop/config.yml

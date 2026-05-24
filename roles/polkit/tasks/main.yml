@@ -1,31 +1,27 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Polkit | Install gnome polkit agent package
+- name: Install gnome polkit agent package
   package:
     state: present
     name: polkit-gnome
-  become: true
 
 # This allows the machinectl connection plugin used to bootstrap Rasp-pi hosts
 # to run without requiring the entire playbook to be run as root
-- name: Polkit | Allow all users to run machinectl commands
-  become: true
+- name: Allow all users to run machinectl commands
   copy:
     src: polkit-00-machinectl.rules
     dest: /etc/polkit-1/rules.d/00-machinectl.rules
 
-- name: Polkit | Install user agent service
+- name: Install user agent service
   copy:
     src: polkit-gnome-authentication-agent.service
-    dest: "{{ user_config_dir }}/systemd/user/polkit-gnome-authentication-agent.service"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: /etc/systemd/user/polkit-gnome-authentication-agent.service
 
-- name: Polkit | Enable user agent service
+- name: Enable user agent service
   become: true
   become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: polkit-gnome-authentication-agent.service
-    scope: user
-    daemon-reload: true
+    scope: global
+    daemon-reload: "{{ svc_daemon_reload }}"

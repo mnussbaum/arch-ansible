@@ -33,7 +33,5 @@
 - name: Add tmux config
   copy:
     src: tmux.conf
-    dest: "{{ user_home_dir }}/.tmux.conf"
-    owner: "{{ user_name }}"
-    group: "{{ user_name }}"
+    dest: /etc/tmux.conf
 

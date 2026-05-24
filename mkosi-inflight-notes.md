@@ -1,0 +1,25 @@
+- Document that we implement https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
+- Ask it to diff against the plan in https://0pointer.net/blog/fitting-everything-together.html
+- Figure out user data story
+- Figure out how we test changes to automation. Just QEMU?
+- Figure out how we apply changes to automation. Reinstall?
+- Create a mkosi.cache dir to cache more
+- I think we move package installs back into ansible
+- Use mkosi.prepare to install mnussbaum user
+- Use btrfs?
+- Run xdg-user-dir to install user dirs
+- `==> WARNING: sd-vconsole: "/etc/vconsole.conf" not found, will use default values` during qemu build
+- Is `Install pacman database files` still needed?
+- `EncryptedVolume= is not specified for any eligible partitions, not generating /etc/crypttab` is problem?
+- Clean up bootstrapping tags and playbooks
+- Clean up network_install_root
+- Clean up the variables for daemon refresh and service starting
+- Stuff copied from the host that needs to be in containerfile
+  - yay-bin
+  - password-store repo
+  - arch-ansible repo
+  - nvim packages
+- sudoers task needs to get more dynamic for user list
+- How are we going to mount in nvim data dir in container? Probably need to handle its absence
+- In image build need to mount from new system locations once I have a provisioned machine
+- Ask it if there's other things that need network access going on that we can avoid

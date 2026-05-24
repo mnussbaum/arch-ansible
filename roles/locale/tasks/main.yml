@@ -1,25 +1,23 @@
 # vim:ft=yaml.ansible:
 ---
-- name: locale | Generate locales
-  become: true
+- name: Generate locales
   locale_gen:
     name: en_US.UTF-8
     state: present
 
-- name: locale | Get current locale and language configuration
+- name: Get current locale and language configuration
   command: localectl status
   register: localectl_status
   changed_when: false
 
-- name: locale | Parse 'LANG' from current locale and language configuration
+- name: Parse 'LANG' from current locale and language configuration
   set_fact:
     locale_lang: "{{ localectl_status.stdout | regex_search('LANG=([^\n]+)', '\\1') | first }}"
 
-- name: locale | Parse 'LANGUAGE' from current locale and language configuration
+- name: Parse 'LANGUAGE' from current locale and language configuration
   set_fact:
     locale_language: "{{ localectl_status.stdout | regex_search('LANGUAGE=([^\n]+)', '\\1') | default([locale_lang], true) | first }}"
 
-- name: locale | Set locale and language
-  become: true
+- name: Set locale and language
   command: localectl set-locale LANG=en_US.UTF-8 LANGUAGE=en_US.UTF-8
   when: locale_lang != "en_US.UTF-8" or locale_language != "en_US.UTF-8"

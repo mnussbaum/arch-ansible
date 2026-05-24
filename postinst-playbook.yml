@@ -1,0 +1,126 @@
+# vim:ft=yaml.ansible:
+---
+- hosts: all
+  vars:
+    svc_start_state: "{{ omit }}"
+    svc_daemon_reload: false
+  roles:
+    - mnussbaum.base16-builder-ansible
+    - mnussbaum.firefox_ext_sideloader
+  pre_tasks:
+    - set_fact:
+        ansible_facts: "{{ ansible_facts | combine({'pkg_mgr': 'pacman'}) }}"
+    - import_role:
+        name: packaging
+        tasks_from: install-pacman-conf
+      vars:
+        disable_sandbox: true
+    - import_role:
+        name: packaging
+        tasks_from: init-keyring
+  post_tasks:
+    - import_role:
+        name: packaging
+        tasks_from: install-pacman-conf
+      vars:
+        disable_sandbox: false
+    - import_role:
+        name: packaging
+        tasks_from: restore-build-overrides
+  tasks:
+    - import_role:
+        name: set-appearance-facts
+    - import_role:
+        name: vconsole
+    - import_role:
+        name: systemd-boot
+    - import_role:
+        name: trim
+    - import_role:
+        name: user
+    - import_role:
+        name: network_configuration
+    - import_role:
+        name: enable_network
+    - import_role:
+        name: reflector
+      when: ansible_facts["architecture"] is not match("arm.*")
+    - import_role:
+        name: packaging
+        tasks_from: setup-aur
+    - import_role:
+        name: secrets
+    - import_role:
+        name: zsh
+    - import_role:
+        name: cli-tools
+    - import_role:
+        name: ruby
+    - import_role:
+        name: global-environment-configuration
+    - import_role:
+        name: neovim
+    - import_role:
+        name: git
+    - import_role:
+        name: wezterm
+    - import_role:
+        name: tmux
+    - import_role:
+        name: power
+    - import_role:
+        name: qemu-host
+      when: qemu_host
+    - import_role:
+        name: qemu-guest
+    - import_role:
+        name: fonts
+    - import_role:
+        name: libinput
+    - import_role:
+        name: wallpaper
+    - import_role:
+        name: sway
+    - import_role:
+        name: waybar
+    - import_role:
+        name: greeter
+    - import_role:
+        name: launcher
+    - import_role:
+        name: qt
+    - import_role:
+        name: gtk
+    - import_role:
+        name: polkit
+    - import_role:
+        name: brightness
+    - import_role:
+        name: media
+    - import_role:
+        name: bluetooth
+    - import_role:
+        name: backup
+    - import_role:
+        name: torrents
+    - import_role:
+        name: devops
+    - import_role:
+        name: archiso
+    - import_role:
+        name: pdf
+    - import_role:
+        name: syncthing
+    - import_role:
+        name: raspberry-pi-dev
+      when: ansible_facts["architecture"] is not match("arm.*")
+    - import_role:
+        name: firefox
+    - import_role:
+        name: postgres
+    - import_role:
+        name: beancount
+    - import_role:
+        name: claude
+    - import_role:
+        name: image-seed

@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Bluetooth | Install packages
+- name: Install packages
   package:
     state: present
     name:
@@ -8,22 +8,19 @@
       - bluez-tools
       - bluez-utils
 
-- name: Bluetooth | Power on afer reboot
-  become: true
+- name: Power on afer reboot
   lineinfile:
     dest: /etc/bluetooth/main.conf
     regexp: ".*AutoEnable.*"
     line: "AutoEnable=true"
 
-- name: Bluetooth | Always be discoverable
-  become: true
+- name: Always be discoverable
   lineinfile:
     dest: /etc/bluetooth/main.conf
     regexp: ".*DiscoverableTimeout.*"
     line: "DiscoverableTimeout=0"
 
-- name: Bluetooth | Enable service
-  become: true
+- name: Enable service
   systemd:
     enabled: true
     name: bluetooth

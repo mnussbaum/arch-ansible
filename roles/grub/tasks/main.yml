@@ -1,7 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Grub | Install packages
-  become: true
+- name: Install packages
   package:
     state: present
     name:
@@ -10,22 +9,20 @@
       - intel-ucode
       - os-prober
 
-- name: Grub | Run os-prober to find other OS
+- name: Run os-prober to find other OS
   command: os-prober
-  become: true
   changed_when: false
   notify:
     - Regenerate grub.cfg
 
-- name: Grub | Configure grub
-  become: true
+- name: Configure grub
   notify:
     - Regenerate grub.cfg
   template:
     src: grub.j2
     dest: /etc/default/grub
 
-- name: Grub | Install grub
+- name: Install grub
   when: bootstrap is defined and bootstrap == "true"
   notify:
     - Regenerate grub.cfg

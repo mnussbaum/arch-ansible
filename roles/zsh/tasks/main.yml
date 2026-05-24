@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible
 ---
-- name: ZSH | Install package
+- name: Install package
   package:
     state: present
     name:
@@ -9,23 +9,18 @@
       - python-pystache # For base16_builder
       - starship
       - zoxide
-  become: true
 
-- name: ZSH | Install zshrc
+- name: Install zshrc
   copy:
-    dest: "/home/{{ user.name }}/.zshrc"
+    dest: /etc/zsh/zshrc
     src: zshrc
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
 
-- name: ZSH | Create zsh config dir
+- name: Create zsh config dir
   file:
-    path: "{{ user_config_dir }}/zsh"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    path: /etc/zsh
     state: directory
 
-- name: ZSH | Generate base16 configs
+- name: Generate base16 configs
   base16_builder:
     scheme: "{{ base16_scheme }}"
     scheme_family: "{{ base16_scheme_family }}"
@@ -35,28 +30,20 @@
   register: base16_shell
   tags: [base16]
 
-- name: ZSH | Install base16 zsh config
+- name: Install base16 zsh config
   copy:
-    dest: "{{ user_config_dir }}/zsh/00-base16.zsh"
+    dest: /etc/zsh/00-base16.zsh
     content: "{{ base16_shell['schemes'][base16_scheme]['shell']['scripts']['base16-' + base16_scheme + '.sh'] }}"
   tags: [base16]
 
-- name: ZSH | Install zsh configs
+- name: Install zsh configs
   synchronize:
-    dest: "{{ user_config_dir }}/zsh"
+    dest: /etc/zsh
     src: zsh-configs/
     perms: false
+    rsync_path: "sudo rsync"
 
-- name: ZSH | Ensure zsh config owner is right
-  file:
-    path: "{{ user_config_dir }}/zsh"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    recurse: true
-
-- name: ZSH | Install startship prompt config
+- name: Install starship prompt config
   copy:
-    dest: "{{ user_config_dir }}/starship.toml"
+    dest: /etc/xdg/starship.toml
     src: starship.toml
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"

@@ -1,12 +1,11 @@
 # vim:ft=yaml.ansible:
 ---
-- name: tmux | Install packages
+- name: Install packages
   package:
     name: tmux
     state: present
-  become: true
 
-- name: tmux | Install tmux config
+- name: Install tmux config
   copy:
     src: tmux.conf
     dest: "/home/{{ user.name }}/.tmux.conf"

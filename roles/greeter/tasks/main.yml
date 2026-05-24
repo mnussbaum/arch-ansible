@@ -1,15 +1,13 @@
 # vim:ft=yaml.ansible:
 ---
-- name: greeter | Install pacakges
-  become: true
+- name: Install pacakges
   package:
     state: present
     name:
       - greetd
       - greetd-gtkgreet
 
-- name: greeter | Create config dir
-  become: true
+- name: Create config dir
   file:
     path: /etc/greetd
     state: directory
@@ -17,8 +15,7 @@
     group: greeter
     mode: u=rwX,g=rwX,o=rwX
 
-- name: greeter | Install config files
-  become: true
+- name: Install config files
   copy:
     src: "greetd-{{ item }}"
     dest: "/etc/greetd/{{ item }}"
@@ -28,9 +25,8 @@
     - config.toml
     - environments
 
-- name: greeter | Install templated files
+- name: Install templated files
   tags: [base16]
-  become: true
   template:
     src: greetd-{{ item }}.j2
     dest: /etc/greetd/{{ item }}
@@ -41,8 +37,7 @@
     - sway-config
     - style.css
 
-- name: greeter | Install WM start commands
-  become: true
+- name: Install WM start commands
   copy:
     src: "{{ item }}"
     dest: "/usr/local/bin/{{ item }}"
@@ -50,8 +45,7 @@
   with_items:
     - start-sway
 
-- name: greeter | Enable greetd service
-  become: true
+- name: Enable greetd service
   systemd:
     enabled: true
     name: greetd

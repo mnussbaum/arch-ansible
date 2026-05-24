@@ -1,15 +1,12 @@
 # vim:ft=yaml.ansible:
 ---
-- name: bootstrap-packages | Install pacman database files
-  become: true
+- name: Install pacman database files
   pacman:
-    update_cache: yes
-    upgrade: yes
+    update_cache: true
+    upgrade: true
   retries: 2
-  when: bootstrap is defined and bootstrap == "true"
 
-- name: bootstrap-packages | Install packages
-  become: true
+- name: Install packages
   package:
     state: present
     name: "{{ bootstrap_packages }}"

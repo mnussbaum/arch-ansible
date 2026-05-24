@@ -1,13 +1,13 @@
 # vim:ft=yaml.ansible:
 ---
-- name: SSH | Create config dir
+- name: Create config dir
   file:
     path: "{{ user_home_dir }}/.ssh"
     owner: "{{ user.name }}"
     group: "{{ user.group }}"
     state: directory
 
-- name: SSH | Install config
+- name: Install config
   copy:
     owner: "{{ user.name }}"
     group: "{{ user.group }}"

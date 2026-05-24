@@ -4,8 +4,7 @@
 # I needed to enable whitebalance_temperature_auto once on the XPS 13. Ideally
 # I'd persist the fix to some config file but I can't figure out what file that
 # would be
-- name: Camera | Install packages
-  become: true
+- name: Install packages
   package:
     state: present
     name: v4l2ucp

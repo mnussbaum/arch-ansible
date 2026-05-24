@@ -17,7 +17,7 @@
 #   - roles/gpg/files/gpg-pubkey.asc is written (commit it)
 #   - <device> holds primary-key.asc, revocation-cert.asc, and oath-accounts.txt
 #
-# Run bin/renew-gpg-subkeys annually to extend subkey expiry.
+# Run bin/enroll-yubikeys annually to extend subkey expiry.
 
 set -o errexit
 set -o nounset

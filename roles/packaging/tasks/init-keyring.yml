@@ -1,0 +1,7 @@
+# vim:ft=yaml.ansible:
+---
+- name: Initialize pacman keyring
+  command: pacman-key --init
+
+- name: Populate pacman keyring
+  command: pacman-key --populate archlinux

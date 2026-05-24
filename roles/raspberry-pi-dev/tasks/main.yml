@@ -1,9 +1,8 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Pi Dev | Install packages
+- name: Install packages
   package:
     state: present
     name:
       - qemu-user-static
       - qemu-user-static-binfmt
-  become: true

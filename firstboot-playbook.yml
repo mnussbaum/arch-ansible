@@ -1,0 +1,24 @@
+# vim:ft=yaml.ansible:
+---
+- hosts: all
+  vars:
+    svc_start_state: started
+    svc_daemon_reload: true
+  tasks:
+    - set_fact:
+        user_home_dir: "/home/{{ user.name }}"
+    - import_role:
+        name: network_configuration
+        tasks_from: runtime
+    - import_role:
+        name: gpg
+    - import_role:
+        name: ssh
+    - import_role:
+        name: brightness
+        tasks_from: runtime
+    - import_role:
+        name: eeek
+    - import_role:
+        name: postgres
+        tasks_from: pgpass

@@ -1,0 +1,7 @@
+# vim:ft=yaml.ansible:
+---
+# The ansible copy module doesn't work on this device file :/
+# https://forum.floydhub.com/t/error-invalid-cross-device-link-when-copy-file-from-input-to-output-with-os-rename/100/3
+- name: Lengthen keyboard backlight timeout
+  shell: echo 1m > /sys/devices/platform/dell-laptop/leds/dell::kbd_backlight/stop_timeout
+  when: ansible_facts["system_vendor"] == "Dell Inc." and lookup("file", "/sys/devices/platform/dell-laptop/leds/dell::kbd_backlight/stop_timeout") != "1m"

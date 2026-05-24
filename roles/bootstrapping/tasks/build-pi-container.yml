@@ -4,7 +4,6 @@
   file:
     path: "{{ item.mount_point }}"
     state: absent
-  become: true
   when: wipe_card is defined and wipe_card == "true"
   loop: "{{ partitions | dict_values }}"
 
@@ -12,7 +11,6 @@
   file:
     path: "{{ item.mount_point }}"
     state: directory
-  become: true
   loop: "{{ partitions | dict_values }}"
 
 - assert:
@@ -28,7 +26,6 @@
     device: "{{ partitions['root'].physical_device }}"
     unit: MiB
   register: sd_device_info
-  become: true
 
 - name: Remove extra partitions from disk
   parted:
@@ -37,7 +34,6 @@
     state: absent
   loop: "{{ sd_device_info.partitions }}"
   when: (item.num > (partitions | length)) or (wipe_card is defined and wipe_card == "true")
-  become: true
 
 - import_role:
     name: bootstrapping
@@ -48,7 +44,6 @@
     device: "{{ item.partition_device }}"
     state: "absent"
     name: "{{ item.logical_device | basename }}"
-  become: true
   loop: "{{ partitions | dict_values }}"
   when: item.encrypted and (wipe_card is defined and wipe_card == "true")
 
@@ -61,7 +56,6 @@
   filesystem:
     fstype: "{{ item.fstype }}"
     dev: "{{ item.logical_device }}"
-  become: true
   loop: "{{ partitions | dict_values }}"
 
 - import_role:
@@ -85,10 +79,8 @@
     src: "{{ root_filesystem_download_path }}"
     dest: "{{ partitions['root'].mount_point }}"
     creates: "{{ partitions['root'].mount_point}}/etc/os-release"
-  become: true
 
 - name: Check for boot dir on the root partition
-  become: true
   stat:
     path: "{{ partitions['root'].mount_point }}/boot"
   register: boot_dir_on_root
@@ -98,11 +90,9 @@
     src: "{{ partitions['root'].mount_point }}/boot/"
     dest: "{{ partitions['boot'].mount_point }}"
     perms: false
-  become: true
   when: boot_dir_on_root.stat.exists
 
 - name: Remove old boot dir files
-  become: true
   command:
     cmd: "rm -rf {{ partitions['root'].mount_point }}/boot/*"
     warn: false
@@ -112,7 +102,6 @@
   mount:
     path: "{{ partitions['boot'].mount_point }}"
     state: absent
-  become: true
 
 - name: Mount boot dir under root dir
   mount:
@@ -120,7 +109,6 @@
     src: "{{ partitions['boot'].partition_device }}"
     state: mounted
     fstype: vfat
-  become: true
 
 # It seems like creating network namespaces fails within the container
 # Many built-in systemd services attempt to create a network NS via the
@@ -129,7 +117,6 @@
 #
 # https://stackoverflow.com/questions/66927027/systemd-services-with-private-networking-fail-when-run-in-nspawn-container
 - name: Create systemd override directories
-  become: true
   file:
     path: "{{ partitions['root'].mount_point }}/etc/systemd/system/{{ item }}"
     state: directory
@@ -147,26 +134,22 @@
     - uuidd.service.d
 
 - name: Disable systemd units' private networking
-  become: true
   copy:
     src: private_network_override.conf
     dest: "{{ item.path }}/override.conf"
   loop: "{{ systemd_override_dirs.results }}"
 
 - name: Create systemd-nspawn service file directory
-  become: true
   file:
     path: /etc/systemd/nspawn
     state: directory
 
 - name: Install nspawn config for panamint
-  become: true
   copy:
     src: panamint.nspawn
     dest: "/etc/systemd/nspawn/panamint.nspawn"
 
 - name: Ensure root dir permissions
-  become: true
   file:
     path: "{{ partitions['root'].mount_point }}"
     owner: root
@@ -177,20 +160,17 @@
 # Arch forum with workaround - https://archlinuxarm.org/forum/viewtopic.php?t=14722
 # Systemd issues - https://github.com/systemd/systemd/issues/18598
 - name: Disable systemd-homed in container
-  become: true
   replace:
     path: "{{ partitions['root'].mount_point }}/etc/pam.d/system-auth"
     regexp: "(.*pam_systemd_home.so.*)"
     replace: '#\1'
 
 - name: Install mkinitcpio.conf
-  become: true
   template:
     src: mkinitcpio.conf.j2
     dest: "{{ partitions['root'].mount_point }}/etc/mkinitcpio.conf"
 
 - name: Start panamint container
-  become: true
   systemd:
     state: started
     name: systemd-nspawn@panamint.service
@@ -200,7 +180,6 @@
   tags: [open]
 
 - name: Init pacman keys in nspawn container
-  become: true
   command: machinectl shell panamint /usr/bin/pacman-key --init
   retries: 20
   delay: 4
@@ -208,26 +187,21 @@
   until: pacman_key_init_result.rc == 0
 
 - name: Populate ARM pacman keys in nspawn container
-  become: true
   command: machinectl shell panamint /usr/bin/pacman-key --populate archlinuxarm
 
 - name: Update and install pacakges in nspawn container
-  become: true
   command: machinectl shell panamint /usr/bin/pacman -Syu --noconfirm --overwrite '*.dtbo' linux-raspberrypi-headers lvm2 cryptsetup sudo git rsync base base-devel uboot-tools mkinitcpio-utils python ansible
 
 # Can't use `uname` since that returns the host kernel version
 - name: Rebuild initramfs in container
-  become: true
   command: machinectl shell panamint /bin/bash -c "mkinitcpio -k $(ls /usr/lib/modules | grep ARCH | tail -n 1) -g /boot/initramfs-linux.img"
 
 - name: Update boot params for crypt root
-  become: true
   copy:
     dest: "{{ partitions['root'].mount_point }}/boot/cmdline.txt"
     content: "root={{ partitions['root'].logical_device }} cryptdevice={{ partitions['root'].partition_device }}:{{ partitions['root'].volume_group_name }} rootfstype={{ partitions['root'].fstype }} rw rootwait console=serial0,115200 console=tty1 selinux=0 plymouth.enable=0 smsc95xx.turbo_mode=N dwc_otg.lpm_enable=0 kgdboc=serial0,115200"
 
 - name: Set hostname in container
-  become: true
   copy:
     content: "panamint"
     dest: "{{ partitions['root'].mount_point }}/etc/hostname"

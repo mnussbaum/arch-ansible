@@ -1,0 +1,12 @@
+#!/bin/bash
+# In nspawn build containers, systemd isn't PID 1 so operations that require
+# D-Bus (daemon-reload, reload, etc.) fail. Pass through offline-capable
+# operations; silently succeed for live-only ones.
+for arg in "$@"; do
+    case "$arg" in
+        daemon-reload|reload|try-reload-or-restart|try-restart|enqueue-marked)
+            exit 0
+            ;;
+    esac
+done
+exec /usr/bin/systemctl.real "$@"

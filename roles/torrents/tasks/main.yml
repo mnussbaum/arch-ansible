@@ -1,7 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Torrents | Install packages
-  become: true
+- name: Install packages
   package:
     state: present
     name:

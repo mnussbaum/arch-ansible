@@ -1,12 +1,15 @@
 ## Nice to improve
 
-1. Host groups to reduce host var duplication
-1. Repartition windows partition
-1. Specify partitions as sizes
-1. Make it easier to add a new host, vars, hosts.yml
-1. Structured secrets
-   1. Wifi secrets dir to replace vault
-   1. Document secret setup in new host adding docs
+- Host groups to reduce host var duplication
+- Repartition windows partition
+- Specify partitions as sizes
+- Make it easier to add a new host, vars, hosts.yml, generate mkosi partition UUID
+- Structured secrets
+  - Wifi secrets dir to replace vault
+  - Document secret setup in new host adding docs
+- Make container file capable of building live USB
+  - Include it in recovery
+- DRY up host YAMLs and connection type in hosts.yml
 
 ### Live image
 

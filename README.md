@@ -7,8 +7,8 @@ applying them to physical hardware.
 
 ## Stack
 
-**OS & boot:** Arch Linux, UEFI, GRUB 2 with custom theme, LUKS-encrypted root with LVM
-inside, separate unencrypted EFI and `/boot` partitions, ext4 filesystems.
+**OS & boot:** Arch Linux, UEFI, systemd-boot, Unified Kernel Images (UKIs), Secure Boot
+via sbctl, LUKS2-encrypted root (no LVM), single EFI partition, ext4 filesystem.
 
 **Desktop:** Sway (Wayland compositor), Waybar, Mako notifications, Greetd greeter,
 Swaylock, WezTerm, Thunar.
@@ -26,16 +26,18 @@ auth subkey.
 ## Repo layout
 
 ```
-bin/            Bootstrap and key ceremony scripts
-roles/          Ansible roles (one per subsystem, each with tasks/, files/, templates/)
-roles/bootstrapping/  Disk partition, LUKS, and filesystem tasks
-host_vars/      Per-machine configuration (partitions, monitors, WiFi)
-group_vars/     Shared variables (user, fonts, theming, packages)
-secrets/        Ansible Vault password (secrets themselves are encrypted in group_vars/)
-vendor/roles/   External Ansible roles
-assets/         Wallpapers, fonts, GRUB theme assets
-playbook.yml    Main configuration playbook
-bootstrap.yml   Bootstrap orchestrator
+bin/              Bootstrap and key ceremony scripts
+roles/            Ansible roles (one per subsystem, each with tasks/, files/, templates/)
+host_vars/        Per-machine configuration (disk UUID, monitors, WiFi)
+group_vars/       Shared variables (user, fonts, theming, packages)
+secrets/          Ansible Vault password (secrets themselves are encrypted in group_vars/)
+vendor/roles/     External Ansible roles
+assets/           Wallpapers and fonts
+playbook.yml      Main configuration playbook
+mkosi.conf        Base mkosi image build config
+mkosi.build       Build script (runs Ansible inside the image)
+mkosi.repart/     Shared partition layout (EFI)
+mkosi.images/     Per-machine partition layout and image config
 ```
 
 ## Auth
@@ -77,14 +79,14 @@ gpg --export-ssh-key <fingerprint>
 
 ### Provision new YubiKeys
 
-YubiKeys are programmed as part of `create-gpg-key` or `renew-gpg-subkeys`. The scripts
+YubiKeys are programmed as part of `create-gpg-key` or `enroll-yubikeys`. The scripts
 loop interactively, prompting to insert each YubiKey in turn. Each YubiKey receives the
 same three subkeys (sign, encrypt, auth).
 
 To program additional YubiKeys against an existing primary GPG USB:
 
 ```
-./bin/renew-gpg-subkeys <device>
+./bin/enroll-yubikeys <device>
 ```
 
 When prompted, insert YubiKeys one at a time and follow the prompts.
@@ -113,7 +115,7 @@ gpg --card-status
 Subkeys expire annually. Run the renewal ceremony with the primary GPG USB plugged in:
 
 ```
-./bin/renew-gpg-subkeys <device>   # e.g. /dev/sda1
+./bin/enroll-yubikeys <device>   # e.g. /dev/sda1
 ```
 
 This extends all subkey expiry by one year, exports the updated public key to
@@ -125,16 +127,17 @@ git add files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys'
 
 ### 2FA codes
 
-TOTP codes are stored in the YubiKey OATH applet, separate from the password store. This
-preserves genuine two-factor separation: compromising the password store doesn't expose
-TOTP seeds. The OATH applet is password-protected; the password is set during YubiKey
-provisioning.
+TOTP codes are stored in the YubiKey OATH applet, separate from the password
+store. This preserves genuine two-factor separation: compromising the password
+store doesn't expose TOTP seeds. The OATH applet is password-protected; the
+password is set during YubiKey provisioning.
 
-Seeds are backed up as `otpauth://` URIs in `oath-accounts.txt` on the primary GPG USB.
-They are automatically loaded onto each YubiKey during `create-gpg-key` and
-`renew-gpg-subkeys`. The recovery guide PDF includes QR codes and base32 secrets for a curated set of
-critical accounts (defined in `CRITICAL_TOTPS` in `bin/generate-gpg-recovery-guide`),
-so those accounts can be restored from paper alone without the USB.
+Seeds are backed up as `otpauth://` URIs in `oath-accounts.txt` on the primary
+GPG USB. They are automatically loaded onto each YubiKey during
+`create-gpg-key` and `enroll-yubikeys` The recovery guide PDF includes QR codes
+and base32 secrets for a curated set of critical accounts (defined in
+`CRITICAL_TOTPS` in `bin/generate-gpg-recovery-guide`), so those accounts can
+be restored from paper alone without the USB.
 
 **Import from Aegis**
 
@@ -144,8 +147,9 @@ Export from Aegis: Menu → Export → Plain text backup (unencrypted JSON), the
 ./bin/import-aegis-export <device> <aegis-export.json>
 ```
 
-Converts the Aegis JSON to `otpauth://` URIs, backs them up to the USB, and loads them
-onto the YubiKey. Delete the export file from your phone after running.
+Converts the Aegis JSON to `otpauth://` URIs, backs them up to the USB, and
+loads them onto the YubiKey. Delete the export file from your phone after
+running.
 
 **Add a single account**
 
@@ -211,50 +215,49 @@ bootstrap new machines and repair broken ones.
 Plug in a USB drive (will be written to `/dev/sda`) and run:
 
 ```
-./bin/build-live-usb
+./bin/build-live-image
 ```
 
 ### Provision a new physical machine
 
-1. Build the install USB (see above) and boot the target machine from it.
+1. Add the machine to the repo: entry in `hosts.yml`, `host_vars/<hostname>.yml`,
+   `mkosi.images/<hostname>/mkosi.conf`, and `mkosi.images/<hostname>/mkosi.repart/10-root.conf`
+   (generate a UUID with `uuidgen`). Rebuild the live image.
 
-2. From the live environment, set `$HOSTNAME` to the machine's hostname (must match an
-   entry in `hosts.yml`) and run:
-
-   ```
-   HOSTNAME=<hostname> ./bin/bootstrap-physical
-   ```
-
-   This partitions the disk (GPT: EFI, `/boot`, LUKS-encrypted root with LVM), creates
-   filesystems, runs `pacstrap`, sets the hostname, then runs the main playbook in a
-   chroot.
-
-3. Reboot and log back in. Run `./bin/ansible` to complete provisioning
-   running desktop environment.
-
-### Provision a new QEMU instance
-
-1. Build the QEMU image and start the installer:
+2. Boot the target machine from the live USB. The repo is already installed at
+   `~/src/arch-ansible`. Run:
 
    ```
-   ./bin/build-qemu-image
+   cd ~/src/arch-ansible
+   bin/build-persistent-image <hostname> <device>
+   # e.g.: bin/build-persistent-image bodie /dev/nvme0n1
    ```
 
-   This creates a 32 GB qcow2 disk, builds an install ISO, and boots into it.
+3. Reboot into the installed system.
 
-2. From inside the QEMU guest, run:
+### QEMU workflows
 
-   ```
-   ./bin/bootstrap-qemu
-   ```
+Build and run the persistent qemu image (emulates an installed machine):
 
-3. After bootstrap completes, reboot the VM and start it normally:
+```
+./bin/build-qemu-image
+./bin/run-qemu
+```
 
-   ```
-   ./bin/run-qemu
-   ```
+Build and run the live image in QEMU (tests the live/rescue environment):
 
-4. Within the VM run `./bin/ansible` to complete provisioning
+```
+./bin/build-live-image $XDG_DATA_HOME/qemu-arch/live.raw
+./bin/run-qemu --live
+```
+
+Boot the live image with the persistent qemu disk attached (emulates live USB repair):
+
+```
+./bin/run-qemu --repair
+```
+
+Inside the live environment, decrypt and mount `/dev/sdb` to access the target system.
 
 ## Maintenance
 
@@ -287,7 +290,7 @@ Tags limit which tasks run, useful for faster iteration on a specific subsystem.
 | Tag                      | Tasks run                                                                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------ |
 | `bootstrap`              | Initial setup only: users, packages, networking, partitioning helpers                            |
-| `rebuild-boot-partition` | Regenerate GRUB config and mkinitcpio initramfs; use to repair a broken boot partition or kernel |
+| `rebuild-boot-partition` | Regenerate mkinitcpio UKIs and systemd-boot config; use to repair a broken boot setup |
 | `base16`                 | Regenerate all color-scheme files across every app                                               |
 | `nvim`                   | Neovim configuration and plugins                                                                 |
 | `networking`             | Network configuration (iwd, systemd-networkd, resolved)                                          |

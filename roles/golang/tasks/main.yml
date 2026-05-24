@@ -1,6 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: golang | Install packages
+- name: Install packages
   package:
     state: present
     name:

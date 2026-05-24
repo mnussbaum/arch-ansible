@@ -1,7 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
-- name: enable network | Install packages
-  become: true
+- name: Install packages
   package:
     state: latest
     name:
@@ -10,34 +9,28 @@
       - wireguard-tools
       - systemd-resolvconf
 
-- name: enable network | Start and enable systemd-resolved
-  become: true
+- name: Start and enable systemd-resolved
   systemd:
-    state: started
+    state: "{{ svc_start_state }}"
     enabled: true
     name: systemd-resolved.service
 
-# Bootstrapping the pi SD card network is defined but we can't start it up in
-# the container, hence the ternary
-- name: enable network | Start and enable iwd.service
-  become: true
+- name: Start and enable iwd.service
   systemd:
-    state: "{{ (ansible_facts['virtualization_role'] == 'guest') | ternary('stopped', 'started') }}"
+    state: "{{ svc_start_state }}"
     enabled: true
     name: iwd.service
 
-- name: enable network | Start and enable systemd-networkd
-  become: true
+- name: Start and enable systemd-networkd
   systemd:
-    state: started
+    state: "{{ svc_start_state }}"
     enabled: true
     name: systemd-networkd.service
-    daemon-reload: true
+    daemon-reload: "{{ svc_daemon_reload }}"
 
-- name: enable network | Wait for network to be online during bootstrapping
-  become: true
+- name: Wait for network to be online during bootstrapping
   systemd:
-    state: started
+    state: "{{ svc_start_state }}"
     enabled: true
     name: systemd-networkd-wait-online.service
   when: bootstrap is defined and bootstrap == "true"

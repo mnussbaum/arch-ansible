@@ -1,0 +1,89 @@
+# vim:ft=yaml.ansible:
+---
+- name: Back up real sudo for nspawn passthrough
+  copy:
+    src: /usr/bin/sudo
+    dest: /usr/bin/sudo.real
+    remote_src: true
+    mode: preserve
+
+- name: Install sudo passthrough (already root in nspawn)
+  copy:
+    src: sudo-nspawn-passthrough
+    dest: /usr/bin/sudo
+    mode: '0755'
+
+- name: Set makepkg MAKEFLAGS for parallel builds
+  lineinfile:
+    path: /etc/makepkg.conf
+    regexp: '^#?MAKEFLAGS='
+    line: 'MAKEFLAGS="-j{{ ansible_facts["processor_vcpus"] + 1 }}"'
+
+- name: Set makepkg package extension
+  lineinfile:
+    path: /etc/makepkg.conf
+    regexp: '^#?PKGEXT='
+    line: "PKGEXT='.pkg.tar.lzo'"
+
+- name: Set makepkg source extension
+  lineinfile:
+    path: /etc/makepkg.conf
+    regexp: '^#?SRCEXT='
+    line: "SRCEXT='.src.tar.gz'"
+
+- name: Disable git credential helpers
+  shell: git config --system credential.helper ""
+
+- name: Back up real systemctl for nspawn passthrough
+  copy:
+    src: /usr/bin/systemctl
+    dest: /usr/bin/systemctl.real
+    remote_src: true
+    mode: preserve
+
+- name: Install systemctl passthrough (suppress live-only operations in nspawn)
+  copy:
+    src: systemctl-nspawn-passthrough
+    dest: /usr/bin/systemctl
+    mode: '0755'
+
+- name: Back up systemd user daemon-reload hook
+  copy:
+    src: /usr/share/libalpm/hooks/30-systemd-daemon-reload-user.hook
+    dest: /usr/share/libalpm/hooks/30-systemd-daemon-reload-user.hook.bak
+    remote_src: true
+
+- name: Install no-op systemd user daemon-reload hook
+  copy:
+    src: systemd-daemon-reload-noop.hook
+    dest: /usr/share/libalpm/hooks/30-systemd-daemon-reload-user.hook
+
+- name: Back up real systemd-run for nspawn passthrough
+  copy:
+    src: /usr/bin/systemd-run
+    dest: /usr/bin/systemd-run.real
+    remote_src: true
+    mode: preserve
+
+- name: Install systemd-run passthrough (bypass systemd bus in nspawn)
+  copy:
+    src: systemd-run-nspawn-passthrough
+    dest: /usr/bin/systemd-run
+    mode: '0755'
+
+- name: Back up real makepkg for nspawn
+  copy:
+    src: /usr/bin/makepkg
+    dest: /usr/bin/makepkg.real
+    remote_src: true
+    mode: preserve
+
+- name: Patch makepkg to allow running as root in nspawn
+  replace:
+    path: /usr/bin/makepkg
+    regexp: 'if \(\( EUID == 0 \)\); then'
+    replace: 'if false; then  # nspawn-patched'
+
+- name: Switch to yay for AUR support
+  set_fact:
+    ansible_facts: "{{ ansible_facts | combine({'pkg_mgr': 'yay'}) }}"

@@ -5,10 +5,53 @@ set -o nounset
 
 source bin/_qemu_common.sh
 
+# --usi:    boot the USI alone
+# --repair: boot the USI with the persistent qemu disk as a second drive,
+#           emulating a live USB plugged into the target machine
+mode=${1:-}
+
+case "$mode" in
+  --usi)
+    image_dir=mkosi.images/usi
+    cpus=4
+    ram=6G
+    extra_vmm_args=()
+    ;;
+  --repair)
+    image_dir=mkosi.images/usi
+    cpus=4
+    ram=6G
+    extra_vmm_args=(
+      "-drive" "if=none,id=hd1,file=$qemu_image_file,format=raw"
+      "-device" "scsi-hd,bus=scsi0.0,drive=hd1"
+    )
+    ;;
+  "")
+    image_dir=mkosi.images/qemu
+    cpus=4
+    ram=4G
+    extra_vmm_args=()
+    ;;
+  *)
+    echo "Usage: $0 [--usi|--repair]" >&2
+    exit 1
+    ;;
+esac
+
+gpg_usb_args=()
+if [[ -f "$qemu_gpg_usb_file" ]]; then
+  gpg_usb_args=("-drive" "file=$qemu_gpg_usb_file,format=raw")
+fi
+
 start_pcscd_vsock_relay
 trap stop_pcscd_vsock_relay EXIT INT TERM
 
-qemu-system-x86_64 \
-  "${common_qemu_args[@]}" \
-  "${gpg_usb_args[@]}" \
-  "${system_disk_args[@]}"
+mkosi \
+  --directory="$image_dir" \
+  --output-directory="$images_dir" \
+  --cpus="$cpus" \
+  --ram="$ram" \
+  --vsock=yes \
+  --vsock-cid=3 \
+  --runtime-trees="$qemu_shared_dir:/run/host/shared" \
+  vm -- "${gpg_usb_args[@]}" "${extra_vmm_args[@]}"
