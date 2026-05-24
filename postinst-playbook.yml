@@ -4,6 +4,8 @@
   vars:
     svc_start_state: "{{ omit }}"
     svc_daemon_reload: false
+  environment:
+    BUILDDIR: /tmp/makepkg
   roles:
     - mnussbaum.base16-builder-ansible
     - mnussbaum.firefox_ext_sideloader
@@ -15,112 +17,159 @@
         tasks_from: install-pacman-conf
       vars:
         disable_sandbox: true
+      tags: [packaging]
     - import_role:
         name: packaging
         tasks_from: init-keyring
+      tags: [packaging]
   post_tasks:
     - import_role:
         name: packaging
         tasks_from: install-pacman-conf
       vars:
         disable_sandbox: false
+      tags: [packaging]
     - import_role:
         name: packaging
         tasks_from: restore-build-overrides
+      tags: [packaging]
   tasks:
     - import_role:
         name: set-appearance-facts
+      tags: [set-appearance-facts]
     - import_role:
         name: vconsole
+      tags: [vconsole]
     - import_role:
         name: systemd-boot
+      tags: [systemd-boot]
     - import_role:
         name: trim
+      tags: [trim]
     - import_role:
         name: user
+      tags: [user]
     - import_role:
         name: network_configuration
+      tags: [network_configuration]
     - import_role:
         name: enable_network
+      tags: [enable_network]
     - import_role:
         name: reflector
       when: ansible_facts["architecture"] is not match("arm.*")
+      tags: [reflector]
     - import_role:
         name: packaging
         tasks_from: setup-aur
+      tags: [packaging]
     - import_role:
         name: secrets
+      tags: [secrets]
     - import_role:
         name: zsh
+      tags: [zsh]
     - import_role:
         name: cli-tools
+      tags: [cli-tools]
     - import_role:
         name: ruby
+      tags: [ruby]
     - import_role:
         name: global-environment-configuration
+      tags: [global-environment-configuration]
     - import_role:
         name: neovim
+      tags: [neovim]
     - import_role:
         name: git
+      tags: [git]
     - import_role:
         name: wezterm
+      tags: [wezterm]
     - import_role:
         name: tmux
+      tags: [tmux]
     - import_role:
         name: power
+      tags: [power]
     - import_role:
         name: qemu-host
       when: qemu_host
+      tags: [qemu-host]
     - import_role:
         name: qemu-guest
+      tags: [qemu-guest]
     - import_role:
         name: fonts
+      tags: [fonts]
     - import_role:
         name: libinput
+      tags: [libinput]
     - import_role:
         name: wallpaper
+      tags: [wallpaper]
     - import_role:
         name: sway
+      tags: [sway]
     - import_role:
         name: waybar
+      tags: [waybar]
     - import_role:
         name: greeter
+      tags: [greeter]
     - import_role:
         name: launcher
+      tags: [launcher]
     - import_role:
         name: qt
+      tags: [qt]
     - import_role:
         name: gtk
+      tags: [gtk]
     - import_role:
         name: polkit
+      tags: [polkit]
     - import_role:
         name: brightness
+      tags: [brightness]
     - import_role:
         name: media
+      tags: [media]
     - import_role:
         name: bluetooth
+      tags: [bluetooth]
     - import_role:
         name: backup
+      tags: [backup]
     - import_role:
         name: torrents
+      tags: [torrents]
     - import_role:
         name: devops
+      tags: [devops]
     - import_role:
         name: archiso
+      tags: [archiso]
     - import_role:
         name: pdf
+      tags: [pdf]
     - import_role:
         name: syncthing
+      tags: [syncthing]
     - import_role:
         name: raspberry-pi-dev
       when: ansible_facts["architecture"] is not match("arm.*")
+      tags: [raspberry-pi-dev]
     - import_role:
         name: firefox
+      tags: [firefox]
     - import_role:
         name: postgres
+      tags: [postgres]
     - import_role:
         name: beancount
+      tags: [beancount]
     - import_role:
         name: claude
-    - import_role:
-        name: image-seed
+      tags: [claude]

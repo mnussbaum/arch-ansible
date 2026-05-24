@@ -29,7 +29,6 @@
       - openbsd-netcat
       - openssh
       - ripgrep
-      - ruby
       - strace
       - tig
       - unzip

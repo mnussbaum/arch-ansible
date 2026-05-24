@@ -26,8 +26,6 @@
     state: "{{ svc_start_state }}"
     scope: global
     daemon-reload: "{{ svc_daemon_reload }}"
-  become: true
-  become_user: "{{ user.name }}"
 
 - name: Install colorscheme-changer binary
   copy:
@@ -52,5 +50,3 @@
     state: "{{ svc_start_state }}"
     scope: global
     daemon-reload: "{{ svc_daemon_reload }}"
-  become: true
-  become_user: "{{ user.name }}"

@@ -4,25 +4,30 @@ set -o errexit
 set -o nounset
 
 refresh_cache=""
+dev_format=""
 positional=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       echo "Build a fully provisioned persistent image for a specific host." >&2
-      echo "Usage: $0 [--refresh-cache] <hostname> [output-device]" >&2
+      echo "Usage: $0 [--refresh-cache] [--dev] <hostname> [output-device]" >&2
       echo "  For hostname 'qemu', output defaults to \$qemu_image_file." >&2
       echo "  For physical hosts, output device is required." >&2
       echo "  --refresh-cache  Bust the mkosi incremental cache and do a full rebuild." >&2
+      echo "  --dev            Build a directory tree instead of a disk image for faster iteration." >&2
       exit
       ;;
     --refresh-cache) refresh_cache="--incremental=no" ;;
+    --dev) dev_format="--format=directory" ;;
     *) positional+=("$1") ;;
   esac
   shift
 done
 
 source bin/_qemu_common.sh
+
+mkdir -p ~/.cache/mkosi/pacman-pkg
 
 hostname="${positional[0]:?Usage: $0 <hostname> [output]}"
 
@@ -39,7 +44,8 @@ if [[ "$hostname" == "qemu" ]]; then
     --output-directory="$images_dir" \
     --credential="luks.passphrase=$luks_passphrase" \
     --force \
-    ${refresh_cache:+"$refresh_cache"}
+    ${refresh_cache:+"$refresh_cache"} \
+    ${dev_format:+"$dev_format"}
 else
   output="${positional[1]:?Usage: $0 <hostname> <output-device>}"
   mkosi \
@@ -48,5 +54,6 @@ else
     --credential="luks.passphrase=$luks_passphrase" \
     --force \
     ${refresh_cache:+"$refresh_cache"} \
+    ${dev_format:+"$dev_format"} \
     burn "$output"
 fi

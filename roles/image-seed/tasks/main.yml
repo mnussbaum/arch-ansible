@@ -11,31 +11,3 @@
     src: /work/src/password-store/
     dest: /usr/local/share/password-store/
     delete: true
-
-- name: Create skel Projects dir
-  file:
-    path: /etc/skel/Projects
-    state: directory
-
-- name: Symlink repo into skel Projects
-  file:
-    path: /etc/skel/Projects/arch-ansible
-    src: /usr/local/share/arch-ansible
-    state: link
-
-- name: Create skel .local/share dir
-  file:
-    path: /etc/skel/.local/share
-    state: directory
-
-- name: Symlink password-store into skel .local/share
-  file:
-    path: /etc/skel/.local/share/password-store
-    src: /usr/local/share/password-store
-    state: link
-
-- name: Symlink password-store into skel .password-store
-  file:
-    path: /etc/skel/.password-store
-    src: /usr/local/share/password-store
-    state: link

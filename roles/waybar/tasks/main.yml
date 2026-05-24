@@ -30,8 +30,6 @@
     dest: /etc/systemd/user/waybar.service
 
 - name: Enable service
-  become: true
-  become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: waybar.service
@@ -55,8 +53,6 @@
     dest: /etc/systemd/user/waybar-sway-workspace-output-manager.service
 
 - name: Enable waybar-sway-workspace-output-manager service
-  become: true
-  become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: waybar-sway-workspace-output-manager.service

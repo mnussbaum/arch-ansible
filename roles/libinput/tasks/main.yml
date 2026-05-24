@@ -20,8 +20,6 @@
     src: libinput-gestures.conf
 
 - name: Enable libinput-gestures service
-  become: true
-  become_user: "{{ user.name }}"
   when: optional_daemons.libinput_gestures
   systemd:
     enabled: true

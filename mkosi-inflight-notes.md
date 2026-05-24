@@ -6,7 +6,7 @@
 - Create a mkosi.cache dir to cache more
 - I think we move package installs back into ansible
 - Use mkosi.prepare to install mnussbaum user
-- Use btrfs?
+- Use btrfs? Should make building a lot faster with CoW copies
 - Run xdg-user-dir to install user dirs
 - `==> WARNING: sd-vconsole: "/etc/vconsole.conf" not found, will use default values` during qemu build
 - Is `Install pacman database files` still needed?
@@ -23,3 +23,5 @@
 - How are we going to mount in nvim data dir in container? Probably need to handle its absence
 - In image build need to mount from new system locations once I have a provisioned machine
 - Ask it if there's other things that need network access going on that we can avoid
+- Should be able to remove pacman keyring stuff if truly offline
+- `HOSTNAME=usi NO_ASK_BECOME_PASS=1 ANSIBLE_PLAYBOOK=postinst-playbook.yml ./bin/ansible --tags=greeter --tags=packaging`

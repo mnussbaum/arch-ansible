@@ -48,6 +48,18 @@
     path: /usr/bin/makepkg.real
     state: absent
 
+- name: Restore real bsdtar
+  copy:
+    src: /usr/bin/bsdtar.real
+    dest: /usr/bin/bsdtar
+    remote_src: true
+    mode: preserve
+
+- name: Remove bsdtar backup
+  file:
+    path: /usr/bin/bsdtar.real
+    state: absent
+
 - name: Restore systemd user daemon-reload hook
   copy:
     src: /usr/share/libalpm/hooks/30-systemd-daemon-reload-user.hook.bak
@@ -58,4 +70,5 @@
   file:
     path: /usr/share/libalpm/hooks/30-systemd-daemon-reload-user.hook.bak
     state: absent
+
 

@@ -89,8 +89,6 @@
     dest: "/etc/systemd/user/swayidle.service"
 
 - name: Enable swayidle
-  become: true
-  become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: swayidle.service
