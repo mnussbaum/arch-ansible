@@ -29,8 +29,6 @@
     dest: /etc/systemd/user/restic-backblaze-backup.timer
 
 - name: Enable restic backblaze credential sockets
-  become: true
-  become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: "pass-credential@{{ item }}.socket"
@@ -42,8 +40,6 @@
     - restic_backup_password
 
 - name: Enable restic backblaze backup timer
-  become: true
-  become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: restic-backblaze-backup.timer

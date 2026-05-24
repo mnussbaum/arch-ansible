@@ -1,1 +1,1 @@
-rw quiet{% if "nvme" in disk.device %} pcie_aspm=force{% endif %}{% if ansible_facts["virtualization_role"] != "guest" and swapfile_offset is defined %} resume=/dev/mapper/luks-{{ disk.partition_uuid }} resume_offset={{ swapfile_offset.stdout }}{% endif %}
+rw quiet{% if "nvme" in disk.device %} pcie_aspm=force{% endif %}

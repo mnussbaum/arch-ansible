@@ -4,6 +4,7 @@
   package:
     state: present
     name:
+      - ruby
       - ruby-irb
       - ruby-bundler
       - rubocop

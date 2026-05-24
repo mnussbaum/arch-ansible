@@ -7,20 +7,25 @@
       - greetd
       - greetd-gtkgreet
 
+- name: Check greeter system user
+  command: systemd-sysusers --dry-run /usr/lib/sysusers.d/greetd.conf
+  register: sysusers_dry
+  changed_when: false
+
+- name: Create greeter system user
+  command: systemd-sysusers /usr/lib/sysusers.d/greetd.conf
+  when: sysusers_dry.stdout != "" or sysusers_dry.stderr != ""
+
 - name: Create config dir
   file:
     path: /etc/greetd
     state: directory
-    owner: greeter
-    group: greeter
-    mode: u=rwX,g=rwX,o=rwX
+    mode: "0755"
 
 - name: Install config files
   copy:
     src: "greetd-{{ item }}"
     dest: "/etc/greetd/{{ item }}"
-    owner: greeter
-    group: greeter
   with_items:
     - config.toml
     - environments
@@ -30,8 +35,6 @@
   template:
     src: greetd-{{ item }}.j2
     dest: /etc/greetd/{{ item }}
-    owner: greeter
-    group: greeter
     mode: "0644"
   with_items:
     - sway-config

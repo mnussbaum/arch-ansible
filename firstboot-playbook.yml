@@ -22,3 +22,5 @@
     - import_role:
         name: postgres
         tasks_from: pgpass
+    - import_role:
+        name: image-seed

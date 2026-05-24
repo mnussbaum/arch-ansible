@@ -3,4 +3,11 @@ set -euo pipefail
 
 cd /work/src
 export USER=root HOME=/root
-exec env NO_ASK_BECOME_PASS=1 HOSTNAME=$IMAGE_ID ANSIBLE_PLAYBOOK=postinst-playbook.yml ./bin/ansible
+
+extra_args=()
+if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
+  eval "extra_args=($ANSIBLE_EXTRA_ARGS)"
+fi
+
+exec env NO_ASK_BECOME_PASS=1 HOSTNAME=$IMAGE_ID ANSIBLE_PLAYBOOK=postinst-playbook.yml \
+  ./bin/ansible "${extra_args[@]}"

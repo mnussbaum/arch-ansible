@@ -53,5 +53,5 @@ mkosi \
   --ram="$ram" \
   --vsock=yes \
   --vsock-cid=3 \
-  --runtime-trees="$qemu_shared_dir:/run/host/shared" \
+  --runtime-tree="$qemu_shared_dir:/run/host/shared" \
   vm -- "${gpg_usb_args[@]}" "${extra_vmm_args[@]}"

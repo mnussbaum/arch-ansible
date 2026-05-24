@@ -8,7 +8,7 @@ cleanup() { rm -f "$PASS_FILE"; }
 trap cleanup EXIT
 chmod 600 "$PASS_FILE"
 
-# Discover the LUKS device from the root mount (DPS names it luks-<partition-uuid>)
+# Discover the LUKS device backing the root filesystem
 ROOT_MAPPER=$(findmnt --noheadings --output=SOURCE /)
 LUKS_NAME=${ROOT_MAPPER##*/}
 DEVICE=$(cryptsetup status "$LUKS_NAME" | awk '/device:/ {print $2}')
@@ -16,28 +16,61 @@ if [[ -z "$DEVICE" ]]; then
     echo "luks-enroll: could not determine LUKS device from root mapper $LUKS_NAME" >&2
     exit 1
 fi
+ROOT_DISK=$(lsblk -ndo PKNAME "$DEVICE")
 
-# Read bootstrap passphrase written by mkosi into the ESP credential store
+# Read bootstrap passphrase from ESP credential written by mkosi.
+# After root's passphrase keyslot is wiped (first boot) this file is
+# inert for root but still valid for any newly-created LUKS partitions
+# (e.g. swap created by systemd-repart on first boot) that share the
+# same passphrase via the luks.passphrase credential.
 if [[ -f /efi/loader/credentials/luks.passphrase ]]; then
     cp /efi/loader/credentials/luks.passphrase "$PASS_FILE"
 else
     systemd-ask-password "Bootstrap LUKS passphrase" >"$PASS_FILE"
 fi
 
-# Enroll TPM2 sealed to PCR 7 (Secure Boot state)
-systemd-cryptenroll \
-    --tpm2-device=auto \
-    --tpm2-pcrs=7 \
-    --unlock-key-file="$PASS_FILE" \
-    "$DEVICE"
+is_tpm2_enrolled() {
+    systemd-cryptenroll "$1" 2>/dev/null | awk 'NR>1{print $2}' | grep -q "^tpm2$"
+}
 
-# Generate recovery key — print and store with the machine's GPG paper backup
-systemd-cryptenroll \
-    --recovery-key \
-    --unlock-key-file="$PASS_FILE" \
-    "$DEVICE"
+enroll_device() {
+    local dev="$1"
+    local name="$2"
+    is_tpm2_enrolled "$dev" && return 0
+    echo "luks-enroll: enrolling $name ($dev)"
+    systemd-cryptenroll \
+        --tpm2-device=auto \
+        --tpm2-pcrs=7 \
+        --unlock-key-file="$PASS_FILE" \
+        "$dev"
+    systemd-cryptenroll \
+        --recovery-key \
+        --unlock-key-file="$PASS_FILE" \
+        "$dev"
+    systemd-cryptenroll --wipe-slot=password "$dev"
+}
 
-# Wipe the bootstrap passphrase slot; TPM2 auto-authenticates from here on
-systemd-cryptenroll --wipe-slot=password "$DEVICE"
+# Enroll all open LUKS mapper devices that live on the same disk as root.
+# On first boot only root is open (swap was just created by systemd-repart
+# and is not yet visible to the initrd). On second boot both are open.
+while read -r mapper_path; do
+    mapper_name=${mapper_path##*/}
+    inner_dev=$(cryptsetup status "$mapper_name" 2>/dev/null | awk '/device:/ {print $2}') || continue
+    [[ "$(lsblk -ndo PKNAME "$inner_dev" 2>/dev/null)" == "$ROOT_DISK" ]] || continue
+    enroll_device "$inner_dev" "$mapper_name"
+done < <(find /dev/mapper -name 'luks-*' -maxdepth 1)
 
-touch "$MARKER"
+# Only write the completion marker once every LUKS partition on this disk
+# has a corresponding open mapper device (i.e. has been enrolled).
+# If any partition was created this boot and not yet discoverable by the
+# initrd, skip the marker so this service runs again next boot.
+all_open=true
+while read -r part; do
+    [[ "$(blkid -s TYPE -o value "$part" 2>/dev/null)" == "crypto_LUKS" ]] || continue
+    luks_uuid=$(blkid -s UUID -o value "$part")
+    [[ -e "/dev/mapper/luks-$luks_uuid" ]] || { all_open=false; break; }
+done < <(lsblk -nlo PATH "/dev/$ROOT_DISK" | tail -n +2)
+
+if [[ "$all_open" == "true" ]]; then
+    touch "$MARKER"
+fi

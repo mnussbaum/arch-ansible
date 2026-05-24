@@ -116,8 +116,6 @@
   loop: "{{ gpg_auth_ssh_keygrips }}"
 
 - name: Enable gpg-agent user services
-  become: true
-  become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: "{{ item.path | basename }}"

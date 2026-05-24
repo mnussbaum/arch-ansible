@@ -18,8 +18,6 @@
     dest: /etc/systemd/user/polkit-gnome-authentication-agent.service
 
 - name: Enable user agent service
-  become: true
-  become_user: "{{ user.name }}"
   systemd:
     enabled: true
     name: polkit-gnome-authentication-agent.service

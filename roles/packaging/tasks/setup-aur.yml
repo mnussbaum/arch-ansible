@@ -19,6 +19,12 @@
     regexp: '^#?MAKEFLAGS='
     line: 'MAKEFLAGS="-j{{ ansible_facts["processor_vcpus"] + 1 }}"'
 
+- name: Set makepkg EXTRACTFLAGS to skip ownership restoration when building as root
+  lineinfile:
+    path: /etc/makepkg.conf
+    regexp: '^#?EXTRACTFLAGS='
+    line: "EXTRACTFLAGS=(\"--no-same-owner\" \"-xf\")"
+
 - name: Set makepkg package extension
   lineinfile:
     path: /etc/makepkg.conf
@@ -83,6 +89,21 @@
     path: /usr/bin/makepkg
     regexp: 'if \(\( EUID == 0 \)\); then'
     replace: 'if false; then  # nspawn-patched'
+
+- name: Back up real bsdtar for nspawn
+  copy:
+    src: /usr/bin/bsdtar
+    dest: /usr/bin/bsdtar.real
+    remote_src: true
+    mode: preserve
+
+- name: Wrap bsdtar to skip ownership restoration when building as root in nspawn
+  copy:
+    content: |
+      #!/bin/bash
+      exec /usr/bin/bsdtar.real --no-same-owner "$@"
+    dest: /usr/bin/bsdtar
+    mode: '0755'
 
 - name: Switch to yay for AUR support
   set_fact:

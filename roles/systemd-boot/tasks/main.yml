@@ -87,6 +87,17 @@
     dest: /efi/loader/loader.conf
   when: esp_mount.rc == 0
 
+- name: Create repart.d directory
+  file:
+    path: /usr/lib/repart.d
+    state: directory
+
+- name: Install swap partition definition
+  copy:
+    src: repart.d/20-swap.conf
+    dest: /usr/lib/repart.d/20-swap.conf
+  when: inventory_hostname != 'usi'
+
 - name: Install firstboot script
   copy:
     src: firstboot
