@@ -1,0 +1,5 @@
+LABEL=root  /home        btrfs  subvol=@home,noatime,compress=zstd:1,discard=async,space_cache=v2      0  0
+LABEL=root  /.snapshots  btrfs  subvol=@snapshots,noatime,compress=zstd:1,discard=async,space_cache=v2  0  0
+LABEL=root  /var/log     btrfs  subvol=@var_log,noatime,compress=zstd:1,discard=async,space_cache=v2    0  0
+LABEL=root  /var/cache   btrfs  subvol=@var_cache,noatime,compress=zstd:1,discard=async,space_cache=v2  0  0
+LABEL=root  /var/tmp     btrfs  subvol=@var_tmp,noatime,compress=zstd:1,discard=async,space_cache=v2    0  0

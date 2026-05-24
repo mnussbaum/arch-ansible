@@ -14,8 +14,6 @@
   service:
     name: thermald
     enabled: true
-    state: "{{ svc_start_state }}"
-    daemon_reload: "{{ svc_daemon_reload }}"
   when: ansible_facts["virtualization_role"] != "guest"
 
 - name: Configure TLP
@@ -27,8 +25,6 @@
   systemd:
     name: tlp
     enabled: true
-    state: "{{ svc_start_state }}"
-    daemon-reload: "{{ svc_daemon_reload }}"
 
 - name: Install service to disable wake-up from spurious USB3 signals
   copy:
@@ -106,8 +102,6 @@
   service:
     name: disable-pm-async.service
     enabled: true
-    state: "{{ svc_start_state }}"
-    daemon_reload: "{{ svc_daemon_reload }}"
 
 - name: Create sysctl param directory
   file:

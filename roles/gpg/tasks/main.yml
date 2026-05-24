@@ -49,7 +49,6 @@
   systemd:
     name: pcscd.service
     enabled: true
-    state: "{{ svc_start_state }}"
 
 - name: Add user to pcscd group for YubiKey USB access
   user:
@@ -120,7 +119,6 @@
     enabled: true
     name: "{{ item.path | basename }}"
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"
   with_items: "{{ gpg_agent_service_configs.files }}"
 
 - name: Kill gpg daemons to release keybox SQLite connections

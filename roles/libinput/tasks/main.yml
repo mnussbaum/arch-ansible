@@ -25,4 +25,3 @@
     enabled: true
     name: libinput-gestures.service
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"

@@ -26,4 +26,3 @@
     enabled: true
     name: syncthing.service
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"

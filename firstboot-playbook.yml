@@ -1,9 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
 - hosts: all
-  vars:
-    svc_start_state: started
-    svc_daemon_reload: true
   tasks:
     - set_fact:
         user_home_dir: "/home/{{ user.name }}"

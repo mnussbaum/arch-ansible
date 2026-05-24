@@ -34,7 +34,6 @@
     enabled: true
     name: waybar.service
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"
 
 - name: Create waybar-sway-workspace-output-manager config dir
   file:
@@ -57,7 +56,6 @@
     enabled: true
     name: waybar-sway-workspace-output-manager.service
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"
 
 - name: Install module scripts
   copy:

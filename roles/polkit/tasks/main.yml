@@ -22,4 +22,3 @@
     enabled: true
     name: polkit-gnome-authentication-agent.service
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"

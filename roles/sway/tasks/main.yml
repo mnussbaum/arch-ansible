@@ -93,4 +93,3 @@
     enabled: true
     name: swayidle.service
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"

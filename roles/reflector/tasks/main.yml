@@ -20,4 +20,3 @@
   service:
     name: reflector.timer
     enabled: yes
-    state: "{{ svc_start_state }}"

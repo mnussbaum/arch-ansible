@@ -1,0 +1,33 @@
+#!/bin/bash
+# Sets up a btrfs loopback volume at ~/.cache/mkosi so mkosi can use
+# reflink COW snapshots instead of full copies for its incremental cache.
+
+set -euo pipefail
+
+img="$HOME/.cache/mkosi.img"
+mount_point="$HOME/.cache/mkosi"
+size=60G
+
+if mountpoint -q "$mount_point"; then
+  echo "$mount_point is already a mountpoint, nothing to do." >&2
+  exit 0
+fi
+
+if [[ ! -f "$img" ]]; then
+  echo "Creating ${size} btrfs image at $img ..." >&2
+  truncate -s "$size" "$img"
+  mkfs.btrfs "$img"
+fi
+
+echo "Mounting $img at $mount_point ..." >&2
+sudo mount -o loop,compress=zstd "$img" "$mount_point"
+sudo chown "$USER:" "$mount_point"
+
+fstab_entry="$img $mount_point btrfs loop,compress=zstd 0 0"
+if ! grep -qF "$fstab_entry" /etc/fstab; then
+  echo "Adding fstab entry ..." >&2
+  echo "$fstab_entry" | sudo tee -a /etc/fstab
+fi
+
+echo "Done. $mount_point is now btrfs." >&2
+btrfs filesystem show "$mount_point"
