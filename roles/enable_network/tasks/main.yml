@@ -11,26 +11,21 @@
 
 - name: Start and enable systemd-resolved
   systemd:
-    state: "{{ svc_start_state }}"
     enabled: true
     name: systemd-resolved.service
 
 - name: Start and enable iwd.service
   systemd:
-    state: "{{ svc_start_state }}"
     enabled: true
     name: iwd.service
 
 - name: Start and enable systemd-networkd
   systemd:
-    state: "{{ svc_start_state }}"
     enabled: true
     name: systemd-networkd.service
-    daemon-reload: "{{ svc_daemon_reload }}"
 
 - name: Wait for network to be online during bootstrapping
   systemd:
-    state: "{{ svc_start_state }}"
     enabled: true
     name: systemd-networkd-wait-online.service
   when: bootstrap is defined and bootstrap == "true"

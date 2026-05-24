@@ -23,9 +23,7 @@
   service:
     name: wl-gammarelay.service
     enabled: yes
-    state: "{{ svc_start_state }}"
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"
 
 - name: Install colorscheme-changer binary
   copy:
@@ -47,6 +45,4 @@
   service:
     name: colorscheme-changer.timer
     enabled: yes
-    state: "{{ svc_start_state }}"
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"

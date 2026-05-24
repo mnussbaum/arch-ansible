@@ -1,9 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
 - hosts: all
-  vars:
-    svc_start_state: "{{ omit }}"
-    svc_daemon_reload: false
   environment:
     BUILDDIR: /tmp/makepkg
   roles:
@@ -43,9 +40,6 @@
     - import_role:
         name: systemd-boot
       tags: [systemd-boot]
-    - import_role:
-        name: trim
-      tags: [trim]
     - import_role:
         name: user
       tags: [user]

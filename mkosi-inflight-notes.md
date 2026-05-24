@@ -3,14 +3,10 @@
 - Figure out user data story
 - Figure out how we test changes to automation. Just QEMU?
 - Figure out how we apply changes to automation. Reinstall?
-- Create a mkosi.cache dir to cache more
 - I think we move package installs back into ansible
 - Use mkosi.prepare to install mnussbaum user
-- Use btrfs? Should make building a lot faster with CoW copies
 - Run xdg-user-dir to install user dirs
-- `==> WARNING: sd-vconsole: "/etc/vconsole.conf" not found, will use default values` during qemu build
 - Is `Install pacman database files` still needed?
-- `EncryptedVolume= is not specified for any eligible partitions, not generating /etc/crypttab` is problem?
 - Clean up bootstrapping tags and playbooks
 - Clean up network_install_root
 - Clean up the variables for daemon refresh and service starting
@@ -25,3 +21,13 @@
 - Ask it if there's other things that need network access going on that we can avoid
 - Should be able to remove pacman keyring stuff if truly offline
 - `HOSTNAME=usi NO_ASK_BECOME_PASS=1 ANSIBLE_PLAYBOOK=postinst-playbook.yml ./bin/ansible --tags=greeter --tags=packaging`
+
+- Make sure this is followed up on:
+
+```
+  The UnifiedKernelImages=yes (mkosi/ukify) approach: mkosi drives the UKI assembly via ukify directly, giving better integration with Secure Boot signing and TPM2 PCR measurements. But then linux.preset needs to switch from default_uki= to default_image= (plain initrd path), and post-boot kernel updates need a separate hook (kernel-install
+  plugin or pacman hook calling ukify) instead of mkinitcpio handling it.
+```
+
+- Revaluate bootstrap and rebuild-boot-partition tags
+- Investigate restic/btfs best practice setup

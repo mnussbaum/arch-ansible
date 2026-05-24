@@ -1,0 +1,26 @@
+#!/bin/bash
+# Undoes setup-mkosi-cache-volume: migrates cache back to plain directory,
+# unmounts and removes the btrfs loopback image, and removes the fstab entry.
+
+set -euo pipefail
+
+img="$HOME/.cache/mkosi.img"
+mount_point="$HOME/.cache/mkosi"
+
+if ! mountpoint -q "$mount_point"; then
+  echo "$mount_point is not a mountpoint, nothing to do." >&2
+  exit 0
+fi
+
+echo "Unmounting $mount_point ..." >&2
+sudo umount "$mount_point"
+
+if [[ -f "$img" ]]; then
+  echo "Removing $img ..." >&2
+  rm "$img"
+fi
+
+echo "Removing fstab entry ..." >&2
+sudo sed -i "\|$img|d" /etc/fstab
+
+echo "Done." >&2

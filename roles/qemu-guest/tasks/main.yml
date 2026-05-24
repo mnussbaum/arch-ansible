@@ -20,8 +20,6 @@
   service:
     name: qemu-guest-agent.service
     enabled: yes
-    state: "{{ svc_start_state }}"
-    daemon-reload: "{{ svc_daemon_reload }}"
 
 - name: Deploy host_shared mount unit
   copy:
@@ -33,7 +31,6 @@
   systemd:
     name: mnt-host_shared.mount
     enabled: true
-    daemon_reload: "{{ svc_daemon_reload }}"
 
 - name: Load vsock modules
   copy:
@@ -50,6 +47,3 @@
   systemd:
     name: pcscd-vsock-forward.service
     enabled: true
-    state: "{{ svc_start_state }}"
-    daemon_reload: "{{ svc_daemon_reload }}"
-

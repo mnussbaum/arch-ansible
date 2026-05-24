@@ -33,7 +33,6 @@
     enabled: true
     name: "pass-credential@{{ item }}.socket"
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"
   loop:
     - "{{ inventory_hostname }}-restic_backblaze_key"
     - "{{ inventory_hostname }}-restic_backblaze_key_id"
@@ -44,7 +43,6 @@
     enabled: true
     name: restic-backblaze-backup.timer
     scope: global
-    daemon-reload: "{{ svc_daemon_reload }}"
 # To take a backup:
 #
 # * sudo mount /dev/sda1 /tmp/usb

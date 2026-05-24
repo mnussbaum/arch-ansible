@@ -56,15 +56,3 @@
 See `plan-systemd-boot.md` for the full systemd-boot + LUKS2 + Secure Boot + TPM2 design. The mkosi migration is the prerequisite — once the build pipeline works end-to-end, that plan picks up from here.
 
 Use recommended systemd approach for all aspects of image building and runtime behavior
-
-### Running notes
-
-- Share variables like timezone, packages between mkosi configs and ansible
-- Make sure this is followed up on:
-
-```
-  The UnifiedKernelImages=yes (mkosi/ukify) approach: mkosi drives the UKI assembly via ukify directly, giving better integration with Secure Boot signing and TPM2 PCR measurements. But then linux.preset needs to switch from default_uki= to default_image= (plain initrd path), and post-boot kernel updates need a separate hook (kernel-install
-  plugin or pacman hook calling ukify) instead of mkinitcpio handling it.
-```
-
-- Revaluate bootstrap and rebuild-boot-partition tags
