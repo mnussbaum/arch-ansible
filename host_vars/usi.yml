@@ -1,7 +1,6 @@
 ---
 disk:
   device: /dev/sda
-  partition_uuid: 672b0a9b-c67a-466c-880e-2d77885bdfd0
 
 mkinitcpio_modules:
   - nvme

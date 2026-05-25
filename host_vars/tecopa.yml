@@ -1,7 +1,6 @@
 ---
 disk:
   device: /dev/nvme0n1
-  partition_uuid: ebcc5f0f-6ee8-458f-af11-1418182eabc4
 
 mkinitcpio_modules:
   - nvme_core
