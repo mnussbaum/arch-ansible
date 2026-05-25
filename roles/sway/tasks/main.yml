@@ -88,6 +88,11 @@
     src: swayidle.service.j2
     dest: "/etc/systemd/user/swayidle.service"
 
+- name: Install systemd user preset
+  copy:
+    src: 80-sway.preset
+    dest: /usr/lib/systemd/user-preset/80-sway.preset
+
 - name: Enable swayidle
   systemd:
     enabled: true

@@ -1,0 +1,2 @@
+enable firstboot.service
+enable luks-enroll.service

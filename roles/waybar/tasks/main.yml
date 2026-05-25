@@ -29,6 +29,11 @@
     src: waybar.service
     dest: /etc/systemd/user/waybar.service
 
+- name: Install systemd user preset
+  copy:
+    src: 80-waybar.preset
+    dest: /usr/lib/systemd/user-preset/80-waybar.preset
+
 - name: Enable service
   systemd:
     enabled: true

@@ -20,6 +20,11 @@
     regexp: ".*DiscoverableTimeout.*"
     line: "DiscoverableTimeout=0"
 
+- name: Install systemd preset
+  copy:
+    src: 80-bluetooth.preset
+    dest: /usr/lib/systemd/system-preset/80-bluetooth.preset
+
 - name: Enable service
   systemd:
     enabled: true

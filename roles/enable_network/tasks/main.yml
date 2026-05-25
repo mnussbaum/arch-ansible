@@ -14,6 +14,11 @@
     enabled: true
     name: systemd-resolved.service
 
+- name: Install systemd preset
+  copy:
+    src: 80-enable_network.preset
+    dest: /usr/lib/systemd/system-preset/80-enable_network.preset
+
 - name: Start and enable iwd.service
   systemd:
     enabled: true

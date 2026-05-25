@@ -19,6 +19,11 @@
     dest: /etc/libinput-gestures.conf
     src: libinput-gestures.conf
 
+- name: Install systemd user preset
+  copy:
+    src: 80-libinput.preset
+    dest: /usr/lib/systemd/user-preset/80-libinput.preset
+
 - name: Enable libinput-gestures service
   when: optional_daemons.libinput_gestures
   systemd:

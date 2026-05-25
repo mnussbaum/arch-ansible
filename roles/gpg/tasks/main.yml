@@ -45,6 +45,11 @@
     group: "{{ user.group }}"
     mode: 0600
 
+- name: Install systemd preset
+  copy:
+    src: 80-gpg.preset
+    dest: /usr/lib/systemd/system-preset/80-gpg.preset
+
 - name: Enable pcscd service
   systemd:
     name: pcscd.service
@@ -113,6 +118,11 @@
     line: "{{ item }} 0"
     create: yes
   loop: "{{ gpg_auth_ssh_keygrips }}"
+
+- name: Install systemd user preset
+  copy:
+    src: 80-gpg-user.preset
+    dest: /usr/lib/systemd/user-preset/80-gpg-user.preset
 
 - name: Enable gpg-agent user services
   systemd:

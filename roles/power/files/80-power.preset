@@ -1,0 +1,2 @@
+enable tlp.service
+enable disable-xhc-wakeup.service
