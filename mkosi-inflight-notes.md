@@ -19,9 +19,12 @@
 - How are we going to mount in nvim data dir in container? Probably need to handle its absence
 - In image build need to mount from new system locations once I have a provisioned machine
 - Ask it if there's other things that need network access going on that we can avoid
-- Should be able to remove pacman keyring stuff if truly offline
-- `HOSTNAME=usi NO_ASK_BECOME_PASS=1 ANSIBLE_PLAYBOOK=postinst-playbook.yml ./bin/ansible --tags=greeter --tags=packaging`
+- Get offline
+  - Remove pacman keyring stuff if truly offline
+  - Base16 configs reach internet still
+  - delta theme file download
 
+- `HOSTNAME=usi NO_ASK_BECOME_PASS=1 ANSIBLE_PLAYBOOK=postinst-playbook.yml ./bin/ansible --tags=greeter --tags=packaging`
 - Make sure this is followed up on:
 
 ```
@@ -31,5 +34,4 @@
 
 - Revaluate bootstrap and rebuild-boot-partition tags
 - Investigate restic/btfs best practice setup
-- Base16 configs reach internet still
 - Document cache mounting pattern perf optimization
