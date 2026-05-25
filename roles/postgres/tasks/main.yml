@@ -6,23 +6,6 @@
     name:
       - postgresql
 
-- name: Create postgres data directory
-  file:
-    path: /var/lib/postgres/data
-    state: directory
-    owner: postgres
-    group: postgres
-    mode: "0700"
-
-- name: Check nodatacow attribute on postgres data directory
-  command: lsattr -d /var/lib/postgres/data
-  register: postgres_data_attrs
-  changed_when: false
-
-- name: Disable CoW on postgres data directory
-  command: chattr +C /var/lib/postgres/data
-  when: "'C' not in postgres_data_attrs.stdout.split()[0]"
-
 - name: Create psql config dir
   file:
     path: /etc/xdg/psql

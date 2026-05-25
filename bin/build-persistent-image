@@ -5,27 +5,43 @@ set -o nounset
 
 refresh_cache=""
 dev_format=""
+skip_postinst=""
 positional=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       echo "Build a fully provisioned persistent image for a specific host." >&2
-      echo "Usage: $0 [--refresh-cache] [--dev] <hostname> [output-device]" >&2
+      echo "Usage: $0 [--refresh-cache] [--dev] [--skip-postinst] <hostname> [output-device]" >&2
       echo "  For hostname 'qemu', output defaults to \$qemu_image_file." >&2
       echo "  For physical hosts, output device is required." >&2
-      echo "  --refresh-cache  Bust the mkosi incremental cache and do a full rebuild." >&2
-      echo "  --dev            Build a directory tree instead of a disk image for faster iteration." >&2
+      echo "  --refresh-cache   Bust the mkosi incremental cache and do a full rebuild." >&2
+      echo "  --dev             Build a directory tree instead of a disk image for faster iteration." >&2
+      echo "  --skip-postinst   Skip the Ansible post-installation step." >&2
       exit
       ;;
     --refresh-cache) refresh_cache="--incremental=no" ;;
     --dev) dev_format="--format=directory" ;;
+    --skip-postinst) skip_postinst="--environment=SKIP_POSTINST=1" ;;
     *) positional+=("$1") ;;
   esac
   shift
 done
 
 source bin/_qemu_common.sh
+
+# btrfs-progs 7.0 introduced block-group-tree as a default feature which has a
+# bug in --rootdir population (short writes on large files). Inject the flag via
+# a wrapper since systemd-repart 260 doesn't yet support
+# SYSTEMD_REPART_MKFS_OPTIONS_BTRFS.
+_mkfs_wrapper_dir=$(mktemp -d)
+trap 'rm -rf "$_mkfs_wrapper_dir"' EXIT
+cat > "$_mkfs_wrapper_dir/mkfs.btrfs" <<'EOF'
+#!/bin/bash
+exec /usr/bin/mkfs.btrfs -O ^block-group-tree "$@"
+EOF
+chmod +x "$_mkfs_wrapper_dir/mkfs.btrfs"
+export PATH="$_mkfs_wrapper_dir:$PATH"
 
 mkdir -p ~/.cache/mkosi/pacman-pkg
 
@@ -45,7 +61,8 @@ if [[ "$hostname" == "qemu" ]]; then
     --credential="luks.passphrase=$luks_passphrase" \
     --force \
     ${refresh_cache:+"$refresh_cache"} \
-    ${dev_format:+"$dev_format"}
+    ${dev_format:+"$dev_format"} \
+    ${skip_postinst:+"$skip_postinst"}
 else
   output="${positional[1]:?Usage: $0 <hostname> <output-device>}"
   mkosi \
@@ -55,5 +72,6 @@ else
     --force \
     ${refresh_cache:+"$refresh_cache"} \
     ${dev_format:+"$dev_format"} \
+    ${skip_postinst:+"$skip_postinst"} \
     burn "$output"
 fi
