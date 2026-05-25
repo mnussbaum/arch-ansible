@@ -105,6 +105,4 @@
     dest: /usr/bin/bsdtar
     mode: '0755'
 
-- name: Switch to yay for AUR support
-  set_fact:
-    ansible_facts: "{{ ansible_facts | combine({'pkg_mgr': 'yay'}) }}"
+- import_tasks: use-yay.yml

@@ -15,6 +15,9 @@
     - import_role:
         name: ssh
     - import_role:
+        name: packaging
+        tasks_from: use-yay
+    - import_role:
         name: brightness
         tasks_from: runtime
     - import_role:

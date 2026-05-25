@@ -34,3 +34,11 @@
 - Revaluate bootstrap and rebuild-boot-partition tags
 - Investigate restic/btfs best practice setup
 - Document cache mounting pattern perf optimization
+- Need to make user login driven by yubikey due to unencrypted root:
+
+```
+ /etc/shadow breaks home encryption
+ The biggest issue. If home directories are encrypted with keys derived from user passwords (e.g. systemd-homed LUKS homes), exposing /etc/shadow gives an attacker the
+ hash to crack offline. A cracked password directly unlocks the home encryption — you've degraded home encryption to "as strong as your password against offline
+ cracking.
+```

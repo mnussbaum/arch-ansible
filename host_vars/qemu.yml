@@ -30,4 +30,4 @@ window_manager:
 qemu_host: false
 
 networking:
-  interface: enp0s2
+  interface: enp0s1

@@ -16,3 +16,8 @@
   copy:
     src: vconsole.conf
     dest: "{{ vconsole_install_root }}/etc/vconsole.conf"
+
+- name: Generate en_US.UTF-8 locale
+  locale_gen:
+    name: en_US.UTF-8
+    state: present

@@ -30,19 +30,6 @@ done
 
 source bin/_qemu_common.sh
 
-# btrfs-progs 7.0 introduced block-group-tree as a default feature which has a
-# bug in --rootdir population (short writes on large files). Inject the flag via
-# a wrapper since systemd-repart 260 doesn't yet support
-# SYSTEMD_REPART_MKFS_OPTIONS_BTRFS.
-_mkfs_wrapper_dir=$(mktemp -d)
-trap 'rm -rf "$_mkfs_wrapper_dir"' EXIT
-cat > "$_mkfs_wrapper_dir/mkfs.btrfs" <<'EOF'
-#!/bin/bash
-exec /usr/bin/mkfs.btrfs -O ^block-group-tree "$@"
-EOF
-chmod +x "$_mkfs_wrapper_dir/mkfs.btrfs"
-export PATH="$_mkfs_wrapper_dir:$PATH"
-
 mkdir -p ~/.cache/mkosi/pacman-pkg
 
 hostname="${positional[0]:?Usage: $0 <hostname> [output]}"

@@ -21,12 +21,6 @@
     name: qemu-guest-agent.service
     enabled: yes
 
-- name: Deploy host_shared mount unit
-  copy:
-    src: mnt-host_shared.mount
-    dest: /etc/systemd/system/mnt-host_shared.mount
-    mode: "0644"
-
 - name: Install systemd preset
   copy:
     src: 80-qemu-guest.preset
