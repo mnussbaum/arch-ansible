@@ -56,3 +56,5 @@
 See `plan-systemd-boot.md` for the full systemd-boot + LUKS2 + Secure Boot + TPM2 design. The mkosi migration is the prerequisite — once the build pipeline works end-to-end, that plan picks up from here.
 
 Use recommended systemd approach for all aspects of image building and runtime behavior
+
+Goal is to comply with https://uapi-group.org/specifications/specs/discoverable_partitions_specification/ and https://0pointer.net/blog/fitting-everything-together.html
