@@ -34,11 +34,6 @@
     src: 80-waybar.preset
     dest: /usr/lib/systemd/user-preset/80-waybar.preset
 
-- name: Enable service
-  systemd:
-    enabled: true
-    name: waybar.service
-    scope: global
 
 - name: Create waybar-sway-workspace-output-manager config dir
   file:
@@ -56,11 +51,6 @@
     src: waybar-sway-workspace-output-manager.service
     dest: /etc/systemd/user/waybar-sway-workspace-output-manager.service
 
-- name: Enable waybar-sway-workspace-output-manager service
-  systemd:
-    enabled: true
-    name: waybar-sway-workspace-output-manager.service
-    scope: global
 
 - name: Install module scripts
   copy:

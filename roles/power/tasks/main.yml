@@ -26,21 +26,12 @@
     src: 80-power.preset
     dest: /usr/lib/systemd/system-preset/80-power.preset
 
-- name: Enable TLP
-  systemd:
-    name: tlp
-    enabled: true
 
 - name: Install service to disable wake-up from spurious USB3 signals
   copy:
     src: disable-xhc-wakeup.service
     dest: /etc/systemd/system/disable-xhc-wakeup.service
 
-- name: Enable service to disable wake-up from spurious USB3 signals
-  systemd:
-    name: disable-xhc-wakeup.service
-    enabled: true
-    daemon-reload: true
 
 - name: Install logind config
   copy:

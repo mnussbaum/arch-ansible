@@ -21,13 +21,7 @@
       IOSchedulingPriority=7
 
 - name: Install systemd user preset
-  copy:
-    src: 80-syncthing.preset
+  template:
+    src: 80-syncthing.preset.j2
     dest: /usr/lib/systemd/user-preset/80-syncthing.preset
 
-- name: Enable syncthing user service
-  when: ansible_facts["virtualization_role"] != "guest"
-  systemd:
-    enabled: true
-    name: syncthing.service
-    scope: global

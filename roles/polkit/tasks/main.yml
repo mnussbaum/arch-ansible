@@ -22,8 +22,3 @@
     src: 80-polkit.preset
     dest: /usr/lib/systemd/user-preset/80-polkit.preset
 
-- name: Enable user agent service
-  systemd:
-    enabled: true
-    name: polkit-gnome-authentication-agent.service
-    scope: global
