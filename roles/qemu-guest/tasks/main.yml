@@ -27,6 +27,11 @@
     dest: /etc/systemd/system/mnt-host_shared.mount
     mode: "0644"
 
+- name: Install systemd preset
+  copy:
+    src: 80-qemu-guest.preset
+    dest: /usr/lib/systemd/system-preset/80-qemu-guest.preset
+
 - name: Enable host_shared mount unit
   systemd:
     name: mnt-host_shared.mount

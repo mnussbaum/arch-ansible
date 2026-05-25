@@ -28,6 +28,11 @@
     src: restic-backblaze-backup.timer
     dest: /etc/systemd/user/restic-backblaze-backup.timer
 
+- name: Install systemd user preset
+  copy:
+    src: 80-backup.preset
+    dest: /usr/lib/systemd/user-preset/80-backup.preset
+
 - name: Enable restic backblaze credential sockets
   systemd:
     enabled: true

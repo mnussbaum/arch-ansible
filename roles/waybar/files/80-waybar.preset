@@ -1,0 +1,2 @@
+enable waybar.service
+enable waybar-sway-workspace-output-manager.service
