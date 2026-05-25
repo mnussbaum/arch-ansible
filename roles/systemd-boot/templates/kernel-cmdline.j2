@@ -1,1 +1,1 @@
-rw quiet{% if "nvme" in disk.device %} pcie_aspm=force{% endif %}
+root=PARTLABEL=root-{{ image_version.stdout }} rw quiet{% if "nvme" in disk.device %} pcie_aspm=force{% endif %}
