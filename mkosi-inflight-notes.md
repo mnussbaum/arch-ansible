@@ -31,3 +31,5 @@
 
 - Revaluate bootstrap and rebuild-boot-partition tags
 - Investigate restic/btfs best practice setup
+- Base16 configs reach internet still
+- Document cache mounting pattern perf optimization
