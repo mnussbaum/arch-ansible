@@ -1,0 +1,27 @@
+# vim:ft=yaml.ansible:
+---
+- hosts: all
+  tasks:
+    - import_role:
+        name: gpg
+        tasks_from: user
+    - import_role:
+        name: ssh
+    - import_role:
+        name: tmux
+        tasks_from: user
+    - import_role:
+        name: eeek
+        tasks_from: user
+    - import_role:
+        name: postgres
+        tasks_from: pgpass
+    - import_role:
+        name: qemu-host
+        tasks_from: user
+      when: qemu_host
+    - name: Mark user firstboot complete
+      file:
+        path: "~/.config/user-firstboot-done"
+        state: touch
+        mode: "0600"

@@ -3,7 +3,5 @@
 - name: Install pgpass file
   template:
     src: pgpass
-    dest: "{{ user_home_dir }}/.pgpass"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    dest: ~/.pgpass
     mode: "0600"

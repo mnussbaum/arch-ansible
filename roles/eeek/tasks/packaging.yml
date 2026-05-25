@@ -1,0 +1,15 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install packages
+  package:
+    state: present
+    name:
+      - tad-bin
+      - direnv
+      - python312
+      - pre-commit
+      - scie-pants-bin
+      - slack-desktop
+      - cloudflare-warp-bin
+      - pqrs-bin
+

@@ -15,6 +15,11 @@
     dest: /etc/zsh/zshrc
     src: zshrc
 
+- name: Install zprofile
+  copy:
+    dest: /etc/zsh/zprofile
+    src: zprofile
+
 - name: Create zsh config dir
   file:
     path: /etc/zsh

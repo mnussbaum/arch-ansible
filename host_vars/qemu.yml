@@ -27,6 +27,7 @@ window_manager:
   window_manager: sway
   windowing_system: wayland
 
+qemu_guest: true
 qemu_host: false
 
 networking:

@@ -1,104 +1,66 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - ccid
-      - gnupg
-      - imagemagick
-      - paperkey
-      - pcsclite
-      - qrencode
-      - yubikey-manager
-      - zbar
-
 - name: Create config dir
   file:
-    path: "{{ user_home_dir }}/.gnupg"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    mode: 0700
+    path: ~/.gnupg
+    mode: "0700"
     state: directory
 
 - name: Install config
   copy:
-    dest: "{{ user_home_dir }}/.gnupg/gpg.conf"
+    dest: ~/.gnupg/gpg.conf
     src: gpg.conf
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    mode: 0600
+    mode: "0600"
 
 - name: Install gpg-agent config
   copy:
-    dest: "{{ user_home_dir }}/.gnupg/gpg-agent.conf"
+    dest: ~/.gnupg/gpg-agent.conf
     src: gpg-agent.conf
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    mode: 0600
+    mode: "0600"
 
 - name: Install scdaemon config
   copy:
-    dest: "{{ user_home_dir }}/.gnupg/scdaemon.conf"
+    dest: ~/.gnupg/scdaemon.conf
     src: scdaemon.conf
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    mode: 0600
+    mode: "0600"
 
-- name: Install systemd preset
-  copy:
-    src: 80-gpg.preset
-    dest: /usr/lib/systemd/system-preset/80-gpg.preset
-
-
-- name: Add user to pcscd group for YubiKey USB access
-  user:
-    name: "{{ user.name }}"
-    groups: pcscd
-    append: yes
+- name: Create user systemd dir
+  file:
+    path: ~/.config/systemd/user
+    state: directory
 
 - name: Find gpg-agent user service configs
   find:
     paths: "/usr/share/doc/gnupg/examples/systemd-user"
     excludes: "README"
-    recurse: no
+    recurse: false
   changed_when: false
   register: gpg_agent_service_configs
 
 - name: Install gpg-agent user service configs
   copy:
-    dest: "/etc/systemd/user/{{ item.path | basename }}"
+    dest: "~/.config/systemd/user/{{ item.path | basename }}"
     src: "{{ item.path }}"
   with_items: "{{ gpg_agent_service_configs.files }}"
 
 - name: Deploy public key file
-  become: true
-  become_user: "{{ user.name }}"
   copy:
     src: gpg-pubkey.asc
-    dest: "{{ user_home_dir }}/.gnupg/pubkey.asc"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    mode: 0600
+    dest: ~/.gnupg/pubkey.asc
+    mode: "0600"
   register: gpg_pubkey_file
 
 - name: Check if GPG key is in keyring
-  become: true
-  become_user: "{{ user.name }}"
   command: gpg --list-keys "{{ user.gpg_key_uid }}"
   register: gpg_key_check
   failed_when: false
   changed_when: false
 
 - name: Import public key
-  become: true
-  become_user: "{{ user.name }}"
-  command: gpg --import "{{ user_home_dir }}/.gnupg/pubkey.asc"
+  command: gpg --import ~/.gnupg/pubkey.asc
   when: gpg_pubkey_file.changed or gpg_key_check.rc != 0
 
 - name: Set ultimate trust on own key
-  become: true
-  become_user: "{{ user.name }}"
   shell: |
     fingerprint=$(gpg --list-keys --with-colons "{{ user.gpg_key_uid }}" | awk -F: '/^fpr/{print $10; exit}')
     [[ -n "$fingerprint" ]] && echo "$fingerprint:6:" | gpg --import-ownertrust || true
@@ -107,30 +69,33 @@
   changed_when: false
 
 - name: Register YubiKey SSH keygrips in sshcontrol
-  become: true
-  become_user: "{{ user.name }}"
   lineinfile:
-    path: "{{ user_home_dir }}/.gnupg/sshcontrol"
+    path: ~/.gnupg/sshcontrol
     line: "{{ item }} 0"
-    create: yes
+    create: true
   loop: "{{ gpg_auth_ssh_keygrips }}"
 
-- name: Install systemd user preset
-  copy:
-    src: 80-gpg-user.preset
-    dest: /usr/lib/systemd/user-preset/80-gpg-user.preset
-
+- name: Enable and start GPG user services
+  service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+    scope: user
+  loop:
+    - gpg-agent.service
+    - gpg-agent-ssh.socket
+    - gpg-agent-extra.socket
+    - gpg-agent-browser.socket
+    - dirmngr.socket
 
 - name: Kill gpg daemons to release keybox SQLite connections
-  become: true
-  become_user: "{{ user.name }}"
   command: gpgconf --kill all
   failed_when: false
   changed_when: false
 
 - name: Find stale lock files
   find:
-    paths: "{{ user_home_dir }}/.gnupg"
+    paths: ~/.gnupg
     patterns:
       - "*.lock"
       - ".#*"

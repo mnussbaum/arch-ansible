@@ -19,13 +19,13 @@
 - name: Enable qemu guest agent service
   service:
     name: qemu-guest-agent.service
+    state: started
     enabled: yes
 
 - name: Install systemd preset
   copy:
     src: 80-qemu-guest.preset
     dest: /usr/lib/systemd/system-preset/80-qemu-guest.preset
-
 
 - name: Load vsock modules
   copy:
@@ -37,5 +37,3 @@
     src: pcscd-vsock-forward.service
     dest: /etc/systemd/system/pcscd-vsock-forward.service
     mode: "0644"
-
-

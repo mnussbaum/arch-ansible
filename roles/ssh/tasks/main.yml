@@ -2,16 +2,10 @@
 ---
 - name: Create config dir
   file:
-    path: "{{ user_home_dir }}/.ssh"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
+    path: "~/.ssh"
     state: directory
 
 - name: Install config
   copy:
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
     src: ssh-config
-    dest: "{{ user_home_dir }}/.ssh/config"
-
-
+    dest: "~/.ssh/config"

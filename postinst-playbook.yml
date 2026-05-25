@@ -44,6 +44,10 @@
         name: user
       tags: [user]
     - import_role:
+        name: gpg
+        tasks_from: packaging
+      tags: [gpg]
+    - import_role:
         name: network_configuration
       tags: [network_configuration]
     - import_role:
@@ -92,9 +96,6 @@
       when: qemu_host
       tags: [qemu-host]
     - import_role:
-        name: qemu-guest
-      tags: [qemu-guest]
-    - import_role:
         name: fonts
       tags: [fonts]
     - import_role:
@@ -142,6 +143,10 @@
     - import_role:
         name: devops
       tags: [devops]
+    - import_role:
+        name: eeek
+        tasks_from: packaging
+      tags: [eeek]
     - import_role:
         name: archiso
       tags: [archiso]

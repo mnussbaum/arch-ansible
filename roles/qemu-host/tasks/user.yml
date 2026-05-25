@@ -2,17 +2,16 @@
 ---
 - name: Create arch-images directory
   file:
-    path: "/home/{{ user.name }}/.local/share/arch-images"
+    path: ~/.local/share/arch-images
     state: directory
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
     mode: "0750"
 
 - name: Check nodatacow attribute on arch-images directory
-  command: lsattr -d "/home/{{ user.name }}/.local/share/arch-images"
+  command: lsattr -d ~/.local/share/arch-images
   register: arch_images_attrs
   changed_when: false
 
 - name: Disable CoW on arch-images directory
-  command: chattr +C "/home/{{ user.name }}/.local/share/arch-images"
+  become: true
+  command: chattr +C ~/.local/share/arch-images
   when: "'C' not in arch_images_attrs.stdout.split()[0]"

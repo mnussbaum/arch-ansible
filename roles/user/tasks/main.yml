@@ -64,6 +64,7 @@
     groups:
       - "{{ user.group }}"
       - input
+      - pcscd
       - wheel
     password: "{{ user.password | password_hash('sha512') }}"
     shell: "{{ user.shell }}"

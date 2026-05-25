@@ -1,0 +1,24 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install .netrc
+  template:
+    src: eeek-netrc
+    dest: ~/.netrc
+    mode: "0600"
+
+- name: Make AWS config dir
+  file:
+    dest: ~/.aws
+    state: directory
+
+- name: Install AWS config
+  copy:
+    content: "{{ lookup('pipe', 'pass show eq/aws.conf') }}"
+    dest: ~/.aws/config
+
+- name: Install equilibrium SSH private key
+  copy:
+    content: "{{ lookup('pipe', 'pass show eq/ssh-key') }}"
+    dest: ~/.ssh/id_rsa_equilibrium
+    mode: "0600"
+  no_log: true

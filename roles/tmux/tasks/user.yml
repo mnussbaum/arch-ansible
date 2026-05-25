@@ -3,4 +3,4 @@
 - name: Install tmux config
   copy:
     src: tmux.conf
-    dest: "/home/{{ user.name }}/.tmux.conf"
+    dest: "~/.tmux.conf"
