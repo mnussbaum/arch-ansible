@@ -25,10 +25,7 @@
     src: 80-bluetooth.preset
     dest: /usr/lib/systemd/system-preset/80-bluetooth.preset
 
-- name: Enable service
-  systemd:
-    enabled: true
-    name: bluetooth
+
 # To add a bluetooth device:
 # bluetoothctl
 # power on

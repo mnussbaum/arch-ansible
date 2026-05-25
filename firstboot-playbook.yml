@@ -5,6 +5,9 @@
     - set_fact:
         user_home_dir: "/home/{{ user.name }}"
     - import_role:
+        name: user
+        tasks_from: firstboot
+    - import_role:
         name: network_configuration
         tasks_from: runtime
     - import_role:
@@ -19,5 +22,12 @@
     - import_role:
         name: postgres
         tasks_from: pgpass
+    - import_role:
+        name: tmux
+        tasks_from: firstboot
+    - import_role:
+        name: qemu-host
+        tasks_from: firstboot
+      when: qemu_host
     - import_role:
         name: image-seed

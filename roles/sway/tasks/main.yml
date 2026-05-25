@@ -93,8 +93,3 @@
     src: 80-sway.preset
     dest: /usr/lib/systemd/user-preset/80-sway.preset
 
-- name: Enable swayidle
-  systemd:
-    enabled: true
-    name: swayidle.service
-    scope: global

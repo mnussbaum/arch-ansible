@@ -114,11 +114,6 @@
     src: firstboot.service
     dest: /etc/systemd/system/firstboot.service
 
-- name: Enable firstboot.service
-  systemd:
-    name: firstboot.service
-    enabled: true
-
 - name: Install luks-enroll script
   copy:
     src: luks-enroll
@@ -129,11 +124,6 @@
   copy:
     src: luks-enroll.service
     dest: /etc/systemd/system/luks-enroll.service
-
-- name: Enable luks-enroll.service
-  systemd:
-    name: luks-enroll.service
-    enabled: true
 
 - name: Flush handlers before building UKIs
   meta: flush_handlers

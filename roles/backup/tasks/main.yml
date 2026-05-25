@@ -29,25 +29,9 @@
     dest: /etc/systemd/user/restic-backblaze-backup.timer
 
 - name: Install systemd user preset
-  copy:
-    src: 80-backup.preset
+  template:
+    src: 80-backup.preset.j2
     dest: /usr/lib/systemd/user-preset/80-backup.preset
-
-- name: Enable restic backblaze credential sockets
-  systemd:
-    enabled: true
-    name: "pass-credential@{{ item }}.socket"
-    scope: global
-  loop:
-    - "{{ inventory_hostname }}-restic_backblaze_key"
-    - "{{ inventory_hostname }}-restic_backblaze_key_id"
-    - restic_backup_password
-
-- name: Enable restic backblaze backup timer
-  systemd:
-    enabled: true
-    name: restic-backblaze-backup.timer
-    scope: global
 # To take a backup:
 #
 # * sudo mount /dev/sda1 /tmp/usb

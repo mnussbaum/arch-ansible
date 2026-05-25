@@ -11,12 +11,6 @@
     src: 80-user.preset
     dest: /usr/lib/systemd/user-preset/80-user.preset
 
-- name: Enable xdg-user-dirs service
-  systemd:
-    enabled: true
-    name: xdg-user-dirs-update.service
-    scope: global
-
 - name: Create wheel group
   group: name=wheel state=present
 
@@ -75,11 +69,3 @@
     shell: "{{ user.shell }}"
     update_password: on_create
     append: true
-
-- name: Fix home directory ownership
-  file:
-    path: "/home/{{ user.name }}"
-    owner: "{{ user.name }}"
-    group: "{{ user.group }}"
-    mode: "0700"
-    recurse: true
