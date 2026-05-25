@@ -1,3 +1,4 @@
 enable firstboot.service
 enable luks-enroll.service
 enable systemd-bless-boot.service
+enable systemd-homed.service
