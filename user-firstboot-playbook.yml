@@ -14,9 +14,6 @@
     - import_role:
         name: ssh
     - import_role:
-        name: tmux
-        tasks_from: user
-    - import_role:
         name: eeek
         tasks_from: user
     - import_role:

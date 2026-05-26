@@ -1,8 +1,5 @@
 - Document that we implement https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
 - Ask it to diff against the plan in https://0pointer.net/blog/fitting-everything-together.html
-- Figure out user data story
-- Figure out how we test changes to automation. Just QEMU?
-- Figure out how we apply changes to automation. Reinstall?
 - I think we move package installs back into ansible
 - Is `Install pacman database files` still needed?
 - Clean up bootstrapping tags and playbooks
@@ -35,6 +32,10 @@
 
 - Revaluate bootstrap and rebuild-boot-partition tags
 - Investigate restic/btrfs best practice setup
+  - How can we restore a restic backup automatically?
 - Document cache mounting pattern perf optimization
 - Drop luks file once it's working
 - Can we move ansible into the build step? Might allow better caching
+- Disable libinput in qemu
+- Fix battery indicator in waybar in qemu
+- Make sure secrets aren't exposed in system ansible repo

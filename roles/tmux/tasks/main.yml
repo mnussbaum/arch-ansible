@@ -4,3 +4,8 @@
   package:
     name: tmux
     state: present
+
+- name: Install tmux config
+  copy:
+    src: tmux.conf
+    dest: /etc/tmux.conf
