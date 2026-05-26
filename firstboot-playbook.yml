@@ -7,6 +7,9 @@
 - hosts: all
   tasks:
     - import_role:
+        name: user
+        tasks_from: firstboot
+    - import_role:
         name: network_configuration
         tasks_from: runtime
     - import_role:

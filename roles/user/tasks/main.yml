@@ -20,11 +20,6 @@
     dest: /etc/sudoers.d/ansible
     validate: "/usr/bin/visudo -cf %s"
 
-- name: Create individual user group
-  group:
-    name: "{{ user.group }}"
-    state: present
-
 - name: Create skel Projects dir
   file:
     path: /etc/skel/Projects
@@ -57,16 +52,19 @@
     state: link
     force: true
 
-- name: Create user
-  user:
-    name: "{{ user.name }}"
-    group: "{{ user.group }}"
-    groups:
-      - "{{ user.group }}"
-      - input
-      - pcscd
-      - wheel
-    password: "{{ user.password | password_hash('sha512') }}"
-    shell: "{{ user.shell }}"
-    update_password: on_create
-    append: true
+- name: Install PAM system-auth with systemd-homed support
+  copy:
+    src: system-auth
+    dest: /etc/pam.d/system-auth
+
+- name: Configure nsswitch.conf for systemd-homed user lookup
+  lineinfile:
+    path: /etc/nsswitch.conf
+    regexp: '^passwd:'
+    line: 'passwd: files systemd'
+
+- name: Configure nsswitch.conf for systemd-homed group lookup
+  lineinfile:
+    path: /etc/nsswitch.conf
+    regexp: '^group:'
+    line: 'group: files [SUCCESS=merge] systemd'

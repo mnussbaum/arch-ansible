@@ -1,0 +1,13 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create homed user
+  community.general.homectl:
+    name: "{{ user.name }}"
+    state: present
+    storage: directory
+    shell: "{{ user.shell }}"
+    groups:
+      - wheel
+      - input
+      - pcscd
+    password: "{{ user.password }}"

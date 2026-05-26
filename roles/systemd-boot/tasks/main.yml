@@ -1,5 +1,10 @@
 # vim:ft=yaml.ansible:
 ---
+- name: Read image version from os-release
+  shell: bash -c '. /etc/os-release && echo "${IMAGE_VERSION:-a}"'
+  register: image_version
+  changed_when: false
+
 - name: Write /etc/kernel/cmdline
   template:
     src: kernel-cmdline.j2
