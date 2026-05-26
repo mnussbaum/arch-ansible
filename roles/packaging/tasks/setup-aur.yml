@@ -13,6 +13,11 @@
     dest: /usr/bin/sudo
     mode: '0755'
 
+- name: Use in-container sccache server for nspawn builds
+  lineinfile:
+    path: /etc/makepkg.conf
+    line: 'export SCCACHE_SERVER_PORT=14226'
+
 - name: Set makepkg MAKEFLAGS for parallel builds
   lineinfile:
     path: /etc/makepkg.conf

@@ -13,5 +13,11 @@ if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   eval "extra_args=($ANSIBLE_EXTRA_ARGS)"
 fi
 
-exec env NO_ASK_BECOME_PASS=1 HOSTNAME=$IMAGE_ID ANSIBLE_PLAYBOOK=postinst-playbook.yml \
-  ./bin/ansible "${extra_args[@]}" ${ANSIBLE_TAGS:+--tags "$ANSIBLE_TAGS"}
+SCCACHE_SERVER_PORT=14226 sccache --stop-server 2>/dev/null || true
+SCCACHE_NO_DAEMON=1 SCCACHE_DIR=/root/.cache/sccache \
+    SCCACHE_SERVER_PORT=14226 sccache --start-server &
+trap "SCCACHE_SERVER_PORT=14226 sccache --stop-server 2>/dev/null || true" EXIT
+
+env NO_ASK_BECOME_PASS=1 HOSTNAME=$IMAGE_ID ANSIBLE_PLAYBOOK=postinst-playbook.yml \
+    SCCACHE_SERVER_PORT=14226 \
+    ./bin/ansible "${extra_args[@]}" ${ANSIBLE_TAGS:+--tags "$ANSIBLE_TAGS"}

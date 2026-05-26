@@ -1,3 +1,5 @@
-for config in ~/.config/zsh/*sh ; do
+emulate sh -c 'source /etc/profile'
+
+for config in /etc/zsh/*.zsh ; do
   source $config
 done

@@ -36,6 +36,12 @@
     path: /usr/bin/systemd-run.real
     state: absent
 
+- name: Remove in-container sccache server port setting
+  lineinfile:
+    path: /etc/makepkg.conf
+    line: 'export SCCACHE_SERVER_PORT=14226'
+    state: absent
+
 - name: Restore real makepkg
   copy:
     src: /usr/bin/makepkg.real

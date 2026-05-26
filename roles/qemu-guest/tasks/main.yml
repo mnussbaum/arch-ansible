@@ -20,7 +20,7 @@
   service:
     name: qemu-guest-agent.service
     state: started
-    enabled: yes
+    enabled: true
 
 - name: Install systemd preset
   copy:
@@ -32,6 +32,14 @@
     content: "vsock\nvmw_vsock_virtio_transport"
     dest: /etc/modules-load.d/vsock.conf
 
+- name: Load vsock modules now
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - vsock
+    - vmw_vsock_virtio_transport
+
 - name: Deploy pcscd vsock forwarding service
   copy:
     src: pcscd-vsock-forward.service
@@ -41,4 +49,5 @@
 - name: Enable pcscd vsock forwarding service
   service:
     name: pcscd-vsock-forward.service
-    enabled: yes
+    enabled: true
+    state: started

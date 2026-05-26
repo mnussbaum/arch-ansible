@@ -1,8 +1,8 @@
 [Unit]
 Description=First-boot Ansible provisioning
 ConditionFirstBoot=yes
-After=network-online.target systemd-firstboot.service
-Wants=network-online.target
+After=network-online.target systemd-firstboot.service home.mount systemd-homed.service
+Wants=network-online.target home.mount systemd-homed.service
 
 [Service]
 Type=oneshot

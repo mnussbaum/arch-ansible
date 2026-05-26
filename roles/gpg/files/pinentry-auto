@@ -1,6 +1,8 @@
 #!/bin/bash
 if [[ -n "${WAYLAND_DISPLAY:-}" || -n "${DISPLAY:-}" ]]; then
     exec /usr/bin/pinentry-gnome3 "$@"
-else
+elif [[ -t 0 ]]; then
     exec /usr/bin/pinentry-curses "$@"
+else
+    exec /usr/bin/pinentry-tty "$@"
 fi

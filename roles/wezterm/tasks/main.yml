@@ -7,17 +7,17 @@
 
 - name: Create config dir
   file:
-    path: /etc/xdg/wezterm
+    path: /etc/skel/.config/wezterm
     state: directory
 
 - name: Install color scheme file
   template:
     src: wezterm_base16_colorscheme.yml.j2
-    dest: "/etc/xdg/wezterm/base16-{{ base16_scheme }}.yml"
+    dest: "/etc/skel/.config/wezterm/base16-{{ base16_scheme }}.yml"
   tags: [base16]
 
 - name: Install config
   template:
     src: wezterm.lua.j2
-    dest: /etc/xdg/wezterm/wezterm.lua
+    dest: /etc/skel/.config/wezterm/wezterm.lua
   tags: [base16]

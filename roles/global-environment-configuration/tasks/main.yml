@@ -20,8 +20,5 @@
 
 - name: Install global ZSH configs sourcing /etc/profile
   copy:
-    dest: "{{ item }}"
+    dest: /etc/zsh/zprofile
     src: source_etc_profile
-  with_items:
-    - /etc/zsh/zprofile
-    - /etc/zsh/zshrc

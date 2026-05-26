@@ -5,11 +5,12 @@
     state: present
     name:
       - ccid
+      - gcr
       - gnupg
       - imagemagick
       - paperkey
       - pcsclite
-      - pinentry-curses
+      - pinentry
       - qrencode
       - yubikey-manager
       - zbar

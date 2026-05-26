@@ -6,6 +6,7 @@
       - qemu-desktop
       - edk2-ovmf
       - sdl2
+      - socat
 
 - name: Enable kvm CPU pass-through
   copy:
@@ -21,3 +22,15 @@
   copy:
     content: "vhost_vsock"
     dest: "/etc/modules-load.d/vhost_vsock.conf"
+
+- name: Deploy pcscd vsock forwarding service
+  copy:
+    src: pcscd-vsock-forward.service
+    dest: /etc/systemd/system/pcscd-vsock-forward.service
+    mode: "0644"
+
+- name: Enable pcscd vsock forwarding service
+  service:
+    name: pcscd-vsock-forward.service
+    enabled: yes
+    state: started

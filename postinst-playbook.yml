@@ -93,10 +93,6 @@
         name: power
       tags: [power]
     - import_role:
-        name: qemu-host
-      when: qemu_host
-      tags: [qemu-host]
-    - import_role:
         name: fonts
       tags: [fonts, min-user-session]
     - import_role:
@@ -144,10 +140,6 @@
     - import_role:
         name: devops
       tags: [devops]
-    - import_role:
-        name: eeek
-        tasks_from: packaging
-      tags: [eeek]
     - import_role:
         name: archiso
       tags: [archiso]

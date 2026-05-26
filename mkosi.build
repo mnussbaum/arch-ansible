@@ -3,16 +3,22 @@ set -euo pipefail
 
 pacman --root "$DESTDIR" -U --needed --noconfirm /work/src/yay-pkg/yay-bin-[0-9]*.pkg.tar.lzo
 
-CARGO_HOME=/tmp/cargo-home
+CARGO_HOME=/work/build/cargo-home
 mkdir -p "$CARGO_HOME"
 # Symlink registry from BuildSources so downloaded crates persist via buildcache
 if [[ -d /work/src/cargo-registry ]]; then
     ln -sf /work/src/cargo-registry "$CARGO_HOME/registry"
 fi
 
+SCCACHE_NO_DAEMON=1 SCCACHE_DIR=/work/src/sccache-cache \
+    SCCACHE_SERVER_PORT=14226 /usr/bin/sccache --start-server &
+trap "SCCACHE_SERVER_PORT=14226 /usr/bin/sccache --stop-server 2>/dev/null || true" EXIT
+
 CARGO_HOME="$CARGO_HOME" \
-    RUSTC_WRAPPER=sccache \
+    TMPDIR=/work/build \
+    RUSTC_WRAPPER=/usr/bin/sccache \
     SCCACHE_DIR=/work/src/sccache-cache \
+    SCCACHE_SERVER_PORT=14226 \
     CARGO_INCREMENTAL=0 \
     cargo install \
     --no-track \
