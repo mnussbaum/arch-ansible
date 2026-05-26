@@ -34,3 +34,4 @@
 - Investigate restic/btrfs best practice setup
 - Document cache mounting pattern perf optimization
 - Drop luks file once it's working
+- Can we move ansible into the build step? Might allow better caching
