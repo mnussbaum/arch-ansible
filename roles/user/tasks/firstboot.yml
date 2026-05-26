@@ -6,5 +6,5 @@
     state: present
     storage: directory
     shell: "{{ user.shell }}"
-    groups: "wheel,input,pcscd"
+    groups: "wheel,input,pcscd,docker"
     password: "{{ user.password }}"

@@ -1,0 +1,16 @@
+#!/bin/bash
+set -euo pipefail
+
+# Write build caches from the image back to the host so SkeletonTrees can
+# seed them into the next build, avoiding recompilation.
+
+_sync_cache() {
+    local src="$1" dst="$2"
+    [[ -d "$src" ]] || return 0
+    mkdir -p "$dst"
+    rsync -a "$src/" "$dst/"
+}
+
+_sync_cache "$BUILDROOT/root/.cache/yay"      "$HOME/.cache/yay"
+_sync_cache "$BUILDROOT/root/.cargo/registry" "$HOME/.cargo/registry"
+_sync_cache "$BUILDROOT/root/.cache/sccache"  "$HOME/.cache/sccache"

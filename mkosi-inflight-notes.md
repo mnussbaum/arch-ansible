@@ -14,6 +14,9 @@
   - arch-ansible repo
   - nvim packages
   - mirrorlist - ideally reflectored
+  - Cargo registry
+  - Sccache
+- Host needs ~/.cargo/registry ~/.cache/sccache
 - How are we going to mount in nvim data dir in container? Probably need to handle its absence
 - In image build need to mount from new system locations once I have a provisioned machine
 - Ask it if there's other things that need network access going on that we can avoid

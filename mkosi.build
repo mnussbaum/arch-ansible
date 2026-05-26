@@ -3,7 +3,18 @@ set -euo pipefail
 
 pacman --root "$DESTDIR" -U --needed --noconfirm /work/src/yay-pkg/yay-bin-[0-9]*.pkg.tar.lzo
 
-CARGO_HOME=/tmp/cargo-home cargo install \
+CARGO_HOME=/tmp/cargo-home
+mkdir -p "$CARGO_HOME"
+# Symlink registry from BuildSources so downloaded crates persist via buildcache
+if [[ -d /work/src/cargo-registry ]]; then
+    ln -sf /work/src/cargo-registry "$CARGO_HOME/registry"
+fi
+
+CARGO_HOME="$CARGO_HOME" \
+    RUSTC_WRAPPER=sccache \
+    SCCACHE_DIR=/work/src/sccache-cache \
+    CARGO_INCREMENTAL=0 \
+    cargo install \
     --no-track \
     --root "$DESTDIR/usr/local" \
     --git https://github.com/mnussbaum/waybar-sway-workspace-output-manager

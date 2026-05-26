@@ -30,7 +30,11 @@ case "$mode" in
     image_dir=mkosi.images/qemu
     cpus=4
     ram=4G
-    extra_vmm_args=()
+    extra_vmm_args=(
+      "-chardev" "socket,path=/tmp/qemu-guest-agent.sock,server=on,wait=off,id=qga0"
+      "-device" "virtio-serial"
+      "-device" "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0"
+    )
     ;;
   *)
     echo "Usage: $0 [--usi|--repair]" >&2

@@ -37,3 +37,8 @@
     src: pcscd-vsock-forward.service
     dest: /etc/systemd/system/pcscd-vsock-forward.service
     mode: "0644"
+
+- name: Enable pcscd vsock forwarding service
+  service:
+    name: pcscd-vsock-forward.service
+    enabled: yes

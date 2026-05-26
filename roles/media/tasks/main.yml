@@ -19,7 +19,6 @@
       - gst-plugins-good
       - gst-plugin-pipewire
       - gst-libav
-      - gst-plugin-va
       - gst-plugin-libcamera
       - playerctl
       - wireplumber

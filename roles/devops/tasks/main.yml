@@ -22,12 +22,6 @@
       - terraform
       - redis
 
-- name: Add user to docker group
-  user:
-    name: "{{ user.name }}"
-    groups: docker
-    append: true
-
 - name: Create docker daemon config dir
   file:
     path: /etc/docker
