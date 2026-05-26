@@ -48,16 +48,15 @@
     - import_role:
         name: gpg
         tasks_from: packaging
-      tags: [gpg, min-user-session]
+      tags: [gpg]
     - import_role:
         name: network_configuration
-      tags: [network_configuration, min-user-session]
+      tags: [network_configuration]
     - import_role:
         name: enable_network
-      tags: [enable_network, min-user-session]
+      tags: [enable_network]
     - import_role:
         name: reflector
-      when: ansible_facts["architecture"] is not match("arm.*")
       tags: [reflector]
     - import_role:
         name: packaging
@@ -65,7 +64,7 @@
       tags: [packaging, min-user-session]
     - import_role:
         name: secrets
-      tags: [secrets, min-user-session]
+      tags: [secrets]
     - import_role:
         name: zsh
       tags: [zsh, min-user-session]
@@ -80,7 +79,7 @@
       tags: [global-environment-configuration, min-user-session]
     - import_role:
         name: neovim
-      tags: [neovim, min-user-session]
+      tags: [neovim]
     - import_role:
         name: git
       tags: [git, min-user-session]
@@ -92,7 +91,7 @@
       tags: [tmux, min-user-session]
     - import_role:
         name: power
-      tags: [power, min-user-session]
+      tags: [power]
     - import_role:
         name: qemu-host
       when: qemu_host
@@ -102,7 +101,7 @@
       tags: [fonts, min-user-session]
     - import_role:
         name: libinput
-      tags: [libinput, min-user-session]
+      tags: [libinput]
     - import_role:
         name: wallpaper
       tags: [wallpaper, min-user-session]
@@ -117,16 +116,16 @@
       tags: [greeter, min-user-session]
     - import_role:
         name: launcher
-      tags: [launcher, min-user-session]
+      tags: [launcher]
     - import_role:
         name: qt
-      tags: [qt, min-user-session]
+      tags: [qt]
     - import_role:
         name: gtk
-      tags: [gtk, min-user-session]
+      tags: [gtk]
     - import_role:
         name: polkit
-      tags: [polkit, min-user-session]
+      tags: [polkit]
     - import_role:
         name: brightness
       tags: [brightness]

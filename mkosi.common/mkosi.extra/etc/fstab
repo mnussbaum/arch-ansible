@@ -1,2 +1,0 @@
-LABEL=var   /var   btrfs  noatime,compress=zstd:1,discard=async,space_cache=v2  0  0
-LABEL=home  /home  btrfs  noatime,compress=zstd:1,discard=async,space_cache=v2  0  0

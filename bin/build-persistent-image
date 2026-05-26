@@ -25,7 +25,7 @@ while [[ $# -gt 0 ]]; do
     --refresh-cache) refresh_cache="--incremental=no" ;;
     --dev) dev_format="--format=directory" ;;
     --skip-postinst) skip_postinst="--environment=SKIP_POSTINST=1" ;;
-    --ansible-tags) ansible_tags="--environment=ANSIBLE_EXTRA_ARGS=--tags $2"; shift ;;
+    --ansible-tags) ansible_tags="--environment=ANSIBLE_TAGS=$2"; shift ;;
     *) positional+=("$1") ;;
   esac
   shift

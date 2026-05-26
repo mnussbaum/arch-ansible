@@ -12,4 +12,4 @@ if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
 fi
 
 exec env NO_ASK_BECOME_PASS=1 HOSTNAME=$IMAGE_ID ANSIBLE_PLAYBOOK=postinst-playbook.yml \
-  ./bin/ansible "${extra_args[@]}"
+  ./bin/ansible "${extra_args[@]}" ${ANSIBLE_TAGS:+--tags "$ANSIBLE_TAGS"}
