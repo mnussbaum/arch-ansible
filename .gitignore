@@ -1,12 +1,4 @@
 *.pyc
 *.retry
 /secrets/
-mkosi.images/**/*.raw
-mkosi.images/**/*.raw-*
-mkosi.images/**/*.vmlinuz
-mkosi.images/**/*.initrd
-mkosi.images/**/*.cpio.zst
-mkosi.images/**/initrd
-mkosi.images/qemu/qemu
-mkosi.images/usi/usi
 mkosi.images/**/shared/

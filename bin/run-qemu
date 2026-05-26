@@ -22,7 +22,7 @@ case "$mode" in
     cpus=4
     ram=6G
     extra_vmm_args=(
-      "-drive" "if=none,id=hd1,file=$qemu_image_dir/qemu.raw,format=raw"
+      "-drive" "if=none,id=hd1,file=$qemu_output_dir/arch.raw,format=raw"
       "-device" "scsi-hd,bus=scsi0.0,drive=hd1"
     )
     ;;
@@ -43,7 +43,7 @@ trap stop_pcscd_vsock_relay EXIT INT TERM
 
 mkosi \
   --directory="$image_dir" \
-  --output-directory="$PWD" \
+  --output-directory="$qemu_output_dir" \
   --cpus="$cpus" \
   --ram="$ram" \
   --vsock=yes \

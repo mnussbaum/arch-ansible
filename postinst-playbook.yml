@@ -16,45 +16,45 @@
         tasks_from: install-pacman-conf
       vars:
         disable_sandbox: true
-      tags: [packaging]
+      tags: [packaging, min-user-session]
     - import_role:
         name: packaging
         tasks_from: init-keyring
-      tags: [packaging]
+      tags: [packaging, min-user-session]
   post_tasks:
     - import_role:
         name: packaging
         tasks_from: install-pacman-conf
       vars:
         disable_sandbox: false
-      tags: [packaging]
+      tags: [packaging, min-user-session]
     - import_role:
         name: packaging
         tasks_from: restore-build-overrides
-      tags: [packaging]
+      tags: [packaging, min-user-session]
   tasks:
     - import_role:
         name: set-appearance-facts
-      tags: [set-appearance-facts]
+      tags: [set-appearance-facts, min-user-session]
     - import_role:
         name: vconsole
-      tags: [vconsole]
+      tags: [vconsole, min-user-session]
     - import_role:
         name: systemd-boot
-      tags: [systemd-boot]
+      tags: [systemd-boot, min-user-session]
     - import_role:
         name: user
-      tags: [user]
+      tags: [user, min-user-session]
     - import_role:
         name: gpg
         tasks_from: packaging
-      tags: [gpg]
+      tags: [gpg, min-user-session]
     - import_role:
         name: network_configuration
-      tags: [network_configuration]
+      tags: [network_configuration, min-user-session]
     - import_role:
         name: enable_network
-      tags: [enable_network]
+      tags: [enable_network, min-user-session]
     - import_role:
         name: reflector
       when: ansible_facts["architecture"] is not match("arm.*")
@@ -62,13 +62,13 @@
     - import_role:
         name: packaging
         tasks_from: setup-aur
-      tags: [packaging]
+      tags: [packaging, min-user-session]
     - import_role:
         name: secrets
-      tags: [secrets]
+      tags: [secrets, min-user-session]
     - import_role:
         name: zsh
-      tags: [zsh]
+      tags: [zsh, min-user-session]
     - import_role:
         name: cli-tools
       tags: [cli-tools]
@@ -77,56 +77,56 @@
       tags: [ruby]
     - import_role:
         name: global-environment-configuration
-      tags: [global-environment-configuration]
+      tags: [global-environment-configuration, min-user-session]
     - import_role:
         name: neovim
-      tags: [neovim]
+      tags: [neovim, min-user-session]
     - import_role:
         name: git
-      tags: [git]
+      tags: [git, min-user-session]
     - import_role:
         name: wezterm
-      tags: [wezterm]
+      tags: [wezterm, min-user-session]
     - import_role:
         name: tmux
-      tags: [tmux]
+      tags: [tmux, min-user-session]
     - import_role:
         name: power
-      tags: [power]
+      tags: [power, min-user-session]
     - import_role:
         name: qemu-host
       when: qemu_host
       tags: [qemu-host]
     - import_role:
         name: fonts
-      tags: [fonts]
+      tags: [fonts, min-user-session]
     - import_role:
         name: libinput
-      tags: [libinput]
+      tags: [libinput, min-user-session]
     - import_role:
         name: wallpaper
-      tags: [wallpaper]
+      tags: [wallpaper, min-user-session]
     - import_role:
         name: sway
-      tags: [sway]
+      tags: [sway, min-user-session]
     - import_role:
         name: waybar
-      tags: [waybar]
+      tags: [waybar, min-user-session]
     - import_role:
         name: greeter
-      tags: [greeter]
+      tags: [greeter, min-user-session]
     - import_role:
         name: launcher
-      tags: [launcher]
+      tags: [launcher, min-user-session]
     - import_role:
         name: qt
-      tags: [qt]
+      tags: [qt, min-user-session]
     - import_role:
         name: gtk
-      tags: [gtk]
+      tags: [gtk, min-user-session]
     - import_role:
         name: polkit
-      tags: [polkit]
+      tags: [polkit, min-user-session]
     - import_role:
         name: brightness
       tags: [brightness]
