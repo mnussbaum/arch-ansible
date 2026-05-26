@@ -15,12 +15,10 @@
       - docker-compose
       - amazon-ecr-credential-helper
       - kubectl-bin
-      - rancher-k3d-bin
       - kubectx
       - helm
       - stern
       - terraform
-      - redis
 
 - name: Create docker daemon config dir
   file:
@@ -36,7 +34,6 @@
   copy:
     src: 80-devops.preset
     dest: /usr/lib/systemd/system-preset/80-devops.preset
-
 
 - name: Create docker client config dir
   file:
