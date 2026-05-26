@@ -1,5 +1,7 @@
 # vim:ft=yaml.ansible:
 ---
+# Runs during the image build process. Runs within the chroot of the just built
+# image
 - hosts: all
   environment:
     BUILDDIR: /tmp/makepkg

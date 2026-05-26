@@ -3,12 +3,4 @@
 set -o errexit
 set -o nounset
 
-source bin/_qemu_common.sh
-
-mkdir -p "$images_dir"
-
-if [[ ! -f "$qemu_gpg_usb_file" ]]; then
-  qemu-img create -f raw "$qemu_gpg_usb_file" 1G
-fi
-
 exec bin/build-persistent-image qemu "$@"

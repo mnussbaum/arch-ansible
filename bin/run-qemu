@@ -22,7 +22,7 @@ case "$mode" in
     cpus=4
     ram=6G
     extra_vmm_args=(
-      "-drive" "if=none,id=hd1,file=$qemu_image_file,format=raw"
+      "-drive" "if=none,id=hd1,file=$qemu_image_dir/qemu.raw,format=raw"
       "-device" "scsi-hd,bus=scsi0.0,drive=hd1"
     )
     ;;
@@ -38,20 +38,15 @@ case "$mode" in
     ;;
 esac
 
-gpg_usb_args=()
-if [[ -f "$qemu_gpg_usb_file" ]]; then
-  gpg_usb_args=("-drive" "file=$qemu_gpg_usb_file,format=raw")
-fi
-
 start_pcscd_vsock_relay
 trap stop_pcscd_vsock_relay EXIT INT TERM
 
 mkosi \
   --directory="$image_dir" \
-  --output-directory="$images_dir" \
+  --output-directory="$PWD" \
   --cpus="$cpus" \
   --ram="$ram" \
   --vsock=yes \
   --vsock-cid=3 \
-  --runtime-tree="$qemu_shared_dir:/run/host/shared" \
-  vm -- "${gpg_usb_args[@]}" "${extra_vmm_args[@]}"
+  --runtime-tree="$PWD/$qemu_shared_dir:/run/host/shared" \
+  vm -- "${extra_vmm_args[@]}"

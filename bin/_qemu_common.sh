@@ -1,12 +1,8 @@
 set -o errexit
 set -o nounset
 
-images_dir="$XDG_DATA_HOME/arch-images"
-qemu_shared_dir="$images_dir/shared"
-
-usi_image_file="$images_dir/usi.raw"
-qemu_image_file="$images_dir/qemu.raw"
-qemu_gpg_usb_file="$images_dir/gpg-usb.img"
+qemu_image_dir=mkosi.images/qemu
+qemu_shared_dir="$qemu_image_dir/shared"
 
 mkdir -p "$qemu_shared_dir"
 

@@ -1,5 +1,9 @@
 # vim:ft=yaml.ansible:
 ---
+# Runs tasks once, when a machine is first booted. Should be used for
+# machine configuration specific to a runtime role. It's preferable to put
+# tasks in the postinst-playbook.yml file to execute them at image build time
+# to keep machine provisioning fast and reliable
 - hosts: all
   tasks:
     - import_role:

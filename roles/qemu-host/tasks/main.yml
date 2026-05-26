@@ -5,6 +5,7 @@
     name:
       - qemu-desktop
       - edk2-ovmf
+      - sdl2
 
 - name: Enable kvm CPU pass-through
   copy:
