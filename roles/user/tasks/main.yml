@@ -20,6 +20,12 @@
     dest: /etc/sudoers.d/ansible
     validate: "/usr/bin/visudo -cf %s"
 
+- name: Create skel .zshrc to suppress zsh-newuser-install
+  copy:
+    content: ""
+    dest: /etc/skel/.zshrc
+    force: false
+
 - name: Create skel Projects dir
   file:
     path: /etc/skel/Projects

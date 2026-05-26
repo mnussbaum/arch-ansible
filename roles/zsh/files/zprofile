@@ -1,3 +1,0 @@
-if [[ ! -f "$HOME/.config/user-firstboot-done" ]]; then
-    ANSIBLE_PLAYBOOK=user-firstboot-playbook.yml NO_ASK_BECOME_PASS=1 /usr/local/share/arch-ansible/bin/ansible
-fi

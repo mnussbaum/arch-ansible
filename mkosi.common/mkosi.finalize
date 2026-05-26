@@ -1,5 +1,0 @@
-#!/bin/bash
-# systemd ships a factory /etc/crypttab that tmpfiles copies before repart can generate it.
-# Delete it here (after tmpfiles, before repart) so repart can create the real one.
-set -euo pipefail
-rm -f /buildroot/etc/crypttab

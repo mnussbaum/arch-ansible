@@ -31,5 +31,6 @@
 ```
 
 - Revaluate bootstrap and rebuild-boot-partition tags
-- Investigate restic/btfs best practice setup
+- Investigate restic/btrfs best practice setup
 - Document cache mounting pattern perf optimization
+- Drop luks file once it's working
