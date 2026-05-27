@@ -19,8 +19,13 @@
     dest: /etc/libinput-gestures.conf
     src: libinput-gestures.conf
 
+- name: Install touchpad symlink udev rule
+  copy:
+    dest: /etc/udev/rules.d/99-touchpad-symlink.rules
+    src: 99-touchpad-symlink.rules
+
 - name: Install systemd user preset
-  template:
-    src: 80-libinput.preset.j2
+  copy:
+    src: 80-libinput.preset
     dest: /usr/lib/systemd/user-preset/80-libinput.preset
 

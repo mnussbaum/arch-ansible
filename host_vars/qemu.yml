@@ -19,9 +19,6 @@ key_repeat:
 monitors:
   id: Virtual-1
 
-optional_daemons:
-  libinput_gestures: false
-
 window_manager:
   waybar_minimum_workspace_count: 5
   window_manager: sway

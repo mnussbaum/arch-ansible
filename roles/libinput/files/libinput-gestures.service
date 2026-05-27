@@ -3,6 +3,9 @@ Description=Multitouch via libinput-gestures
 Documentation=https://github.com/bulletmark/libinput-gestures/blob/master/README.md
 Requires=sway-session.target
 After=sway-session.target
+# Skip (without failing) on hosts with no touchpad, e.g. QEMU and the Pi.
+# /dev/input/touchpad is created by 99-touchpad-symlink.rules.
+ConditionPathExists=/dev/input/touchpad
 
 [Service]
 ExecStart=/usr/bin/libinput-gestures

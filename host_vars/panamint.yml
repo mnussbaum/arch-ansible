@@ -39,9 +39,6 @@ key_repeat:
   rate: 35
   delay: 250
 
-optional_daemons:
-  libinput_gestures: false
-
 networking:
   interface: wlan0
   networks:

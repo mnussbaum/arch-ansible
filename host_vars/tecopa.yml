@@ -59,9 +59,6 @@ monitors:
   #     y: -10600
   #   scale: 1
 
-optional_daemons:
-  libinput_gestures: true
-
 window_manager:
   waybar_thermal_zone_to_display: 11
   waybar_minimum_workspace_count: 5

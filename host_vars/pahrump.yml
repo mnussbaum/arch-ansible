@@ -45,9 +45,6 @@ key_repeat:
   rate: 35
   delay: 250
 
-optional_daemons:
-  libinput_gestures: true
-
 window_manager:
   waybar_thermal_zone_to_display: 7
   waybar_minimum_workspace_count: 5
