@@ -4,7 +4,6 @@
   package:
     state: present
     name: libva-intel-driver
-  when: ansible_facts["architecture"] is not match("arm.*")
 
 - name: Install packages
   package:

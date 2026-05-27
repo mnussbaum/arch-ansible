@@ -150,10 +150,6 @@
         name: syncthing
       tags: [syncthing]
     - import_role:
-        name: raspberry-pi-dev
-      when: ansible_facts["architecture"] is not match("arm.*")
-      tags: [raspberry-pi-dev]
-    - import_role:
         name: firefox
       tags: [firefox]
     - import_role:
