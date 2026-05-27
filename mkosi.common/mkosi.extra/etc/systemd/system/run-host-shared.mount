@@ -1,0 +1,22 @@
+# Mounts the host-shared directory exposed by `mkosi vm --runtime-tree`
+# (see bin/run-qemu) over virtiofs.
+#
+# mkosi normally injects this mount via an fstab.extra credential with the
+# x-initrd.mount option, but that does not work for a /run target: the host
+# fstab-generator skips x-initrd entries (they are extrinsic), and an initrd
+# mount under /run is shadowed by the /run tmpfs after switch-root. So we mount
+# it ourselves in the booted system instead. The virtiofs tag equals the
+# share's target path (/run/host/shared). ConditionVirtualization keeps this
+# inert on physical hardware (e.g. a burned USI).
+[Unit]
+Description=Host shared directory (virtiofs)
+ConditionVirtualization=vm
+
+[Mount]
+What=/run/host/shared
+Where=/run/host/shared
+Type=virtiofs
+Options=nofail
+
+[Install]
+WantedBy=multi-user.target
