@@ -1,10 +1,4 @@
 ---
-mkinitcpio_modules:
-  - nvme_core
-  - nvme
-  - intel_agp
-  - i915
-
 modprobe_files:
   - i915.conf
   - iwlwifi.conf
