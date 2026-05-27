@@ -20,8 +20,14 @@
       IOSchedulingClass=2
       IOSchedulingPriority=7
 
+- name: Skip syncthing under virtualization
+  copy:
+    src: syncthing-condition.conf
+    dest: /etc/systemd/user/syncthing.service.d/condition.conf
+    mode: "0644"
+
 - name: Install systemd user preset
-  template:
-    src: 80-syncthing.preset.j2
+  copy:
+    src: 80-syncthing.preset
     dest: /usr/lib/systemd/user-preset/80-syncthing.preset
 

@@ -10,11 +10,16 @@
       - thermald
       - tlp
 
-- name: Enable thermald
-  service:
-    name: thermald
-    enabled: true
-  when: ansible_facts["virtualization_role"] != "guest"
+- name: Create thermald drop-in directory
+  file:
+    path: /etc/systemd/system/thermald.service.d
+    state: directory
+
+- name: Skip thermald under virtualization
+  copy:
+    src: thermald-condition.conf
+    dest: /etc/systemd/system/thermald.service.d/condition.conf
+    mode: "0644"
 
 - name: Configure TLP
   copy:
