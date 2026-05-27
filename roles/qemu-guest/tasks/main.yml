@@ -5,6 +5,17 @@
     content: "blacklist coretemp"
     dest: "/etc/modprobe.d/blacklist_coretemp.conf"
 
+- name: Create systemd-vconsole-setup drop-in directory
+  file:
+    path: /etc/systemd/system/systemd-vconsole-setup.service.d
+    state: directory
+
+- name: Skip systemd-vconsole-setup under virtualization
+  copy:
+    src: vconsole-setup-condition.conf
+    dest: /etc/systemd/system/systemd-vconsole-setup.service.d/condition.conf
+    mode: "0644"
+
 - name: Create qemu-guest-agent drop-in directory
   file:
     path: /etc/systemd/system/qemu-guest-agent.service.d
