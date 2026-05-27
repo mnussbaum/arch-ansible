@@ -41,3 +41,4 @@
 - Fix colorscheme changer for the new world. Needs a whole new strategy
 - Test different USI usages
 - Add eeek tasks back in
+- Move backblaze secrets under host_vars/
