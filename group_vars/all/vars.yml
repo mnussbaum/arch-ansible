@@ -45,12 +45,6 @@ key_repeat:
   rate: 35
   delay: 250
 
-mkinitcpio_modules:
-  - nvme_core
-  - nvme
-  - intel_agp
-  - i915
-
 window_manager:
   waybar_minimum_workspace_count: 5
   window_manager: sway
