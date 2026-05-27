@@ -41,11 +41,11 @@
 
 ### Verification
 
-- [ ] Boot the qemu image: `mkosi --directory mkosi.images/qemu --output-directory $XDG_DATA_HOME/arch-images vm`
+- [ ] Boot the workstation image in qemu: `bin/run-image workstation --hostname=qemu`
 - [ ] Verify shared dir (`/run/host/shared`) and pcscd vsock relay work in USI and persistent flavors of QEMU
 - [ ] Verify sway starts successfully in USI and persistent flavors of QEMU
-- [ ] Test `build-persistent-image bodie /dev/sdX` on a physical device
-- [ ] Test `build-usi /dev/sdX` on a physical device
+- [ ] Test `bin/burn-image workstation --hostname=bodie /dev/sdX` on a physical device
+- [ ] Test `bin/burn-image usi --hostname=usi /dev/sdX` on a physical device
 
 ### Deferred (next step)
 
