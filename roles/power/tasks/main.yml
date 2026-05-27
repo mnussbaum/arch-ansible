@@ -91,7 +91,6 @@
     src: reset-elan-touchpad
     dest: /usr/lib/systemd/system-sleep/reset-elan-touchpad
     mode: a+x
-  when: ansible_facts["system_vendor"] == "Dell Inc." and ansible_facts["product_name"] is search("XPS")
 
 # Async power management appears to be causing lock ups during suspend and resume
 - name: Disable async suspend and resume

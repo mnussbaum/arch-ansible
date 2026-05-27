@@ -11,6 +11,16 @@ log() {
     logger -t reset-elan-touchpad "$*"
 }
 
+# Only run on the Dell XPS hardware that needs this workaround. The image is
+# shared across machines, so guard at runtime via DMI (the same source as
+# ansible's system_vendor/product_name facts) rather than at build time.
+vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
+product=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
+case "$vendor::$product" in
+    "Dell Inc."::*XPS*) ;;
+    *) exit 0 ;;
+esac
+
 graphical_user() {
     loginctl list-sessions --no-legend \
         | awk '$3 != "" {print $3; exit}'
