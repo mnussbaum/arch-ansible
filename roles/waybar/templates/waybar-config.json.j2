@@ -24,7 +24,7 @@
       "cpu",
       "memory",
       "custom/fake_vm_temperature",
-      "temperature",
+      "custom/temperature",
       "clock"
     ],
 
@@ -73,15 +73,13 @@
       "tooltip": false
     },
 
-{% if window_manager.waybar_thermal_zone_to_display is defined %}
-    "temperature": {
-      "thermal-zone": {{ window_manager["waybar_thermal_zone_to_display"] }},
-      "critical-threshold": 60,
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{temperatureF}°F ') }}",
-      "format-critical": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{temperatureF}°F ') }}",
+    "custom/temperature": {
+      "exec-if": "! systemd-detect-virt --quiet --vm",
+      "exec": "waybar-cpu-temp",
+      "interval": 5,
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{}°F ') }}",
       "tooltip": false
     },
-{% endif %}
 
     "clock": {
       "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{:%a, %d %b %I:%M:%S}', last_block=True, position='right') }}",

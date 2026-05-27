@@ -58,6 +58,7 @@
     dest: "/usr/local/bin/{{ item }}"
     mode: a+x
   with_items:
+    - waybar-cpu-temp
     - waybar-bluetooth-status
     - toggle-bluetooth
     - toggle-wifi
