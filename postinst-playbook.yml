@@ -43,6 +43,9 @@
         name: systemd-boot
       tags: [systemd-boot, min-user-session]
     - import_role:
+        name: qemu-guest-agent
+      tags: [qemu-guest-agent]
+    - import_role:
         name: user
       tags: [user, min-user-session]
     - import_role:
