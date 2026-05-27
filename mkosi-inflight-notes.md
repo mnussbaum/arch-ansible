@@ -41,4 +41,9 @@
 - Fix colorscheme changer for the new world. Needs a whole new strategy
 - Test different USI usages
 - Add eeek tasks back in
-- Move backblaze secrets under host_vars/
+- New scripts
+  - build-image --usi # a boolean
+  - run-image --hostname=required_hostname #--runtime arg that's qemu by default
+  - How to run image with recovery and another device attached?
+  - burn-image --device=<device> --hostname=required_hostname
+- Drive `qemu_guest` bool from ansible facts

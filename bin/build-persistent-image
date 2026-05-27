@@ -43,6 +43,7 @@ if [[ "$hostname" == "qemu" ]]; then
   mkosi \
     --directory="mkosi.images/$hostname" \
     --output-directory="$qemu_output_dir" \
+    --profile=build \
     --force \
     ${refresh_cache:+"$refresh_cache"} \
     ${dev_format:+"$dev_format"} \
@@ -55,6 +56,8 @@ else
   mkosi \
     --directory="mkosi.images/$hostname" \
     --output-directory="$output_dir" \
+    --hostname="$hostname" \
+    --profile=build \
     --force \
     ${refresh_cache:+"$refresh_cache"} \
     ${dev_format:+"$dev_format"} \
