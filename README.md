@@ -296,13 +296,11 @@ To override the appearance:
 
 Tags limit which tasks run, useful for faster iteration on a specific subsystem.
 
-| Tag                      | Tasks run                                                                                        |
-| ------------------------ | ------------------------------------------------------------------------------------------------ |
-| `bootstrap`              | Initial setup only: users, packages, networking, partitioning helpers                            |
-| `rebuild-boot-partition` | Regenerate mkinitcpio UKIs and systemd-boot config; use to repair a broken boot setup |
-| `base16`                 | Regenerate all color-scheme files across every app                                               |
-| `nvim`                   | Neovim configuration and plugins                                                                 |
-| `networking`             | Network configuration (iwd, systemd-networkd, resolved)                                          |
+| Tag          | Tasks run                                               |
+| ------------ | ------------------------------------------------------- |
+| `base16`     | Regenerate all color-scheme files across every app      |
+| `nvim`       | Neovim configuration and plugins                        |
+| `networking` | Network configuration (iwd, systemd-networkd, resolved) |
 
 Example:
 

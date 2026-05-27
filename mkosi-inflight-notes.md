@@ -1,7 +1,6 @@
 - Document that we implement https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
 - Ask it to diff against the plan in https://0pointer.net/blog/fitting-everything-together.html
 - I think we move package installs back into ansible
-- Is `Install pacman database files` still needed?
 - Clean up network_install_root
 - Stuff copied from the host that needs to be in containerfile
   - yay-bin
@@ -13,12 +12,12 @@
   - Sccache
 - Host needs ~/.cargo/registry ~/.cache/sccache
 - How are we going to mount in nvim data dir in container? Probably need to handle its absence
-- In image build need to mount from new system locations once I have a provisioned machine
+- In image build configs need to mount from new system locations once I have a provisioned machine
 - Ask it if there's other things that need network access going on that we can avoid
 - Get offline
-  - Remove pacman keyring stuff if truly offline
   - Base16 configs reach internet still
   - delta theme file download
+  - `WithNetwork=false`?
 
 - Make sure this is followed up on:
 
@@ -27,7 +26,6 @@
   plugin or pacman hook calling ukify) instead of mkinitcpio handling it.
 ```
 
-- Revaluate bootstrap and rebuild-boot-partition tags
 - Investigate restic/btrfs best practice setup
   - How can we restore a restic backup automatically?
 - Document cache mounting pattern perf optimization
