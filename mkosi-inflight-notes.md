@@ -2,9 +2,7 @@
 - Ask it to diff against the plan in https://0pointer.net/blog/fitting-everything-together.html
 - I think we move package installs back into ansible
 - Is `Install pacman database files` still needed?
-- Clean up bootstrapping tags and playbooks
 - Clean up network_install_root
-- Clean up the variables for daemon refresh and service starting
 - Stuff copied from the host that needs to be in containerfile
   - yay-bin
   - password-store repo
@@ -22,7 +20,6 @@
   - Base16 configs reach internet still
   - delta theme file download
 
-- `HOSTNAME=usi NO_ASK_BECOME_PASS=1 ANSIBLE_PLAYBOOK=postinst-playbook.yml ./bin/ansible --tags=greeter --tags=packaging`
 - Make sure this is followed up on:
 
 ```
@@ -34,7 +31,6 @@
 - Investigate restic/btrfs best practice setup
   - How can we restore a restic backup automatically?
 - Document cache mounting pattern perf optimization
-- Drop luks file once it's working
 - Can we move ansible into the build step? Might allow better caching
 - Make sure secrets aren't exposed in system ansible repo. Or replace with pass access
 - Test the partition swap in qemu
@@ -42,7 +38,7 @@
 - Test different USI usages
 - Add eeek tasks back in
 - New scripts
-  - build-image --usi # a boolean
-  - run-image --hostname=required_hostname #--runtime arg that's qemu by default
-  - How to run image with recovery and another device attached?
-  - burn-image --device=<device> --hostname=required_hostname
+  - build-image --usi=<false|true> [--refresh-cache] [--dev] [--skip-postinst] [--ansible-tags TAGS] [output-device]
+  - run-image --hostname=<required_hostname> [--runtime=<qemu|whatever else mkosi supports>] <more optional arg to attach another image emulating a recovery drive attached to a workstation>
+  - burn-image --hostname=<required_hostname> [--image file] <output device>
+- Organize project top level better. Playbooks in one dir, mkosi stuff in another
