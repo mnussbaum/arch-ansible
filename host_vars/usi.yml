@@ -12,12 +12,3 @@ modprobe_files:
   - iwlwifi.conf
   - nvme.conf
 
-key_repeat:
-  rate: 35
-  delay: 250
-
-window_manager:
-  waybar_minimum_workspace_count: 5
-  window_manager: sway
-  windowing_system: wayland
-

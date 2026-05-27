@@ -41,6 +41,15 @@ wallpaper:
 
 timezone: "US/Pacific"
 
+key_repeat:
+  rate: 35
+  delay: 250
+
+window_manager:
+  waybar_minimum_workspace_count: 5
+  window_manager: sway
+  windowing_system: wayland
+
 # TODO: Instead of using per-task special case roots, replace all usage of root
 # dir in paths with some single thing configured here
 network_install_root: ""
