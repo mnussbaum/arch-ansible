@@ -21,23 +21,17 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-luks_passphrase=$(
-  ansible-vault view group_vars/all/secrets.yml \
-    --vault-password-file secrets/vault-password \
-    | python3 -c "import sys,yaml; d=yaml.safe_load(sys.stdin); print(d['luks_passphrase'])"
-)
+source bin/_luks_common.sh
 
 if [[ -n "$output_arg" ]]; then
   mkosi \
     --directory=mkosi.images/usi \
     --output-directory="$PWD" \
-    --credential="luks.passphrase=$luks_passphrase" \
     ${refresh_cache:+"$refresh_cache"} \
     burn "$output_arg"
 else
   mkosi \
     --directory=mkosi.images/usi \
     --output-directory="$PWD" \
-    --credential="luks.passphrase=$luks_passphrase" \
     ${refresh_cache:+"$refresh_cache"}
 fi
