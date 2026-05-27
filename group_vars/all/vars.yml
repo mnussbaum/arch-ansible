@@ -51,6 +51,14 @@ mkinitcpio_modules:
   - intel_agp
   - i915
 
+modprobe_files:
+  - i915.conf
+  - iwlwifi.conf
+  - nvme.conf
+  # Blacklist psmouse fleet-wide: touchpads are i2c-hid, so this only kills a
+  # phantom PS/2 mouse (fixes trackpad click lock-up on resume).
+  - no-psmouse.conf
+
 window_manager:
   waybar_minimum_workspace_count: 5
   window_manager: sway
