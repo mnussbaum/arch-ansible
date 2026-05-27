@@ -1,0 +1,7 @@
+# vim:ft=yaml.ansible:
+---
+- name: Use Super as sway leader on QEMU guests
+  copy:
+    src: qemu-leader.conf
+    dest: /etc/sway/config.d/leader.conf
+    mode: "0644"

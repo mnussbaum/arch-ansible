@@ -1,5 +1,10 @@
 # vim:ft=yaml.ansible:
 ---
+- name: Set sway leader key for QEMU guests
+  import_role:
+    name: sway
+    tasks_from: qemu-firstboot
+
 - name: Blacklist coretemp module
   copy:
     content: "blacklist coretemp"

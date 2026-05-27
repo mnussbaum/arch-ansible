@@ -1,8 +1,7 @@
-{% if ansible_facts["virtualization_role"] == "guest" %}
-set $mod Mod4
-{% else %}
 set $mod Mod1
-{% endif %}
+# Runtime overrides (e.g. leader key on QEMU guests). Must come before
+# bindsyms since sway expands variables at parse time.
+include /etc/sway/config.d/*.conf
 set $left h
 set $down j
 set $up k

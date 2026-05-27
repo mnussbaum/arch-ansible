@@ -2,3 +2,4 @@
 *.retry
 /secrets/
 mkosi.images/**/shared/
+.claude/
