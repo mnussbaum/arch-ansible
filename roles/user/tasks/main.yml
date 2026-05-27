@@ -31,14 +31,6 @@
     path: /etc/skel/Projects
     state: directory
 
-- name: Symlink repo into skel Projects
-  file:
-    path: /etc/skel/Projects/arch-ansible
-    src: /usr/local/share/arch-ansible
-    state: link
-    force: true
-    follow: false
-
 - name: Create skel .local/share dir
   file:
     path: /etc/skel/.local/share

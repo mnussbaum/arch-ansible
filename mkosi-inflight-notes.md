@@ -36,6 +36,6 @@
 - Document cache mounting pattern perf optimization
 - Drop luks file once it's working
 - Can we move ansible into the build step? Might allow better caching
-- Disable libinput in qemu
-- Fix battery indicator in waybar in qemu
-- Make sure secrets aren't exposed in system ansible repo
+- Make sure secrets aren't exposed in system ansible repo. Or replace with pass access
+- Test the partition swap in qemu
+- Fix colorscheme changer for the new world. Needs a whole new strategy

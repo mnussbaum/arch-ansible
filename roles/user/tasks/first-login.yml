@@ -1,0 +1,8 @@
+# vim:ft=yaml.ansible:
+---
+- name: Copy arch-ansible repo into home
+  synchronize:
+    src: /usr/local/share/arch-ansible/
+    dest: "{{ ansible_env.HOME }}/Projects/arch-ansible/"
+    owner: false
+    group: false
