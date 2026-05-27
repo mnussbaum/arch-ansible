@@ -1,0 +1,67 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+
+hostname=""
+mkosi_args=()
+image=""
+device=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      echo "Write a built image to a device, setting its hostname at boot. Build it first with build-image." >&2
+      echo "Usage: $0 --hostname=<hostname> [mkosi options...] <image> <device>" >&2
+      echo "  <image>     Image to write: 'workstation', 'usi', or a path to a mkosi.images dir." >&2
+      echo "  <device>    Block device to write the image to." >&2
+      echo "  --hostname  Hostname, applied at boot via a system.hostname credential in the ESP (required)." >&2
+      echo "  Any other options are forwarded to mkosi." >&2
+      exit
+      ;;
+    --hostname=*) hostname="${1#*=}" ;;
+    --hostname) hostname="$2"; shift ;;
+    --*)
+      mkosi_args+=("$1")
+      if [[ $# -gt 1 && "$2" != -* ]]; then mkosi_args+=("$2"); shift; fi
+      ;;
+    *)
+      if [[ -z "$image" ]]; then image="$1"
+      elif [[ -z "$device" ]]; then device="$1"
+      else echo "Unexpected argument: $1" >&2; exit 1; fi
+      ;;
+  esac
+  shift
+done
+
+: "${image:?Usage: $0 --hostname=<hostname> <image> <device>}"
+: "${device:?Usage: $0 --hostname=<hostname> <image> <device>}"
+: "${hostname:?--hostname is required}"
+
+[[ "$image" == */* ]] || image="mkosi.images/$image"
+
+source bin/_luks_common.sh
+
+output_dir=~/.cache/mkosi/images/$(basename "$image")
+mkdir -p "$output_dir"
+
+mkosi \
+  --directory="$image" \
+  --output-directory="$output_dir" \
+  --profile=build \
+  "${mkosi_args[@]}" \
+  burn "$device"
+
+# The image is generic; set the boot-time hostname by dropping a system.hostname
+# credential into the ESP, which systemd-boot passes to PID1 at boot.
+esp=$(lsblk -lnpo NAME,PARTTYPE "$device" \
+  | awk '$2=="c12a7328-f81f-11d2-ba4b-00a0c93ec93b"{print $1; exit}')
+[[ -n "$esp" ]] || { echo "Could not find an ESP on $device" >&2; exit 1; }
+
+mnt=$(mktemp -d)
+trap 'umount "$mnt" 2>/dev/null || true; rmdir "$mnt" 2>/dev/null || true' EXIT
+mount "$esp" "$mnt"
+mkdir -p "$mnt/loader/credentials"
+printf '%s' "$hostname" > "$mnt/loader/credentials/system.hostname.cred"
+
+echo "Burned $(basename "$image") to $device with hostname $hostname" >&2

@@ -1,5 +1,5 @@
 # Mounts the host-shared directory exposed by `mkosi vm --runtime-tree`
-# (see bin/run-qemu) over virtiofs.
+# (see bin/run-image) over virtiofs.
 #
 # mkosi derives the virtiofs tag from the runtime-tree target, so the tag is
 # the literal string "/run/host/shared". It also injects an fstab.extra

@@ -1,5 +1,5 @@
 # Mounts the host-shared directory exposed by `mkosi vm --runtime-tree`
-# (see bin/run-qemu) over virtiofs.
+# (see bin/run-image) over virtiofs.
 #
 # mkosi normally injects this mount via an fstab.extra credential with the
 # x-initrd.mount option, but that does not work for a /run target: the host

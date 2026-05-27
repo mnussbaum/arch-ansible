@@ -1,6 +1,0 @@
-#! /bin/bash
-
-set -o errexit
-set -o nounset
-
-exec bin/build-persistent-image qemu "$@"

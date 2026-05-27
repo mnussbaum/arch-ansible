@@ -1,0 +1,60 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+
+refresh_cache=""
+skip_postinst=""
+ansible_tags=""
+mkosi_args=()
+image=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      echo "Build a generic image. run-image/burn-image set the hostname at boot." >&2
+      echo "Usage: $0 [--refresh-cache] [--skip-postinst] [--ansible-tags TAGS] [mkosi options...] <image>" >&2
+      echo "  <image>          Image to build: 'workstation', 'usi', or a path to a mkosi.images dir." >&2
+      echo "  --refresh-cache  Bust the mkosi incremental package cache." >&2
+      echo "  --skip-postinst  Skip the Ansible post-installation step." >&2
+      echo "  --ansible-tags   Limit Ansible to specific tags." >&2
+      echo "  Any other options are forwarded to mkosi." >&2
+      exit
+      ;;
+    --refresh-cache) refresh_cache="--incremental=no" ;;
+    --skip-postinst) skip_postinst="--environment=SKIP_POSTINST=1" ;;
+    --ansible-tags) ansible_tags="--environment=ANSIBLE_TAGS=$2"; shift ;;
+    --*)
+      mkosi_args+=("$1")
+      if [[ $# -gt 1 && "$2" != -* ]]; then mkosi_args+=("$2"); shift; fi
+      ;;
+    *)
+      [[ -z "$image" ]] || { echo "Unexpected argument: $1" >&2; exit 1; }
+      image="$1"
+      ;;
+  esac
+  shift
+done
+
+: "${image:?Usage: $0 <image>}"
+
+[[ "$image" == */* ]] || image="mkosi.images/$image"
+
+source bin/_luks_common.sh
+
+output_dir=~/.cache/mkosi/images/$(basename "$image")
+mkdir -p ~/.cache/mkosi/pacman-pkg "$output_dir"
+
+mkosi \
+  --directory="$image" \
+  --output-directory="$output_dir" \
+  --profile=build \
+  --force \
+  ${refresh_cache:+"$refresh_cache"} \
+  ${skip_postinst:+"$skip_postinst"} \
+  ${ansible_tags:+"$ansible_tags"} \
+  "${mkosi_args[@]}" \
+  build
+
+echo "Built $(basename "$image"):" >&2
+ls -1 "$output_dir"/*.raw 2>/dev/null >&2 || echo "  (output in $output_dir)" >&2
