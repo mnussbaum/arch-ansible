@@ -1,0 +1,6 @@
+# Start iwd only when a wireless device is present, instead of enabling it
+# statically and ordering it after a named interface. The kernel sets
+# DEVTYPE=wlan on cfg80211 netdevs, so this matches any wireless NIC on any
+# host (no interface name baked into the shared image). Hosts with no wireless
+# device (e.g. qemu) never start iwd.
+SUBSYSTEM=="net", ACTION=="add", ENV{DEVTYPE}=="wlan", TAG+="systemd", ENV{SYSTEMD_WANTS}+="iwd.service"

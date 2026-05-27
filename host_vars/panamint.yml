@@ -37,22 +37,9 @@ key_repeat:
   rate: 35
   delay: 250
 
-networking:
-  interface: wlan0
-  networks:
-    - ssid: "JazzHands2.4G"
-      psk: "{{ wifi_passwords['jazz_hands'] }}"
-
 window_manager:
   waybar_minimum_workspace_count: 5
   window_manager: sway
   windowing_system: wayland
-
-monitors:
-  - id: HDMI-A-1
-    position:
-      x: 0
-      y: 0
-    scale: 2
 
 qemu_host: false

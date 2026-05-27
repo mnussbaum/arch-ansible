@@ -16,9 +16,6 @@ key_repeat:
   rate: 35
   delay: 250
 
-monitors:
-  id: Virtual-1
-
 window_manager:
   waybar_minimum_workspace_count: 5
   window_manager: sway
@@ -26,6 +23,3 @@ window_manager:
 
 qemu_guest: true
 qemu_host: false
-
-networking:
-  interface: enp0s1

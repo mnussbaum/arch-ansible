@@ -48,6 +48,67 @@ qemu_guest: false
 network_install_root: ""
 vconsole_install_root: ""
 
+wifi_networks:
+  - ssid: "JazzHandz"
+    psk: "{{ wifi_passwords['jazz_hands'] }}"
+  - ssid: "JazzHands2.4G"
+    psk: "{{ wifi_passwords['jazz_hands'] }}"
+  - ssid: "Buns of Steel"
+    psk: "{{ wifi_passwords['buns_of_steel'] }}"
+  - ssid: "HOME 0959-2.4"
+    psk: "{{ wifi_passwords['rehoboth'] }}"
+  - ssid: "nuttree"
+    psk: "{{ wifi_passwords['bethesda'] }}"
+  - ssid: "Sonic-3913"
+    psk: "{{ wifi_passwords['gens'] }}"
+  - ssid: "Lilypad"
+    psk: "{{ wifi_passwords['joyces'] }}"
+  - ssid: "wmvnet"
+    psk: "{{ wifi_passwords['varneys'] }}"
+  - ssid: "Codi 7th Floor"
+    psk: "{{ wifi_passwords['codi_seventh_floor'] }}"
+  - ssid: "Oakland Center"
+    psk: "{{ wifi_passwords['oakland_center'] }}"
+  - ssid: "WeWorkWiFi"
+    key_mgmt: "WPA-EAP"
+    eap: "PEAP"
+    identity: "mike@equilibriumenergy.com"
+    password: "{{ wifi_passwords['we_work'] }}"
+    phase2: "MSCHAPV2"
+
+monitors:
+  - id: Sharp Corporation 0x1551 Unknown
+    position:
+      x: 950
+      y: 1600
+    scale: 2
+  - id: ASUSTek COMPUTER INC PA34V KBLMQS025309
+    position:
+      x: 0
+      y: 0
+    scale: 0.9
+  - id: Samsung Electric Company LS27A40xU H4TW601355
+    position:
+      x: 950
+      y: 1600
+    scale: 0.95
+  - id: Dell Inc. DELL S3221QS 5SN17N3
+    position:
+      x: 0
+      y: 0
+    scale: 1
+  - id: eDP-1
+    position:
+      x: 950
+      y: 1600
+    scale: 2
+  - id: HDMI-A-1
+    position:
+      x: 0
+      y: 0
+    scale: 2
+  - id: Virtual-1
+
 bootstrap_packages:
   - ansible
   - mkosi

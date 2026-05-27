@@ -1,0 +1,19 @@
+[Match]
+# Match wired (en*) and wireless (wl*) NICs by name so one image works on any
+# host (e.g. qemu's enp0s1, laptops' wlan0/wlp*) without baking an interface
+# name in. Excludes virtual interfaces (docker0, veth*, br-*, wg*, tun*).
+Name=en* wl*
+
+[Network]
+DHCP=yes
+IPv6AcceptRA=yes
+IgnoreCarrierLoss=3s
+KeepConfiguration=dhcp-on-stop
+
+[Link]
+RequiredForOnline=routable
+RequiredFamilyForOnline=ipv4
+
+[IPv6AcceptRA]
+DHCPv6Client=yes
+Token=static:::1
