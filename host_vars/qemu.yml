@@ -1,7 +1,4 @@
 ---
-disk:
-  device: /dev/sda
-
 mkinitcpio_modules:
   - nvme
   - intel_agp

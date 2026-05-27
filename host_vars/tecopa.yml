@@ -1,7 +1,4 @@
 ---
-disk:
-  device: /dev/nvme0n1
-
 mkinitcpio_modules:
   - nvme_core
   - nvme

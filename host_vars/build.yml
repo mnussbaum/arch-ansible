@@ -7,9 +7,6 @@
 # These are common defaults. Remaining host-specific build divergence is being
 # migrated to firstboot; until then a single shared value lives here.
 
-disk:
-  device: /dev/sda
-
 # Superset of modules across hosts so one initramfs boots them all.
 mkinitcpio_modules:
   - nvme_core
