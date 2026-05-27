@@ -1,3 +1,3 @@
-if [[ ! -f "$HOME/.config/user-firstboot-done" ]]; then
-    (cd /usr/local/share/arch-ansible && ANSIBLE_PLAYBOOK=user-firstboot-playbook.yml NO_ASK_BECOME_PASS=1 ./bin/ansible)
+if [[ ! -f "$HOME/.config/user-first-login-done" ]]; then
+    (cd /usr/local/share/arch-ansible && ANSIBLE_PLAYBOOK=user-first-login-playbook.yml NO_ASK_BECOME_PASS=1 ./bin/ansible)
 fi

@@ -22,8 +22,8 @@
     - import_role:
         name: postgres
         tasks_from: pgpass
-    - name: Mark user firstboot complete
+    - name: Mark user first login complete
       file:
-        path: "~/.config/user-firstboot-done"
+        path: "~/.config/user-first-login-done"
         state: touch
         mode: "0600"
