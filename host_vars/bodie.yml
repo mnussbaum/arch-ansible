@@ -24,6 +24,3 @@ window_manager:
   windowing_system: wayland
 
 qemu_host: true
-
-pgpass_secret_names:
-  - eq/pgpass

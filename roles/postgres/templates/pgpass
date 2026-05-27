@@ -1,6 +1,7 @@
 localhost:*:*:postgres:postgres
 127.0.0.1:*:*:postgres:postgres
 0.0.0.0:*:*:postgres:postgres
-{% for pgpass_secret in (pgpass_secret_names | default([])) %}
-{{ lookup('pipe', 'pass show ' ~ pgpass_secret) }}
-{%- endfor %}
+{% set host_pgpass = lookup('pipe', 'pass show host_secrets/' ~ inventory_hostname ~ '/pgpass', errors='ignore') %}
+{% if host_pgpass %}
+{{ host_pgpass }}
+{% endif %}
