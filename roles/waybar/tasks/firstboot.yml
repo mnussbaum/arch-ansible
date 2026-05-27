@@ -1,0 +1,22 @@
+# vim:ft=yaml.ansible:
+---
+# Config templating runs at firstboot so it renders for the machine's runtime
+# role (e.g. the static fake_vm_battery module under QEMU, which has no BAT0).
+
+- name: Install waybar config
+  template:
+    src: waybar-config.json.j2
+    dest: /etc/xdg/waybar/config
+  tags: [base16]
+
+- name: Install waybar styling
+  template:
+    src: waybar-style.css.j2
+    dest: /etc/xdg/waybar/style.css
+  tags: [base16]
+
+- name: Install waybar-sway-workspace-output-manager config file
+  template:
+    src: waybar-sway-workspace-output-manager-config.j2
+    dest: /etc/xdg/waybar-sway-workspace-output-manager/config
+  tags: [base16]
