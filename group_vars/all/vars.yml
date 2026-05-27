@@ -4,7 +4,6 @@ user:
   group: mnussbaum
   shell: /usr/bin/zsh
   email: michaelnussbaum08@gmail.com
-  password: "{{ user_password }}"
   gpg_key_uid: "mnussbaum <michaelnussbaum08@gmail.com>"
 
 font:

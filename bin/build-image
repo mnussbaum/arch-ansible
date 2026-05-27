@@ -41,6 +41,7 @@ done
 [[ "$image" == */* ]] || image="mkosi.images/$image"
 
 source bin/_luks_common.sh
+source bin/_credstore_common.sh
 
 output_dir=~/.cache/mkosi/images/$(basename "$image")
 mkdir -p ~/.cache/mkosi/pacman-pkg "$output_dir"
