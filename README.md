@@ -207,57 +207,66 @@ tasks require the GPG agent to be running and the YubiKey to be present before
 
 ## Provisioning
 
+There are two image flavors — `workstation` (the installed system) and `usi` (the
+Unified System Image: a bootable live/recovery environment). Images are built
+generically with `bin/build-image`; `bin/run-image` and `bin/burn-image` then act
+on the built image and set its hostname at boot (no rebuild per machine).
+
 ### Build a new install USB
 
-The install USB is a bootable Arch Linux ISO with Ansible pre-loaded. It is used to
-bootstrap new machines and repair broken ones.
-
-Plug in a USB drive (will be written to `/dev/sda`) and run:
+The USI is used to bootstrap new machines and repair broken ones. Plug in a USB
+drive and run:
 
 ```
-./bin/build-live-image
+bin/build-image usi
+bin/burn-image usi --hostname=usi /dev/sda
 ```
 
 ### Provision a new physical machine
 
-1. Add the machine to the repo: entry in `hosts.yml`, `host_vars/<hostname>.yml`,
-   `mkosi.images/<hostname>/mkosi.conf`, and `mkosi.images/<hostname>/mkosi.repart/10-root.conf`
-   (generate a UUID with `uuidgen`). Rebuild the live image.
+Every physical machine is built from the same `workstation` image; the hostname is
+the only per-machine input (there are no per-host repo files).
 
-2. Boot the target machine from the live USB. The repo is already installed at
+1. Boot the target machine from the install USB. The repo is already installed at
    `~/src/arch-ansible`. Run:
 
    ```
    cd ~/src/arch-ansible
-   bin/build-persistent-image <hostname> <device>
-   # e.g.: bin/build-persistent-image bodie /dev/nvme0n1
+   bin/build-image workstation
+   bin/burn-image workstation --hostname=<hostname> <device>
+   # e.g.: bin/burn-image workstation --hostname=bodie /dev/nvme0n1
    ```
 
-3. Reboot into the installed system.
+2. Reboot into the installed system. Per-machine traits (monitors, etc.) are
+   detected from hardware/facts at firstboot.
 
 ### QEMU workflows
 
-Build and run the persistent qemu image (emulates an installed machine):
+Build an image, then boot it in a VM with `bin/run-image` (sets the hostname via
+`mkosi --machine`).
+
+Run the workstation image (emulates an installed machine):
 
 ```
-./bin/build-qemu-image
-./bin/run-qemu
+bin/build-image workstation
+bin/run-image workstation --hostname=qemu
 ```
 
-Build and run the live image in QEMU (tests the live/rescue environment):
+Run the USI (tests the live/rescue environment):
 
 ```
-./bin/build-live-image $XDG_DATA_HOME/qemu-arch/live.raw
-./bin/run-qemu --live
+bin/build-image usi
+bin/run-image usi --hostname=usi
 ```
 
-Boot the live image with the persistent qemu disk attached (emulates live USB repair):
+Run the USI with a workstation disk attached (emulates a recovery USB repairing a
+machine — build both images first):
 
 ```
-./bin/run-qemu --repair
+bin/run-image usi --hostname=usi --recovery=~/.cache/mkosi/images/workstation/arch.raw
 ```
 
-Inside the live environment, decrypt and mount `/dev/sdb` to access the target system.
+Inside the USI, decrypt and mount the attached disk to access the target system.
 
 ## Maintenance
 

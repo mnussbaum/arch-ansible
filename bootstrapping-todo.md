@@ -7,7 +7,7 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 ## Build chain
 
 - **Podman container** (`Containerfile`) — exists but untested end-to-end;
-  `bin/build-usi` and `bin/build-persistent-image` have not been run inside it
+  `bin/build-image`, `bin/run-image`, and `bin/burn-image` have not been run inside it
 - **ESP mount during nspawn** — needs verification that mkosi mounts the ESP
   inside the build script nspawn with `Bootable=yes`; the `systemd-boot` role's
   `mountpoint /efi` guard exists as a fallback if it does not
@@ -35,14 +35,12 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 
 - **USI signed with machine db key (Option A)** — not implemented:
   - YubiKey PIV import of the machine db key is a manual step with no script
-  - `bin/build-usi` does not yet invoke `systemd-sbsign` with a PKCS#11 URI
+  - `bin/build-image usi` does not yet invoke `systemd-sbsign` with a PKCS#11 URI
   - Per-machine USI signing requires either a separate build per machine or a
     shared recovery key enrolled in all machines' db alongside the per-machine key
 
 ## Operational scripts
 
-- **`bin/add-host`** — implemented; generates UUID, scaffolds host_vars, mkosi.conf,
-  mkosi.repart, crypttab.initramfs, and adds the host to hosts.yml. Untested.
 - **`bin/revoke-luks-yubikey`** — exists but verify it correctly handles slot
   discovery and re-enrollment
 
