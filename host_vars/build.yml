@@ -1,8 +1,8 @@
 ---
 # Vars for the dedicated build-time identity (see hosts.yml). The image build
 # runs limited to this host, so only host-agnostic, build-time config belongs
-# here. Machine-specific config (qemu_guest/qemu_host) is intentionally absent
-# and applied at firstboot against the real hostname.
+# here. Machine-specific config (whether the host is a VM guest or a VM host)
+# is detected from facts at firstboot, not baked into the image.
 #
 # These are common defaults. Remaining host-specific build divergence is being
 # migrated to firstboot; until then a single shared value lives here.

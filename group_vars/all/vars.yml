@@ -43,8 +43,6 @@ timezone: "US/Pacific"
 
 # TODO: Instead of using per-task special case roots, replace all usage of root
 # dir in paths with some single thing configured here
-qemu_guest: false
-
 network_install_root: ""
 vconsole_install_root: ""
 

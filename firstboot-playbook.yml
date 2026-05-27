@@ -17,7 +17,7 @@
         tasks_from: runtime
     - import_role:
         name: qemu-guest
-      when: qemu_guest
+      when: ansible_facts["virtualization_role"] == "guest"
     - import_role:
         name: qemu-host
-      when: qemu_host
+      when: ansible_facts["virtualization_role"] == "host"

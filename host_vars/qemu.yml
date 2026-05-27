@@ -20,6 +20,3 @@ window_manager:
   waybar_minimum_workspace_count: 5
   window_manager: sway
   windowing_system: wayland
-
-qemu_guest: true
-qemu_host: false

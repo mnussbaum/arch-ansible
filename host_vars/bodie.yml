@@ -22,5 +22,3 @@ window_manager:
   waybar_minimum_workspace_count: 5
   window_manager: sway
   windowing_system: wayland
-
-qemu_host: true
