@@ -23,6 +23,7 @@
       "battery",
       "cpu",
       "memory",
+      "custom/fake_vm_temperature",
       "temperature",
       "clock"
     ],
@@ -31,7 +32,7 @@
       "exec-if": "systemd-detect-virt --quiet --vm",
       "exec": "echo 1",
       "interval": "once",
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '', first_block=True, position='right')  }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '∞ ', first_block=True, position='right')  }}",
       "tooltip": false
     },
 
@@ -61,6 +62,14 @@
 
     "memory": {
       "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{}% ') }}",
+      "tooltip": false
+    },
+
+    "custom/fake_vm_temperature": {
+      "exec-if": "systemd-detect-virt --quiet --vm",
+      "exec": "echo 420",
+      "interval": "once",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{}°F ') }}",
       "tooltip": false
     },
 

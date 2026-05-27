@@ -39,3 +39,5 @@
 - Make sure secrets aren't exposed in system ansible repo. Or replace with pass access
 - Test the partition swap in qemu
 - Fix colorscheme changer for the new world. Needs a whole new strategy
+- Test different USI usages
+- Add eeek tasks back in
