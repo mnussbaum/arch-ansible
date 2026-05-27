@@ -75,6 +75,18 @@
         name: ruby
       tags: [ruby]
     - import_role:
+        name: python
+      tags: [python]
+    - import_role:
+        name: rust
+      tags: [rust]
+    - import_role:
+        name: golang
+      tags: [golang]
+    - import_role:
+        name: frontend-dev
+      tags: [frontend-dev]
+    - import_role:
         name: global-environment-configuration
       tags: [global-environment-configuration, min-user-session]
     - import_role:
