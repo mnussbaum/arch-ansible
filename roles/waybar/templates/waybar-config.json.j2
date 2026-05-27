@@ -19,23 +19,22 @@
   {% endfor %}
 
     "modules-right": [
-{% if qemu_guest %}
       "custom/fake_vm_battery",
-{% else %}
       "battery",
-{% endif %}
       "cpu",
       "memory",
       "temperature",
       "clock"
     ],
 
-{% if qemu_guest %}
     "custom/fake_vm_battery": {
+      "exec-if": "systemd-detect-virt --quiet --vm",
+      "exec": "echo 1",
+      "interval": "once",
       "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '', first_block=True, position='right')  }}",
       "tooltip": false
     },
-{% else %}
+
     "battery": {
       "bat": "BAT0",
       "format-charging": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% ', first_block=True, position='right')  }}",
@@ -54,7 +53,6 @@
       },
       "tooltip": false
     },
-{% endif %}
 
     "cpu": {
       "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{usage}% ') }}",

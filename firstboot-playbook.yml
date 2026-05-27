@@ -16,13 +16,6 @@
         name: brightness
         tasks_from: runtime
     - import_role:
-        name: set-appearance-facts
-      tags: [set-appearance-facts, base16]
-    - import_role:
-        name: waybar
-        tasks_from: firstboot
-      tags: [waybar, base16]
-    - import_role:
         name: qemu-guest
       when: qemu_guest
     - import_role:
