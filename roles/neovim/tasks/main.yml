@@ -1,8 +1,8 @@
 # vim:ft=yaml.ansible:
 ---
 - set_fact:
-    nvim_config_dir: /etc/xdg/nvim
-    nvim_data_dir: /usr/local/share/nvim
+    nvim_config_dir: /etc/skel/.config/nvim
+    nvim_data_dir: /etc/skel/.local/share/nvim
     vim_plugins:
       - name: "preservim/vimux"
       - name: "itchyny/lightline.vim"
@@ -175,15 +175,20 @@
     src: nvim/pack_headless_install.lua
     dest: "{{ nvim_config_dir }}/pack_headless_install.lua"
 
-# vim.pack.add() installs plugins asynchronously, so without this the first
-# interactive launch races plugin downloads and fails sourcing plugin/ scripts
-# that depend on plugin autoload functions (e.g. lightline#colorscheme#flatten).
-# pack_headless_install.lua blocks until PackChanged events settle.
+# Pre-install plugins into the skel data dir so the first-boot home (provisioned
+# from /etc/skel by systemd-homed) already has them where vim.pack reads them
+# (stdpath('data')/site/pack). The SkeletonTree seeds the build host's plugins, so
+# vim.pack normally finds everything present and does nothing; anything missing is
+# fetched here (best-effort). HOME=/etc/skel points stdpath('data')/('config') at
+# skel so plugins and the lockfile land there. pack_headless_install.lua blocks
+# until PackChanged events settle.
 - name: Install nvim plugins
   command: >
     nvim --headless -u NONE
     -c "source {{ nvim_config_dir }}/lua/pack_init.lua"
     -c "luafile {{ nvim_config_dir }}/pack_headless_install.lua"
+  environment:
+    HOME: /etc/skel
   when: plugin_config.changed
 
 - name: Configure base16 colorscheme
