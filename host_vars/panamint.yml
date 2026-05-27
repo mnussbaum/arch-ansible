@@ -1,6 +1,4 @@
 ---
-grub: false
-
 partitions:
   boot:
     number: 1

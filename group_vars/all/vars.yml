@@ -13,22 +13,12 @@ font:
   monospace_family: "Cascadia Code NF"
   emoji_family: "Noto Emoji"
   size: 20
-  grub_graphical_size: 50
 
 # Cursive italic font generated via:
 #
 # sudo pyftfeatfreeze -f 'calt,ss01' \
 #   /usr/share/fonts/TTF/CaskaydiaCoveNerdFont-Italic.ttf \
 #   assets/CaskaydiaCoveNerdFont-Italic.ttf
-#
-# Grub fonts generated with:
-#
-# grub-mkfont --size 50 \
-#             --output assets/grub-theme/fonts/noto_sans_50.pf2 \
-#             /usr/share/fonts/TTF/Noto\ Sans\ Regular\ Nerd\ Font\ Complete.ttf
-# grub-mkfont --size 20 \
-#             --output assets/grub-theme/fonts/cascadia_code.pf2 \
-#             /usr/share/fonts/TTF/CaskaydiaCoveNerdFont-Regular.ttf
 
 idle_thresholds:
   lock_screen_delay_minutes: 5
