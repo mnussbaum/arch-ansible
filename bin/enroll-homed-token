@@ -1,14 +1,19 @@
 #!/bin/bash
 # Enroll the YubiKey PIV cert as the homed unlock factor for the current user
-# and drop the password factor, so the greeter only ever asks for the YubiKey
-# PIN (no multi-factor cycling).
+# and drop the password factor, so the greeter only asks for the YubiKey PIN
+# (no multi-factor cycling).
 #
-# Run once after first login with the YubiKey plugged in. You'll be prompted
-# for:
-#   - the current homed password (the recovery secret from pass on the host)
+# Must run as root (via sudo) - homectl's PIN ask uses systemd-ask-password,
+# whose /run/systemd/ask-password/ is root-only, so a user-context homectl
+# can't surface a prompt. Running as root puts the ask request where the
+# ask-password agent picks it up and forwards to zenity in the user's sway
+# session. A NOPASSWD sudoers rule for this exact script path keeps the
+# privilege surface tight.
+#
+# You'll be prompted for:
 #   - the PIV PIN (set during bin/enroll-yubikeys)
 # Tap the YubiKey each time the LED blinks - touch-policy=cached only carries
-# one operation; homectl makes several so multiple taps are expected.
+# one op; homectl makes several so multiple taps are expected.
 #
 # After this the recovery secret no longer logs you in; only the YubiKey does.
 # bin/enroll-yubikeys re-imports the same shared PIV key into any new card, so
@@ -19,8 +24,10 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-if homectl inspect "$(whoami)" --json=short 2>/dev/null | grep -q pkcs11TokenUri; then
-  echo "PIV already enrolled for $(whoami); nothing to do."
+user="${SUDO_USER:-$(whoami)}"
+
+if homectl inspect "$user" --json=short 2>/dev/null | grep -q pkcs11TokenUri; then
+  echo "PIV already enrolled for $user; nothing to do."
   exit 0
 fi
 
@@ -35,15 +42,15 @@ if [[ -z "$uri" ]]; then
   exit 1
 fi
 
-echo "Enrolling PIV for $(whoami): $uri"
-homectl update "$(whoami)" --pkcs11-token-uri="$uri"
+echo "Enrolling PIV for $user: $uri"
+homectl update "$user" --pkcs11-token-uri="$uri"
 
 echo "Dropping the password factor..."
-homectl inspect "$(whoami)" --json=minimal \
+homectl inspect "$user" --json=minimal \
   | python3 -c '
 import sys, json
 record = json.load(sys.stdin)
 record.get("privileged", {}).pop("hashedPassword", None)
 json.dump(record, sys.stdout)
 ' \
-  | homectl update "$(whoami)" --identity=-
+  | homectl update "$user" --identity=-

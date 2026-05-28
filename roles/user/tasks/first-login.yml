@@ -8,4 +8,4 @@
     group: false
 
 - name: Enroll YubiKey PIV and drop password factor
-  ansible.builtin.command: /usr/local/share/arch-ansible/bin/enroll-homed-token
+  ansible.builtin.command: sudo -n /usr/local/share/arch-ansible/bin/enroll-homed-token
