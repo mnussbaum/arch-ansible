@@ -19,6 +19,11 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+if homectl inspect "$(whoami)" --json=short 2>/dev/null | grep -q pkcs11TokenUri; then
+  echo "PIV already enrolled for $(whoami); nothing to do."
+  exit 0
+fi
+
 uri=$(p11tool --list-all-certs 'pkcs11:' 2>/dev/null \
   | sed -n 's/.*URL: //p' \
   | grep type=cert | grep -v p11-kit-trust \
@@ -30,5 +35,15 @@ if [[ -z "$uri" ]]; then
   exit 1
 fi
 
-echo "Enrolling $uri and dropping the password factor for $(whoami)..."
-homectl update "$(whoami)" --pkcs11-token-uri="$uri" --password=
+echo "Enrolling PIV for $(whoami): $uri"
+homectl update "$(whoami)" --pkcs11-token-uri="$uri"
+
+echo "Dropping the password factor..."
+homectl inspect "$(whoami)" --json=minimal \
+  | python3 -c '
+import sys, json
+record = json.load(sys.stdin)
+record.get("privileged", {}).pop("hashedPassword", None)
+json.dump(record, sys.stdout)
+' \
+  | homectl update "$(whoami)" --identity=-

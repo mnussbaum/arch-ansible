@@ -6,3 +6,6 @@
     dest: "{{ ansible_env.HOME }}/Projects/arch-ansible/"
     owner: false
     group: false
+
+- name: Enroll YubiKey PIV and drop password factor
+  ansible.builtin.command: /usr/local/share/arch-ansible/bin/enroll-homed-token
