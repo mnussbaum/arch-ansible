@@ -1,5 +1,5 @@
 [Unit]
-Description=Run Backblaze restic backup daily
+Description=Run restic backup daily
 
 [Timer]
 OnCalendar=daily

@@ -6,41 +6,46 @@
     name:
       - fuse2
       - restic
+      - udisks2
 
-- name: Install restic backblaze backup script
+- name: Create restic-backup config dir
+  file:
+    path: /etc/restic-backup
+    state: directory
+    mode: '0755'
+
+- name: Install restic-backup includes
   copy:
-    src: restic-backblaze-backup
-    dest: /usr/local/bin/restic-backblaze-backup
+    src: restic-backup.includes
+    dest: /etc/restic-backup/includes
+
+- name: Install restic-backup excludes
+  copy:
+    src: restic-backup.excludes
+    dest: /etc/restic-backup/excludes
+
+- name: Install restic-backup script
+  copy:
+    src: restic-backup
+    dest: /usr/local/bin/restic-backup
     mode: a+x
 
-- name: Install restic backblaze backup notify service
+- name: Install restic-backup service
   copy:
-    src: restic-backblaze-backup-notify.service
-    dest: /etc/systemd/user/restic-backblaze-backup-notify.service
+    src: restic-backup.service
+    dest: /etc/systemd/user/restic-backup.service
 
-- name: Install restic backblaze backup service
+- name: Install restic-backup timer
   copy:
-    src: restic-backblaze-backup.service
-    dest: /etc/systemd/user/restic-backblaze-backup.service
-
-- name: Install restic backblaze backup timer
-  copy:
-    src: restic-backblaze-backup.timer
-    dest: /etc/systemd/user/restic-backblaze-backup.timer
+    src: restic-backup.timer
+    dest: /etc/systemd/user/restic-backup.timer
 
 - name: Install systemd user preset
   template:
     src: 80-backup.preset.j2
     dest: /usr/lib/systemd/user-preset/80-backup.preset
-# To take a backup:
-#
-# * sudo mount /dev/sda1 /tmp/usb
-# * sudo restic --repo /tmp/usb backup ~/{Desktop,Documents,Sync,.password-store,.ssh,.gnupg}
-#
 # TODO:
 #
-# * Make the script configurable to work with a local USB backup in addition to
-#   the cloud
 # * Get the backblaze configuration into terraform. Connect ansible to TF output
 #   to pull the bucket name
 # * Script the seeding of data during initial bootstrapping by restoring from

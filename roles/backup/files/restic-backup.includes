@@ -1,0 +1,8 @@
+# Top-level paths under the user's home to back up, one per line
+Camera
+Documents
+Sync
+tiktoks
+phone_sync
+Projects
+.local/share/.zsh_history
