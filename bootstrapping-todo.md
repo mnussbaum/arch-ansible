@@ -8,23 +8,6 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 
 - **Podman container** (`Containerfile`) — exists but untested end-to-end;
   `bin/build-image`, `bin/run-image`, and `bin/burn-image` have not been run inside it
-- **ESP mount during nspawn** — needs verification that mkosi mounts the ESP
-  inside the build script nspawn with `Bootable=yes`; the `systemd-boot` role's
-  `mountpoint /efi` guard exists as a fallback if it does not
-- **arch-ansible repo in USI** — `BuildSources=../` copies the repo into the
-  nspawn build environment; verify it is accessible at `~/src/arch-ansible` in
-  the booted USI (may need a `mkosi.extra` or post-build step to place it at
-  the right path for the user)
-
-## First boot sequence
-
-- **`firstboot.service`** — implemented; `ConditionFirstBoot=yes` gates the oneshot
-  service that runs `bin/ansible` from the baked-in repo. Untested.
-- **Runtime playbook error-on-missing** — implemented; `systemd-boot` role uses
-  `ansible_env.SRCDIR` to distinguish build (generate artifacts) from runtime
-  (fail with clear message if artifacts missing). Untested.
-- **`luks-enroll.service`** — implemented; `roles/systemd-boot/files/luks-enroll`,
-  `luks-enroll.service`, and install tasks added to the systemd-boot role. Untested.
 
 ## Recovery
 
@@ -38,6 +21,7 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
   - `bin/build-image usi` does not yet invoke `systemd-sbsign` with a PKCS#11 URI
   - Per-machine USI signing requires either a separate build per machine or a
     shared recovery key enrolled in all machines' db alongside the per-machine key
+- Entire secure boot setup, not implemented
 
 ## Operational scripts
 
@@ -46,9 +30,49 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 
 ## End-to-end testing
 
-- Full build pipeline has not been run to completion
-- QEMU image boot has not been verified with the new systemd-boot + UKI setup
 - Physical hardware installation has not been tested with `mkosi burn`
 - Secure Boot key auto-enrollment via `secure-boot-enroll force` has not been
   verified against real firmware
 - TPM2 LUKS enrollment and PCR 7 sealing has not been tested
+
+## Running todo notes
+
+- Document yubikey enrollment for homectl
+- Document cache mounting pattern perf optimization
+- Document that we implement https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
+- Implement verity, encryption and layout from https://0pointer.net/blog/fitting-everything-together.html
+- Move most package installs back into ansible, only leave enough to run ansible
+- Can remove network_install_root var?
+- Stuff copied from the host that needs to be in containerfile, handle missing files gracefully
+  - yay-bin
+  - password-store repo
+  - arch-ansible repo
+  - nvim packages
+  - mirrorlist - ideally reflectored
+  - Cargo registry
+  - Sccache
+- Create ~/.cargo/registry ~/.cache/sccache in the user home dir in skel
+- In image build configs need to mount from new system locations once I have a provisioned machine
+- Get offline
+  - Base16 configs reach internet still
+  - delta theme file download
+  - Others?
+  - `WithNetwork=false`?
+
+- Make sure this is followed up on:
+
+```
+  The UnifiedKernelImages=yes (mkosi/ukify) approach: mkosi drives the UKI assembly via ukify directly, giving better integration with Secure Boot signing and TPM2 PCR measurements. But then linux.preset needs to switch from default_uki= to default_image= (plain initrd path), and post-boot kernel updates need a separate hook (kernel-install
+  plugin or pacman hook calling ukify) instead of mkinitcpio handling it.
+```
+
+- Investigate restic/btrfs best practice setup
+  - How can we restore a restic backup automatically?
+- Can we move ansible into the build step? Might allow better caching
+- Test the partition swap in qemu
+- Fix colorscheme changer for the new world. Needs a whole new strategy
+- Test different USI usages
+- Organize project top level better. Playbooks in one dir, mkosi stuff in another
+- Do I need runtime systemd unit to grow swap partition?
+- Make it able to handle new hosts without new configs
+- Add eeek tasks back in once fully done

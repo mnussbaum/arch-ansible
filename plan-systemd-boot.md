@@ -588,3 +588,7 @@ is a fast path when swapping hardware — plug in the old data drive and go.
 - **Secure Boot scope**: key generation and UEFI enrollment are included in
   this plan (section 8). The manual UEFI Setup Mode step is documented as a
   post-install checklist item rather than an Ansible task.
+
+- Goal is to comply with
+  https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
+  and https://0pointer.net/blog/fitting-everything-together.html

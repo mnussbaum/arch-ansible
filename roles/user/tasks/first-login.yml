@@ -7,5 +7,43 @@
     owner: false
     group: false
 
-- name: Enroll YubiKey PIV and drop password factor
-  ansible.builtin.command: sudo -n /usr/local/share/arch-ansible/bin/enroll-homed-token
+- name: Inspect homed record
+  ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
+  register: homed_record
+  changed_when: false
+
+- name: Discover card-agnostic PIV URI
+  ansible.builtin.shell: |
+    set -o pipefail
+    p11tool --list-all-certs 'pkcs11:' 2>/dev/null \
+      | sed -n 's/.*URL: //p' \
+      | grep type=cert | grep -v p11-kit-trust \
+      | head -1 \
+      | sed -E 's/;serial=[^;]*//; s/;token=[^;]*//; s/;id=[^;]*//; s/;object=[^;]*//; s/;type=[^;]*//'
+  register: piv_uri
+  changed_when: false
+  failed_when: piv_uri.stdout | length == 0
+  when: "'pkcs11TokenUri' not in homed_record.stdout"
+
+- name: Enroll YubiKey PIV
+  ansible.builtin.command: "sudo -n homectl update {{ user.name }} --pkcs11-token-uri={{ piv_uri.stdout }}"
+  when: "'pkcs11TokenUri' not in homed_record.stdout"
+
+- name: Re-inspect homed record after enrollment
+  ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
+  register: homed_record_after
+  changed_when: false
+
+- name: Drop password factor
+  ansible.builtin.shell: |
+    set -o pipefail
+    sudo -n homectl inspect {{ user.name }} --export-format=minimal --json=short \
+      | python3 -c '
+    import sys, json, time
+    r = json.load(sys.stdin)
+    r.get("privileged", {}).pop("hashedPassword", None)
+    r["lastChangeUSec"] = int(time.time() * 1_000_000)
+    json.dump(r, sys.stdout)
+    ' \
+      | sudo -n homectl update {{ user.name }} --identity=-
+  when: "'hashedPassword' in homed_record_after.stdout"
