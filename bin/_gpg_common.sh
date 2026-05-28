@@ -142,7 +142,7 @@ restore_subkeys() {
 _collect_new_pin_config() {
   # Sets target PIN/password globals applied to every YubiKey. Called once before the loop.
   echo "==> New PIN configuration (will be applied to all YubiKeys)"
-  local user_pin2 admin_pin2
+  local user_pin2 admin_pin2 piv_pin2 piv_puk2
   while true; do
     read -r -s -p "  New user PIN (min 6 chars): " YUBIKEY_NEW_USER_PIN; echo
     read -r -s -p "  Confirm new user PIN: " user_pin2; echo
@@ -154,6 +154,21 @@ _collect_new_pin_config() {
     read -r -s -p "  Confirm new admin PIN: " admin_pin2; echo
     [[ "$YUBIKEY_NEW_ADMIN_PIN" == "$admin_pin2" ]] && break
     echo "  PINs do not match, try again."
+  done
+  echo "    PIV PIN + PUK (6-8 chars each; the PIN unlocks the home via systemd-homed):"
+  while true; do
+    read -r -s -p "  New PIV PIN (6-8 chars): " YUBIKEY_PIV_PIN; echo
+    read -r -s -p "  Confirm PIV PIN: " piv_pin2; echo
+    [[ "$YUBIKEY_PIV_PIN" != "$piv_pin2" ]] && { echo "  PINs do not match, try again."; continue; }
+    [[ "${#YUBIKEY_PIV_PIN}" -ge 6 && "${#YUBIKEY_PIV_PIN}" -le 8 ]] && break
+    echo "  PIV PIN must be 6-8 characters."
+  done
+  while true; do
+    read -r -s -p "  New PIV PUK (6-8 chars): " YUBIKEY_PIV_PUK; echo
+    read -r -s -p "  Confirm PIV PUK: " piv_puk2; echo
+    [[ "$YUBIKEY_PIV_PUK" != "$piv_puk2" ]] && { echo "  PUKs do not match, try again."; continue; }
+    [[ "${#YUBIKEY_PIV_PUK}" -ge 6 && "${#YUBIKEY_PIV_PUK}" -le 8 ]] && break
+    echo "  PIV PUK must be 6-8 characters."
   done
   echo "    OATH password (required by Yubico Authenticator to access 2FA codes):"
   local oath_pw2
@@ -199,18 +214,6 @@ reset_oath_applet() {
 set_oath_password() {
   echo "==> Setting OATH application password..."
   ykman oath access change --new-password "$YUBIKEY_OATH_PASSWORD"
-}
-
-enroll_luks_fido2() {
-  local device
-  device=$(cryptsetup status cryptroot 2>/dev/null | awk '/device:/{print $2}') || true
-  if [[ -z "$device" ]]; then
-    echo "==> cryptroot not active — skipping LUKS FIDO2 enrollment."
-    return
-  fi
-  echo "==> Enrolling FIDO2 keyslot on $device (touch YubiKey when prompted)..."
-  systemd-cryptenroll --fido2-device=auto "$device"
-  echo "    FIDO2 keyslot enrolled."
 }
 
 load_homed_piv_keypair() {
@@ -262,18 +265,18 @@ provision_yubikey_piv() {
   echo "==> Resetting PIV applet..."
   ykman piv reset --force
   echo "==> Setting PIV PIN/PUK..."
-  ykman piv access change-pin --pin "$PIV_DEFAULT_PIN" --new-pin "$YUBIKEY_NEW_USER_PIN"
-  ykman piv access change-puk --puk "$PIV_DEFAULT_PUK" --new-puk "$YUBIKEY_NEW_ADMIN_PIN"
+  ykman piv access change-pin --pin "$PIV_DEFAULT_PIN" --new-pin "$YUBIKEY_PIV_PIN"
+  ykman piv access change-puk --puk "$PIV_DEFAULT_PUK" --new-puk "$YUBIKEY_PIV_PUK"
   echo "==> Protecting PIV management key with the PIN..."
   ykman piv access change-management-key \
-    --management-key "$PIV_DEFAULT_MGMT_KEY" --pin "$YUBIKEY_NEW_USER_PIN" \
+    --management-key "$PIV_DEFAULT_MGMT_KEY" --pin "$YUBIKEY_PIV_PIN" \
     --protect --force
   echo "==> Importing homed key + cert into PIV slot $HOMED_PIV_SLOT..."
   ykman piv keys import \
-    --pin "$YUBIKEY_NEW_USER_PIN" --pin-policy once --touch-policy cached \
+    --pin "$YUBIKEY_PIV_PIN" --pin-policy once --touch-policy cached \
     "$HOMED_PIV_SLOT" "$HOMED_PIV_KEY"
   ykman piv certificates import \
-    --pin "$YUBIKEY_NEW_USER_PIN" "$HOMED_PIV_SLOT" "$HOMED_PIV_CERT"
+    --pin "$YUBIKEY_PIV_PIN" "$HOMED_PIV_SLOT" "$HOMED_PIV_CERT"
 }
 
 program_all_yubikeys() {
@@ -313,7 +316,6 @@ program_all_yubikeys() {
     reset_oath_applet
     load_oath_accounts
     set_oath_password
-    enroll_luks_fido2
     provision_yubikey_piv
 
     (( key_number++ ))

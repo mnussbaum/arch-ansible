@@ -17,6 +17,10 @@
       vars:
         disable_sandbox: true
       tags: [packaging, min-user-session]
+    - import_role:
+        name: packaging
+        tasks_from: init-keyring
+      tags: [packaging, min-user-session]
   post_tasks:
     - import_role:
         name: packaging

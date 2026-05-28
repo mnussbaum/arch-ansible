@@ -1,10 +1,10 @@
 #!/bin/bash
-# Renews GPG subkey expiry, reprograms any number of YubiKeys, enrolls each as a
-# LUKS FIDO2 keyslot on the root partition (if cryptroot is active), and loads a
-# shared PIV key + cert into each so systemd-homed can unlock the user via
-# PKCS#11. The PIV key/cert live in pass (encrypted to the GPG key), generated on
-# first run, so GPG stays the only root of trust, one key serves the user on
-# every machine, and new YubiKeys can be added by re-running.
+# Renews GPG subkey expiry, reprograms any number of YubiKeys, and loads a shared
+# PIV key + cert (from pass, encrypted to the GPG key) into each so systemd-homed
+# can unlock the user via PKCS#11. The key lives in pass and is re-imported on
+# every run, so re-provisioning a YubiKey keeps unlocking every machine that
+# enrolled it - no per-machine re-enrollment. The homed enrollment itself happens
+# per-machine at first login (see roles/user/tasks/first-login.yml).
 #
 # Usage: bin/enroll-yubikeys <device>
 #

@@ -44,16 +44,27 @@ rm -rf "$credstore_dir"
 mkdir -p "$credstore_dir"
 chmod 700 "$credstore_dir"
 
-echo "==> Building home.create.$credstore_user credential..."
+echo "==> Building home.create.$credstore_user + home.new-password credentials..."
+# systemd-homed-firstboot ignores any "secret" field embedded in the user record;
+# the password comes from a SEPARATE credential, home.new-password (read via the
+# ask-password .credential = "home.new-password" path in homectl's
+# acquire_new_password()). systemd-homed-firstboot.service ImportCredential=home.*
+# imports both.
 (umask 077; pass show "$credstore_recovery" \
-  | CREDSTORE_USER="$credstore_user" CREDSTORE_SHELL="$credstore_shell" python3 -c '
+  | CREDSTORE_USER="$credstore_user" CREDSTORE_SHELL="$credstore_shell" \
+    CREDSTORE_DIR="$credstore_dir" python3 -c '
 import json, os, sys
+pw = sys.stdin.read().strip()
+user = os.environ["CREDSTORE_USER"]
+d = os.environ["CREDSTORE_DIR"]
 record = {
-    "userName": os.environ["CREDSTORE_USER"],
+    "userName": user,
     "memberOf": ["wheel", "input", "pcscd", "docker"],
     "shell": os.environ["CREDSTORE_SHELL"],
     "storage": "luks",
-    "secret": {"password": [sys.stdin.read().strip()]},
 }
-json.dump(record, sys.stdout)
-' >"$credstore_dir/home.create.$credstore_user")
+with open(f"{d}/home.create.{user}", "w") as f:
+    json.dump(record, f)
+with open(f"{d}/home.new-password", "w") as f:
+    f.write(pw)
+')
