@@ -40,3 +40,9 @@
   - run-image --hostname=<required_hostname> [--runtime=<qemu|whatever else mkosi supports>] <more optional arg to attach another image emulating a recovery drive attached to a workstation>
   - burn-image --hostname=<required_hostname> [--image file] <output device>
 - Organize project top level better. Playbooks in one dir, mkosi stuff in another
+- Verify
+  - nvim works
+  - shared dir works
+  - entire user auth setup
+  - enroll yubikey for homectl user
+- Do I need runtime systemd unit to grow swap partition?

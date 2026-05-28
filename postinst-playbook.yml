@@ -1,7 +1,8 @@
 # vim:ft=yaml.ansible:
 ---
 # Runs during the image build process. Runs within the chroot of the just built
-# image
+# image. Services can't be enabled directly in this playbook, instead create
+# a preset file so that the service will be enabled at image boot
 - hosts: all
   environment:
     BUILDDIR: /tmp/makepkg
