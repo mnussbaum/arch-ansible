@@ -43,6 +43,10 @@ done
 source bin/_luks_common.sh
 source bin/_credstore_common.sh
 
+# base64 so the JSON survives the env-var trip through mkosi into the chroot
+# unmangled (no quotes/spaces/colons); decoded in mkosi.postinst.chroot.
+wifi_networks=$(bin/wifi-networks | base64 -w0)
+
 output_dir=~/.cache/mkosi/images/$(basename "$image")
 mkdir -p ~/.cache/mkosi/pacman-pkg "$output_dir"
 
@@ -51,6 +55,7 @@ mkosi \
   --output-directory="$output_dir" \
   --profile=build \
   --force \
+  --environment="ANSIBLE_WIFI_NETWORKS=$wifi_networks" \
   ${refresh_cache:+"$refresh_cache"} \
   ${skip_postinst:+"$skip_postinst"} \
   ${ansible_tags:+"$ansible_tags"} \

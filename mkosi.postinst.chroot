@@ -13,6 +13,10 @@ if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   eval "extra_args=($ANSIBLE_EXTRA_ARGS)"
 fi
 
+: "${ANSIBLE_WIFI_NETWORKS:?must be set by bin/build-image (from bin/wifi-networks)}"
+wifi_networks=$(printf '%s' "$ANSIBLE_WIFI_NETWORKS" | base64 -d)
+extra_args+=(--extra-vars "{\"wifi_networks\": $wifi_networks}")
+
 SCCACHE_SERVER_PORT=14226 sccache --stop-server 2>/dev/null || true
 SCCACHE_NO_DAEMON=1 SCCACHE_DIR=/root/.cache/sccache \
     SCCACHE_SERVER_PORT=14226 sccache --start-server &
