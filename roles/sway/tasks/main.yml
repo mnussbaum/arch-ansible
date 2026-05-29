@@ -6,7 +6,6 @@
     state: directory
   with_items:
     - /etc/sway
-    - /etc/sway/config.d
     - /etc/swaylock
     - /etc/xdg/mako
   tags: [base16]

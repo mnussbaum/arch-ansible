@@ -107,8 +107,8 @@
         name: git
       tags: [git, min-user-session]
     - import_role:
-        name: wezterm
-      tags: [wezterm, min-user-session]
+        name: terminals
+      tags: [terminals, min-user-session]
     - import_role:
         name: tmux
       tags: [tmux, min-user-session]

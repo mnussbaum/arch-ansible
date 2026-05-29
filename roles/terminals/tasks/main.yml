@@ -1,0 +1,20 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install
+  package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ghostty
+    - foot
+
+- name: Create ghostty config dir
+  file:
+    path: /etc/skel/.config/ghostty
+    state: directory
+
+- name: Install ghostty config
+  template:
+    src: ghostty_config.j2
+    dest: /etc/skel/.config/ghostty/config
+  tags: [base16]
