@@ -66,7 +66,6 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
   plugin or pacman hook calling ukify) instead of mkinitcpio handling it.
 ```
 
-- Verify restic backup/restore scripts
 - Consider automating restic restore in a new workstation
 - Can we move ansible into the build step? Might allow better caching
 - Test the partition swap in qemu

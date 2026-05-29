@@ -223,15 +223,33 @@ def snapshot_entry_type(
     return matches[0]["type"] if matches else None
 
 
+def home_relative(arg: str, home: pathlib.Path) -> pathlib.Path:
+    """Resolve a user-supplied path and return it relative to `home`.
+
+    Absolute paths are taken as-is; relative paths resolve against the current
+    directory. The result must live under the user's home, since that is all
+    the snapshot contains.
+    """
+    resolved = pathlib.Path(arg).expanduser().resolve()
+    try:
+        return resolved.relative_to(home)
+    except ValueError:
+        sys.exit(f"{arg!r} resolves to {resolved}, which is not under {home}")
+
+
 def cmd_restore(args: argparse.Namespace) -> None:
-    home = home_dir(args.user)
+    home = home_dir(args.user).resolve()
     snap_root = home / SNAPSHOT_DIRNAME / SNAPSHOT_NAME
 
-    includes = args.directory or read_lines(INCLUDES_FILE)
+    # Explicit -d paths are resolved and required to be under home; the
+    # includes-file defaults are already authored home-relative.
+    if args.directory:
+        rels = [home_relative(d, home) for d in args.directory]
+    else:
+        rels = [pathlib.Path(e.lstrip("/")) for e in read_lines(INCLUDES_FILE)]
 
     with repo_env(args.device) as env:
-        for rel in includes:
-            rel = rel.lstrip("/")
+        for rel in rels:
             src = snap_root / rel       # the path inside the snapshot
             dst = home / rel            # the same path on disk, restored in place
             kind = snapshot_entry_type(env, args.snapshot, src)
@@ -317,10 +335,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--snapshot", default="latest",
                     help="Snapshot ID to restore (default: latest)")
     sp.add_argument("--directory", "-d", action="append", default=[],
-                    help="Path relative to home to restore in place "
-                         "(repeatable). A directory is restored to exactly its "
-                         "snapshot state, deleting files not in the snapshot. "
-                         f"Default: contents of {INCLUDES_FILE}.")
+                    help="Path to restore in place (repeatable). May be "
+                         "absolute or relative to the current directory, but "
+                         "must resolve to a location under the user's home. A "
+                         "directory is restored to exactly its snapshot state, "
+                         "deleting files not in the snapshot. Default: contents "
+                         f"of {INCLUDES_FILE} (home-relative).")
     add_device(sp)
     sp.set_defaults(func=cmd_restore)
 
