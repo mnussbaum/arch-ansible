@@ -90,3 +90,8 @@
   copy:
     src: mpv.conf
     dest: /etc/xdg/mpv/mpv.conf
+
+- name: Install systemd user preset
+  copy:
+    src: 80-media.preset
+    dest: /usr/lib/systemd/user-preset/80-media.preset

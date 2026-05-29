@@ -39,6 +39,12 @@ shared_dir=.qemu-host-shared
 output_dir=~/.cache/mkosi/images/image
 mkdir -p "$shared_dir" "$output_dir"
 
+# mkosi maps the host user to root in the guest, so the runtime-tree share is
+# only writable by root there. Make it world-writable on the host so the
+# unprivileged guest user can write back through virtiofs too (the daemon
+# performs the write as the host user who owns the dir).
+chmod 0777 "$shared_dir"
+
 vmm_args=()
 if [[ "$runtime" == "qemu" ]]; then
   vmm_args+=(
@@ -62,8 +68,11 @@ if [[ "$runtime" == "qemu" ]]; then
   tpm_state="$output_dir/tpm"
   mkdir -p "$tpm_state"
   if [[ ! -e "$tpm_state/tpm2-00.permall" ]]; then
-    swtpm_setup --tpm2 --tpmstate "$tpm_state" \
-      --create-ek-cert --create-platform-cert --lock-nvram
+    # --createek makes the EK key only. Avoid --create-ek-cert/
+    # --create-platform-cert: those invoke swtpm_localca, which needs
+    # root-owned /var/lib/swtpm-localca. TPM2 LUKS sealing only needs a
+    # working TPM with an SRK, not manufacturer EK/platform certs.
+    swtpm_setup --tpm2 --tpmstate "$tpm_state" --createek
   fi
   swtpm socket --tpm2 --tpmstate "dir=$tpm_state" \
     --ctrl "type=unixio,path=$tpm_state/swtpm-sock" \
@@ -73,6 +82,21 @@ if [[ "$runtime" == "qemu" ]]; then
     "-chardev" "socket,id=chrtpm,path=$tpm_state/swtpm-sock"
     "-tpmdev" "emulator,id=tpm0,chardev=chrtpm"
     "-device" "tpm-tis,tpmdev=tpm0"
+  )
+
+  # Persistent UEFI variable store. mkosi gives each vm run a fresh OVMF
+  # varstore, so the image's Secure Boot auto-enroll fires on every boot
+  # (setup mode again) and PCR 7 (Secure Boot state) can shift between the
+  # boot that enrolled the TPM2 LUKS keyslot and later boots. Seed a writable
+  # copy from the setup-mode template once and reuse it so keys enroll once
+  # and PCR 7 stays stable, like real hardware.
+  ovmf_vars="$output_dir/ovmf_vars.fd"
+  if [[ ! -f "$ovmf_vars" ]]; then
+    cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "$ovmf_vars"
+  fi
+  mkosi_args+=(
+    "--firmware=uefi-secure-boot"
+    "--firmware-variables=$ovmf_vars"
   )
 fi
 

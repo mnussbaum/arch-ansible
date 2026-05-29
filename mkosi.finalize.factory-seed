@@ -82,6 +82,13 @@ shopt -s nullglob dotglob
 for entry in "$ETC"/*; do
     name=$(basename "$entry")
     should_skip "$entry" && continue
+    # Clear any stale destination first. Incremental builds restore a /usr
+    # (and thus /usr/share/factory) cached from a prior finalize run, so
+    # $FACTORY/$name can already exist. A plain `mv dir existing_dir/` would
+    # nest the new dir *inside* the old one (e.g. factory/pam.d/pam.d), burying
+    # files one level too deep. Removing the destination keeps the move
+    # idempotent without touching factory entries that have no /etc counterpart.
+    rm -rf -- "$FACTORY/$name"
     mv "$entry" "$FACTORY/$name"
     printf 'L /etc/%s - - - - -\n' "$name" >> "$TMPFILES"
 done

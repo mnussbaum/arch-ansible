@@ -22,3 +22,19 @@
   copy:
     dest: /etc/zsh/zprofile
     src: source_etc_profile
+
+# /etc/profile.d is only sourced by login shells, not the systemd --user
+# manager, so user services (e.g. waybar's custom modules) don't get
+# /usr/lib/arch-ansible/bin on PATH. environment.d is read by the user manager
+# and propagated to the services it spawns.
+- name: Create environment.d dir
+  file:
+    path: /usr/lib/environment.d
+    state: directory
+
+- name: Install systemd user environment config
+  copy:
+    dest: "/usr/lib/environment.d/{{ item | basename }}"
+    src: "{{ item }}"
+  with_fileglob:
+    - environment.d/*

@@ -37,6 +37,10 @@
         name: packaging
         tasks_from: restore-build-overrides
       tags: [packaging, min-user-session]
+    - name: Apply user-unit presets (mkosi only presets system units)
+      command: systemctl --global preset-all
+      changed_when: false
+      tags: [min-user-session]
   tasks:
     - import_role:
         name: set-appearance-facts

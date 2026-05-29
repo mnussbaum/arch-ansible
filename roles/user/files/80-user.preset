@@ -1,1 +1,1 @@
-enable xdg-user-dirs-update.service
+enable xdg-user-dirs.service
