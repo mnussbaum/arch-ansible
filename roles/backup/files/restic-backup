@@ -3,7 +3,7 @@
 
 Subcommands:
     backup     Snapshot home (btrfs ro snapshot), back up included paths.
-    restore    Restore included paths from a snapshot.
+    restore    Restore included paths in place to match a snapshot.
     snapshots  List snapshots in the repository.
     mount      FUSE-mount the repository for browsing.
 
@@ -17,14 +17,13 @@ systemd, otherwise fetched from `pass`.
 
 import argparse
 import contextlib
+import json
 import os
 import pathlib
 import pwd
-import shutil
 import socket
 import subprocess
 import sys
-import tempfile
 
 B2_REPOSITORY = "b2:mnussbaum-machine-backups"
 DEVICE_REPO_SUBDIR = "restic-repo"
@@ -208,49 +207,61 @@ def cmd_backup(args: argparse.Namespace) -> None:
     notify("normal", "Backup complete", "")
 
 
+def snapshot_entry_type(
+    env: dict, snapshot: str, path: pathlib.Path
+) -> str | None:
+    """Return 'dir', 'file', or None if `path` is absent in the snapshot."""
+    r = subprocess.run(
+        ["restic", "find", "--no-lock", "--snapshot", snapshot,
+         "--json", str(path)],
+        capture_output=True, text=True, env=env,
+    )
+    if r.returncode != 0:
+        return None
+    data = json.loads(r.stdout or "[]")
+    matches = data[0]["matches"] if data else []
+    return matches[0]["type"] if matches else None
+
+
 def cmd_restore(args: argparse.Namespace) -> None:
     home = home_dir(args.user)
-    target = pathlib.Path(args.target) if args.target else home
-    target.mkdir(parents=True, exist_ok=True)
     snap_root = home / SNAPSHOT_DIRNAME / SNAPSHOT_NAME
 
     includes = args.directory or read_lines(INCLUDES_FILE)
 
-    # Staging dir is inside target so the post-restore move is a same-FS
-    # rename (cheap on btrfs) rather than a cross-FS copy.
-    staging = pathlib.Path(tempfile.mkdtemp(
-        prefix=".restic-restore-", dir=str(target),
-    ))
-    try:
-        with repo_env(args.device) as env:
-            for rel in includes:
-                rel = rel.lstrip("/")
-                src_in_snap = snap_root / rel
-                print(f"Restoring {rel} ...", file=sys.stderr)
-                subprocess.run(
-                    [
-                        "restic", "restore", args.snapshot,
-                        "--target", str(staging),
-                        "--include", str(src_in_snap),
-                    ],
-                    check=True, env=env,
-                )
-                staged = staging / str(src_in_snap).lstrip("/")
-                dst = target / rel
-                if not staged.exists():
-                    print(f"  warning: {rel} not present in snapshot",
-                          file=sys.stderr)
-                    continue
+    with repo_env(args.device) as env:
+        for rel in includes:
+            rel = rel.lstrip("/")
+            src = snap_root / rel       # the path inside the snapshot
+            dst = home / rel            # the same path on disk, restored in place
+            kind = snapshot_entry_type(env, args.snapshot, src)
+            if kind is None:
+                print(f"skipping {rel}: not in snapshot {args.snapshot}",
+                      file=sys.stderr)
+                continue
+
+            print(f"Restoring {rel} -> {dst} ...", file=sys.stderr)
+            if kind == "dir":
+                # "<snapshot>:<subpath>" makes the subpath the root of
+                # --target, and --delete prunes anything not in the snapshot,
+                # so dst ends up matching the snapshot's state exactly.
+                dst.mkdir(parents=True, exist_ok=True)
+                cmd = [
+                    "restic", "restore", f"{args.snapshot}:{src}",
+                    "--target", str(dst),
+                    "--delete",
+                ]
+            else:
+                # A single file: restore it into its parent directory. We
+                # can't use --delete here (it would prune the file's siblings),
+                # so this just overwrites the one file in place.
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                if dst.exists():
-                    sys.exit(
-                        f"{dst} already exists; remove it first or pass "
-                        f"--target to restore elsewhere"
-                    )
-                staged.rename(dst)
-    finally:
-        if staging.exists():
-            shutil.rmtree(staging, ignore_errors=True)
+                cmd = [
+                    "restic", "restore", f"{args.snapshot}:{src.parent}",
+                    "--target", str(dst.parent),
+                    "--include", f"/{src.name}",
+                ]
+            subprocess.run(cmd, check=True, env=env)
 
 
 def cmd_snapshots(args: argparse.Namespace) -> None:
@@ -296,16 +307,20 @@ def build_parser() -> argparse.ArgumentParser:
     add_device(sp)
     sp.set_defaults(func=cmd_backup)
 
-    sp = sub.add_parser("restore", help="Restore from a snapshot.")
+    sp = sub.add_parser(
+        "restore",
+        help="Restore paths in place to match a snapshot "
+             "(replaces current contents).",
+    )
     sp.add_argument("user", nargs="?", default=default_user,
                     help=f"User whose home to restore (default: {default_user})")
     sp.add_argument("--snapshot", default="latest",
                     help="Snapshot ID to restore (default: latest)")
     sp.add_argument("--directory", "-d", action="append", default=[],
-                    help="Path relative to home to restore (repeatable). "
+                    help="Path relative to home to restore in place "
+                         "(repeatable). A directory is restored to exactly its "
+                         "snapshot state, deleting files not in the snapshot. "
                          f"Default: contents of {INCLUDES_FILE}.")
-    sp.add_argument("--target",
-                    help="Restore target dir (default: user's home).")
     add_device(sp)
     sp.set_defaults(func=cmd_restore)
 
