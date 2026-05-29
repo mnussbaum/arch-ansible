@@ -3,7 +3,7 @@
 - name: Enable loop kernel module
   copy:
     content: loop
-    dest: /etc/modules-load.d/loop.conf
+    dest: /usr/lib/modules-load.d/loop.conf
 
 - name: Install packages
   become: yes

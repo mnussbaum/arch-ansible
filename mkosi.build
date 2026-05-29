@@ -21,6 +21,7 @@ CARGO_HOME="$CARGO_HOME" \
     SCCACHE_SERVER_PORT=14226 \
     CARGO_INCREMENTAL=0 \
     cargo install \
+    --force \
     --no-track \
-    --root "$DESTDIR/usr/local" \
+    --root "$DESTDIR/usr/lib/arch-ansible" \
     --git https://github.com/mnussbaum/waybar-sway-workspace-output-manager

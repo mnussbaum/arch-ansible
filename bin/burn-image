@@ -5,15 +5,13 @@ set -o nounset
 
 hostname=""
 mkosi_args=()
-image=""
 device=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
-      echo "Write a built image to a device, setting its hostname at boot. Build it first with build-image." >&2
-      echo "Usage: $0 --hostname=<hostname> [mkosi options...] <image> <device>" >&2
-      echo "  <image>     Image to write: 'workstation', 'usi', or a path to a mkosi.images dir." >&2
+      echo "Write the built image to a device, setting its hostname at boot. Build it first with build-image." >&2
+      echo "Usage: $0 --hostname=<hostname> [mkosi options...] <device>" >&2
       echo "  <device>    Block device to write the image to." >&2
       echo "  --hostname  Hostname, applied at boot via a system.hostname credential in the ESP (required)." >&2
       echo "  Any other options are forwarded to mkosi." >&2
@@ -21,12 +19,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --hostname=*) hostname="${1#*=}" ;;
     --hostname) hostname="$2"; shift ;;
-    --*)
-      mkosi_args+=("$1")
-      if [[ $# -gt 1 && "$2" != -* ]]; then mkosi_args+=("$2"); shift; fi
-      ;;
     *)
-      if [[ -z "$image" ]]; then image="$1"
+      if [[ "$1" =~ ^-- ]]; then
+        mkosi_args+=("$1")
+        if [[ $# -gt 1 && "$2" != -* ]]; then mkosi_args+=("$2"); shift; fi
       elif [[ -z "$device" ]]; then device="$1"
       else echo "Unexpected argument: $1" >&2; exit 1; fi
       ;;
@@ -34,19 +30,13 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-: "${image:?Usage: $0 --hostname=<hostname> <image> <device>}"
-: "${device:?Usage: $0 --hostname=<hostname> <image> <device>}"
+: "${device:?Usage: $0 --hostname=<hostname> <device>}"
 : "${hostname:?--hostname is required}"
 
-[[ "$image" == */* ]] || image="mkosi.images/$image"
-
-source bin/_luks_common.sh
-
-output_dir=~/.cache/mkosi/images/$(basename "$image")
+output_dir=~/.cache/mkosi/images/image
 mkdir -p "$output_dir"
 
 mkosi \
-  --directory="$image" \
   --output-directory="$output_dir" \
   --profile=build \
   "${mkosi_args[@]}" \
@@ -64,4 +54,4 @@ mount "$esp" "$mnt"
 mkdir -p "$mnt/loader/credentials"
 printf '%s' "$hostname" > "$mnt/loader/credentials/system.hostname.cred"
 
-echo "Burned $(basename "$image") to $device with hostname $hostname" >&2
+echo "Burned image to $device with hostname $hostname" >&2

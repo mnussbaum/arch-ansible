@@ -27,7 +27,7 @@
 - name: Install service
   copy:
     src: waybar.service
-    dest: /etc/systemd/user/waybar.service
+    dest: /usr/lib/systemd/user/waybar.service
 
 - name: Install systemd user preset
   copy:
@@ -49,13 +49,13 @@
 - name: Install waybar-sway-workspace-output-manager service
   copy:
     src: waybar-sway-workspace-output-manager.service
-    dest: /etc/systemd/user/waybar-sway-workspace-output-manager.service
+    dest: /usr/lib/systemd/user/waybar-sway-workspace-output-manager.service
 
 
 - name: Install module scripts
   copy:
     src: "{{ item }}"
-    dest: "/usr/local/bin/{{ item }}"
+    dest: "/usr/lib/arch-ansible/bin/{{ item }}"
     mode: a+x
   with_items:
     - waybar-cpu-temp

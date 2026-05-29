@@ -7,6 +7,9 @@
 - hosts: all
   tasks:
     - import_role:
+        name: packaging
+        tasks_from: init-keyring
+    - import_role:
         name: network_configuration
         tasks_from: runtime
     - import_role:

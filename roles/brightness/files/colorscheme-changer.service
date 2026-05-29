@@ -6,4 +6,4 @@ ConditionPathExists=!/run/systemd/sleep/
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/colorscheme-changer
+ExecStart=/usr/lib/arch-ansible/bin/colorscheme-changer

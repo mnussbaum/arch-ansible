@@ -2,23 +2,23 @@
 ---
 - name: Create systemd-resolved config directory
   file:
-    path: "{{ network_install_root }}/etc/systemd/resolved.conf.d"
+    path: "{{ network_install_root }}/usr/lib/systemd/resolved.conf.d"
     state: directory
 
 - name: Configure nameservers
   copy:
     src: resolved-dns-servers.conf
-    dest: "{{ network_install_root }}/etc/systemd/resolved.conf.d/dns_servers.conf"
+    dest: "{{ network_install_root }}/usr/lib/systemd/resolved.conf.d/dns_servers.conf"
 
 
 - name: Install wpa-psk script
   copy:
     src: wpa-psk
-    dest: /usr/local/bin/wpa-psk
+    dest: /usr/lib/arch-ansible/bin/wpa-psk
     mode: a+x
 
 - name: Generate WPA PSKs
-  shell: "/usr/local/bin/wpa-psk --iwd '{{ item.ssid }}' '{{ item.psk }}'"
+  shell: "/usr/lib/arch-ansible/bin/wpa-psk --iwd '{{ item.ssid }}' '{{ item.psk }}'"
   register: wpa_psk_outputs
   no_log: true
   changed_when: false
@@ -103,31 +103,31 @@
 - name: Install udev rule to start iwd on wireless device
   copy:
     src: 90-iwd-on-wireless.rules
-    dest: "{{ network_install_root }}/etc/udev/rules.d/90-iwd-on-wireless.rules"
+    dest: "{{ network_install_root }}/usr/lib/udev/rules.d/90-iwd-on-wireless.rules"
 
 - name: Install systemd-networkd config for the primary interface
   copy:
     src: 25-primary.network
-    dest: "{{ network_install_root }}/etc/systemd/network/25-primary.network"
+    dest: "{{ network_install_root }}/usr/lib/systemd/network/25-primary.network"
 
 - name: Install resume fix IPv6 flush service
   copy:
     src: wireless-resume-ipv6-flush.service
-    dest: "{{ network_install_root }}/etc/systemd/system/wireless-resume-ipv6-flush.service"
+    dest: "{{ network_install_root }}/usr/lib/systemd/system/wireless-resume-ipv6-flush.service"
 
 - name: Install systemd-networkd config for eth0 interface
   copy:
     src: systemd-networkd-eth0-config.network
-    dest: "{{ network_install_root }}/etc/systemd/network/eth0.network"
+    dest: "{{ network_install_root }}/usr/lib/systemd/network/eth0.network"
 
 - name: Install networking.target
   copy:
     src: networking.target
-    dest: "{{ network_install_root }}/etc/systemd/system/networking.target"
+    dest: "{{ network_install_root }}/usr/lib/systemd/system/networking.target"
 
 - name: Create drop-in dirs for networking.target PartOf
   file:
-    path: "{{ network_install_root }}/etc/systemd/system/{{ item }}.d"
+    path: "{{ network_install_root }}/usr/lib/systemd/system/{{ item }}.d"
     state: directory
   loop:
     - iwd.service
@@ -137,7 +137,7 @@
 - name: Install networking.target PartOf drop-ins
   copy:
     src: networking-target-part-of.conf
-    dest: "{{ network_install_root }}/etc/systemd/system/{{ item }}.d/networking-target-part-of.conf"
+    dest: "{{ network_install_root }}/usr/lib/systemd/system/{{ item }}.d/networking-target-part-of.conf"
   loop:
     - iwd.service
     - systemd-networkd.service

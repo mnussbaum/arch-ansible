@@ -12,6 +12,10 @@
   pre_tasks:
     - set_fact:
         ansible_facts: "{{ ansible_facts | combine({'pkg_mgr': 'pacman'}) }}"
+    - name: Create arch-ansible bin directory
+      file:
+        path: /usr/lib/arch-ansible/bin
+        state: directory
     - import_role:
         name: packaging
         tasks_from: install-pacman-conf

@@ -27,18 +27,18 @@
 - name: Install restic-backup script
   copy:
     src: restic-backup
-    dest: /usr/local/bin/restic-backup
+    dest: /usr/lib/arch-ansible/bin/restic-backup
     mode: a+x
 
 - name: Install restic-backup service
   copy:
     src: restic-backup.service
-    dest: /etc/systemd/user/restic-backup.service
+    dest: /usr/lib/systemd/user/restic-backup.service
 
 - name: Install restic-backup timer
   copy:
     src: restic-backup.timer
-    dest: /etc/systemd/user/restic-backup.timer
+    dest: /usr/lib/systemd/user/restic-backup.timer
 
 - name: Install systemd user preset
   template:

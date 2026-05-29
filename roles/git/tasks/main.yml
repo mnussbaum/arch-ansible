@@ -3,7 +3,7 @@
 - name: Download delta themes
   get_url:
     url: https://raw.githubusercontent.com/dandavison/delta/master/themes.gitconfig
-    dest: /usr/local/share/delta-themes.gitconfig
+    dest: /usr/share/delta-themes.gitconfig
 
 - name: Install delta diff tool
   package:

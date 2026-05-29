@@ -3,3 +3,5 @@
 /secrets/
 /.qemu-host-shared/
 .claude/
+/mkosi.key
+/mkosi.crt

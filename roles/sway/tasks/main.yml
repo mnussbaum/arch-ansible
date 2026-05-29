@@ -79,7 +79,7 @@
 - name: Install services
   copy:
     src: "{{ item }}"
-    dest: "/etc/systemd/user/{{ item }}"
+    dest: "/usr/lib/systemd/user/{{ item }}"
   with_items:
     - sway-session.target
     - sway.service
@@ -87,7 +87,7 @@
 - name: Install swayidle service
   template:
     src: swayidle.service.j2
-    dest: "/etc/systemd/user/swayidle.service"
+    dest: "/usr/lib/systemd/user/swayidle.service"
 
 - name: Install systemd user preset
   copy:

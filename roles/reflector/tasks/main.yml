@@ -9,12 +9,12 @@
 - name: Install reflector service
   copy:
     src: reflector.service
-    dest: /etc/systemd/system/reflector.service
+    dest: /usr/lib/systemd/system/reflector.service
 
 - name: Install reflector timer
   copy:
     src: reflector.timer
-    dest: /etc/systemd/system/reflector.timer
+    dest: /usr/lib/systemd/system/reflector.timer
 
 - name: Enable reflector timer
   service:

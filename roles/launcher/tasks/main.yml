@@ -10,7 +10,7 @@
 - name: Install wofi-toggle wrapper script
   copy:
     src: wofi-toggle
-    dest: /usr/local/bin/wofi-toggle
+    dest: /usr/lib/arch-ansible/bin/wofi-toggle
     mode: a+x
 
 - name: Create wofi config dir

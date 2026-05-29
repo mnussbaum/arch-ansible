@@ -7,26 +7,27 @@
       - edk2-ovmf
       - sdl2
       - socat
+      - swtpm
 
 - name: Enable kvm CPU pass-through
   copy:
     content: "options kvm_intel nested=1"
-    dest: "/etc/modprobe.d/kvm_intel.conf"
+    dest: "/usr/lib/modprobe.d/kvm_intel.conf"
 
 - name: Enable virtio module
   copy:
     content: "virtio"
-    dest: "/etc/modules-load.d/virtio.conf"
+    dest: "/usr/lib/modules-load.d/virtio.conf"
 
 - name: Enable vhost_vsock module
   copy:
     content: "vhost_vsock"
-    dest: "/etc/modules-load.d/vhost_vsock.conf"
+    dest: "/usr/lib/modules-load.d/vhost_vsock.conf"
 
 - name: Deploy pcscd vsock forwarding service
   copy:
     src: pcscd-vsock-forward.service
-    dest: /etc/systemd/system/pcscd-vsock-forward.service
+    dest: /usr/lib/systemd/system/pcscd-vsock-forward.service
     mode: "0644"
 
 - name: Enable pcscd vsock forwarding service

@@ -8,12 +8,12 @@
 
 - name: Create systemd service override dir
   file:
-    path: /etc/systemd/user/syncthing.service.d
+    path: /usr/lib/systemd/user/syncthing.service.d
     state: directory
 
 - name: Add systemd override to set Nice=19
   copy:
-    dest: /etc/systemd/user/syncthing.service.d/10-low-priority.conf
+    dest: /usr/lib/systemd/user/syncthing.service.d/10-low-priority.conf
     content: |
       [Service]
       Nice=19
@@ -23,7 +23,7 @@
 - name: Skip syncthing under virtualization
   copy:
     src: syncthing-condition.conf
-    dest: /etc/systemd/user/syncthing.service.d/condition.conf
+    dest: /usr/lib/systemd/user/syncthing.service.d/condition.conf
     mode: "0644"
 
 - name: Install systemd user preset

@@ -7,7 +7,7 @@ Wants=network-online.target home.mount systemd-homed.service
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/local/bin/firstboot
+ExecStart=/usr/lib/arch-ansible/bin/firstboot
 
 [Install]
 WantedBy=multi-user.target

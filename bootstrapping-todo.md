@@ -74,4 +74,6 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 - Organize project top level better. Playbooks in one dir, mkosi stuff in another
 - Do I need runtime systemd unit to grow swap partition?
 - Make it able to handle new hosts without new configs
+- Get rid of firstboot ansible if possible
 - Add eeek tasks back in once fully done
+- Backup root GPG key again

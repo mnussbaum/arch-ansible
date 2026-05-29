@@ -12,13 +12,13 @@
 
 - name: Create thermald drop-in directory
   file:
-    path: /etc/systemd/system/thermald.service.d
+    path: /usr/lib/systemd/system/thermald.service.d
     state: directory
 
 - name: Skip thermald under virtualization
   copy:
     src: thermald-condition.conf
-    dest: /etc/systemd/system/thermald.service.d/condition.conf
+    dest: /usr/lib/systemd/system/thermald.service.d/condition.conf
     mode: "0644"
 
 - name: Configure TLP
@@ -35,35 +35,48 @@
 - name: Install service to disable wake-up from spurious USB3 signals
   copy:
     src: disable-xhc-wakeup.service
-    dest: /etc/systemd/system/disable-xhc-wakeup.service
+    dest: /usr/lib/systemd/system/disable-xhc-wakeup.service
 
+
+- name: Create logind drop-in directory
+  file:
+    path: /usr/lib/systemd/logind.conf.d
+    state: directory
 
 - name: Install logind config
   copy:
     src: logind.conf
-    dest: /etc/systemd/logind.conf
+    dest: /usr/lib/systemd/logind.conf.d/power.conf
 
 - name: Create systemd system.conf drop-in directory
   file:
-    path: /etc/systemd/system.conf.d
+    path: /usr/lib/systemd/system.conf.d
     state: directory
 
 - name: Set systemd stop timeout to avoid hanging shutdown
   copy:
     src: systemd-timeouts.conf
-    dest: /etc/systemd/system.conf.d/timeouts.conf
+    dest: /usr/lib/systemd/system.conf.d/timeouts.conf
+
+- name: Create systemd sleep.conf drop-in directory
+  file:
+    path: /usr/lib/systemd/sleep.conf.d
+    state: directory
 
 - name: Install systemd sleep config
   template:
     src: systemd-sleep.conf.j2
-    dest: /etc/systemd/sleep.conf
+    dest: /usr/lib/systemd/sleep.conf.d/power.conf
+
+- name: Create systemd-suspend.service drop-in directory
+  file:
+    path: /usr/lib/systemd/system/systemd-suspend.service.d
+    state: directory
 
 - name: Replace systemctl suspend with suspend-then-hibernate
-  file:
-    src: /usr/lib/systemd/system/systemd-suspend-then-hibernate.service
-    path: /etc/systemd/system/systemd-suspend.service
-    force: true
-    state: link
+  copy:
+    src: systemd-suspend-override.conf
+    dest: /usr/lib/systemd/system/systemd-suspend.service.d/override.conf
 
 - name: Create system-sleep script directory
   file:
@@ -96,7 +109,7 @@
 - name: Disable async suspend and resume
   copy:
     src: disable-pm-async.service
-    dest: /etc/systemd/system/disable-pm-async.service
+    dest: /usr/lib/systemd/system/disable-pm-async.service
 
 - name: Enable service that disables async suspend and resume
   service:
@@ -105,29 +118,29 @@
 
 - name: Create sysctl param directory
   file:
-    path: /etc/sysctl.d
+    path: /usr/lib/sysctl.d
     state: directory
 
 - name: Configure sysctl params
   copy:
     src: "{{ item }}"
-    dest: "/etc/sysctl.d/{{ item | basename }}"
+    dest: "/usr/lib/sysctl.d/{{ item | basename }}"
   with_fileglob:
     - sysctl.d/*
 
 - name: Create udev rules directory
   file:
-    path: /etc/udev/rules.d
+    path: /usr/lib/udev/rules.d
     state: directory
 
 - name: Configure udev rules
   copy:
     src: "{{ item }}"
-    dest: "/etc/udev/rules.d/{{ item | basename }}"
+    dest: "/usr/lib/udev/rules.d/{{ item | basename }}"
   with_fileglob:
     - udev-rules.d/*
 
 - name: Enable audio codec power management
   copy:
     content: "options snd_hda_intel power_save=1 power_save_controller=Y"
-    dest: "/etc/modprobe.d/audio_powersave.conf"
+    dest: "/usr/lib/modprobe.d/audio_powersave.conf"

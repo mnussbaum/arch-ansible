@@ -44,10 +44,10 @@
     state: link
 
 - name: Enable subpixel autohinting with freetype2
-  lineinfile:
-    dest: "/etc/profile.d/freetype2.sh"
-    regexp: ".*export FREETYPE_PROPERTIES=.*"
-    line: 'export FREETYPE_PROPERTIES="truetype:interpreter-version=40"'
+  copy:
+    src: freetype2-overrides.sh
+    dest: /etc/profile.d/freetype2-overrides.sh
+    mode: "0644"
 
 - name: Set font family choices
   template:

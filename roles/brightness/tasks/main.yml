@@ -11,13 +11,13 @@
 - name: Install day-or-night binary
   copy:
     src: day-or-night
-    dest: /usr/local/bin/day-or-night
+    dest: /usr/lib/arch-ansible/bin/day-or-night
     mode: a+x
 
 - name: Install wl-gammarelay service
   copy:
     src: wl-gammarelay.service
-    dest: /etc/systemd/user/wl-gammarelay.service
+    dest: /usr/lib/systemd/user/wl-gammarelay.service
 
 - name: Enable wl-gammarelay service
   service:
@@ -28,18 +28,18 @@
 - name: Install colorscheme-changer binary
   copy:
     src: colorscheme-changer
-    dest: /usr/local/bin/colorscheme-changer
+    dest: /usr/lib/arch-ansible/bin/colorscheme-changer
     mode: a+x
 
 - name: Install colorscheme-changer service
   copy:
     src: colorscheme-changer.service
-    dest: /etc/systemd/user/colorscheme-changer.service
+    dest: /usr/lib/systemd/user/colorscheme-changer.service
 
 - name: Install colorscheme-changer timer
   copy:
     src: colorscheme-changer.timer
-    dest: /etc/systemd/user/colorscheme-changer.timer
+    dest: /usr/lib/systemd/user/colorscheme-changer.timer
 
 - name: Enable colorscheme-changer timer
   service:

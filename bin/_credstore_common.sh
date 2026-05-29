@@ -18,7 +18,7 @@
 # TPM-bound on a generic, multi-machine image.
 #
 # It is built outside the repo (under ~/.cache): the repo is ExtraTrees'd to
-# /usr/local/share/arch-ansible and remounted in the mkosi sandbox, so a secret
+# /usr/share/arch-ansible and remounted in the mkosi sandbox, so a secret
 # written inside the repo would leak into the image. mkosi.conf references this
 # same ~/.cache path.
 : "${PASSWORD_STORE_DIR:=$HOME/.local/share/password-store}"

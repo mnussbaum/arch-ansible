@@ -7,14 +7,12 @@ refresh_cache=""
 skip_postinst=""
 ansible_tags=""
 mkosi_args=()
-image=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
-      echo "Build a generic image. run-image/burn-image set the hostname at boot." >&2
-      echo "Usage: $0 [--refresh-cache] [--skip-postinst] [--ansible-tags TAGS] [mkosi options...] <image>" >&2
-      echo "  <image>          Image to build: 'workstation', 'usi', or a path to a mkosi.images dir." >&2
+      echo "Build the image. run-image/burn-image set the hostname at boot." >&2
+      echo "Usage: $0 [--refresh-cache] [--skip-postinst] [--ansible-tags TAGS] [mkosi options...]" >&2
       echo "  --refresh-cache  Bust the mkosi incremental package cache." >&2
       echo "  --skip-postinst  Skip the Ansible post-installation step." >&2
       echo "  --ansible-tags   Limit Ansible to specific tags." >&2
@@ -24,35 +22,35 @@ while [[ $# -gt 0 ]]; do
     --refresh-cache) refresh_cache="--incremental=no" ;;
     --skip-postinst) skip_postinst="--environment=SKIP_POSTINST=1" ;;
     --ansible-tags) ansible_tags="--environment=ANSIBLE_TAGS=$2"; shift ;;
-    --*)
-      mkosi_args+=("$1")
-      if [[ $# -gt 1 && "$2" != -* ]]; then mkosi_args+=("$2"); shift; fi
-      ;;
     *)
-      [[ -z "$image" ]] || { echo "Unexpected argument: $1" >&2; exit 1; }
-      image="$1"
+      mkosi_args+=("$1")
+      if [[ "$1" =~ ^-- ]] && [[ $# -gt 1 && "$2" != -* ]]; then mkosi_args+=("$2"); shift; fi
       ;;
   esac
   shift
 done
 
-: "${image:?Usage: $0 <image>}"
+source bin/_secureboot_common.sh
+materialize_secureboot_keypair
 
-[[ "$image" == */* ]] || image="mkosi.images/$image"
-
-source bin/_luks_common.sh
 source bin/_credstore_common.sh
 
 # base64 so the JSON survives the env-var trip through mkosi into the chroot
 # unmangled (no quotes/spaces/colons); decoded in mkosi.postinst.chroot.
 wifi_networks=$(bin/wifi-networks | base64 -w0)
 
-output_dir=~/.cache/mkosi/images/$(basename "$image")
+output_dir=~/.cache/mkosi/images/image
 mkdir -p ~/.cache/mkosi/pacman-pkg "$output_dir"
 
 mkosi \
-  --directory="$image" \
   --output-directory="$output_dir" \
+  --tools-tree=/ \
+  --secure-boot-certificate="$PWD/mkosi.crt" \
+  --secure-boot-key="$PWD/mkosi.key" \
+  --sign-expected-pcr-certificate="$PWD/mkosi.crt" \
+  --sign-expected-pcr-key="$PWD/mkosi.key" \
+  --verity-certificate="$PWD/mkosi.crt" \
+  --verity-key="$PWD/mkosi.key" \
   --profile=build \
   --force \
   --environment="ANSIBLE_WIFI_NETWORKS=$wifi_networks" \
@@ -62,5 +60,5 @@ mkosi \
   "${mkosi_args[@]}" \
   build
 
-echo "Built $(basename "$image"):" >&2
+echo "Built image:" >&2
 ls -1 "$output_dir"/*.raw 2>/dev/null >&2 || echo "  (output in $output_dir)" >&2

@@ -1,96 +1,12 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Read image version from os-release
-  shell: bash -c '. /etc/os-release && echo "${IMAGE_VERSION:-a}"'
-  register: image_version
-  changed_when: false
-
-- name: Write /etc/kernel/cmdline
-  template:
-    src: kernel-cmdline.j2
-    dest: /etc/kernel/cmdline
-
-- name: Write /etc/kernel/uki.conf
-  copy:
-    src: uki.conf
-    dest: /etc/kernel/uki.conf
-
-- name: Write /etc/kernel/install.conf
-  copy:
-    src: install.conf
-    dest: /etc/kernel/install.conf
-
-- name: Check Secure Boot signing keys
-  stat:
-    path: /etc/kernel/secure-boot-private-key.pem
-  register: sb_key
-
-- name: Generate Secure Boot signing keys
-  command: ukify genkey --config /etc/kernel/uki.conf
-  when: not sb_key.stat.exists and 'SRCDIR' in ansible_facts['env']
-
-- name: Verify Secure Boot signing keys present
-  fail:
-    msg: >-
-      Build artifact missing: /etc/kernel/secure-boot-private-key.pem —
-      this should have been generated at image build time
-  when: not sb_key.stat.exists and 'SRCDIR' not in ansible_facts['env']
-
-- name: Check signed bootloader
-  stat:
-    path: /usr/lib/systemd/boot/efi/systemd-bootx64.efi.signed
-  register: signed_efi
-
-- name: Sign bootloader for future updates
-  command: >-
-    /usr/lib/systemd/systemd-sbsign sign
-    --private-key /etc/kernel/secure-boot-private-key.pem
-    --certificate /etc/kernel/secure-boot-certificate.pem
-    --output /usr/lib/systemd/boot/efi/systemd-bootx64.efi.signed
-    /usr/lib/systemd/boot/efi/systemd-bootx64.efi
-  when: not signed_efi.stat.exists and 'SRCDIR' in ansible_facts['env']
-
-- name: Verify signed bootloader present
-  fail:
-    msg: >-
-      Build artifact missing: /usr/lib/systemd/boot/efi/systemd-bootx64.efi.signed —
-      this should have been generated at image build time
-  when: not signed_efi.stat.exists and 'SRCDIR' not in ansible_facts['env']
-
-- name: Check if ESP is mounted
-  command: mountpoint /efi
-  register: esp_mount
-  changed_when: false
-  failed_when: false
-
-- name: Check bootloader auth files
-  stat:
-    path: /efi/loader/keys/auto/db.auth
-  register: db_auth
-  when: esp_mount.rc == 0
-
-- name: Install bootloader with Secure Boot auto-enroll
-  command: >-
-    bootctl install
-    --no-variables
-    --esp-path=/efi
-    --secure-boot-auto-enroll=yes
-    --certificate=/etc/kernel/secure-boot-certificate.pem
-    --private-key=/etc/kernel/secure-boot-private-key.pem
-  when: esp_mount.rc == 0 and not db_auth.stat.exists and 'SRCDIR' in ansible_facts['env']
-
-- name: Verify bootloader auth files present
-  fail:
-    msg: >-
-      Build artifact missing: /efi/loader/keys/auto/db.auth —
-      this should have been generated at image build time
-  when: esp_mount.rc == 0 and not db_auth.stat.exists and 'SRCDIR' not in ansible_facts['env']
-
-- name: Write loader.conf
-  copy:
-    src: loader.conf
-    dest: /efi/loader/loader.conf
-  when: esp_mount.rc == 0
+- name: Install packages
+  package:
+    state: present
+    name:
+      - opensc
+      - pkcs11-provider
+      - systemd-ukify
 
 - name: Install systemd preset
   copy:
@@ -100,28 +16,10 @@
 - name: Install firstboot script
   copy:
     src: firstboot
-    dest: /usr/local/bin/firstboot
+    dest: /usr/lib/arch-ansible/bin/firstboot
     mode: "0755"
 
 - name: Install firstboot.service
   copy:
     src: firstboot.service
-    dest: /etc/systemd/system/firstboot.service
-
-- name: Install luks-enroll script
-  copy:
-    src: luks-enroll
-    dest: /usr/local/bin/luks-enroll
-    mode: "0755"
-
-- name: Install luks-enroll.service
-  copy:
-    src: luks-enroll.service
-    dest: /etc/systemd/system/luks-enroll.service
-
-- name: Flush handlers before building UKIs
-  meta: flush_handlers
-
-- name: Build initial UKIs
-  shell: ls /usr/lib/modules/ | xargs -I{} kernel-install add {} /boot/vmlinuz-linux
-  when: esp_mount.rc == 0
+    dest: /usr/lib/systemd/system/firstboot.service

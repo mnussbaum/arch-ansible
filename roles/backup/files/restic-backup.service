@@ -9,4 +9,4 @@ Type=oneshot
 LoadCredential=restic_backblaze_key:%t/pass-credential-host_secrets-%H-restic_backblaze_key.socket
 LoadCredential=restic_backblaze_key_id:%t/pass-credential-host_secrets-%H-restic_backblaze_key_id.socket
 LoadCredential=restic_backup_password:%t/pass-credential-restic_backup_password.socket
-ExecStart=/usr/local/bin/restic-backup backup
+ExecStart=/usr/lib/arch-ansible/bin/restic-backup backup

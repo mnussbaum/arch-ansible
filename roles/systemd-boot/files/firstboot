@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-REPO=/usr/local/share/arch-ansible
+REPO=/usr/share/arch-ansible
 
 cd "$REPO"
 NO_ASK_BECOME_PASS=1 ./bin/ansible

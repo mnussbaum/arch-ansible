@@ -39,14 +39,14 @@
 - name: Symlink password-store into skel .local/share
   file:
     path: /etc/skel/.local/share/password-store
-    src: /usr/local/share/password-store
+    src: /usr/share/password-store
     state: link
     force: true
 
 - name: Symlink password-store into skel .password-store
   file:
     path: /etc/skel/.password-store
-    src: /usr/local/share/password-store
+    src: /usr/share/password-store
     state: link
     force: true
 
@@ -55,17 +55,10 @@
     src: system-auth
     dest: /etc/pam.d/system-auth
 
-- name: Configure nsswitch.conf for systemd-homed user lookup
-  lineinfile:
-    path: /etc/nsswitch.conf
-    regexp: '^passwd:'
-    line: 'passwd: files systemd'
-
-- name: Configure nsswitch.conf for systemd-homed group lookup
-  lineinfile:
-    path: /etc/nsswitch.conf
-    regexp: '^group:'
-    line: 'group: files [SUCCESS=merge] systemd'
+- name: Install nsswitch.conf
+  copy:
+    src: nsswitch.conf
+    dest: /etc/nsswitch.conf
 
 - name: Install systemd preset
   copy:

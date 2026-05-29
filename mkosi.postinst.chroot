@@ -3,7 +3,7 @@ set -euo pipefail
 
 [[ -n "${SKIP_POSTINST:-}" ]] && exit 0
 
-chmod -R a+rX /usr/local/share/arch-ansible /usr/local/share/password-store
+chmod -R a+rX /usr/share/arch-ansible /usr/share/password-store
 
 cd /work/src
 export USER=root HOME=/root

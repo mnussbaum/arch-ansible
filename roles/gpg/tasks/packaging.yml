@@ -18,7 +18,7 @@
 - name: Install pinentry wrapper
   copy:
     src: pinentry-auto
-    dest: /usr/local/bin/pinentry-auto
+    dest: /usr/lib/arch-ansible/bin/pinentry-auto
     mode: "0755"
 
 - name: Install systemd preset

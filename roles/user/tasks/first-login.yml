@@ -2,7 +2,7 @@
 ---
 - name: Copy arch-ansible repo into home
   synchronize:
-    src: /usr/local/share/arch-ansible/
+    src: /usr/share/arch-ansible/
     dest: "{{ ansible_env.HOME }}/Projects/arch-ansible/"
     owner: false
     group: false
@@ -13,13 +13,16 @@
   changed_when: false
 
 - name: Discover card-agnostic PIV URI
+  # Pin to id=%03 (PIV slot 9d, the homed key). PIV slot 9c (id=%02) is the
+  # SecureBoot signing key and must not be returned here.
   ansible.builtin.shell: |
     set -o pipefail
     p11tool --list-all-certs 'pkcs11:' 2>/dev/null \
       | sed -n 's/.*URL: //p' \
       | grep type=cert | grep -v p11-kit-trust \
+      | grep 'id=%03' \
       | head -1 \
-      | sed -E 's/;serial=[^;]*//; s/;token=[^;]*//; s/;id=[^;]*//; s/;object=[^;]*//; s/;type=[^;]*//'
+      | sed -E 's/;serial=[^;]*//; s/;token=[^;]*//; s/;object=[^;]*//; s/;type=[^;]*//'
   register: piv_uri
   changed_when: false
   failed_when: piv_uri.stdout | length == 0

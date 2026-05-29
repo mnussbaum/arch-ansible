@@ -67,7 +67,7 @@
 - name: Install IPu6 ov01a10 udev config file to fix digital gain
   copy:
     src: 99-ov01a10-digital-gain.rules
-    dest: /etc/udev/rules.d/99-ov01a10-digital-gain.rules
+    dest: /usr/lib/udev/rules.d/99-ov01a10-digital-gain.rules
 
 - name: Install systemd-sleep hook to fix IPu6 camera after suspend/resume
   copy:
@@ -78,7 +78,7 @@
 - name: Install headphone profile toggle script
   copy:
     src: toggle-headphone-profile
-    dest: /usr/local/bin/toggle-headphone-profile
+    dest: /usr/lib/arch-ansible/bin/toggle-headphone-profile
     mode: a+x
 
 - name: Create mpv config dir

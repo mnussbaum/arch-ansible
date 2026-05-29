@@ -1,5 +1,11 @@
 # vim:ft=yaml.ansible:
 ---
+- name: Install packages
+  package:
+    state: present
+    name:
+      - swtpm
+
 - name: Set sway leader key for QEMU guests
   import_role:
     name: sway
@@ -8,28 +14,28 @@
 - name: Blacklist coretemp module
   copy:
     content: "blacklist coretemp"
-    dest: "/etc/modprobe.d/blacklist_coretemp.conf"
+    dest: "/usr/lib/modprobe.d/blacklist_coretemp.conf"
 
 - name: Create systemd-vconsole-setup drop-in directory
   file:
-    path: /etc/systemd/system/systemd-vconsole-setup.service.d
+    path: /usr/lib/systemd/system/systemd-vconsole-setup.service.d
     state: directory
 
 - name: Skip systemd-vconsole-setup under virtualization
   copy:
     src: vconsole-setup-condition.conf
-    dest: /etc/systemd/system/systemd-vconsole-setup.service.d/condition.conf
+    dest: /usr/lib/systemd/system/systemd-vconsole-setup.service.d/condition.conf
     mode: "0644"
 
 - name: Create qemu-guest-agent drop-in directory
   file:
-    path: /etc/systemd/system/qemu-guest-agent.service.d
+    path: /usr/lib/systemd/system/qemu-guest-agent.service.d
     state: directory
 
 - name: Add ConditionVirtualization drop-in for qemu-guest-agent
   copy:
     src: qemu-guest-agent-condition.conf
-    dest: /etc/systemd/system/qemu-guest-agent.service.d/condition.conf
+    dest: /usr/lib/systemd/system/qemu-guest-agent.service.d/condition.conf
     mode: "0644"
 
 - name: Enable qemu guest agent service
@@ -46,7 +52,7 @@
 - name: Load vsock modules
   copy:
     content: "vsock\nvmw_vsock_virtio_transport"
-    dest: /etc/modules-load.d/vsock.conf
+    dest: /usr/lib/modules-load.d/vsock.conf
 
 - name: Load vsock modules now
   community.general.modprobe:
@@ -59,7 +65,7 @@
 - name: Deploy pcscd vsock forwarding service
   copy:
     src: pcscd-vsock-forward.service
-    dest: /etc/systemd/system/pcscd-vsock-forward.service
+    dest: /usr/lib/systemd/system/pcscd-vsock-forward.service
     mode: "0644"
 
 - name: Enable pcscd vsock forwarding service

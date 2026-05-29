@@ -10,12 +10,12 @@
 - name: Allow all users to run machinectl commands
   copy:
     src: polkit-00-machinectl.rules
-    dest: /etc/polkit-1/rules.d/00-machinectl.rules
+    dest: /usr/share/polkit-1/rules.d/00-machinectl.rules
 
 - name: Install user agent service
   copy:
     src: polkit-gnome-authentication-agent.service
-    dest: /etc/systemd/user/polkit-gnome-authentication-agent.service
+    dest: /usr/lib/systemd/user/polkit-gnome-authentication-agent.service
 
 - name: Install systemd user preset
   copy:

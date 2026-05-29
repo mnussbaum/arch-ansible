@@ -43,7 +43,7 @@
 - name: Install WM start commands
   copy:
     src: "{{ item }}"
-    dest: "/usr/local/bin/{{ item }}"
+    dest: "/usr/lib/arch-ansible/bin/{{ item }}"
     mode: a+x
   with_items:
     - start-sway

@@ -8,17 +8,10 @@
       - bluez-tools
       - bluez-utils
 
-- name: Power on afer reboot
-  lineinfile:
+- name: Install bluetooth main.conf
+  copy:
+    src: main.conf
     dest: /etc/bluetooth/main.conf
-    regexp: ".*AutoEnable.*"
-    line: "AutoEnable=true"
-
-- name: Always be discoverable
-  lineinfile:
-    dest: /etc/bluetooth/main.conf
-    regexp: ".*DiscoverableTimeout.*"
-    line: "DiscoverableTimeout=0"
 
 - name: Install systemd preset
   copy:
