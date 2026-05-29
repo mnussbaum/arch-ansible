@@ -52,6 +52,28 @@ if [[ "$runtime" == "qemu" ]]; then
       "-device" "scsi-hd,bus=scsi0.0,drive=recovery"
     )
   fi
+
+  # Persistent emulated TPM. mkosi's --tpm uses ephemeral per-run state, so a
+  # TPM2-bound LUKS volume enrolled on first boot can't be unsealed on the next
+  # boot ("key enrolled in superblock most likely does not belong to this
+  # TPM"), and there's no passphrase fallback. Run our own swtpm against a
+  # state dir next to the image so the TPM survives across runs, like real
+  # hardware. (--tpm=no below disables mkosi's ephemeral one.)
+  tpm_state="$output_dir/tpm"
+  mkdir -p "$tpm_state"
+  if [[ ! -e "$tpm_state/tpm2-00.permall" ]]; then
+    swtpm_setup --tpm2 --tpmstate "$tpm_state" \
+      --create-ek-cert --create-platform-cert --lock-nvram
+  fi
+  swtpm socket --tpm2 --tpmstate "dir=$tpm_state" \
+    --ctrl "type=unixio,path=$tpm_state/swtpm-sock" \
+    --pid "file=$tpm_state/swtpm.pid" --daemon
+  trap 'kill "$(cat "$tpm_state/swtpm.pid" 2>/dev/null)" 2>/dev/null || true' EXIT
+  vmm_args+=(
+    "-chardev" "socket,id=chrtpm,path=$tpm_state/swtpm-sock"
+    "-tpmdev" "emulator,id=tpm0,chardev=chrtpm"
+    "-device" "tpm-tis,tpmdev=tpm0"
+  )
 fi
 
 mkosi \
@@ -62,7 +84,7 @@ mkosi \
   --ram=4G \
   --vsock=yes \
   --vsock-cid=3 \
-  --tpm=yes \
+  --tpm=no \
   --runtime-size=90G \
   --runtime-tree="$PWD/$shared_dir:/run/host/shared" \
   --profile=build \

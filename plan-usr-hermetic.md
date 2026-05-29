@@ -237,6 +237,62 @@ re-theming works again.
 
 ---
 
+## C — LUKS recovery factor *(pending)*
+
+`Encrypt=tpm2` enrolls **only** a TPM2 keyslot on root (and swap), with no
+passphrase fallback. Any change to the TPM or its PCR state locks the user out
+with zero recovery: a cleared/replaced TPM, a firmware update that shifts PCR
+values, moving the disk to another machine, or (in VM testing) a fresh
+emulated TPM. This already bit us in QEMU — a second boot failed with "TPM key
+integrity check failed. Key enrolled in superblock most likely does not belong
+to this TPM." particleos has the same gap on its TODO ("luks recovery key
+firstboot prompt").
+
+We need a second, TPM-independent unlock factor on the root (and swap) LUKS
+volumes. Options, roughly in order of preference:
+
+1. **Recovery key enrolled at first boot, surfaced once.** A first-boot oneshot
+   (after repart has created the volume) runs
+   `systemd-cryptenroll --recovery-key` on the root device, then displays the
+   generated recovery key (QR + text) on the console / writes it to a
+   credential the user captures. The recovery key is a high-entropy
+   systemd-format secret; store it with the GPG paper backup / in pass. This
+   mirrors how the homed user already gets a recovery secret.
+2. **Recovery key pre-seeded via credential**, like the homed
+   `home.create`/`home.new-password` credstore pattern: generate the recovery
+   secret at build time into pass, bake it as a systemd credential, and have a
+   first-boot service enroll it with `systemd-cryptenroll --unlock-key-file`
+   + a new `--recovery-key`-style slot. Keeps the secret stable and known
+   ahead of time (recoverable from pass), at the cost of the secret existing
+   before first boot.
+3. **YubiKey FIDO2 slot** (`systemd-cryptenroll --fido2-device=auto`) as a
+   second factor, enrolled at first login alongside the homed PIV enrollment.
+   Good as an *additional* factor but not sufficient alone (a lost YubiKey
+   then needs the recovery key anyway), so this complements rather than
+   replaces 1/2.
+
+Open questions:
+- **When to enroll.** repart creates the LUKS volume in the initrd on first
+  boot; enrollment needs the volume unlocked (TPM2) and the policy settled.
+  A `ConditionFirstBoot=` oneshot ordered after `systemd-cryptsetup@root` is
+  the natural hook — but it must run before anything depends on a stable
+  keyslot set.
+- **Where the recovery key lives.** Pure first-boot generation (option 1) is
+  most secure (secret never exists pre-install) but requires the user to
+  capture it interactively; pre-seeding (option 2) is recoverable from pass
+  but the secret pre-exists. Given the homed user already uses a
+  pass-stored recovery secret, option 2 is the consistent choice; option 1 is
+  the stricter one.
+- **Swap.** Swap is also `Encrypt=tpm2`; decide whether it needs a recovery
+  factor (probably yes, or mark it for re-creation on TPM loss since it holds
+  no persistent data — a `FactoryReset`/re-key on mismatch is acceptable for
+  swap).
+- **VM testing** is unblocked separately by persistent swtpm in
+  `bin/run-image` (so the emulated TPM survives reboots); the recovery factor
+  is about real-hardware resilience.
+
+---
+
 ## Risks and open questions
 
 1. **YubiKey-backed SecureBoot remains aspirational.** Currently software keys
@@ -252,9 +308,10 @@ re-theming works again.
    — which is in /usr and therefore read-only. Pattern needs to be: break
    the symlink first (`unlink /etc/sway/config` and copy from factory)
    before editing. Worth a helper script.
-4. **Recovery passphrase.** With no shipped keyfile and no enrollment
-   ceremony, there's no second factor on root LUKS by default. Document that
-   recovery is manual: `cryptsetup luksAddKey --token-type systemd-tpm2`.
+4. **No LUKS recovery factor.** TPM2 is the only keyslot on root/swap, so any
+   TPM/PCR change is an unrecoverable lockout. Tracked as **Stage C** above.
+   Until that lands, recovery is manual and only possible while the volume is
+   still unlockable (`systemd-cryptenroll --recovery-key <dev>`).
 5. **systemd-tmpfiles ordering for L lines.** L-lines run in
    `systemd-tmpfiles-setup.service`. With Encrypt=tpm2 there's no
    `/etc/cryptsetup-keys.d/` dependency, so no ordering issue.
