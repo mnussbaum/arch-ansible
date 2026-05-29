@@ -1,9 +1,14 @@
 # vim:ft=yaml.ansible:
 ---
+# wezterm stable (20240203) crashes on wayland 1.23+ (wl_shm opcode mismatch);
+# revert to wezterm once a newer stable is packaged in Arch extra
 - name: Install
   package:
-    name: wezterm
+    name: "{{ item }}"
     state: present
+  loop:
+    - wezterm-git
+    - ghostty
 
 - name: Create config dir
   file:
