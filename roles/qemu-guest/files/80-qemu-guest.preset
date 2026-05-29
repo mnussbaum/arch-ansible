@@ -1,1 +1,2 @@
-enable pcscd-vsock-forward.service
+enable pcscd-vsock-guest.service
+enable qemu-guest-agent.service

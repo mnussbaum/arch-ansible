@@ -1,8 +1,0 @@
-# vim:ft=yaml.ansible:
----
-- name: Point /etc/resolv.conf at systemd-resolved
-  file:
-    src: /run/systemd/resolve/stub-resolv.conf
-    path: /etc/resolv.conf
-    force: true
-    state: link

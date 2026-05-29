@@ -1,8 +1,0 @@
-#!/bin/bash
-set -euo pipefail
-
-REPO=/usr/share/arch-ansible
-
-cd "$REPO"
-NO_ASK_BECOME_PASS=1 ./bin/ansible
-touch /var/lib/firstboot-done

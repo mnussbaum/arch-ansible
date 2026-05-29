@@ -1,6 +1,0 @@
-# vim:ft=yaml.ansible:
----
-- name: Install qemu guest agent
-  package:
-    name: qemu-guest-agent
-    state: present

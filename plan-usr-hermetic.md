@@ -197,17 +197,43 @@ Revisit when:
 
 ---
 
-## B — Remove firstboot Ansible *(pending)*
+## B — Remove firstboot Ansible *(done)*
 
-After A.5 is fully done, retire the firstboot Ansible mechanism:
-- `network_configuration` runtime → systemd-networkd / NetworkManager
-  drop-ins shipped in /usr (already mostly there post-A.1)
-- `brightness` runtime → systemd user service that runs on session start
-- `qemu-guest` / `qemu-host` runtime → `ConditionVirtualization=` on the
-  service units (already in place post-A.1) makes them self-activating
-- `packaging init-keyring` → ship a oneshot `pacman-key.service` with
-  `ConditionPathExists=!/etc/pacman.d/gnupg/trustdb.gpg`
-- Delete `firstboot.service`, `firstboot` script, `firstboot-playbook.yml`
+firstboot ran Ansible on the running system, which can't install packages into
+a read-only /usr. The roles it called actually run fine at *build time* (the
+postinst-playbook runs inside the mkosi chroot — that's how the image gets all
+its packages), so the fix was to move them to build time, keep their `package:`
+tasks, and drop the `service: state=started` calls (presets enable services
+instead). What each firstboot task became:
+
+- `packaging init-keyring` → **dropped.** Hermetic systems never run pacman at
+  runtime; updates come via sysupdate of the whole /usr image.
+- `network_configuration` runtime (resolv.conf symlink) → **already shipped**
+  by `mkosi.extra/etc/resolv.conf` (symlink to the resolved stub). Runtime task
+  deleted.
+- `brightness` runtime (Dell kbd backlight timeout) → **udev rule**
+  `99-dell-kbd-backlight-timeout.rules` shipped to `/usr/lib/udev/rules.d`,
+  hardware-gated by the `KERNEL==dell::kbd_backlight` match.
+- `qemu-guest` / `qemu-host` → moved into postinst (build time),
+  **unconditionally shipped in every image**; services self-activate via
+  `ConditionVirtualization=`. The two `pcscd-vsock-forward.service` files
+  (guest connects, host listens) shared one name and would collide — renamed
+  to `pcscd-vsock-guest.service` (already `ConditionVirtualization=kvm`) and
+  `pcscd-vsock-host.service` (added `ConditionVirtualization=no`), each enabled
+  by its role's preset.
+- `qemu-guest-agent` role folded into `qemu-guest` (package + preset enable).
+- Two guest-only tweaks that can't self-gate statically (coretemp blacklist,
+  Sway Super-leader override) → **dropped** (minor VM cosmetic loss).
+- Deleted `firstboot.service`, the `firstboot` script, `firstboot-playbook.yml`,
+  the two `runtime.yml` task files, and the sway qemu-firstboot bits.
+- `bin/ansible` default playbook changed from the deleted firstboot-playbook.yml
+  to postinst-playbook.yml.
+
+**Known follow-up (not B):** runtime `./bin/ansible` (base16 theme regen via
+colorscheme-changer, manual maintenance) writes to `/etc/...` which now
+symlinks into read-only `/usr/share/factory/etc/`. This is the L-line
+writable-/etc problem (risk #3) and needs its own resolution before runtime
+re-theming works again.
 
 ---
 

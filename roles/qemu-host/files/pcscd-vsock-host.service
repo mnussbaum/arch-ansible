@@ -1,5 +1,6 @@
 [Unit]
 Description=Forward pcscd socket to QEMU guests via vsock
+ConditionVirtualization=no
 After=pcscd.service
 Requires=pcscd.service
 

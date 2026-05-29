@@ -18,7 +18,7 @@ fi
 # concurrent roles
 ansible --version >/dev/null 2>&1
 
-exec ansible-playbook "${ANSIBLE_PLAYBOOK:-firstboot-playbook.yml}" \
+exec ansible-playbook "${ANSIBLE_PLAYBOOK:-postinst-playbook.yml}" \
   --verbose \
   --limit ${HOSTNAME:-$(hostname)} \
   --extra-vars "appearance=$appearance" \

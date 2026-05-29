@@ -4,17 +4,7 @@
   package:
     state: present
     name:
-      - swtpm
-
-- name: Set sway leader key for QEMU guests
-  import_role:
-    name: sway
-    tasks_from: qemu-firstboot
-
-- name: Blacklist coretemp module
-  copy:
-    content: "blacklist coretemp"
-    dest: "/usr/lib/modprobe.d/blacklist_coretemp.conf"
+      - qemu-guest-agent
 
 - name: Create systemd-vconsole-setup drop-in directory
   file:
@@ -38,12 +28,6 @@
     dest: /usr/lib/systemd/system/qemu-guest-agent.service.d/condition.conf
     mode: "0644"
 
-- name: Enable qemu guest agent service
-  service:
-    name: qemu-guest-agent.service
-    state: started
-    enabled: true
-
 - name: Install systemd preset
   copy:
     src: 80-qemu-guest.preset
@@ -54,22 +38,8 @@
     content: "vsock\nvmw_vsock_virtio_transport"
     dest: /usr/lib/modules-load.d/vsock.conf
 
-- name: Load vsock modules now
-  community.general.modprobe:
-    name: "{{ item }}"
-    state: present
-  loop:
-    - vsock
-    - vmw_vsock_virtio_transport
-
 - name: Deploy pcscd vsock forwarding service
   copy:
-    src: pcscd-vsock-forward.service
-    dest: /usr/lib/systemd/system/pcscd-vsock-forward.service
+    src: pcscd-vsock-guest.service
+    dest: /usr/lib/systemd/system/pcscd-vsock-guest.service
     mode: "0644"
-
-- name: Enable pcscd vsock forwarding service
-  service:
-    name: pcscd-vsock-forward.service
-    enabled: true
-    state: started

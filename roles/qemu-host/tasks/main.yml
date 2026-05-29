@@ -1,3 +1,4 @@
+# vim:ft=yaml.ansible:
 ---
 - name: Install packages
   package:
@@ -24,14 +25,13 @@
     content: "vhost_vsock"
     dest: "/usr/lib/modules-load.d/vhost_vsock.conf"
 
+- name: Install systemd preset
+  copy:
+    src: 80-qemu-host.preset
+    dest: /usr/lib/systemd/system-preset/80-qemu-host.preset
+
 - name: Deploy pcscd vsock forwarding service
   copy:
-    src: pcscd-vsock-forward.service
-    dest: /usr/lib/systemd/system/pcscd-vsock-forward.service
+    src: pcscd-vsock-host.service
+    dest: /usr/lib/systemd/system/pcscd-vsock-host.service
     mode: "0644"
-
-- name: Enable pcscd vsock forwarding service
-  service:
-    name: pcscd-vsock-forward.service
-    enabled: yes
-    state: started
