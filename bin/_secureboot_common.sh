@@ -19,7 +19,7 @@ SECUREBOOT_PASS_CERT="arch_ansible/secureboot-cert"
 
 materialize_secureboot_keypair() {
   # Write mkosi.key + mkosi.crt to the repo root from pass. If the pass
-  # entries are absent, generate a fresh ECC P-256 keypair and store it. Run
+  # entries are absent, generate a fresh RSA-2048 keypair and store it. Run
   # from the repo root (writes mkosi.{key,crt} relative to CWD).
   : "${PASSWORD_STORE_DIR:=$HOME/.local/share/password-store}"
   export PASSWORD_STORE_DIR PASSWORD_STORE_GPG_OPTS="--trust-model always"
