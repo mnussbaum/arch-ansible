@@ -49,9 +49,9 @@ esp=$(lsblk -lnpo NAME,PARTTYPE "$device" \
 [[ -n "$esp" ]] || { echo "Could not find an ESP on $device" >&2; exit 1; }
 
 mnt=$(mktemp -d)
-trap 'umount "$mnt" 2>/dev/null || true; rmdir "$mnt" 2>/dev/null || true' EXIT
-mount "$esp" "$mnt"
-mkdir -p "$mnt/loader/credentials"
-printf '%s' "$hostname" > "$mnt/loader/credentials/system.hostname.cred"
+trap 'sudo umount "$mnt" 2>/dev/null || true; rmdir "$mnt" 2>/dev/null || true' EXIT
+sudo mount "$esp" "$mnt"
+sudo mkdir -p "$mnt/loader/credentials"
+printf '%s' "$hostname" | sudo tee "$mnt/loader/credentials/system.hostname.cred" >/dev/null
 
 echo "Burned image to $device with hostname $hostname" >&2
