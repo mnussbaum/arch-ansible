@@ -5,6 +5,13 @@ title = ""
 background-opacity = {{ color_scheme_opacity }}
 window-decoration = false
 
+# Copy as plain text only. The default `mixed` format also writes text/html
+# to the clipboard, which embeds the terminal background color and shows up as
+# a highlight when pasting into rich-text targets (browsers, chat, docs).
+keybind = ctrl+shift+c=copy_to_clipboard:plain
+keybind = ctrl+insert=copy_to_clipboard:plain
+keybind = copy=copy_to_clipboard:plain
+
 background = #{{ color_scheme_vars['base00-hex'] }}
 foreground = #{{ color_scheme_vars['base05-hex'] }}
 cursor-color = #{{ color_scheme_vars['base05-hex'] }}
