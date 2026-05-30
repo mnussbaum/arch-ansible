@@ -3,11 +3,13 @@ ProtectVersion=%A
 
 [Source]
 Type=regular-file
-Path=
-MatchPattern=arch_@v-verity.raw
+Path=/var/lib/arch-ansible/updates
+MatchPattern=%M_@v_%a.usr-%a-verity.@u.raw
 
 [Target]
 Type=partition
 Path=auto
 MatchPattern=%M_@v_verity
 MatchPartitionType=usr-verity
+PartitionFlags=0
+ReadOnly=1

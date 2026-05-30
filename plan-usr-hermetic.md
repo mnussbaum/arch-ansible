@@ -42,7 +42,7 @@ Confirmed in-VM:
 | --- | --- | --- |
 | `/etc` seed mechanism | **L (symlink) lines, not C (copy) lines.** `/etc/<thing>` → symlink → `/usr/share/factory/etc/<thing>`. | Particleos pattern: `/etc` *tracks* `/usr` across A/B updates instead of freezing at first boot. |
 | `/usr` filesystem | **erofs** | Particleos pattern. True read-only image format, ~half the size of btrfs, faster to verify under verity. |
-| `/usr` integrity | **dm-verity + PKCS#7 signature from day one.** Signed verity working with software RSA-2048 keys. | Particleos pattern. Image policy currently `usr=verity` (hash-only) rather than `usr=signed` — a small downgrade from intent; revert after full validation. |
+| `/usr` integrity | **dm-verity, anchored by the SecureBoot-signed UKI.** Image policy is `usr=signed` and boots. Verity-sig partition (PKCS#7, RSA-2048) is built and shipped. | Particleos pattern. **Confirmed by `dmsetup table usr`:** the table is hash-only (no `root_hash_sig_key_desc`) — the kernel does *not* enforce the verity signature at boot. Trust comes from `usrhash=` being embedded in the SecureBoot-signed UKI (verity root digest == `usrhash`), which short-circuits to hash-pinned verity. Our signing cert sits in `.platform` (UEFI db); dm-verity only consults `.builtin`/`.secondary`/`.machine`, so kernel-level sig enforcement is impossible without MOK-enrolling into `.machine`. The verity-sig partition only becomes load-bearing for runtime image attachment / sysupdate that dissects *without* a matching `usrhash` on the cmdline. For the A/B-UKI model this is the intended, sufficient mechanism. |
 | SecureBoot + verity + PCR signing | **Software RSA-2048 keypair in pass.** *Not* YubiKey PKCS#11. | pkcs11-provider's signing primitives (the OpenSSL provider needed for systemd-sbsign and systemd-repart) fail with `provider signature failure` regardless of key algorithm (we tested both RSA and ECDSA). The verification path works (`systemd-keyutil validate` succeeds) but actual signing doesn't. Revisit when pkcs11-provider's signing path matures or when we switch to a tool that talks to PKCS#11 directly. |
 | Key algorithm | **RSA-2048.** | UEFI Secure Boot's auto-enroll path in OVMF rejects ECDSA auth descriptors. RSA-2048 is the safe default and is universally accepted. |
 | LUKS unlock | **`Encrypt=tpm2` in repart.d, born TPM-bound on first boot.** No keyfile shipped, no luks-enroll.service. | Particleos pattern. Eliminates the "image-as-shipped contains the unlock secret" window entirely. |
@@ -188,8 +188,12 @@ Revisit when:
   A.0–A.3 against a real Ansible payload.
 - L-line verification: `ls -la /etc/sway/config` should show symlink to
   `/usr/share/factory/etc/sway/config`
-- A/B sysupdate flow: trigger sysupdate, verify usr-b + verity sibs populate,
-  reboot into B, sysupdate cleans up A
+- A/B sysupdate flow — **blocked: the on-device update path isn't wired up yet.**
+  Verified in a running VM (`diag-update-*.out`): the partition scaffold is
+  correct (A slots `image_a_*`, B slots `_empty`+`NoAuto`, `repart --dry-run` =
+  "No changes"), but `systemd-sysupdate` isn't installed, `/usr/lib/sysupdate.d/`
+  doesn't exist, the ESP isn't mounted, and the installed UKI name doesn't match
+  the transfer pattern. See **Stage D** for the full gap analysis and wiring plan.
 - Factory-reset UKI profile: boot it, verify root/swap/home wipe, /usr A/B
   preserved
 - erofs+verity integrity test: corrupt a byte in the usr partition, verify
@@ -293,6 +297,118 @@ Open questions:
 
 ---
 
+## D — On-device A/B self-update (sysupdate) *(in progress)*
+
+**Decided model (ParticleOS *default*, driven via `updatectl`):** on-device
+self-update by **local rebuild**, **no timer**, **no update server**. The device
+rebuilds the image from this repo, stages the fresh split artifacts in a local
+dir, and `updatectl` applies them to the inactive A/B slot. This mirrors
+ParticleOS's local update flow but uses `updatectl`/`systemd-sysupdated` instead
+of the raw `mkosi sysupdate` verb, so the device has a persistent, queryable
+update target (`updatectl`, `updatectl check`, `updatectl update`).
+
+- **In-image** `mkosi.extra/usr/lib/sysupdate.d/*.transfer` — `[Source]
+  Type=regular-file Path=/var/lib/arch-ansible/updates` (a local staging dir, not
+  a URL). This is the on-device target `updatectl` drives. ParticleOS's
+  `obs-sysupdate` profile has the same *structure* but a `Type=url-file` OBS
+  source; we use a local source because we self-build. (The OBS/url-file path
+  with a signed remote is the only thing the in-image transfers would need a
+  `SHA256SUMS`/keyring for — not applicable to a local source.)
+- **Host-side** `mkosi.sysupdate/*.transfer` (`[Source] Path=/
+  PathRelativeTo=explicit`) — kept for offline `mkosi sysupdate` testing against
+  a built disk image; not the device path.
+- Staging dir `/var/lib/arch-ansible/updates` is created by a tmpfiles.d entry;
+  `bin/update-system` clears it and drops the new build's `*.usr-*.raw` + `.efi`
+  there before calling `updatectl`, so the source advertises exactly one (newer)
+  version.
+- Versioning: `ImageVersion` is unset in `mkosi.conf`; mkosi reads the version
+  from the `mkosi.version` file. `build-image` writes it from the `mkosi.bump`
+  script (a `date +%Y%m%d%H%M%S` timestamp) before each build (the official path
+  is the `mkosi bump` verb / `-B`, which also runs `mkosi.bump`; we write the
+  file directly to keep build output clean). Monotonic timestamps mean every
+  build is newer than the running slot, so sysupdate installs to the inactive
+  slot; `InstancesMax=2` keeps the A/B pair and prunes older versions.
+- Caveat (also open in ParticleOS's own `TODO`): boot-counting and http
+  sysupdate are still maturing upstream; treat the rollback path as unproven
+  until the verification below passes.
+
+### Verified state (running VM, `diag-update-*.out`)
+
+Good: A slots `image_a_usr`/`image_a_verity`/`image_a_verity_sig`, B slots
+`_empty`+`NoAuto`, `systemd-repart --dry-run` = "No changes", `image_filter`
+selects A and ignores B, systemd-boot 260.2 with Boot-counting + Measured-UKI +
+SecureBoot(user) + TPM2 all supported.
+
+### Wired this session
+
+- **ESP now mounts:** added `esp=unprotected:xbootldr=unprotected+unused+absent:`
+  to the `mkosi.conf` `image_policy` (was dropped by the trailing `:=ignore`,
+  leaving `/efi` unmounted and `bootctl`/UKI-install dead).
+- **UKI naming:** `UnifiedKernelImageFormat=%i_%v_%a` (was the kernel-install
+  default `image-<kver>-<usrhash>.efi`, matching nothing).
+- **Coherent labels/splits:** `Output=%i_%v_%a`; usr label `%M_%A` (was
+  `%M_%A_usr`); all three usr partitions `SplitName=%t.%U`; runtime A-slot repart
+  relabeled `%M_%A`/`_verity`/`_verity_sig` (were dead literal `usr`/… that
+  repart ignored on adopt); `image_filter` broadened to usr+verity+verity-sig.
+- **Host-side transfers rewritten** to ParticleOS patterns and renamed
+  `*.conf`→`*.transfer` (the `.conf` ones were inert — systemd-sysupdate only
+  reads `.transfer`). UKI target carries boot-count variants
+  (`%M_@v_%a+@l-@d.efi`/…), `TriesLeft=3`, `InstancesMax=2`.
+- **In-image transfers + staging (the updatectl target):**
+  `mkosi.extra/usr/lib/sysupdate.d/{10,11,12,20}.transfer` with `[Source]
+  Type=regular-file Path=/var/lib/arch-ansible/updates`; tmpfiles.d creates the
+  staging dir. These give `systemd-sysupdated`/`updatectl` a persistent local
+  target. (`systemd-sysupdate`/`updatectl` ship with the base `systemd` package —
+  the worker is `/usr/lib/systemd/systemd-sysupdate`, not in PATH; the earlier
+  "command not found" was a PATH artifact, not a missing tool.)
+- **Versioning:** `mkosi.bump` (timestamp), `ImageVersion` removed,
+  `mkosi.version` gitignored, `build-image` writes `mkosi.version` from
+  `mkosi.bump` before building.
+- **`bin/update-system`** (replaces `build-new-root-partition`): guards it's on a
+  hermetic device (`/usr` == `/dev/mapper/usr`), runs `build-image` (keys from
+  pass, fresh `mkosi.version`), clears+stages the new `*.usr-*.raw`+`.efi` into the staging
+  dir, then `updatectl check` / `updatectl update` (+ `systemctl reboot` on
+  `--reboot`).
+
+### Validated after rebuild (`diag-update-20260530-080648.out`)
+
+The structural wiring is confirmed end-to-end:
+
+- **ESP mounts** at `/boot` (gpt-auto, via the `esp=`/`xbootldr=` policy); full
+  `bootctl status`/`list` work; System Token set.
+- **Labels** are the `%M_%A` timestamp scheme: A = `image_20260530003441` /
+  `_verity` / `_verity_sig`, B = `_empty`+`NoAuto`; `repart --dry-run` = "No
+  changes".
+- **UKI** is `image_20260530003441_x86-64.efi` (multi-profile: main/default/
+  emergency/factory-reset/factory-reset-with-tpm-clear); current cmdline
+  `usrhash` matches the A verity digest.
+- **sysupdate tool + target:** `/usr/lib/systemd/systemd-sysupdate` + `updatectl`
+  ship with base `systemd`; the four `.transfer` files are installed under
+  `/usr/lib/sysupdate.d/`; `systemd-sysupdate list` and `updatectl` both report
+  target `host` at version `20260530003441` (installed/current). (`--component=`
+  finds nothing — the transfers are a single flat target, not components; that
+  flag was a diag artifact, since removed.)
+
+**Still pending (expected):** the build-installed UKI has **no `+tries` counter**
+and `systemd-bless-boot` is inert — boot-counting only activates once *sysupdate*
+installs a counted UKI. That's the next test.
+
+### Verification still to do (Tier-2/3 from the update review)
+
+- `bin/update-system` (or stage a newer build's artifacts into
+  `/var/lib/arch-ansible/updates`) → `updatectl update` writes
+  `usr`/`-verity`/`-verity-sig` to the inactive slot + a new counted UKI
+  (`…+3-0.efi`); `ProtectVersion=%A` leaves the running slot as fallback.
+- Reboot lands in the new slot (`bootctl`, `/proc/cmdline` `usrhash`); good boot
+  blessed (bless-boot fires); rollback test: break the new slot, confirm
+  boot-count fallback to the prior version.
+- Security: tamper a staged `usr` artifact → must fail safe (usrhash mismatch at
+  boot); wrong-key UKI → firmware rejects. `Verify=`/`SHA256SUMS` is moot for the
+  local-rebuild model (no untrusted transport); revisit only if we ever add the
+  OBS-style `url-file` path.
+
+---
+
 ## Risks and open questions
 
 1. **YubiKey-backed SecureBoot remains aspirational.** Currently software keys
@@ -329,6 +445,77 @@ Open questions:
 
 ---
 
+## Security posture — integrity beyond `/usr`
+
+Verified from a running VM (`diag-verity.out`): `dmsetup table usr` is hash-only,
+root digest == `usrhash=` from the SecureBoot-signed UKI. So `/usr` integrity is
+real and anchored, but **only `/usr` is integrity-protected.** This section
+records the residual risk and the options to close it.
+
+### What each region actually gets
+
+| Region | Secret? | Mutable? | Protection | Gap |
+| --- | --- | --- | --- | --- |
+| `/usr` | no | no | dm-verity (integrity), plaintext | — |
+| `/etc`, `/var` | yes | yes | LUKS/TPM2 (encryption) | no integrity; dm-crypt is unauthenticated |
+| `/home` | yes | yes | homed LUKS (encryption) | no integrity; user-level persistence trivial |
+| ESP (UKIs) | no | yes | per-UKI SecureBoot signature | no rollback protection |
+
+Verity + encryption are complementary: `/usr` is public-but-immutable (verify,
+don't encrypt); state is private-but-mutable (encrypt, can't easily verify). The
+**offline** threat is therefore mostly covered already — stolen disk can't read
+or make *chosen* edits to encrypted state. Residual offline gap: dm-crypt gives
+confidentiality, not authentication, so raw-disk bit-flips yield *garbled*
+plaintext (corruption/DoS primitive, not clean injection). Low practical risk.
+
+### The real exposure: post-compromise persistence
+
+Unlike Android/ChromeOS, a verified `/usr` here does **not** give "malware can't
+survive reboot." An attacker who reaches **root once at runtime** owns every
+future boot entirely from outside `/usr`:
+
+1. **`/etc` unit drop-ins override verified `/usr` units.** A
+   `/etc/systemd/system/<svc>.service.d/*.conf` or a `*.target.wants/` symlink is
+   executed by PID 1 at boot. Clean root persistence, no `/usr` tampering.
+2. **Pure-seed `/etc` symlinks are defaults, not integrity.** `/etc` is a
+   writable dir; root can `rm` a factory symlink and drop a real malicious file
+   (e.g. `/etc/pam.d/system-auth` with `pam_exec.so`). Pointing into verified
+   `/usr` does not make `/etc` immutable.
+3. **`/var` is fully unverified, and the user is in the `docker` group**
+   (root-equivalent; `/var/lib/docker` content unverified) — a root-equivalent
+   unverified surface by default.
+4. **`/home` (encrypted, but the attacker is already the user):**
+   `~/.config/systemd/user/`, `~/.config/sway/`, `~/.zshrc`,
+   `~/.config/environment.d` (PATH hijack to shadow `/usr` binaries).
+
+Net: verity defends offline tampering and OS re-flashing; it does **near nothing**
+for runtime persistence. It is not a whole-system runtime-integrity guarantee.
+
+### Mitigations, ranked by value/cost (workstation threat model)
+
+1. **TPM2 PCR binding of the LUKS unseal (highest value; TPM already in use).**
+   Bind root LUKS to PCRs covering the boot path (already leaning on PCR 7); add
+   `/usr`/UKI measurement so a tampered boot chain **fails to unseal** —
+   integrity violation becomes fail-safe "won't decrypt" instead of silent
+   compromise. Cheap, hardware already present.
+2. **Minimal `/etc` + boot-time drift detection.** Assert every seeded `/etc`
+   entry is still a symlink into `/usr/share/factory` (not replaced by a real
+   file). Makes drop-in / symlink-swap persistence **tamper-evident**. Cheap.
+3. **Shrink root-equivalent surface: drop `docker` group → rootless podman.**
+   Removes a large unverified, root-equivalent surface verity silently ignores.
+4. **dm-integrity under LUKS (authenticated encryption) for root.** Closes the
+   offline bit-flip gap. Real perf cost; only if offline tamper is in scope.
+5. **IMA/EVM with a signed policy.** The "correct" answer for verifying mutable
+   `/etc`/exec content, but heavy to operate on Arch. Likely overkill here.
+6. **Bootloader rollback protection.** Prevent booting an older validly-signed
+   UKI with a known-vuln `/usr`. Matters once A/B updates have history.
+
+**Recommendation:** land **1 + 2 + 3** — they convert "one root exploit = forever"
+into tamper-evident + fail-safe at low cost and stay consistent with ParticleOS.
+**4–6** are diminishing returns for a single-user workstation.
+
+---
+
 ## Out of scope
 
 - systemd-sysext for optional components.
@@ -337,5 +524,10 @@ Open questions:
 - TPM2 PCR-signature unlocking (PCR-hash is current; signature is mkosi
   `SignExpectedPcr=yes` + `--measure=`).
 - Automatic sysupdate timers (separate small change; can land any time).
-- Image policy `usr=signed` (currently `usr=verity`; flip back after the
-  full-postinst validation confirms the signing key paths are stable).
+- Kernel-enforced verity *signatures* (vs. the current hash-pinned-via-signed-UKI
+  anchor). `usr=signed` is already the live policy and boots, but `dmsetup table
+  usr` shows hash-only verity — trust rests on `usrhash=` inside the SecureBoot-
+  signed UKI, not on the verity-sig partition. Real kernel sig enforcement would
+  need `mkosi.crt` MOK-enrolled into `.machine` (cert is currently only in
+  `.platform`, which dm-verity ignores). Only needed if we attach `/usr` at
+  runtime without a per-image signed UKI.

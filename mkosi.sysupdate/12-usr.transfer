@@ -3,11 +3,14 @@ ProtectVersion=%A
 
 [Source]
 Type=regular-file
-Path=
-MatchPattern=arch_@v-usr.raw
+Path=/
+PathRelativeTo=explicit
+MatchPattern=%M_@v_%a.usr-%a.@u.raw
 
 [Target]
 Type=partition
 Path=auto
-MatchPattern=%M_@v_usr
+MatchPattern=%M_@v
 MatchPartitionType=usr
+PartitionFlags=0
+ReadOnly=1

@@ -26,12 +26,17 @@ materialize_secureboot_keypair() {
 
   if pass show "$SECUREBOOT_PASS_KEY" >/dev/null 2>&1; then
     (umask 077; pass show "$SECUREBOOT_PASS_KEY"  > mkosi.key)
+    # umask only governs newly created files; an already-present mkosi.key (e.g.
+    # copied in with looser perms) keeps its mode through the redirect, and
+    # systemd-sbsign/mkosi reject a group/world-readable private key. Force it.
+    chmod 600 mkosi.key
     pass show "$SECUREBOOT_PASS_CERT" > mkosi.crt
     return
   fi
 
   echo "==> Generating SecureBoot RSA-2048 key + cert, storing in pass..." >&2
   (umask 077; openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out mkosi.key)
+  chmod 600 mkosi.key
   openssl req -new -x509 -key mkosi.key -out mkosi.crt -days 36500 \
     -subj "/CN=arch-ansible SecureBoot"
   pass insert -m -f "$SECUREBOOT_PASS_KEY"  < mkosi.key
