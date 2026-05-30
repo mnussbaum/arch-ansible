@@ -50,8 +50,6 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
   - mirrorlist - ideally reflectored
   - Cargo registry
   - Sccache
-- Create ~/.cargo/registry ~/.cache/sccache in the user home dir in skel
-- In image build configs need to mount from new system locations once I have a provisioned machine
 - Get offline
   - Base16 configs reach internet still
   - delta theme file download
@@ -67,4 +65,4 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 - Add eeek tasks back in once fully done
 - Backup root GPG key again
 - Remove all luks scripting
-- Verify PCR 7
+- PCR 7 not enabled yet
