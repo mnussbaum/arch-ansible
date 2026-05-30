@@ -90,6 +90,18 @@ for entry in "$ETC"/*; do
     # idempotent without touching factory entries that have no /etc counterpart.
     rm -rf -- "$FACTORY/$name"
     mv "$entry" "$FACTORY/$name"
+    # /etc/systemd can't be a whole-dir factory symlink: systemd's firstboot
+    # `systemctl preset-all` writes *system* unit enablements into
+    # /etc/systemd/system, forcing /etc/systemd to be a real directory, so an
+    # `L /etc/systemd` symlink silently no-ops. That orphans the *user* unit
+    # enablements `systemctl --global preset-all` baked into /etc/systemd/user
+    # (waybar, pipewire, ...) — nothing under sway-session.target ever starts.
+    # Symlink just /etc/systemd/user instead (a read-only factory link like
+    # every other /etc entry) and leave /etc/systemd/system to systemd.
+    if [[ "$name" == systemd ]]; then
+        printf 'L /etc/systemd/user - - - - -\n' >> "$TMPFILES"
+        continue
+    fi
     printf 'L /etc/%s - - - - -\n' "$name" >> "$TMPFILES"
 done
 
