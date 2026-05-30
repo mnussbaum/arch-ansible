@@ -11,6 +11,9 @@ _sync_cache() {
     rsync -a "$src/" "$dst/"
 }
 
-_sync_cache "$BUILDROOT/root/.cache/yay"      "$HOME/.cache/yay"
-_sync_cache "$BUILDROOT/root/.cargo/registry" "$HOME/.cargo/registry"
-_sync_cache "$BUILDROOT/root/.cache/sccache"  "$HOME/.cache/sccache"
+_sync_cache "$BUILDROOT/root/.cache/yay"       "$HOME/.cache/yay"
+_sync_cache "$BUILDROOT/root/.cargo/registry"  "$HOME/.cargo/registry"
+_sync_cache "$BUILDROOT/root/.cache/sccache"   "$HOME/.cache/sccache"
+# pacman package cache the .chroot postinst downloaded into; SkeletonTrees seeds
+# it back in on the next build so postinst installs hit cache (fast/offline).
+_sync_cache "$BUILDROOT/var/cache/pacman/pkg"  "$HOME/.cache/arch-ansible/pacman-pkg"

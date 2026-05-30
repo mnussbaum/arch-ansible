@@ -41,11 +41,12 @@ source bin/_credstore_common.sh
 wifi_networks=$(bin/wifi-networks | base64 -w0)
 
 output_dir=~/.cache/mkosi/images/image
-# TRANSITIONAL (drop after full cutover): create caches empty so the host-shared
-# BuildSources/SkeletonTrees resolve on a freshly-provisioned device; they prime
-# over time via mkosi.finalize write-back.
+# Local reusable caches: created empty on first build, then primed and reused
+# via mkosi.finalize write-back. This is how the build stays fast/offline with
+# no system caches to draw on (e.g. an image-based device). pacman-pkg backs the
+# .chroot postinst's package cache; yay/cargo/sccache back their build steps.
 mkdir -p ~/.cache/mkosi/pacman-pkg "$output_dir" \
-  ~/.cache/yay ~/.cargo/registry ~/.cache/sccache
+  ~/.cache/arch-ansible/pacman-pkg ~/.cache/yay ~/.cargo/registry ~/.cache/sccache
 
 # Fresh, monotonic image version so each build supersedes the running slot for
 # systemd-sysupdate. mkosi reads mkosi.version for ImageVersion (unset in
