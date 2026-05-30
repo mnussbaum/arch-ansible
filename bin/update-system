@@ -1,0 +1,69 @@
+#!/bin/bash
+# Build a fresh image version locally and apply it to the inactive A/B /usr slot
+# via systemd-sysupdate (driven by updatectl), then optionally reboot. This is
+# the on-device update path: the device rebuilds from this repo and swaps slots
+# — there is no update server.
+#
+# Mechanism: the in-image /usr/lib/sysupdate.d transfers read their source from
+# the local staging dir /var/lib/arch-ansible/updates. We build, drop the fresh
+# split artifacts there (replacing the previous build), then `updatectl update`
+# installs them to the inactive slot. ProtectVersion=%A keeps the running slot as
+# the boot-counted rollback target.
+#
+# Run it ON the target device (whose /usr is the read-only dm-verity image), from
+# a writable checkout of this repo, with `pass`/GPG available for the build's
+# signing keys. It refuses to run elsewhere so it can't touch an unrelated host.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+reboot=""
+build_args=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      echo "Build a new image version and apply it to the inactive /usr slot via updatectl." >&2
+      echo "Usage: $0 [--reboot] [build-image options...]" >&2
+      echo "  --reboot   Reboot into the new slot after applying." >&2
+      echo "  Other options are forwarded to build-image (e.g. --ansible-tags TAGS)." >&2
+      exit
+      ;;
+    --reboot) reboot=1 ;;
+    *) build_args+=("$1") ;;
+  esac
+  shift
+done
+
+cd "$(dirname "$0")/.."
+
+# Guard: only run where /usr is the dissected verity image, i.e. an actual
+# hermetic device. On a build host /usr is btrfs on the root fs, and sysupdate
+# there could match unrelated partitions.
+usr_src=$(findmnt -no SOURCE /usr 2>/dev/null || true)
+if [[ "$usr_src" != /dev/mapper/usr ]]; then
+  echo "Refusing: /usr is '$usr_src', not /dev/mapper/usr." >&2
+  echo "Run update-system on the target device, not the build host." >&2
+  exit 1
+fi
+
+# Build a fresh, bumped image version (build-image materializes the signing keys
+# from pass and passes --bump, so each build is newer than the running slot).
+# TRANSITIONAL (drop after full cutover): we already proved we're on-device
+# above, so select the in-image source paths (mkosi.conf.d/10-sources-device).
+export ARCH_ANSIBLE_TARGET=device
+bin/build-image "${build_args[@]}"
+
+output_dir=~/.cache/mkosi/images/image
+staging=/var/lib/arch-ansible/updates
+
+# Stage only the split artifacts the transfers consume (usr data/hash/sig + UKI),
+# replacing any previous build so the source advertises exactly the new version.
+sudo install -d -m 0755 "$staging"
+sudo find "$staging" -mindepth 1 -delete
+sudo cp -t "$staging" "$output_dir"/*.usr-*.raw "$output_dir"/image_*_*.efi
+
+# Apply to the inactive slot and (optionally) reboot into it.
+sudo updatectl check
+sudo updatectl update
+[[ -n "$reboot" ]] && sudo systemctl reboot

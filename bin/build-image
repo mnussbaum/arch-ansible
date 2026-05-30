@@ -2,6 +2,7 @@
 
 set -o errexit
 set -o nounset
+set -o pipefail
 
 refresh_cache=""
 skip_postinst=""
@@ -40,7 +41,16 @@ source bin/_credstore_common.sh
 wifi_networks=$(bin/wifi-networks | base64 -w0)
 
 output_dir=~/.cache/mkosi/images/image
-mkdir -p ~/.cache/mkosi/pacman-pkg "$output_dir"
+# TRANSITIONAL (drop after full cutover): create caches empty so the host-shared
+# BuildSources/SkeletonTrees resolve on a freshly-provisioned device; they prime
+# over time via mkosi.finalize write-back.
+mkdir -p ~/.cache/mkosi/pacman-pkg "$output_dir" \
+  ~/.cache/yay ~/.cargo/registry ~/.cache/sccache
+
+# Fresh, monotonic image version so each build supersedes the running slot for
+# systemd-sysupdate. mkosi reads mkosi.version for ImageVersion (unset in
+# mkosi.conf); partitions and the UKI are labeled image_<version>_<arch>.
+./mkosi.bump > mkosi.version
 
 mkosi \
   --output-directory="$output_dir" \
@@ -54,6 +64,8 @@ mkosi \
   --profile=build \
   --force \
   --environment="ANSIBLE_WIFI_NETWORKS=$wifi_networks" \
+  --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
+  `# TRANSITIONAL: selects mkosi.conf.d/10-sources-*.conf; remove after cutover` \
   ${refresh_cache:+"$refresh_cache"} \
   ${skip_postinst:+"$skip_postinst"} \
   ${ansible_tags:+"$ansible_tags"} \
