@@ -52,6 +52,21 @@ fi
 # TRANSITIONAL (drop after full cutover): we already proved we're on-device
 # above, so select the in-image source paths (mkosi.conf.d/10-sources-device).
 export ARCH_ANSIBLE_TARGET=device
+
+# The .chroot postinst's pacman needs a sync DB, and a device has no system one
+# (and /var doesn't persist). Seed a persistent, home-resident copy that
+# 10-sources-device.conf feeds into the image. Only fetch it when missing: once
+# primed, builds reuse it and run offline (delete the dir to force a refresh).
+# Root: pacman -Sy refuses to run unprivileged even with a custom --dbpath. DBs
+# are SigLevel DatabaseOptional, so this needs no keyring (works on a
+# never-provisioned device). No `|| true`: if it's missing and the sync fails
+# (offline + unprimed) the build can't proceed, so let it fail loudly.
+pacman_db=~/.cache/arch-ansible/pacman-db
+if [[ ! -f "$pacman_db/sync/core.db" ]]; then
+  mkdir -p "$pacman_db"
+  sudo pacman -Sy --dbpath "$pacman_db" --logfile /dev/null
+fi
+
 bin/build-image "${build_args[@]}"
 
 output_dir=~/.cache/mkosi/images/image
