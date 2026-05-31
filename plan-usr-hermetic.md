@@ -395,17 +395,32 @@ installs a counted UKI. That's the next test.
 
 ### Verification still to do (Tier-2/3 from the update review)
 
-- `bin/update-system` (or stage a newer build's artifacts into
-  `/var/lib/arch-ansible/updates`) → `updatectl update` writes
-  `usr`/`-verity`/`-verity-sig` to the inactive slot + a new counted UKI
-  (`…+3-0.efi`); `ProtectVersion=%A` leaves the running slot as fallback.
-- Reboot lands in the new slot (`bootctl`, `/proc/cmdline` `usrhash`); good boot
-  blessed (bless-boot fires); rollback test: break the new slot, confirm
-  boot-count fallback to the prior version.
-- Security: tamper a staged `usr` artifact → must fail safe (usrhash mismatch at
-  boot); wrong-key UKI → firmware rejects. `Verify=`/`SHA256SUMS` is moot for the
-  local-rebuild model (no untrusted transport); revisit only if we ever add the
-  OBS-style `url-file` path.
+On-device `bin/update-system` build is now reaching the build/sign step in the
+VM (proves the device can self-build and sign with the pass/YubiKey key). The
+ordered VM test plan, priority `1 → 2 → 4` as the core:
+
+1. **Apply (inspect before reboot).** `update-system` (no `--reboot`) →
+   `diag-update.sh`: a `_empty` B slot becomes `image_<newts>` (+`_verity`/
+   `_verity_sig`), a second counted UKI `…+3-0.efi` appears, the running slot is
+   untouched (`ProtectVersion=%A`), `updatectl` lists two versions.
+2. **Reboot into the new slot.** `bootctl`/`/proc/cmdline` `usrhash` flip to the
+   new version; `/usr` backed by the former B partition; homed login still works
+   (home is on the persistent partition).
+3. **Bless contract.** On a good boot `systemd-bless-boot` fires and drops the
+   `+tries` counter (was inert pre-sysupdate; if it never blesses, healthy boots
+   count down toward a false rollback).
+4. **Rollback / fallback (the safety net).** Force the new slot to fail (e.g.
+   hard-reset 3× before bless) → boot-count exhausts → systemd-boot falls back to
+   the prior good slot; `bootctl list` shows the bad entry failed.
+5. **`/etc` tracks the new `/usr`.** A seeded symlink (`ls -l /etc/sway/config`)
+   resolves into the new `/usr/share/factory`.
+6. **A/B ping-pong + pruning.** A second `update-system` writes the *other* slot;
+   `InstancesMax=2` prunes so it never exceeds two; `updatectl`/`bootctl` stay
+   consistent — proves the cycle is sustainable, not one-shot.
+- **Security:** tamper a staged `usr` artifact → must fail safe (usrhash mismatch
+  at boot); wrong-key UKI → firmware rejects. `Verify=`/`SHA256SUMS` is moot for
+  the local-rebuild model (no untrusted transport); revisit only if we ever add
+  the OBS-style `url-file` path.
 
 ---
 
@@ -433,9 +448,11 @@ installs a counted UKI. That's the next test.
    `/etc/cryptsetup-keys.d/` dependency, so no ordering issue.
 6. **`/var` as subvolume vs partition** changes what we backup. The `backup`
    role's restic includes/excludes may need updating.
-7. **Image filter strings.** `systemd.image_filter=usr=image_*` requires the
-   partition labels to match. Confirmed labels of the form `image_a_usr`,
-   `image_a_verity`, `image_a_verity_sig` in the dissect output.
+7. **Image filter strings.** `systemd.image_filter=usr=image_*:usr-verity=image_*:usr-verity-sig=image_*`
+   requires the partition labels to match. Confirmed labels of the form
+   `image_<version>`, `image_<version>_verity`, `image_<version>_verity_sig`
+   (version is a `mkosi.bump` timestamp, e.g. `image_20260530003441`) in the
+   dissect output.
 8. **pacman keyring runtime service.** When we remove firstboot Ansible (B),
    the pacman-key init has to move to a stock systemd service.
 9. **VM disk size.** `bin/run-image` grows the disk to 90G via
@@ -451,6 +468,26 @@ Verified from a running VM (`diag-verity.out`): `dmsetup table usr` is hash-only
 root digest == `usrhash=` from the SecureBoot-signed UKI. So `/usr` integrity is
 real and anchored, but **only `/usr` is integrity-protected.** This section
 records the residual risk and the options to close it.
+
+### ACTIVE FINDING — the signing key is shipped in `/usr` (must fix before hardware)
+
+`ExtraTrees=.:/usr/share/arch-ansible` copies the entire working tree into the
+image, including the gitignored **`mkosi.key`** that `build-image` materializes at
+the repo root. So the plaintext Secure Boot / verity / PCR signing key lands at
+`/usr/share/arch-ansible/mkosi.key` inside the image — and `/usr` is plaintext
+erofs (integrity-protected, *not* encrypted). It is therefore readable straight
+off the raw disk with **no decryption**: steal the disk → mount the usr partition
+→ read the key → sign UKIs the firmware trusts → Secure Boot defeated. This is the
+exact inverse of the `/usr` design principle below (`/usr` is the one place a
+secret must never live), and it bypasses the "GPG/YubiKey is the only root of
+trust" model. The on-device `update-system` flow re-bakes it every rebuild.
+
+**Fix:** materialize `mkosi.key`/`mkosi.crt` to a path *outside* the repo (e.g.
+`~/.cache/mkosi-secureboot/`) and pass those to mkosi, so the `ExtraTree` never
+sweeps the key in; also scope that `ExtraTree` to tracked files only (it currently
+also ships `.qemu-host-shared/`, any `secrets/`, etc.). Note the device *does*
+legitimately need to sign updates, but it should materialize the key from pass
+(YubiKey-gated) at update time into a transient path, never carry it in `/usr`.
 
 ### What each region actually gets
 
