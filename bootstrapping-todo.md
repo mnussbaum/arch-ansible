@@ -37,32 +37,38 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 
 ## Running todo notes
 
-- Document yubikey enrollment for homectl
-- Document cache mounting pattern perf optimization
-- Document that we implement https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
-- Move most package installs back into ansible, only leave enough to run ansible
-- Can remove network_install_root var?
-- Stuff copied from the host that needs to be in containerfile, handle missing files gracefully
-  - yay-bin
-  - password-store repo
-  - arch-ansible repo
-  - nvim packages
-  - mirrorlist - ideally reflectored
-  - Cargo registry
-  - Sccache
-- Get offline
+- Document
+  - Yubikey enrollment for homectl
+  - Cache mounting pattern perf optimization
+  - That we implement https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
+- Code reorgs
+  - Move most package installs back into ansible, only leave enough to run ansible
+  - Can remove network_install_root var?
+  - Can we move ansible into the build step? Might allow better caching
+    - Organize project top level better. Playbooks in one dir, mkosi stuff in another
+  - Make it able to handle new hosts without new configs
+- Recovery mode boot strapping
+  - Stuff copied from the host that needs to be in containerfile, handle missing files gracefully
+    - yay-bin
+    - password-store repo
+    - arch-ansible repo
+    - nvim packages
+    - mirrorlist - ideally reflectored
+    - Cargo registry
+    - Sccache
+- Test offline builds
   - Base16 configs reach internet still
   - delta theme file download
   - Others?
   - `WithNetwork=false`?
 - Consider automating restic restore in a new workstation
-- Can we move ansible into the build step? Might allow better caching
-- Test the partition swap in qemu
+- Test the sysupdate scenarios
+- Recovery media
+  - Test live image and recovery in qemu
+  - Test live image and recovery on real device
 - Fix colorscheme changer for the new world. Needs a whole new strategy
-- Test different USI usages
-- Organize project top level better. Playbooks in one dir, mkosi stuff in another
-- Make it able to handle new hosts without new configs
 - Add eeek tasks back in once fully done
-- Backup root GPG key again
 - Remove all luks scripting
-- PCR 7 not enabled yet
+- Finish the hermetic plan
+  - PCR 7 enablement
+  - Anything else?
