@@ -33,7 +33,8 @@ done
 : "${device:?Usage: $0 --hostname=<hostname> <device>}"
 : "${hostname:?--hostname is required}"
 
-output_dir=~/.cache/mkosi/images/image
+source bin/_cache_common.sh
+output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 mkdir -p "$output_dir"
 
 mkosi \

@@ -469,7 +469,13 @@ root digest == `usrhash=` from the SecureBoot-signed UKI. So `/usr` integrity is
 real and anchored, but **only `/usr` is integrity-protected.** This section
 records the residual risk and the options to close it.
 
-### ACTIVE FINDING — the signing key is shipped in `/usr` (must fix before hardware)
+### FINDING (FIXED 2026-06-08) — the signing key was shipped in `/usr`
+
+**Fixed.** The keypair now materializes to `${ARCH_ANSIBLE_CACHE}/mkosi-secureboot/`
+(outside the repo; `bin/_secureboot_common.sh`), and `ExtraTrees` ships a
+tracked-files-only staged copy (`${ARCH_ANSIBLE_CACHE}/mkosi-srctree`, built by
+`arch_ansible_stage_srctree`) instead of `.`, so neither the key nor `secrets/`/
+`.qemu-host-shared/` reach `/usr`. Original analysis below.
 
 `ExtraTrees=.:/usr/share/arch-ansible` copies the entire working tree into the
 image, including the gitignored **`mkosi.key`** that `build-image` materializes at

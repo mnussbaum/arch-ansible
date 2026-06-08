@@ -17,10 +17,10 @@
 # same posture as the LUKS bootstrap key in _luks_common.sh. It can't be
 # TPM-bound on a generic, multi-machine image.
 #
-# It is built outside the repo (under ~/.cache): the repo is ExtraTrees'd to
-# /usr/share/arch-ansible and remounted in the mkosi sandbox, so a secret
-# written inside the repo would leak into the image. mkosi.conf references this
-# same ~/.cache path.
+# It is built outside the repo (under ${ARCH_ANSIBLE_CACHE}, see
+# bin/_cache_common.sh): the repo is ExtraTrees'd to /usr/share/arch-ansible and
+# remounted in the mkosi sandbox, so a secret written inside the repo would leak
+# into the image. mkosi.conf references this same path.
 : "${PASSWORD_STORE_DIR:=$HOME/.local/share/password-store}"
 export PASSWORD_STORE_DIR
 
@@ -37,7 +37,8 @@ if ! pass show "$credstore_recovery" >/dev/null 2>&1; then
   openssl rand -base64 24 | pass insert -m -f "$credstore_recovery" >/dev/null
 fi
 
-credstore_dir="$HOME/.cache/mkosi-credstore"
+: "${ARCH_ANSIBLE_CACHE:?source bin/_cache_common.sh before _credstore_common.sh}"
+credstore_dir="$ARCH_ANSIBLE_CACHE/mkosi-credstore"
 # Preserve _luks_common.sh's cleanup (luks_keyfile is set there when sourced first).
 trap 'rm -rf "$credstore_dir"; rm -f "${luks_keyfile:-}"' EXIT
 rm -rf "$credstore_dir"

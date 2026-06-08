@@ -35,8 +35,10 @@ done
 
 : "${hostname:?--hostname is required}"
 
+source bin/_cache_common.sh
+
 shared_dir=.qemu-host-shared
-output_dir=~/.cache/mkosi/images/image
+output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 mkdir -p "$shared_dir" "$output_dir"
 
 # mkosi maps the host user to root in the guest, so the runtime-tree share is

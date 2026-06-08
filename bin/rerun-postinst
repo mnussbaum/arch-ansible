@@ -15,7 +15,11 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
-cache_dir="$HOME/.cache/mkosi/arch~rolling~x86-64~main.cache"
+
+# Host dev tool: ARCH_ANSIBLE_TARGET is unset, so the base is ~/.cache (sudo -E
+# preserves HOME). Keeps the cache paths in sync with mkosi.conf/build-image.
+source "$(dirname "$0")/_cache_common.sh"
+cache_dir="$ARCH_ANSIBLE_CACHE/mkosi/arch~rolling~x86-64~main.cache"
 
 if [[ ! -d "$cache_dir" ]]; then
   echo "mkosi cache not found at $cache_dir — run a full build first" >&2
@@ -70,8 +74,8 @@ systemd-nspawn \
   --directory="$merged" \
   --bind="$repo_root:/work/src" \
   --bind="$HOME/.local/share/password-store:/work/src/password-store" \
-  --bind-ro="$HOME/.cache/yay/yay-bin:/work/src/yay-pkg" \
-  --bind="$HOME/.cache/mkosi/pacman-pkg:/var/cache/pacman/pkg" \
+  --bind-ro="$ARCH_ANSIBLE_CACHE/yay/yay-bin:/work/src/yay-pkg" \
+  --bind="$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg:/var/cache/pacman/pkg" \
   --bind-ro=/etc/pacman.d/mirrorlist \
   --bind-ro="$init_script:/run/rerun-postinst-init.sh" \
   --network-namespace-path=/proc/1/ns/net \

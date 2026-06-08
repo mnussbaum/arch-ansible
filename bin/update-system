@@ -53,6 +53,12 @@ fi
 # above, so select the in-image source paths (mkosi.conf.d/10-sources-device).
 export ARCH_ANSIBLE_TARGET=device
 
+# Resolve ARCH_ANSIBLE_CACHE now that the target is device: build caches +
+# mkosi scratch land on /var/cache/arch-ansible (the encrypted root btrfs), not
+# the small homed /home partition. bin/build-image (below) sources this too.
+source bin/_cache_common.sh
+arch_ansible_ensure_cache
+
 # The .chroot postinst's pacman needs a sync DB, and a device has no system one
 # (and /var doesn't persist). Seed a persistent, home-resident copy that
 # 10-sources-device.conf feeds into the image. Only fetch it when missing: once
@@ -61,7 +67,7 @@ export ARCH_ANSIBLE_TARGET=device
 # are SigLevel DatabaseOptional, so this needs no keyring (works on a
 # never-provisioned device). No `|| true`: if it's missing and the sync fails
 # (offline + unprimed) the build can't proceed, so let it fail loudly.
-pacman_db=~/.cache/arch-ansible/pacman-db
+pacman_db="$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-db"
 if [[ ! -f "$pacman_db/sync/core.db" ]]; then
   mkdir -p "$pacman_db"
   sudo pacman -Sy --dbpath "$pacman_db" --logfile /dev/null
@@ -69,7 +75,7 @@ fi
 
 bin/build-image "${build_args[@]}"
 
-output_dir=~/.cache/mkosi/images/image
+output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 staging=/var/lib/arch-ansible/updates
 
 # Stage only the split artifacts the transfers consume (usr data/hash/sig + UKI),

@@ -31,6 +31,10 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+source bin/_cache_common.sh
+arch_ansible_ensure_cache
+arch_ansible_stage_srctree
+
 source bin/_secureboot_common.sh
 materialize_secureboot_keypair
 
@@ -40,13 +44,15 @@ source bin/_credstore_common.sh
 # unmangled (no quotes/spaces/colons); decoded in mkosi.postinst.chroot.
 wifi_networks=$(bin/wifi-networks | base64 -w0)
 
-output_dir=~/.cache/mkosi/images/image
+output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 # Local reusable caches: created empty on first build, then primed and reused
 # via mkosi.finalize write-back. This is how the build stays fast/offline with
 # no system caches to draw on (e.g. an image-based device). pacman-pkg backs the
 # .chroot postinst's package cache; yay/cargo/sccache back their build steps.
-mkdir -p ~/.cache/mkosi/pacman-pkg "$output_dir" \
-  ~/.cache/arch-ansible/pacman-pkg ~/.cache/yay ~/.cargo/registry ~/.cache/sccache
+# Paths track ${ARCH_ANSIBLE_CACHE} (bin/_cache_common.sh).
+mkdir -p "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg" "$output_dir" \
+  "$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-pkg" "$ARCH_ANSIBLE_CACHE/yay" \
+  "$ARCH_ANSIBLE_CACHE/cargo/registry" "$ARCH_ANSIBLE_CACHE/sccache"
 
 # Fresh, monotonic image version so each build supersedes the running slot for
 # systemd-sysupdate. mkosi reads mkosi.version for ImageVersion (unset in
@@ -56,16 +62,18 @@ mkdir -p ~/.cache/mkosi/pacman-pkg "$output_dir" \
 mkosi \
   --output-directory="$output_dir" \
   --tools-tree=/ \
-  --secure-boot-certificate="$PWD/mkosi.crt" \
-  --secure-boot-key="$PWD/mkosi.key" \
-  --sign-expected-pcr-certificate="$PWD/mkosi.crt" \
-  --sign-expected-pcr-key="$PWD/mkosi.key" \
-  --verity-certificate="$PWD/mkosi.crt" \
-  --verity-key="$PWD/mkosi.key" \
+  --secure-boot-certificate="$SECUREBOOT_CERT" \
+  --secure-boot-key="$SECUREBOOT_KEY" \
+  --sign-expected-pcr-certificate="$SECUREBOOT_CERT" \
+  --sign-expected-pcr-key="$SECUREBOOT_KEY" \
+  --verity-certificate="$SECUREBOOT_CERT" \
+  --verity-key="$SECUREBOOT_KEY" \
   --profile=build \
   --force \
   --environment="ANSIBLE_WIFI_NETWORKS=$wifi_networks" \
   --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
+  `# Finalize scripts don't inherit our env; pass the cache base for write-back.` \
+  --environment="ARCH_ANSIBLE_CACHE=$ARCH_ANSIBLE_CACHE" \
   `# TRANSITIONAL: selects mkosi.conf.d/10-sources-*.conf; remove after cutover` \
   ${refresh_cache:+"$refresh_cache"} \
   ${skip_postinst:+"$skip_postinst"} \

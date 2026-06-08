@@ -3,6 +3,13 @@ set -euo pipefail
 
 # Write build caches from the image back to the host so SkeletonTrees can
 # seed them into the next build, avoiding recompilation.
+#
+# Destinations live under ${ARCH_ANSIBLE_CACHE} (bin/_cache_common.sh): ~/.cache
+# on the host, /var/cache/arch-ansible on a device. Finalize scripts don't
+# inherit the caller's environment, so build-image passes this in via
+# `mkosi --environment=ARCH_ANSIBLE_CACHE=...`; fail loudly if it's missing
+# rather than silently write the caches to the wrong place.
+: "${ARCH_ANSIBLE_CACHE:?ARCH_ANSIBLE_CACHE must be passed in (see bin/_cache_common.sh)}"
 
 _sync_cache() {
     local src="$1" dst="$2"
@@ -11,9 +18,9 @@ _sync_cache() {
     rsync -a "$src/" "$dst/"
 }
 
-_sync_cache "$BUILDROOT/root/.cache/yay"       "$HOME/.cache/yay"
-_sync_cache "$BUILDROOT/root/.cargo/registry"  "$HOME/.cargo/registry"
-_sync_cache "$BUILDROOT/root/.cache/sccache"   "$HOME/.cache/sccache"
+_sync_cache "$BUILDROOT/root/.cache/yay"       "$ARCH_ANSIBLE_CACHE/yay"
+_sync_cache "$BUILDROOT/root/.cargo/registry"  "$ARCH_ANSIBLE_CACHE/cargo/registry"
+_sync_cache "$BUILDROOT/root/.cache/sccache"   "$ARCH_ANSIBLE_CACHE/sccache"
 # pacman package cache the .chroot postinst downloaded into; SkeletonTrees seeds
 # it back in on the next build so postinst installs hit cache (fast/offline).
-_sync_cache "$BUILDROOT/var/cache/pacman/pkg"  "$HOME/.cache/arch-ansible/pacman-pkg"
+_sync_cache "$BUILDROOT/var/cache/pacman/pkg"  "$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-pkg"
