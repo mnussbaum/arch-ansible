@@ -69,6 +69,13 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 - Fix colorscheme changer for the new world. Needs a whole new strategy
 - Add eeek tasks back in once fully done
 - Remove all luks scripting
+- Remove old host directory setup once fully cut over to image based hosts
 - Finish the hermetic plan
   - PCR 7 enablement
   - Anything else?
+- Issues
+  - Get a working update-system from in the image
+- Change ansible to build mkosi structure instead of running on a host?
+- Remove ARCH_ANSIBLE_SRCTREE copying used to avoid copying secrets dir with repo into image
+- I wonder if we can run the user ansible in a seperate user home image build
+  process. And then mount it in instead of running it on user first log in
