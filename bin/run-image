@@ -78,6 +78,12 @@ if [[ "$runtime" == "qemu" ]]; then
     case "$a" in
       gui|--console=gui)
         vmm_args+=("-display" "gtk,gl=on,zoom-to-fit=off,grab-on-hover=on")
+        # Absolute pointing device. Without it qemu gives the guest a relative
+        # PS/2 mouse, so the guest cursor drifts out of sync with the host
+        # pointer (looks invisible / unmovable) and clicks land in the wrong
+        # place, so nothing selects. virtio-tablet reports absolute coordinates
+        # so the guest cursor tracks the host pointer exactly.
+        vmm_args+=("-device" "virtio-tablet")
         break
         ;;
     esac
