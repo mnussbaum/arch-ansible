@@ -1,6 +1,9 @@
 # Issue: `bin/update-system` fails in the QEMU VM — out of disk during build
 
-Status: **fix implemented 2026-06-01, pending on-device VM verification.**
+Status: **second wall hit 2026-06-14 (root partition too small); repart layout
+fix implemented, pending fresh-VM verification.** See "Second wall" at the bottom.
+
+Status (prior): **fix implemented 2026-06-01, pending on-device VM verification.**
 Captured 2026-05-31 from the VM run logged in `.qemu-host-shared/noroom`.
 
 ## Symptom
@@ -150,3 +153,42 @@ backups (resolves plan Risk #6's concern for this case).
    that path).
 4. A second build reuses the primed `/var` caches (fast/offline), then the
    `updatectl` apply path (Stage D test plan 1→2→4) finally gets exercised.
+
+## Second wall (2026-06-14): the relocation worked, but root is too small
+
+Re-ran `bin/update-system` in the VM. The Option 1 fix held — scratch now lands
+on `/var/cache/arch-ansible` (root btrfs), past the original `/home` ENOSPC — but
+the build failed later, **writing** the erofs (not the earlier sizing *copy*):
+
+```
+‣  Generating disk image
+erofs_io: failed to write: No space left on device
+```
+
+**Live diagnosis (QGA `df`/`parted` in the running VM):** root is only **22G**,
+and the build's peak transient footprint (~22G+: workspace buildroot `/usr` ~5G +
+repart `Minimize=yes` sizing copy ~5G + the erofs output ~5G + the 6G primed cache
++ package cache) overflows it. (root shows 14G free post-failure only because mkosi
+cleans its workspace on error, leaving the 6G cache.)
+
+**Why root is 22G — the actual misallocation.** `parted /dev/vda print` shows
+*four* 22.7G partitions: usr-a (p4), usr-b (p7), root (p9), home (p10). The two
+`usr` slots hold a fixed ~4.9G dm-verity erofs but each grabbed 22.7G, because
+`mkosi.extra/usr/lib/repart.d/{22-usr-a,32-usr-b,50-root,60-home}.conf` gave them
+**no `SizeMaxBytes` and equal weight** → systemd-repart split the 90G disk four
+ways. ~45G is wasted on two verity slots that can never use space past their erofs,
+while root (which carries `/var/cache` build scratch) is starved at 22G.
+
+**Fix (2026-06-14):** cap the verity slots and weight root to claim the freed space:
+- `22-usr-a.conf`, `32-usr-b.conf`: `SizeMinBytes=8G` + `SizeMaxBytes=10G` (2x
+  headroom over the ~5G image; A/B symmetric).
+- `50-root.conf`: `Weight=3000`; `60-home.conf`: `Weight=1000`.
+- On a 90G disk this yields **root ~48G**, home ~16G (home's real data lives in its
+  own homed LUKS, so its partition stays mostly empty anyway).
+
+This is a partition-geometry change → it only takes effect on a **fresh install**
+(the running VM's partitions are already sized and the disk is fully allocated, so
+repart can't grow root in place). Verification path: rebuild image on host →
+delete the VM raw → redeploy via `bin/run-image` → re-run `bin/update-system` in
+the new VM; root should now be ~48G and the build complete. (User is handling the
+host rebuild + redeploy.)
