@@ -61,6 +61,28 @@ if [[ "$runtime" == "qemu" ]]; then
     )
   fi
 
+  # With a GUI console, override mkosi's hardcoded SDL display (qemu.py uses
+  # `-display sdl,gl=on`) with GTK. Only the GTK backend forwards window-resize
+  # ui_info to the virtio-vga device, so the guest's Virtual-1 output follows
+  # the host window size dynamically instead of staying at virtio-vga's default
+  # 1024x768. zoom-to-fit=off makes it resize the guest rather than scale a
+  # fixed framebuffer. This -display is appended after mkosi's; qemu honours the
+  # last one. (Leave Virtual-1 unpinned in the sway config for this to work.)
+  #
+  # grab-on-hover=on grabs the keyboard whenever the pointer is over the window.
+  # On Wayland that engages the keyboard-shortcuts-inhibit protocol, so the host
+  # sway stops processing its own $mod bindings and Super (the sway mod key) is
+  # delivered to the guest instead. With the host's focus_follows_mouse this
+  # grabs whenever the VM is active. (Ctrl+Alt+G toggles the grab manually.)
+  for a in "${mkosi_args[@]}"; do
+    case "$a" in
+      gui|--console=gui)
+        vmm_args+=("-display" "gtk,gl=on,zoom-to-fit=off,grab-on-hover=on")
+        break
+        ;;
+    esac
+  done
+
   # Persistent emulated TPM. mkosi's --tpm uses ephemeral per-run state, so a
   # TPM2-bound LUKS volume enrolled on first boot can't be unsealed on the next
   # boot ("key enrolled in superblock most likely does not belong to this
