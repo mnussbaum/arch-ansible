@@ -63,6 +63,12 @@ record = {
     "memberOf": ["wheel", "input", "pcscd", "docker"],
     "shell": os.environ["CREDSTORE_SHELL"],
     "storage": "luks",
+    # Keep the LUKS image sparse and skip resize-on-login: on our small /home
+    # slice (repart 60-home.conf) the full-allocation grow fails with "Not enough
+    # disk space for home" and locks the user out. disk-size=max is set post-login
+    # in roles/user first-login.yml.
+    "luksDiscard": True,
+    "autoResizeMode": "off",
 }
 with open(f"{d}/home.create.{user}", "w") as f:
     json.dump(record, f)

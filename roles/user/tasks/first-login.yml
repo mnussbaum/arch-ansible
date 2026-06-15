@@ -47,6 +47,19 @@
   register: homed_record_after
   changed_when: false
 
+- name: Tune homed for the small /home slice
+  # luks-discard keeps the image sparse, auto-resize-mode=off avoids the
+  # grow-on-login that fails with "Not enough disk space for home", and
+  # disk-size=max lets the home use the whole /home partition. The first two are
+  # also pre-set in the home.create record (bin/_credstore_common.sh) so the very
+  # first login works; disk-size=max needs the active home, so it's applied here.
+  ansible.builtin.command: >-
+    sudo -n homectl update {{ user.name }}
+    --auto-resize-mode=off --disk-size=max --luks-discard=on
+  when: >-
+    '"autoResizeMode":"off"' not in homed_record_after.stdout or
+    '"luksDiscard":true' not in homed_record_after.stdout
+
 - name: Drop password factor
   ansible.builtin.shell: |
     set -o pipefail
