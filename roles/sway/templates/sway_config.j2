@@ -215,7 +215,7 @@ bindsym --locked $mod+Control+0 exec  busctl --user set-property rs.wl-gammarela
 # Screenshot a selectable region and open in editor
 bindsym Print exec grim -g "$(slurp -c '#ff0000ff')" - | satty --filename - --fullscreen --output-filename ~/Downloads/screenshot-$(date '+%Y%m%d-%H:%M:%S').png
 
-exec systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK
-exec hash dbus-update-activation-environment 2>/dev/null && \
-  dbus-update-activation-environment --systemd DISPLAY WAYLAND_DISPLAY SWAYSOCK
-exec systemctl --user start --no-block sway-session.target
+# Upstream systemd user-session integration: imports DISPLAY/WAYLAND_DISPLAY/
+# SWAYSOCK, sets XDG_CURRENT_DESKTOP, starts sway-session.target, and stops it
+# on exit. Shipped by the sway package at /etc/sway/config.d/50-systemd-user.conf.
+include /etc/sway/config.d/*

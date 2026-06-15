@@ -6,7 +6,7 @@
     dest: /usr/lib/modules-load.d/loop.conf
 
 - name: Install packages
-  become: yes
+  become: true
   package:
     state: present
     name:

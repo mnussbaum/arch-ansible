@@ -40,14 +40,6 @@
     - sway-config
     - style.css
 
-- name: Install WM start commands
-  copy:
-    src: "{{ item }}"
-    dest: "/usr/lib/arch-ansible/bin/{{ item }}"
-    mode: a+x
-  with_items:
-    - start-sway
-
 - name: Install systemd preset
   copy:
     src: 80-greeter.preset

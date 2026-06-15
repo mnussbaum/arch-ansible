@@ -10,11 +10,6 @@
     - /etc/xdg/mako
   tags: [base16]
 
-- name: Install sway env file
-  copy:
-    src: sway-env
-    dest: /etc/sway/env
-
 - name: Install sway packages
   package:
     state: present
@@ -74,14 +69,6 @@
     src: mako.j2
     dest: /etc/xdg/mako/config
   tags: [base16]
-
-- name: Install services
-  copy:
-    src: "{{ item }}"
-    dest: "/usr/lib/systemd/user/{{ item }}"
-  with_items:
-    - sway-session.target
-    - sway.service
 
 - name: Install swayidle service
   template:
