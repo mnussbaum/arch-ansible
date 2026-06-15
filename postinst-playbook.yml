@@ -21,6 +21,10 @@
         tasks_from: install-pacman-conf
       vars:
         disable_sandbox: true
+        # --caching force: block package downloads during the build so installs
+        # come only from cache. Scoped to this pre-task only; the post_tasks
+        # re-render omits it, so the shipped image keeps a network pacman.conf.
+        pacman_caching: "{{ build_caching | default('available') }}"
       tags: [packaging, min-user-session]
     - import_role:
         name: packaging

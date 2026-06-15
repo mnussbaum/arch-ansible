@@ -13,6 +13,18 @@ if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   eval "extra_args=($ANSIBLE_EXTRA_ARGS)"
 fi
 
+# Carry the build's cache policy (bin/build-image --caching) into the postinst so
+# its pacman/yay match the package-install phase. build_caching feeds the
+# pacman.conf template's cache-only XferCommand (force); for a full refresh we
+# resync the chroot's package DB here, since the image's /var/lib/pacman/sync is
+# seeded, not the DB mkosi refreshed for its own install. 'available' keeps the
+# default behaviour (no resync; download only what the cache is missing).
+caching="${CACHING:-available}"
+extra_args+=(--extra-vars "build_caching=$caching")
+if [[ "$caching" == off ]]; then
+  pacman -Syy --noconfirm
+fi
+
 : "${ANSIBLE_WIFI_NETWORKS:?must be set by bin/build-image (from bin/wifi-networks)}"
 wifi_networks=$(printf '%s' "$ANSIBLE_WIFI_NETWORKS" | base64 -d)
 extra_args+=(--extra-vars "{\"wifi_networks\": $wifi_networks}")

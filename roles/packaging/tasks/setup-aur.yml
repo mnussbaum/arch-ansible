@@ -42,6 +42,29 @@
     regexp: '^#?SRCEXT='
     line: "SRCEXT='.src.tar.gz'"
 
+# --caching force: make AUR builds cache/offline only, the makepkg analogue of
+# the pacman.conf XferCommand. makepkg sources makepkg.conf top-to-bottom, so a
+# trailing block wins over the defaults; the file is dropped from the final
+# image (mkosi.finalize.factory-seed DROPLIST), so this can never ship. DLAGENTS
+# kills tarball/binary source fetches (the -bin packages); GIT_ALLOW_PROTOCOL=file
+# refuses network git while still letting makepkg clone already-cached VCS
+# sources locally. An AUR package whose sources aren't cached fails rather than
+# downloading. (yay's own PKGBUILD-repo clone and AUR version RPC are recipe
+# metadata, not package payloads, and — like a pacman DB sync — are left alone.)
+- name: Block makepkg network downloads for --caching force
+  when: build_caching | default('available') == 'force'
+  blockinfile:
+    path: /etc/makepkg.conf
+    marker: "# {mark} arch-ansible --caching force"
+    block: |
+      DLAGENTS=('file::/usr/bin/curl -gqC - -o %o %u'
+                'ftp::/usr/bin/false'
+                'http::/usr/bin/false'
+                'https::/usr/bin/false'
+                'rsync::/usr/bin/false'
+                'scp::/usr/bin/false')
+      export GIT_ALLOW_PROTOCOL=file
+
 - name: Disable git credential helpers
   shell: git config --system credential.helper ""
 

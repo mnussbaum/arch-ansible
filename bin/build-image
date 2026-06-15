@@ -4,7 +4,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-refresh_cache=""
+caching="available"
 skip_postinst=""
 ansible_tags=""
 mkosi_args=()
@@ -13,14 +13,18 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       echo "Build the image. run-image/burn-image set the hostname at boot." >&2
-      echo "Usage: $0 [--refresh-cache] [--skip-postinst] [--ansible-tags TAGS] [mkosi options...]" >&2
-      echo "  --refresh-cache  Bust the mkosi incremental package cache." >&2
+      echo "Usage: $0 [--caching force|off|available] [--skip-postinst] [--ansible-tags TAGS] [mkosi options...]" >&2
+      echo "  --caching        Package cache policy for the package-install AND postinst" >&2
+      echo "                   phases (default: available):" >&2
+      echo "                     force      install only already-cached packages; never use the network" >&2
+      echo "                     off        ignore the cache; refresh metadata and pull everything fresh" >&2
+      echo "                     available  use the cache where it satisfies the request, download the rest" >&2
       echo "  --skip-postinst  Skip the Ansible post-installation step." >&2
       echo "  --ansible-tags   Limit Ansible to specific tags." >&2
       echo "  Any other options are forwarded to mkosi." >&2
       exit
       ;;
-    --refresh-cache) refresh_cache="--incremental=no" ;;
+    --caching) caching="$2"; shift ;;
     --skip-postinst) skip_postinst="--environment=SKIP_POSTINST=1" ;;
     --ansible-tags) ansible_tags="--environment=ANSIBLE_TAGS=$2"; shift ;;
     *)
@@ -30,6 +34,28 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+# Map --caching to mkosi's package-manager network policy for the package-install
+# phase. The same mode rides into the postinst chroot via CACHING (below) so its
+# pacman/yay follow suit — see mkosi.postinst.chroot and the pacman.conf template.
+#   force     cache-only, never touch the network (CacheOnly=always).
+#   off       always resync metadata and download; also bust the incremental
+#             image cache so the install actually re-runs (CacheOnly=never).
+#   available resync metadata so requested versions match the mirror, then reuse
+#             the cache for any package already present at that version and
+#             download the rest (CacheOnly=auto). Not 'metadata': skipping the
+#             resync makes pacman request the seeded DB's versions, which 404
+#             once the mirror purges them as that DB drifts behind upstream.
+caching_args=()
+case "$caching" in
+  force)     caching_args=(--cache-only=always) ;;
+  off)       caching_args=(--cache-only=never --incremental=no) ;;
+  available) caching_args=(--cache-only=auto) ;;
+  *)
+    echo "error: --caching must be one of: force, off, available (got '$caching')" >&2
+    exit 1
+    ;;
+esac
 
 source bin/_cache_common.sh
 arch_ansible_ensure_cache
@@ -75,7 +101,8 @@ mkosi \
   `# Finalize scripts don't inherit our env; pass the cache base for write-back.` \
   --environment="ARCH_ANSIBLE_CACHE=$ARCH_ANSIBLE_CACHE" \
   `# TRANSITIONAL: selects mkosi.conf.d/10-sources-*.conf; remove after cutover` \
-  ${refresh_cache:+"$refresh_cache"} \
+  "${caching_args[@]}" \
+  --environment="CACHING=$caching" \
   ${skip_postinst:+"$skip_postinst"} \
   ${ansible_tags:+"$ansible_tags"} \
   "${mkosi_args[@]}" \

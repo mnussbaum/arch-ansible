@@ -1,7 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-pacman --root "$DESTDIR" -U --needed --noconfirm /work/src/yay-pkg/yay-bin-[0-9]*.pkg.tar.lzo
+# The yay-bin build cache accumulates one .pkg.tar.lzo per version, so the glob
+# can match several; pacman -U on two files of the same pkgname errors with
+# "duplicate target" (and shipping both would break the device's offline -U too).
+# Pick the highest version only.
+yay_pkg=$(printf '%s\n' /work/src/yay-pkg/yay-bin-[0-9]*.pkg.tar.lzo | sort -V | tail -1)
+pacman --root "$DESTDIR" -U --needed --noconfirm "$yay_pkg"
 
 # Carry the yay package forward into /usr (which persists across A/B updates,
 # unlike /root) so an in-image build can bind-mount + pacman -U it offline
@@ -9,7 +14,7 @@ pacman --root "$DESTDIR" -U --needed --noconfirm /work/src/yay-pkg/yay-bin-[0-9]
 # the in-image builder gets yay. Source is the same bind-mount we just
 # installed; see mkosi.conf.d/10-sources-device.conf.
 install -d "$DESTDIR/usr/lib/arch-ansible/yay-pkg"
-install -m0644 /work/src/yay-pkg/yay-bin-[0-9]*.pkg.tar.lzo "$DESTDIR/usr/lib/arch-ansible/yay-pkg/"
+install -m0644 "$yay_pkg" "$DESTDIR/usr/lib/arch-ansible/yay-pkg/"
 
 CARGO_HOME=/work/build/cargo-home
 mkdir -p "$CARGO_HOME"

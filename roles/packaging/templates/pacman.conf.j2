@@ -18,6 +18,12 @@
 HoldPkg     = pacman glibc
 #XferCommand = /usr/bin/curl -L -C - -f -o %o %u
 #XferCommand = /usr/bin/wget --passive-ftp -c -O %o %u
+{% if pacman_caching | default('available') == 'force' %}
+# --caching force (build-time only): install strictly from the local package
+# cache. Replacing the downloader with a failing command makes pacman error out
+# instead of fetching anything not already cached.
+XferCommand = /usr/bin/false
+{% endif %}
 #CleanMethod = KeepInstalled
 Architecture = auto
 
