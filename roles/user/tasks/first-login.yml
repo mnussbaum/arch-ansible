@@ -1,11 +1,21 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Copy arch-ansible repo into home
-  synchronize:
-    src: /usr/share/arch-ansible/
-    dest: "{{ ansible_env.HOME }}/Projects/arch-ansible/"
-    owner: false
-    group: false
+- name: Clone arch-ansible repo into home
+  # The image ships /usr/share/arch-ansible as a shallow git repo (staged by
+  # bin/_cache_common.sh). Cloning it locally gives the VM a real checkout
+  # offline; origin is repointed at GitHub below so pull/push work.
+  # update: false leaves any later local work untouched on re-runs.
+  ansible.builtin.git:
+    repo: /usr/share/arch-ansible
+    dest: "{{ ansible_env.HOME }}/Projects/arch-ansible"
+    update: false
+
+- name: Point arch-ansible origin at GitHub
+  ansible.builtin.command:
+    cmd: >-
+      git -C {{ ansible_env.HOME }}/Projects/arch-ansible
+      remote set-url origin git@github.com:mnussbaum/arch-ansible.git
+  changed_when: false
 
 - name: Inspect homed record
   ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"

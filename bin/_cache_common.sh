@@ -55,9 +55,30 @@ arch_ansible_ensure_cache() {
 }
 
 # Rebuild ARCH_ANSIBLE_SRCTREE from the current git-tracked files (working-tree
-# content, ignored/untracked files excluded). Run from the repo root.
+# content, ignored/untracked files excluded), then bolt on a shallow .git so the
+# shipped /usr/share/arch-ansible is a cloneable repo. roles/user/tasks/
+# first-login.yml clones it offline into the VM home and repoints origin at
+# GitHub. Only committed objects land in .git — gitignored secrets (secrets/,
+# the signing key, .qemu-host-shared/) are never committed, so they stay out of
+# the plaintext /usr; the working tree still ships tracked files only. Shallow
+# (--depth=1) keeps the history out of /usr. Run from the repo root.
 arch_ansible_stage_srctree() {
   rm -rf "$ARCH_ANSIBLE_SRCTREE"
   mkdir -p "$ARCH_ANSIBLE_SRCTREE"
   git ls-files -z | rsync --from0 --files-from=- -a ./ "$ARCH_ANSIBLE_SRCTREE/"
+
+  local branch tmp
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  tmp="$(mktemp -d)"
+  # file:// (not a plain path) so --depth=1 is honored instead of a hardlink
+  # clone that drags in the full object store.
+  git clone --quiet --bare --depth=1 --branch "$branch" "file://$PWD" "$tmp/git"
+  mv "$tmp/git" "$ARCH_ANSIBLE_SRCTREE/.git"
+  rm -rf "$tmp"
+  # Turn the bare clone into a normal checkout over the rsynced working tree:
+  # core.bare=false gives it a worktree (its parent dir), and `reset` loads the
+  # index from HEAD without touching the files (so `git status` shows only real
+  # uncommitted drift, clean when built from the branch tip).
+  git -C "$ARCH_ANSIBLE_SRCTREE" config core.bare false
+  git -C "$ARCH_ANSIBLE_SRCTREE" reset --quiet
 }
