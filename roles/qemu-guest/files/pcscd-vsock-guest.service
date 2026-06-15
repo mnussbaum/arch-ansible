@@ -2,9 +2,7 @@
 Description=Forward pcscd socket from QEMU host via vsock
 DefaultDependencies=no
 After=sysinit.target
-Before=pcscd.socket pcscd.service
 ConditionVirtualization=kvm
-Conflicts=pcscd.service pcscd.socket
 
 [Service]
 Type=simple

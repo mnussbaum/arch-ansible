@@ -43,3 +43,20 @@
     src: pcscd-vsock-guest.service
     dest: /usr/lib/systemd/system/pcscd-vsock-guest.service
     mode: "0644"
+
+- name: Create local pcscd drop-in directories
+  file:
+    path: "/usr/lib/systemd/system/{{ item }}.d"
+    state: directory
+  loop:
+    - pcscd.socket
+    - pcscd.service
+
+- name: Disable the local pcscd under KVM so the vsock forwarder owns the socket
+  copy:
+    src: pcscd-novm-condition.conf
+    dest: "/usr/lib/systemd/system/{{ item }}.d/novm.conf"
+    mode: "0644"
+  loop:
+    - pcscd.socket
+    - pcscd.service
