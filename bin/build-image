@@ -24,8 +24,10 @@ while [[ $# -gt 0 ]]; do
       echo "  Any other options are forwarded to mkosi." >&2
       exit
       ;;
+    --caching=*) caching="${1#*=}" ;;
     --caching) caching="$2"; shift ;;
     --skip-postinst) skip_postinst="--environment=SKIP_POSTINST=1" ;;
+    --ansible-tags=*) ansible_tags="--environment=ANSIBLE_TAGS=${1#*=}" ;;
     --ansible-tags) ansible_tags="--environment=ANSIBLE_TAGS=$2"; shift ;;
     *)
       mkosi_args+=("$1")
@@ -72,12 +74,14 @@ wifi_networks=$(bin/wifi-networks | base64 -w0)
 
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 # Local reusable caches: created empty on first build, then primed and reused
-# via mkosi.finalize write-back. This is how the build stays fast/offline with
-# no system caches to draw on (e.g. an image-based device). pacman-pkg backs the
-# .chroot postinst's package cache; yay/cargo/sccache back their build steps.
-# Paths track ${ARCH_ANSIBLE_CACHE} (bin/_cache_common.sh).
-mkdir -p "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg" "$output_dir" \
-  "$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-pkg" "$ARCH_ANSIBLE_CACHE/yay" \
+# across builds. This keeps the build fast/offline with no system caches to draw
+# on (e.g. an image-based device). yay/cargo/sccache back their build steps.
+# pacman-pkg/cache/pacman/pkg is mkosi's own PackageCacheDirectory layout; the
+# .chroot postinst reads it as a BuildSource (mkosi.conf), which fails if the
+# path is absent on a cold cache, so create the nested dir up front. Paths track
+# ${ARCH_ANSIBLE_CACHE} (bin/_cache_common.sh).
+mkdir -p "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg" "$output_dir" \
+  "$ARCH_ANSIBLE_CACHE/yay" \
   "$ARCH_ANSIBLE_CACHE/cargo/registry" "$ARCH_ANSIBLE_CACHE/sccache"
 
 # Fresh, monotonic image version so each build supersedes the running slot for
@@ -98,8 +102,6 @@ mkosi \
   --force \
   --environment="ANSIBLE_WIFI_NETWORKS=$wifi_networks" \
   --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
-  `# Finalize scripts don't inherit our env; pass the cache base for write-back.` \
-  --environment="ARCH_ANSIBLE_CACHE=$ARCH_ANSIBLE_CACHE" \
   `# TRANSITIONAL: selects mkosi.conf.d/10-sources-*.conf; remove after cutover` \
   "${caching_args[@]}" \
   --environment="CACHING=$caching" \
@@ -107,6 +109,19 @@ mkosi \
   ${ansible_tags:+"$ansible_tags"} \
   "${mkosi_args[@]}" \
   build
+
+# Fold the postinst-generated yay/cargo/sccache caches into the reusable caches
+# so the next build's SkeletonTrees/BuildSources seed them. mkosi.finalize can't
+# write the host ~/.cache from its sandbox, so it stages the new files into the
+# output dir; here (on the host, post-mkosi) we merge them and clear the staging.
+# (pacman is handled inside mkosi.finalize via the package-cache mount.)
+cwb="$output_dir/cache-writeback"
+if [[ -d "$cwb" ]]; then
+  [[ -d "$cwb/yay" ]]            && rsync -a "$cwb/yay/"            "$ARCH_ANSIBLE_CACHE/yay/"
+  [[ -d "$cwb/cargo-registry" ]] && rsync -a "$cwb/cargo-registry/" "$ARCH_ANSIBLE_CACHE/cargo/registry/"
+  [[ -d "$cwb/sccache" ]]        && rsync -a "$cwb/sccache/"        "$ARCH_ANSIBLE_CACHE/sccache/"
+  rm -rf "$cwb"
+fi
 
 echo "Built image:" >&2
 ls -1 "$output_dir"/*.raw 2>/dev/null >&2 || echo "  (output in $output_dir)" >&2

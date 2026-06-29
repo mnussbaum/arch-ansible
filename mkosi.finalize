@@ -1,26 +1,46 @@
 #!/bin/bash
 set -euo pipefail
 
-# Write build caches from the image back to the host so SkeletonTrees can
-# seed them into the next build, avoiding recompilation.
+# Write build caches the postinst generated back to the host so the next build's
+# SkeletonTrees / BuildSources seed them in, avoiding re-download/-compile.
 #
-# Destinations live under ${ARCH_ANSIBLE_CACHE} (bin/_cache_common.sh): ~/.cache
-# on the host, /var/cache/arch-ansible on a device. Finalize scripts don't
-# inherit the caller's environment, so build-image passes this in via
-# `mkosi --environment=ARCH_ANSIBLE_CACHE=...`; fail loudly if it's missing
-# rather than silently write the caches to the wrong place.
-: "${ARCH_ANSIBLE_CACHE:?ARCH_ANSIBLE_CACHE must be passed in (see bin/_cache_common.sh)}"
+# Finalize scripts run in a sandbox that binds neither the host ~/.cache nor the
+# build caches' image paths — only mkosi's own mounts and $OUTPUTDIR. Writing to
+# "$ARCH_ANSIBLE_CACHE/..." here is silently discarded. So we use two routes:
+#   - pacman's package cache, which mkosi binds RW into this sandbox at
+#     /var/cache/pacman/pkg (the pacman-cache BuildSource's host source), is
+#     written directly; and
+#   - yay/cargo/sccache, which have no such mount, are staged into $OUTPUTDIR
+#     (which mkosi copies to the output dir) for bin/build-image to fold into
+#     $ARCH_ANSIBLE_CACHE after mkosi returns.
 
-_sync_cache() {
-    local src="$1" dst="$2"
-    [[ -d "$src" ]] || return 0
-    mkdir -p "$dst"
-    rsync -a "$src/" "$dst/"
-}
+# --- pacman: postinst downloads -> mkosi's package cache (direct, mounted) ---
+# /var/cache/pacman/pkg here is the *sandbox* mount of the host cache
+# (== $ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg). rsync is additive;
+# packages already present from mkosi's own install are identical and skipped.
+if [[ -d "$BUILDROOT/var/cache/pacman/pkg" ]]; then
+    rsync -a "$BUILDROOT/var/cache/pacman/pkg/" /var/cache/pacman/pkg/
+fi
 
-_sync_cache "$BUILDROOT/root/.cache/yay"       "$ARCH_ANSIBLE_CACHE/yay"
-_sync_cache "$BUILDROOT/root/.cargo/registry"  "$ARCH_ANSIBLE_CACHE/cargo/registry"
-_sync_cache "$BUILDROOT/root/.cache/sccache"   "$ARCH_ANSIBLE_CACHE/sccache"
-# pacman package cache the .chroot postinst downloaded into; SkeletonTrees seeds
-# it back in on the next build so postinst installs hit cache (fast/offline).
-_sync_cache "$BUILDROOT/var/cache/pacman/pkg"  "$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-pkg"
+# --- yay/cargo/sccache: postinst caches -> $OUTPUTDIR (host pickup) ---
+# Stage only what the postinst created this build: files newer than the marker
+# mkosi.postinst.chroot drops at its start. The rest were seeded in via
+# SkeletonTrees and are already on the host, so this keeps the staged delta small
+# instead of copying multi-GB caches every build. The marker (not a timestamp
+# from the host) is robust against however the incremental restore stamps mtimes,
+# since it is created after that restore. No marker (e.g. --skip-postinst) =>
+# nothing to write back.
+marker="$BUILDROOT/root/.cache-writeback-since"
+if [[ -f "$marker" ]]; then
+    stage=/work/out/cache-writeback
+    _stage_delta() {
+        local src="$1" name="$2"
+        [[ -d "$src" ]] || return 0
+        mkdir -p "$stage/$name"
+        find "$src" \( -type f -o -type l \) -newer "$marker" -printf '%P\0' \
+            | rsync -a --from0 --files-from=- "$src/" "$stage/$name/"
+    }
+    _stage_delta "$BUILDROOT/var/cache/yay"         yay
+    _stage_delta "$BUILDROOT/root/.cargo/registry" cargo-registry
+    _stage_delta "$BUILDROOT/root/.cache/sccache"  sccache
+fi

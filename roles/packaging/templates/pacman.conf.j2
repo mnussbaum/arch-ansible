@@ -12,6 +12,15 @@
 #RootDir     = /
 #DBPath      = /var/lib/pacman/
 #CacheDir    = /var/cache/pacman/pkg/
+{% if pacman_cache_dirs is defined %}
+# Build-time only (set by the postinst pre_tasks; the shipped re-render omits
+# it so the image keeps the default cache). Adds mkosi's own package cache —
+# mounted at /work/src/pacman-cache via BuildSources — as a second cache dir.
+# pacman tries cache dirs in listed order for reads and downloads to the first
+# writable one, so already-fetched repo packages are reused while new downloads
+# still land in the in-image /var/cache/pacman/pkg.
+CacheDir = {{ pacman_cache_dirs }}
+{% endif %}
 #LogFile     = /var/log/pacman.log
 #GPGDir      = /etc/pacman.d/gnupg/
 #HookDir     = /etc/pacman.d/hooks/

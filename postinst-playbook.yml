@@ -25,6 +25,11 @@
         # come only from cache. Scoped to this pre-task only; the post_tasks
         # re-render omits it, so the shipped image keeps a network pacman.conf.
         pacman_caching: "{{ build_caching | default('available') }}"
+        # Reuse repo packages mkosi already downloaded: its package cache is
+        # mounted at /work/src/pacman-cache (BuildSources in mkosi.conf). Listed
+        # after the in-image cache so new downloads still go to the latter.
+        # Build-only like the vars above — dropped by the post_tasks re-render.
+        pacman_cache_dirs: "/var/cache/pacman/pkg /work/src/pacman-cache"
       tags: [packaging, min-user-session]
     - import_role:
         name: packaging

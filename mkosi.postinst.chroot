@@ -8,6 +8,21 @@ chmod -R a+rX /usr/share/arch-ansible /usr/share/password-store
 cd /work/src
 export USER=root HOME=/root
 
+# Reference point for mkosi.finalize's cache write-back: it ships yay/cargo/
+# sccache files created after this back to the host (everything older was seeded
+# in via SkeletonTrees). Dropped here, after the incremental cache restore, so it
+# reliably predates anything this postinst builds regardless of restore mtimes.
+touch /root/.cache-writeback-since
+
+# Seed yay's clone dir (/var/cache/yay; yay uses that path when running as root)
+# from the host cache. The SkeletonTree seeds the same data into the incremental
+# snapshot, but writebacks since the snapshot was created aren't visible there.
+# This rsync brings in the delta: --ignore-existing skips what's already in the
+# image (snapshot-seeded content stays) and only adds entries that are newer on
+# the host (e.g. sources downloaded by a previous build's yay and written back).
+mkdir -p /var/cache/yay
+rsync -a --ignore-existing /work/src/yay-cache/ /var/cache/yay/ 2>/dev/null || true
+
 extra_args=()
 if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   eval "extra_args=($ANSIBLE_EXTRA_ARGS)"
