@@ -14,7 +14,11 @@ PathRelativeTo=boot
 MatchPattern=%M_@v_%a+@l-@d.efi \
              %M_@v_%a+@l.efi \
              %M_@v_%a.efi
-Mode=0444
+# 0644 (not 0444): the UKI must NOT carry the FAT read-only attribute, or the
+# firmware's FAT driver refuses to rename it and sd-boot can't bump the boot
+# counter (+L-D suffix) — boot counting / auto-rollback silently breaks and the
+# entry is never blessed. Integrity comes from the SecureBoot signature, not perms.
+Mode=0644
 TriesLeft=3
 TriesDone=0
 InstancesMax=2

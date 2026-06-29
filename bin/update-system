@@ -1,90 +1,227 @@
 #!/bin/bash
-# Build a fresh image version locally and apply it to the inactive A/B /usr slot
-# via systemd-sysupdate (driven by updatectl), then optionally reboot. This is
-# the on-device update path: the device rebuilds from this repo and swaps slots
-# — there is no update server.
+# Build a fresh image version locally and apply it to an inactive A/B /usr slot
+# via systemd-sysupdate, then optionally reboot. There is no update server: the
+# new version is built from this repo. Two modes:
 #
-# Mechanism: the in-image /usr/lib/sysupdate.d transfers read their source from
-# the local staging dir /var/lib/arch-ansible/updates. We build, drop the fresh
-# split artifacts there (replacing the previous build), then `updatectl update`
-# installs them to the inactive slot. ProtectVersion=%A keeps the running slot as
-# the boot-counted rollback target.
+#   (default) On-device update — run it ON the target device (whose /usr is the
+#     read-only dm-verity image). It rebuilds, stages the split artifacts to the
+#     local source dir /var/lib/arch-ansible/updates (replacing the previous
+#     build), then `systemd-sysupdate --transfer-source=<staging>` installs them
+#     to the device's inactive slot. Refuses to run where /usr isn't the
+#     dissected image, so it can't touch an unrelated host.
 #
-# Run it ON the target device (whose /usr is the read-only dm-verity image), from
-# a writable checkout of this repo, with `pass`/GPG available for the build's
-# signing keys. It refuses to run elsewhere so it can't touch an unrelated host.
+#   --image=DISK  Offline update of another system's disk — run it from a live
+#     USB against an installed-but-not-running target (e.g. a laptop too broken
+#     to update itself). It rebuilds, then retargets systemd-sysupdate at the
+#     target disk via the volatile-root mechanism (NOT `--image` — see below) and
+#     installs the freshly built artifacts to the target's inactive /usr slot,
+#     writing the new UKI to the target's own ESP. Only the usr* partitions and
+#     the ESP are touched; the TPM2-sealed LUKS root/home/swap are left intact, so
+#     user data (homed volumes under /home) survives. The on-device guard,
+#     device-target build env, and staging step are skipped.
+#
+# Both modes drive systemd-sysupdate directly (not updatectl/systemd-sysupdated):
+# the transfers use PathRelativeTo=explicit, so the source must be supplied with
+# --transfer-source, which updatectl can't pass. Both also use the host-side
+# definitions in mkosi.sysupdate/ (via --definitions), not the in-image
+# /usr/lib/sysupdate.d copy. Boot counting / auto-rollback is unaffected — it
+# lives in the UKI's TriesLeft= (see mkosi.sysupdate/20-uki), not in the update
+# daemon. Both modes need a writable checkout of this repo and `pass`/GPG for the
+# build's signing keys.
+#
+# Why volatile-root instead of `systemd-sysupdate --image=DISK`: through systemd
+# 261 the --image code path fails to parse our Type=regular-file transfers (it
+# rejects Type= at the [Source] header), while the very same transfers parse fine
+# via --definitions. So instead we point /run/systemd/volatile-root at a partition
+# on the target disk: systemd then skips its root-block-device auto-detection and
+# (walking up to that partition's whole disk) treats it as the system disk,
+# matching the usr A/B partitions on it by type. Nothing
+# is dissected, so the sealed LUKS partitions are never unlocked (no passphrase
+# prompt). The UKI transfer (PathRelativeTo=boot) is aimed at the target's ESP by
+# mounting it and exporting SYSTEMD_ESP_PATH, so it doesn't land on the live
+# medium's own ESP. (mkosi uses volatile-root for its tools-tree case but against
+# the *running* disk + ESP; retargeting a separate offline disk is our own use.)
 
 set -o errexit
 set -o nounset
 set -o pipefail
 
 reboot=""
+image=""
 build_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
-      echo "Build a new image version and apply it to the inactive /usr slot via updatectl." >&2
-      echo "Usage: $0 [--reboot] [build-image options...]" >&2
-      echo "  --reboot   Reboot into the new slot after applying." >&2
+      echo "Build a new image version and apply it to an inactive /usr slot." >&2
+      echo "Usage: $0 [--reboot] [--image=DISK] [build-image options...]" >&2
+      echo "  --reboot      Reboot into the new slot after applying (on-device mode only)." >&2
+      echo "  --image=DISK  Offline-update another system's disk/raw image instead of this" >&2
+      echo "                device (live-USB mode). Updates only its inactive /usr slot and" >&2
+      echo "                ESP; leaves root/home/swap intact." >&2
       echo "  Other options are forwarded to build-image (e.g. --ansible-tags TAGS)." >&2
       exit
       ;;
     --reboot) reboot=1 ;;
+    --image=*) image="${1#*=}" ;;
+    --image) image="$2"; shift ;;
     *) build_args+=("$1") ;;
   esac
   shift
 done
 
-cd "$(dirname "$0")/.."
-
-# Guard: only run where /usr is the dissected verity image, i.e. an actual
-# hermetic device. On a build host /usr is btrfs on the root fs, and sysupdate
-# there could match unrelated partitions.
-usr_src=$(findmnt -no SOURCE /usr 2>/dev/null || true)
-if [[ "$usr_src" != /dev/mapper/usr ]]; then
-  echo "Refusing: /usr is '$usr_src', not /dev/mapper/usr." >&2
-  echo "Run update-system on the target device, not the build host." >&2
+if [[ -n "$reboot" && -n "$image" ]]; then
+  echo "Refusing: --reboot updates the running system; it has no meaning with --image." >&2
   exit 1
 fi
 
-# Build a fresh, bumped image version (build-image materializes the signing keys
-# from pass and passes --bump, so each build is newer than the running slot).
-# TRANSITIONAL (drop after full cutover): we already proved we're on-device
-# above, so select the in-image source paths (mkosi.conf.d/10-sources-device).
-export ARCH_ANSIBLE_TARGET=device
+# Validate the offline target up front: must be a block device or a raw image
+# file. It's treated as a whole GPT disk (volatile-root needs a block device, so
+# a file is loop-mounted below), and a partition or missing path would fail deep
+# inside the apply step.
+if [[ -n "$image" && ! -b "$image" && ! -f "$image" ]]; then
+  echo "Refusing: --image target '$image' is not a block device or a file." >&2
+  exit 1
+fi
 
-# Resolve ARCH_ANSIBLE_CACHE now that the target is device: build caches +
-# mkosi scratch land on /var/cache/arch-ansible (the encrypted root btrfs), not
-# the small homed /home partition. bin/build-image (below) sources this too.
-source bin/_cache_common.sh
-arch_ansible_ensure_cache
+cd "$(dirname "$0")/.."
 
-# The .chroot postinst's pacman needs a sync DB, and a device has no system one
-# (and /var doesn't persist). Seed a persistent, home-resident copy that
-# 10-sources-device.conf feeds into the image. Only fetch it when missing: once
-# primed, builds reuse it and run offline (delete the dir to force a refresh).
-# Root: pacman -Sy refuses to run unprivileged even with a custom --dbpath. DBs
-# are SigLevel DatabaseOptional, so this needs no keyring (works on a
-# never-provisioned device). No `|| true`: if it's missing and the sync fails
-# (offline + unprimed) the build can't proceed, so let it fail loudly.
-pacman_db="$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-db"
-if [[ ! -f "$pacman_db/sync/core.db" ]]; then
-  mkdir -p "$pacman_db"
-  sudo pacman -Sy --dbpath "$pacman_db" --logfile /dev/null
+if [[ -z "$image" ]]; then
+  # Guard: only run where /usr is the dissected verity image, i.e. an actual
+  # hermetic device. On a build host /usr is btrfs on the root fs, and sysupdate
+  # there could match unrelated partitions. (--image targets a separate disk, so
+  # the running system's /usr is irrelevant — skip the guard in that mode.)
+  usr_src=$(findmnt -no SOURCE /usr 2>/dev/null || true)
+  if [[ "$usr_src" != /dev/mapper/usr ]]; then
+    echo "Refusing: /usr is '$usr_src', not /dev/mapper/usr." >&2
+    echo "Run update-system on the target device, or pass --image=DISK." >&2
+    exit 1
+  fi
+
+  # Build a fresh, bumped image version (build-image materializes the signing
+  # keys from pass and passes --bump, so each build is newer than the running
+  # slot). TRANSITIONAL (drop after full cutover): we already proved we're
+  # on-device above, so select the in-image source paths
+  # (mkosi.conf.d/10-sources-device).
+  export ARCH_ANSIBLE_TARGET=device
+
+  # Resolve ARCH_ANSIBLE_CACHE now that the target is device: build caches +
+  # mkosi scratch land on /var/cache/arch-ansible (the encrypted root btrfs),
+  # not the small homed /home partition. bin/build-image (below) sources this
+  # too.
+  source bin/_cache_common.sh
+  arch_ansible_ensure_cache
+
+  # The .chroot postinst's pacman needs a sync DB, and a device has no system
+  # one (and /var doesn't persist). Seed a persistent, home-resident copy that
+  # 10-sources-device.conf feeds into the image. Only fetch it when missing:
+  # once primed, builds reuse it and run offline (delete the dir to force a
+  # refresh). Root: pacman -Sy refuses to run unprivileged even with a custom
+  # --dbpath. DBs are SigLevel DatabaseOptional, so this needs no keyring (works
+  # on a never-provisioned device). No `|| true`: if it's missing and the sync
+  # fails (offline + unprimed) the build can't proceed, so let it fail loudly.
+  pacman_db="$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-db"
+  if [[ ! -f "$pacman_db/sync/core.db" ]]; then
+    mkdir -p "$pacman_db"
+    sudo pacman -Sy --dbpath "$pacman_db" --logfile /dev/null
+  fi
+else
+  # --image builds on this host with the default (host) target. We still need
+  # ARCH_ANSIBLE_OUTPUT_DIR resolved (the same value build-image will use) to
+  # locate the freshly built artifacts that --transfer-source feeds to sysupdate.
+  source bin/_cache_common.sh
 fi
 
 bin/build-image "${build_args[@]}"
 
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
-staging=/var/lib/arch-ansible/updates
 
-# Stage only the split artifacts the transfers consume (usr data/hash/sig + UKI),
-# replacing any previous build so the source advertises exactly the new version.
-sudo install -d -m 0755 "$staging"
-sudo find "$staging" -mindepth 1 -delete
-sudo cp -t "$staging" "$output_dir"/*.usr-*.raw "$output_dir"/image_*_*.efi
+if [[ -n "$image" ]]; then
+  # Offline path: apply the freshly built artifacts to the target disk's inactive
+  # /usr slot via the volatile-root mechanism (see the header for why not
+  # --image). --transfer-source points the transfers at our build output (no
+  # staging copy needed); --offline skips any network metadata fetch. The binary
+  # isn't on PATH.
 
-# Apply to the inactive slot and (optionally) reboot into it.
-sudo updatectl check
-sudo updatectl update
-[[ -n "$reboot" ]] && sudo systemctl reboot
+  # volatile-root needs a block device. A raw image file is loop-mounted (-P so
+  # its partitions get device nodes); a real disk node is used as-is. Everything
+  # acquired below is torn down on exit (the loop device detached, scratch dirs
+  # removed); the bind/ESP mounts live in the mount namespace and vanish with it.
+  loopdev="" runtmp="" esp_mnt=""
+  cleanup() {
+    [[ -n "$runtmp" ]] && rm -rf "$runtmp"
+    [[ -n "$esp_mnt" ]] && rm -rf "$esp_mnt"
+    [[ -n "$loopdev" ]] && sudo losetup -d "$loopdev"
+  }
+  trap cleanup EXIT
+
+  target="$image"
+  if [[ ! -b "$image" ]]; then
+    loopdev=$(sudo losetup --find --partscan --show "$image")
+    target="$loopdev"
+  fi
+  sudo udevadm settle
+
+  # Find the target's ESP partition (type GUID per the Discoverable Partitions
+  # Spec). We mount it below so the UKI transfer writes there, not to the live
+  # medium's ESP. There's no XBOOTLDR partition (see repart.d), so the UKI's
+  # PathRelativeTo=boot resolves to this ESP.
+  esp_part=$(lsblk -rno PATH,PARTTYPE "$target" |
+    awk 'tolower($2)=="c12a7328-f81f-11d2-ba4b-00a0c93ec93b"{print $1; exit}')
+  if [[ -z "$esp_part" ]]; then
+    echo "Refusing: no ESP partition found on '$image'." >&2
+    exit 1
+  fi
+
+  # The volatile-root symlink (bind-mounted over /run/systemd inside a throwaway
+  # mount namespace, so the live system's real /run/systemd is untouched — the
+  # live root is itself volatile and may already use volatile-root) and the
+  # target ESP mountpoint.
+  #
+  # volatile-root must point at a *partition* on the target, NOT the whole disk:
+  # sysupdate (resource_resolve_path, Path=auto) stat()s the symlink and feeds
+  # the resolved block device to block_get_whole_disk(), which walks up from a
+  # partition to its parent disk — but returns "not a partition" (and errors) if
+  # handed a whole disk. So we point it at the ESP partition; sysupdate derives
+  # the whole disk and enumerates the usr A/B partitions on it by type. (mkosi
+  # points it at `bootctl --print-root-device`, likewise a partition.)
+  runtmp=$(mktemp -d)
+  esp_mnt=$(mktemp -d)
+  ln -s "$esp_part" "$runtmp/volatile-root"
+
+  # Run sysupdate in a private mount namespace: the volatile-root bind and the
+  # ESP mount live only there and vanish with it (nothing leaks into the live
+  # system). SYSTEMD_ESP_PATH + RELAX_ESP_CHECKS make sysupdate write the UKI to
+  # the target ESP we mounted instead of scanning the live system's mount points.
+  sudo unshare --mount --propagation private -- \
+    bash -c '
+      set -o errexit
+      mount --bind "$1" /run/systemd
+      mount "$2" "$3"
+      export SYSTEMD_ESP_PATH="$3" SYSTEMD_RELAX_ESP_CHECKS=1
+      exec /usr/lib/systemd/systemd-sysupdate \
+        --definitions="$4" \
+        --transfer-source="$5" \
+        --offline \
+        update
+    ' bash "$runtmp" "$esp_part" "$esp_mnt" "$PWD/mkosi.sysupdate" "$output_dir"
+else
+  staging=/var/lib/arch-ansible/updates
+
+  # Stage only the split artifacts the transfers consume (usr data/hash/sig +
+  # UKI), replacing any previous build so the source advertises exactly the new
+  # version.
+  sudo install -d -m 0755 "$staging"
+  sudo find "$staging" -mindepth 1 -delete
+  sudo cp -t "$staging" "$output_dir"/*.usr-*.raw "$output_dir"/image_*_*.efi
+
+  # Apply to the inactive slot, then (optionally) reboot into it. Direct
+  # systemd-sysupdate, not updatectl/systemd-sysupdated: the transfers now use
+  # PathRelativeTo=explicit (shared with the --image path), so their source must
+  # come from --transfer-source, which updatectl has no way to pass. sysupdate
+  # auto-discovers the running system's disk and writes the new version to the
+  # inactive usr slot; the guard above (we're on a real device) keeps that
+  # discovery off a build host's disk. --offline: the regular-file transfers are
+  # local, no network fetch.
+  sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" --offline update
+  [[ -n "$reboot" ]] && sudo systemctl reboot
+fi
