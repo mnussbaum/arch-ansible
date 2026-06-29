@@ -1,35 +1,81 @@
 #!/bin/bash
+# Mount a persistent install's partitions under /mnt the way the running system
+# arranges them — decrypted root at /mnt (with its nested /var subvolume), the
+# read-only erofs /usr over it, the ESP at /mnt/efi, and the home partition at
+# /mnt/home — then arch-chroot in.
+#
+# Layout (systemd-repart, discoverable partitions): a LUKS2 root (GPT label
+# "root", TPM2-enrolled) holding a btrfs with a nested /var subvolume; a separate
+# read-only erofs /usr (dm-verity in a normal boot — mounted plain ro here, since
+# recovery doesn't need integrity enforcement); a vfat ESP; an encrypted swap;
+# and a btrfs home partition. systemd-homed keeps each user's data in its own
+# LUKS volume *inside* /home, so individual users' files still need
+# `homectl`/login to decrypt — this mounts the home partition, not the per-user
+# homes. Swap is not a filesystem, so it is left alone.
 set -euo pipefail
 
 TARGET=/mnt
 
-# Discover the LUKS partition
-DEVICE=$(blkid -t TYPE=crypto_LUKS -o device | head -1)
-if [[ -z "$DEVICE" ]]; then
-    echo "recovery-mount: no LUKS partition found" >&2
-    exit 1
-fi
-echo "LUKS partition: $DEVICE"
+die() { echo "recovery-mount: $*" >&2; exit 1; }
 
-# Discover the ESP on the same disk
-PARENT=$(lsblk -no PKNAME "$DEVICE")
-ESP=$(blkid -t TYPE=vfat -o device | grep "^/dev/${PARENT}" | head -1)
+# --- Find the root LUKS partition -------------------------------------------
+# Match the GPT partition label "root": swap is also crypto_LUKS, so matching on
+# type alone (as before) could grab the swap partition instead.
+root_luks=""
+while IFS= read -r line; do
+    eval "$line"
+    if [[ "${PARTLABEL:-}" == "root" && "${FSTYPE:-}" == "crypto_LUKS" ]]; then
+        root_luks="/dev/$NAME"
+        break
+    fi
+done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL)
+[[ -n "$root_luks" ]] || die "no LUKS partition labelled 'root' found"
 
-# Open the LUKS container — try enrolled tokens (FIDO2) first, then prompt
+# Scope every other partition to the root's parent disk, so we never pick up the
+# recovery medium's own ESP/usr (its /usr carries the same label as the target's).
+parent=$(lsblk -no PKNAME "$root_luks" | head -1)
+[[ -n "$parent" ]] || die "could not determine the parent disk of $root_luks"
+echo "Persistent disk: /dev/$parent (root: $root_luks)"
+
+# --- Find the other partitions on that disk ---------------------------------
+esp="" usr="" home=""
+while IFS= read -r line; do
+    eval "$line"
+    dev="/dev/$NAME"
+    case "${FSTYPE:-}" in
+        # Only the home btrfs is a raw partition; the root btrfs is inside LUKS.
+        btrfs) home="$dev" ;;
+        # Active /usr slot; the inactive A/B slot is empty (no filesystem). If
+        # both are populated (post-update) the first is fine — either is a valid /usr.
+        erofs) usr="${usr:-$dev}" ;;
+        vfat)  esp="$dev" ;;
+    esac
+done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL "/dev/$parent")
+[[ -n "$usr" ]] || die "no erofs /usr partition found on /dev/$parent"
+[[ -n "$esp" ]] || echo "recovery-mount: warning: no ESP found on /dev/$parent" >&2
+
+# --- Unlock root ------------------------------------------------------------
+# Try enrolled tokens (TPM2 sealed to PCR 7, or FIDO2) first, then the recovery key.
 if cryptsetup status cryptroot &>/dev/null; then
     echo "cryptroot already open"
-elif cryptsetup open --token-only "$DEVICE" cryptroot 2>/dev/null; then
-    echo "Opened via enrolled token"
+elif cryptsetup open --token-only "$root_luks" cryptroot 2>/dev/null; then
+    echo "Opened root via enrolled token (TPM2/FIDO2)"
 else
     echo "No token succeeded; enter recovery key:"
-    cryptsetup open "$DEVICE" cryptroot
+    cryptsetup open "$root_luks" cryptroot
 fi
 
-mount /dev/mapper/cryptroot "$TARGET"
-
-if [[ -n "$ESP" ]]; then
+# --- Mount, mirroring the running system's layout ---------------------------
+btrfs_opts="noatime,compress=zstd:1,discard=async,space_cache=v2"
+mount -o "$btrfs_opts" /dev/mapper/cryptroot "$TARGET"   # root (+ nested /var subvolume)
+mount -o ro "$usr" "$TARGET/usr"                          # immutable /usr (erofs)
+if [[ -n "$esp" ]]; then
     mkdir -p "$TARGET/efi"
-    mount "$ESP" "$TARGET/efi"
+    mount "$esp" "$TARGET/efi"
 fi
+[[ -n "$home" ]] && mount -o "$btrfs_opts" "$home" "$TARGET/home"  # home partition (per-user homed LUKS lives here)
+
+echo "Mounted under $TARGET:"
+findmnt -R "$TARGET" || true
 
 exec arch-chroot "$TARGET"
