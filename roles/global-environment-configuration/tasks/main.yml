@@ -5,11 +5,6 @@
     src: etc_environment
     dest: /etc/environment
 
-- name: Install /etc/locale.conf
-  copy:
-    src: etc_locale.conf
-    dest: /etc/locale.conf
-
 - name: Install shell profile files
   copy:
     dest: "/etc/profile.d/{{ item | basename }}"

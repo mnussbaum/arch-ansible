@@ -38,8 +38,6 @@ wallpaper:
   daytime_image: lost_coast_golden_path.jpg
   night_image: merch-mart.png
 
-timezone: "US/Pacific"
-
 key_repeat:
   rate: 35
   delay: 250

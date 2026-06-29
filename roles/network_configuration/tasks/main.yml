@@ -1,16 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Create systemd-resolved config directory
-  file:
-    path: "{{ network_install_root }}/usr/lib/systemd/resolved.conf.d"
-    state: directory
-
-- name: Configure nameservers
-  copy:
-    src: resolved-dns-servers.conf
-    dest: "{{ network_install_root }}/usr/lib/systemd/resolved.conf.d/dns_servers.conf"
-
-
 - name: Install wpa-psk script
   copy:
     src: wpa-psk
@@ -95,11 +84,6 @@
   no_log: true
   loop: "{{ wifi_networks | default([]) }}"
 
-- name: Install iwd main config
-  copy:
-    src: iwd_main.conf
-    dest: "{{ network_install_root }}/etc/iwd/main.conf"
-
 - name: Install udev rule to start iwd on wireless device
   copy:
     src: 90-iwd-on-wireless.rules
@@ -114,11 +98,6 @@
   copy:
     src: wireless-resume-ipv6-flush.service
     dest: "{{ network_install_root }}/usr/lib/systemd/system/wireless-resume-ipv6-flush.service"
-
-- name: Install systemd-networkd config for eth0 interface
-  copy:
-    src: systemd-networkd-eth0-config.network
-    dest: "{{ network_install_root }}/usr/lib/systemd/network/eth0.network"
 
 - name: Install networking.target
   copy:

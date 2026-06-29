@@ -6,19 +6,8 @@
     name:
       - xdg-user-dirs
 
-- name: Install systemd user preset
-  copy:
-    src: 80-user.preset
-    dest: /usr/lib/systemd/user-preset/80-user.preset
-
 - name: Create wheel group
   group: name=wheel state=present
-
-- name: Configure sudoers
-  copy:
-    src: "ansible_sudoers"
-    dest: /etc/sudoers.d/ansible
-    validate: "/usr/bin/visudo -cf %s"
 
 - name: Create skel .zshrc to suppress zsh-newuser-install
   copy:
@@ -49,18 +38,3 @@
     src: /usr/share/password-store
     state: link
     force: true
-
-- name: Install PAM system-auth with systemd-homed support
-  copy:
-    src: system-auth
-    dest: /etc/pam.d/system-auth
-
-- name: Install nsswitch.conf
-  copy:
-    src: nsswitch.conf
-    dest: /etc/nsswitch.conf
-
-- name: Install systemd preset
-  copy:
-    src: 80-homed.preset
-    dest: /usr/lib/systemd/system-preset/80-homed.preset
