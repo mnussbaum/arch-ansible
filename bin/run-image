@@ -5,17 +5,22 @@ set -o nounset
 
 hostname=""
 runtime=qemu
-recovery=""
+device=""
+recovery_alias=""
 mkosi_args=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       echo "Run the built image in a VM, setting its hostname at boot. Build it first with build-image." >&2
-      echo "Usage: $0 --hostname=<hostname> [--runtime=qemu] [--recovery=IMAGE.raw] [mkosi options...]" >&2
-      echo "  --hostname  Hostname, applied at boot via mkosi --machine (systemd.hostname=); required." >&2
+      echo "Usage: $0 --hostname=<hostname> [--runtime=qemu] [--device=DISK.raw] [mkosi options...]" >&2
+      echo "  --hostname  Hostname for the machine, required. Applied at boot via mkosi --machine" >&2
+      echo "              (systemd.hostname=), and also forwarded as a firstboot.hostname credential" >&2
+      echo "              so the Installer profile names the disk it provisions the same." >&2
       echo "  --runtime   VMM to use, passed to mkosi --vmm; default qemu." >&2
-      echo "  --recovery  Raw disk image to attach as a second drive (e.g. a recovery image)." >&2
+      echo "  --device    Attach DISK.raw as a second disk in the guest (/dev/vdb). At the boot" >&2
+      echo "              menu, pick 'Live System (Recovery)' to repair it, or 'Installer' to" >&2
+      echo "              install onto it. (--recovery is a deprecated alias.)" >&2
       echo "  Any other options are forwarded to mkosi (e.g. --console gui)." >&2
       exit
       ;;
@@ -23,8 +28,10 @@ while [[ $# -gt 0 ]]; do
     --hostname) hostname="$2"; shift ;;
     --runtime=*) runtime="${1#*=}" ;;
     --runtime) runtime="$2"; shift ;;
-    --recovery=*) recovery="${1#*=}" ;;
-    --recovery) recovery="$2"; shift ;;
+    --device=*) device="${1#*=}" ;;
+    --device) device="$2"; shift ;;
+    --recovery=*) device="${1#*=}"; recovery_alias=1 ;;
+    --recovery) device="$2"; shift; recovery_alias=1 ;;
     *)
       mkosi_args+=("$1")
       if [[ "$1" =~ ^-- ]] && [[ $# -gt 1 && "$2" != -* ]]; then mkosi_args+=("$2"); shift; fi
@@ -54,11 +61,21 @@ if [[ "$runtime" == "qemu" ]]; then
     "-device" "virtio-serial"
     "-device" "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0"
   )
-  if [[ -n "$recovery" ]]; then
+  if [[ -n "$device" ]]; then
+    # Attach a second disk as an ordinary internal drive (no bootindex, so the
+    # booted image stays the boot device). mkosi always boots the built image as
+    # the medium; which role it plays is a boot-menu choice (see
+    # mkosi.uki-profiles/): "Live System (Recovery)" to mount/repair this disk
+    # (recovery-mount finds its LUKS), or "Installer" to replicate the image onto
+    # it (systemd-sysinstall wipes and provisions it). Used as a blank target for
+    # install, or a provisioned disk for recovery.
+    [[ -n "$recovery_alias" ]] && echo "==> note: --recovery is a deprecated alias for --device." >&2
     vmm_args+=(
-      "-drive" "if=none,id=recovery,file=$recovery,format=raw"
-      "-device" "scsi-hd,bus=scsi0.0,drive=recovery"
+      "-drive" "if=none,id=device,file=$device,format=raw"
+      "-device" "virtio-blk-pci,drive=device"
     )
+    echo "==> Attached $device as /dev/vdb. At the boot menu, pick 'Live System" >&2
+    echo "    (Recovery)' to repair it, or 'Installer' to install onto it." >&2
   fi
 
   # With a GUI console, override mkosi's hardcoded SDL display (qemu.py uses
@@ -114,15 +131,40 @@ if [[ "$runtime" == "qemu" ]]; then
     "-device" "tpm-tis,tpmdev=tpm0"
   )
 
-  # Persistent UEFI variable store. mkosi gives each vm run a fresh OVMF
-  # varstore, so the image's Secure Boot auto-enroll fires on every boot
-  # (setup mode again) and PCR 7 (Secure Boot state) can shift between the
-  # boot that enrolled the TPM2 LUKS keyslot and later boots. Seed a writable
-  # copy from the setup-mode template once and reuse it so keys enroll once
-  # and PCR 7 stays stable, like real hardware.
+  # Pre-enroll our Secure Boot cert into the firmware varstore so the VM boots
+  # already in user mode with Secure Boot on, like real hardware after its
+  # one-time enrollment. We can't make this persist by handing mkosi a writable
+  # varstore: finalize_firmware_variables() in mkosi/qemu.py always copies
+  # --firmware-variables to a throwaway temp file and uses that as the pflash,
+  # so the image's runtime auto-enroll (\loader\keys\auto) is discarded when the
+  # VM exits. Every launch would re-enter setup mode, re-run enrollment, and
+  # shift PCR 7 out from under the TPM2-bound LUKS keyslot. Instead we enroll the
+  # cert into the varstore ourselves, up front, so the firmware is already in
+  # user mode before the guest runs and PCR 7 is stable across launches; mkosi
+  # then just copies the finished varstore (no re-enroll).
+  #
+  # mkosi's own --firmware-variables=custom does the same thing, but it shells
+  # out to `virt-fw-vars --enroll-cert <file>`, which is broken in virt-firmware
+  # 26.x: the path is routed through load_cert(), which only accepts builtin
+  # "domain/name" refs and split('/')s it. The file-based --set-pk/--add-kek/
+  # --add-db options take a real file, so we build the varstore directly.
+  secureboot_cert="$ARCH_ANSIBLE_CACHE/mkosi-secureboot/mkosi.crt"
+  if [[ ! -f "$secureboot_cert" ]]; then
+    # Cache cleared but image still present: re-materialize the cert from pass.
+    # This fallback is the only path here that touches GPG.
+    source bin/_secureboot_common.sh
+    materialize_secureboot_keypair
+    secureboot_cert="$SECUREBOOT_CERT"
+  fi
   ovmf_vars="$output_dir/ovmf_vars.fd"
-  if [[ ! -f "$ovmf_vars" ]]; then
-    cp /usr/share/edk2/x64/OVMF_VARS.4m.fd "$ovmf_vars"
+  if [[ ! -f "$ovmf_vars" || "$secureboot_cert" -nt "$ovmf_vars" ]]; then
+    virt-fw-vars \
+      --input /usr/share/edk2/x64/OVMF_VARS.4m.fd \
+      --output "$ovmf_vars" \
+      --set-pk OvmfEnrollDefaultKeys "$secureboot_cert" \
+      --add-kek OvmfEnrollDefaultKeys "$secureboot_cert" \
+      --add-db OvmfEnrollDefaultKeys "$secureboot_cert" \
+      --secure-boot
   fi
   mkosi_args+=(
     "--firmware=uefi-secure-boot"
@@ -133,6 +175,7 @@ fi
 mkosi \
   --output-directory="$output_dir" \
   --machine="$hostname" \
+  --credential="firstboot.hostname=$hostname" \
   --vmm="$runtime" \
   --cpus=4 \
   --ram=4G \

@@ -13,7 +13,9 @@ while [[ $# -gt 0 ]]; do
       echo "Write the built image to a device, setting its hostname at boot. Build it first with build-image." >&2
       echo "Usage: $0 --hostname=<hostname> [mkosi options...] <device>" >&2
       echo "  <device>    Block device to write the image to." >&2
-      echo "  --hostname  Hostname, applied at boot via a system.hostname credential in the ESP (required)." >&2
+      echo "  --hostname  Hostname for the machine, required. Written to the ESP as a firstboot.hostname" >&2
+      echo "              credential, which systemd-firstboot applies on first boot — whether this disk" >&2
+      echo "              self-installs or the Installer profile provisions another disk from it." >&2
       echo "  Any other options are forwarded to mkosi." >&2
       exit
       ;;
@@ -43,8 +45,12 @@ mkosi \
   "${mkosi_args[@]}" \
   burn "$device"
 
-# The image is generic; set the boot-time hostname by dropping a system.hostname
-# credential into the ESP, which systemd-boot passes to PID1 at boot.
+# The image is generic; set the hostname by dropping a firstboot.hostname credential
+# into the ESP, which systemd-boot passes to PID1 at boot. systemd-firstboot.service
+# (shipped enabled, ImportCredential=firstboot.*) writes it to a static /etc/hostname
+# on first boot. This is the single naming mechanism for both provisioning routes: a
+# disk that self-installs on its own first boot, and a disk the Installer profile
+# (systemd-sysinstall) provisions and which then runs firstboot itself.
 esp=$(lsblk -lnpo NAME,PARTTYPE "$device" \
   | awk '$2=="c12a7328-f81f-11d2-ba4b-00a0c93ec93b"{print $1; exit}')
 [[ -n "$esp" ]] || { echo "Could not find an ESP on $device" >&2; exit 1; }
@@ -53,6 +59,6 @@ mnt=$(mktemp -d)
 trap 'sudo umount "$mnt" 2>/dev/null || true; rmdir "$mnt" 2>/dev/null || true' EXIT
 sudo mount "$esp" "$mnt"
 sudo mkdir -p "$mnt/loader/credentials"
-printf '%s' "$hostname" | sudo tee "$mnt/loader/credentials/system.hostname.cred" >/dev/null
+printf '%s' "$hostname" | sudo tee "$mnt/loader/credentials/firstboot.hostname.cred" >/dev/null
 
 echo "Burned image to $device with hostname $hostname" >&2

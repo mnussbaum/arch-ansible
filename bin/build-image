@@ -63,6 +63,19 @@ source bin/_cache_common.sh
 arch_ansible_ensure_cache
 arch_ansible_stage_srctree
 
+# Point pass at the shipped password-store when building from a live/volatile
+# medium. The live-USB profile boots a fresh tmpfs $HOME with no password-store,
+# but the encrypted store ships read-only in the image at /usr/share/password-store
+# (ExtraTree), and a YubiKey supplies the GPG secret to decrypt it. Without this,
+# the signing-key lookup falls back to $HOME/.local/share/password-store (empty)
+# and the build aborts. A normal host build keeps its own ~/.local/share copy, so
+# only the live case falls through here; an explicit PASSWORD_STORE_DIR wins.
+if [[ -z "${PASSWORD_STORE_DIR:-}" \
+      && ! -d "$HOME/.local/share/password-store" \
+      && -d /usr/share/password-store ]]; then
+  export PASSWORD_STORE_DIR=/usr/share/password-store
+fi
+
 source bin/_secureboot_common.sh
 materialize_secureboot_keypair
 

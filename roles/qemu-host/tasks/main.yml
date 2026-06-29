@@ -9,6 +9,7 @@
       - sdl2
       - socat
       - swtpm
+      - virt-firmware
 
 - name: Enable kvm CPU pass-through
   copy:

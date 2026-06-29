@@ -8,7 +8,7 @@
 # any mount unit there ("Cannot create mount unit for API file system"). So we
 # mount the tag at /mnt/shared instead. The What= below is the virtiofs tag,
 # not a real path. ConditionVirtualization keeps this inert on physical
-# hardware (e.g. a burned USI).
+# hardware (e.g. a burned install/recovery USB).
 [Unit]
 Description=Host shared directory (virtiofs)
 ConditionVirtualization=vm
