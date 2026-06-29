@@ -1,5 +1,8 @@
 # vim:ft=yaml.ansible:
 ---
+# Use the yay module from the vendored mnussbaum.ansible_yay collection. The
+# `package:` action dispatches on pkg_mgr, so set it to the collection's FQCN
+# so the module resolves without per-role `collections:` keywords.
 - name: Switch to yay for AUR support
   set_fact:
-    ansible_facts: "{{ ansible_facts | combine({'pkg_mgr': 'yay'}) }}"
+    ansible_facts: "{{ ansible_facts | combine({'pkg_mgr': 'mnussbaum.ansible_yay.yay'}) }}"

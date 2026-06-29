@@ -1,0 +1,35 @@
+{
+ "collection_info": {
+  "namespace": "mnussbaum",
+  "name": "ansible_yay",
+  "version": "1.0.1",
+  "authors": [
+   "mnussbaum <michaelnussbaum08@gmail.com>"
+  ],
+  "readme": "README.md",
+  "tags": [
+   "aur",
+   "arch_user_repository",
+   "arch",
+   "archlinux",
+   "arch_linux",
+   "packaging"
+  ],
+  "description": "An Ansible module for installing Arch Linux User Repository (AUR) packages via the yay AUR helper\n",
+  "license": [],
+  "license_file": "LICENSE.md",
+  "dependencies": {},
+  "repository": "https://github.com/mnussbaum/ansible-yay",
+  "documentation": null,
+  "homepage": null,
+  "issues": "https://github.com/mnussbaum/ansible-yay/issues"
+ },
+ "file_manifest_file": {
+  "name": "FILES.json",
+  "ftype": "file",
+  "chksum_type": "sha256",
+  "chksum_sha256": "9637ee4e0296a789da442685d921ffed8668c55b8eb93111d30cf9a19dc6974a",
+  "format": 1
+ },
+ "format": 1
+}

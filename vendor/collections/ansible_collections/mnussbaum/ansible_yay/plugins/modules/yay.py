@@ -22,6 +22,93 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+DOCUMENTATION = r'''
+---
+module: yay
+short_description: Manage AUR packages with the yay helper
+description:
+  - Install, upgrade, and remove Arch Linux User Repository (AUR) packages
+    using the C(yay) AUR helper.
+  - Assumes the target node already has C(yay) and its dependencies installed.
+author:
+  - Austin Hyde (@austinhyde)
+  - Michael Nussbaum (@mnussbaum)
+requirements:
+  - yay
+  - pacman
+options:
+  name:
+    description:
+      - Name or list of names of the AUR package(s) to install, upgrade, or
+        remove.
+    type: list
+    elements: str
+  state:
+    description:
+      - Whether the package(s) should be installed (V(present)), installed and
+        upgraded to the latest version (V(latest)), or removed (V(absent)).
+    type: str
+    choices: [absent, present, latest]
+    default: present
+  recurse:
+    description:
+      - When removing packages, also remove dependencies that are no longer
+        required (equivalent to C(pacman -Rs)).
+    type: bool
+    default: false
+  upgrade:
+    description:
+      - Whether to upgrade the whole system (equivalent to C(yay -Su)).
+    type: bool
+    default: false
+  update_cache:
+    description:
+      - Whether to refresh the package databases before the operation
+        (equivalent to C(yay -Sy)).
+    type: bool
+    default: false
+    aliases: [update-cache]
+'''
+
+EXAMPLES = r'''
+- name: Install package foo
+  mnussbaum.ansible_yay.yay:
+    name: foo
+    state: present
+
+- name: Ensure fuzz is installed and up to date
+  mnussbaum.ansible_yay.yay:
+    name: fuzz
+    state: latest
+
+- name: Remove packages foo and bar
+  mnussbaum.ansible_yay.yay:
+    name:
+      - foo
+      - bar
+    state: absent
+
+- name: Recursively remove package baz
+  mnussbaum.ansible_yay.yay:
+    name: baz
+    state: absent
+    recurse: true
+
+- name: Refresh the package databases and upgrade the system (yay -Syu)
+  mnussbaum.ansible_yay.yay:
+    update_cache: true
+    upgrade: true
+'''
+
+RETURN = r'''
+msg:
+  description: Human-readable summary of the actions that were performed.
+  returned: always
+  type: str
+  sample: Installed 1 package(s).
+'''
+
+
 def yay_in_path(module):
   rc, _, _ = module.run_command('which yay', check_rc=False)
   return rc == 0
@@ -31,43 +118,31 @@ def pacman_in_path(module):
   rc, _, _ = module.run_command('which pacman', check_rc=False)
   return rc == 0
 
-def get_version(yay_output):
-    '''Take yay -Qi or yay -Si output and get the Version'''
-    lines = yay_output.split('\n')
-    for line in lines:
-        if 'Version' in line:
-            return line.split(':')[1].strip()
-    return None
+def get_installed(module):
+  '''Return a dict mapping installed package name -> version, gathered in a
+  single `pacman -Q` call.'''
+  rc, stdout, _ = module.run_command('pacman -Q', check_rc=False)
+  installed = {}
+  if rc != 0:
+    return installed
+  for line in stdout.split('\n'):
+    parts = line.split()
+    if len(parts) >= 2:
+      installed[parts[0]] = parts[1]
+  return installed
 
-def query_package(module, pkg, state):
-  '''
-  Query the package status in both the local system and the repository.
-  Returns three booleans to indicate:
-    * If the package is installed
-    * If the package is up-to-date
-    * Whether online information was available
-  '''
-  local_check_cmd = 'yay -Qi %s' % pkg
-  local_check_rc, local_check_stdout, _ = module.run_command(local_check_cmd, check_rc=False)
-  if local_check_rc != 0:
-    return False, False, False
-
-  # No need to check for the repo version in some situations
-  # Indicate the package is out-of-date, because we chose not to check
-  if state == 'present' or state == 'absent':
-    return True, False, False
-
-  local_version = get_version(local_check_stdout)
-
-  repo_check_cmd = 'yay -Si %s' % pkg
-  repo_check_rc, repo_check_stdout, repo_check_stderr = module.run_command(repo_check_cmd, check_rc=False)
-  repo_version = get_version(repo_check_stdout)
-
-  if repo_check_rc == 0 and repo_check_stderr == '':
-    return True, (local_version == repo_version), False
-  else:
-    # Indicate package is up-to-date, but just because we hit an error contacting the repo
-    return True, True, True
+def get_outdated(module):
+  '''Return the set of installed package names that have a newer version
+  available, checking both the official repos and the AUR in one `yay -Qu`
+  call. `yay -Qu` exits non-zero when nothing is out of date, so the return
+  code is ignored and whatever it prints is parsed.'''
+  _, stdout, _ = module.run_command('yay -Qu', check_rc=False)
+  outdated = set()
+  for line in stdout.split('\n'):
+    parts = line.split()
+    if parts:
+      outdated.add(parts[0])
+  return outdated
 
 def update_package_db(module):
   rc, _, stderr = module.run_command('yay -Sy', check_rc=False)
@@ -102,7 +177,12 @@ def upgrade(module):
 def get_sudo_user(module):
   # ansible sets the SUDO_USER environment variable.  Default to using this,
   # checking USER and then `logname` as backups.
-  user = os.environ.get('SUDO_USER') or os.environ.get('USER')
+  user = os.environ.get('SUDO_USER')
+
+  # If ansible is run as root with become_user set, use the specified user
+  # instead of root.
+  if not user or user == 'root':
+    user = os.environ.get('USER')
 
   if not user:
     rc, stdout, _ = module.run_command('logname', check_rc=True)
@@ -111,13 +191,17 @@ def get_sudo_user(module):
   return user
 
 def check_packages(module, pkgs, state):
-  would_be_changed = []
+  installed = get_installed(module)
+  outdated = get_outdated(module) if state == 'latest' else set()
 
+  would_be_changed = []
   for pkg in pkgs:
-    installed, updated, _ = query_package(module, pkg, state)
-    if ((state in ['present', 'latest'] and not installed) or
-        (state == 'latest' and not updated) or
-        (state == 'absent' and installed)):
+    is_installed = pkg in installed
+    if state in ['present', 'latest'] and not is_installed:
+      would_be_changed.append(pkg)
+    elif state == 'latest' and is_installed and pkg in outdated:
+      would_be_changed.append(pkg)
+    elif state == 'absent' and is_installed:
       would_be_changed.append(pkg)
 
   word = 'installed'
@@ -130,38 +214,40 @@ def check_packages(module, pkgs, state):
     return False, 'All packages are already %s' % word
 
 def install_packages(module, pkgs, state):
-  num_installed = 0
-  package_err = []
-  message = ''
+  installed = get_installed(module)
+
+  if state == 'present':
+    # An already installed package satisfies "present" regardless of version,
+    # so only the ones not installed at all need to be handed to yay.
+    targets = [pkg for pkg in pkgs if pkg not in installed]
+  else:
+    # state == 'latest': pass every package and let `--needed` skip the ones
+    # already up-to-date while installing or upgrading the rest.
+    targets = list(pkgs)
+
+  if not targets:
+    return False, 'All packages were already installed.'
 
   sudo_user = get_sudo_user(module)
-  cmd = 'sudo -u %s yay --noconfirm -S %s'
+  cmd = 'sudo -u %s yay --noconfirm --needed -S %s' % (sudo_user, ' '.join(targets))
 
-  for pkg in pkgs:
-    installed, updated, latest_error = query_package(module, pkg, state)
-    if latest_error and state == 'latest':
-        package_err.append(pkg)
+  rc, _, stderr = module.run_command(cmd, check_rc=False)
+  if rc != 0:
+    module.fail_json(msg='Failed to install packages: %s' % stderr)
 
-    if installed and (state == 'present' or (state == 'latest' and updated)):
-        continue
+  after = get_installed(module)
+  if after == installed:
+    return False, 'All packages were already installed.'
 
-    rc, _, stderr = module.run_command(cmd % (sudo_user, pkg), check_rc=False)
-
-    if rc != 0:
-      module.fail_json(msg='Failed to install package %s, because: %s' % (pkg, stderr))
-
-    num_installed += 1
-
-  if state == 'latest' and len(package_err) > 0:
-    message = 'But could not ensure "latest" state for %s package(s) as remote version could not be fetched.' % package_err
-
-  if num_installed > 0:
-    return True, 'Installed %s package(s). %s' % (num_installed, message)
-  else:
-    return False, 'All packages were already installed. %s' % message
+  num_changed = len([pkg for pkg in pkgs if installed.get(pkg) != after.get(pkg)])
+  return True, 'Installed %s package(s).' % num_changed
 
 def remove_packages(module, pkgs, recurse, state):
-  num_removed = 0
+  installed = get_installed(module)
+  targets = [pkg for pkg in pkgs if pkg in installed]
+
+  if not targets:
+    return False, 'All packages were already removed'
 
   arg = 'R'
   word = 'remove'
@@ -169,24 +255,13 @@ def remove_packages(module, pkgs, recurse, state):
     arg = 'Rs'
     word = 'recursively remove'
 
-  cmd = 'pacman -%s --noconfirm %s'
+  cmd = 'pacman -%s --noconfirm %s' % (arg, ' '.join(targets))
 
-  for pkg in pkgs:
-    installed, _, _ = query_package(module, pkg, state)
-    if not installed:
-      continue
+  rc, _, stderr = module.run_command(cmd, check_rc=False)
+  if rc != 0:
+    module.fail_json(msg='failed to %s packages because: %s' % (word, stderr))
 
-    rc, _, stderr = module.run_command(cmd % (arg, pkg), check_rc=False)
-
-    if rc != 0:
-      module.fail_json(msg='failed to %s package %s because: %s' % (word, pkg, stderr))
-
-    num_removed += 1
-
-  if num_removed > 0:
-    return True, 'Removed %s package(s)' % num_removed
-  else:
-    return False, 'All packages were already removed'
+  return True, 'Removed %s package(s)' % len(targets)
 
 
 def main():

@@ -1,0 +1,61 @@
+{
+ "files": [
+  {
+   "name": ".",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "README.md",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "1d56be77c632154d59217db0a090c0dff682b1bc6e0c3c7253870df79406f08f",
+   "format": 1
+  },
+  {
+   "name": "LICENSE.md",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "e63bf4e52d53c601aa6494a21da8405e61457f13237af7605ea441786f4a016f",
+   "format": 1
+  },
+  {
+   "name": "plugins",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "plugins/modules",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "plugins/modules/yay.py",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "99ee4aeb737e6afe72997b49b191113f2c6a609e33287ebeba537b1932c53630",
+   "format": 1
+  },
+  {
+   "name": "meta",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": "meta/runtime.yml",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "b5d9b146aa07048432c93824a93c4dba79f95dcb91effa4b205bdaa8fdb8e2fb",
+   "format": 1
+  }
+ ],
+ "format": 1
+}
