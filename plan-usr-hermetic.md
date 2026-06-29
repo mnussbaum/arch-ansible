@@ -144,8 +144,9 @@ Done:
 - /var as btrfs subvolume of root
 - Encrypt=tpm2 (no shipped keyfile, no luks-enroll.service)
 - mkosi SecureBoot=yes replaces sbctl
-- USI image deleted; replaced by UKI profiles (`default`, `emergency`,
-  `factory-reset`, `factory-reset-with-tpm-clear`) under `mkosi.uki-profiles/`
+- Separate live image deleted; replaced by UKI profiles (`default`, `live`,
+  `emergency`, `factory-reset`, `factory-reset-with-tpm-clear`) under
+  `mkosi.uki-profiles/`
 - Factory reset UKI profile with `systemd.factory_reset=1`
 - mkosi.images/ structure collapsed to top-level config
 
@@ -299,28 +300,29 @@ Open questions:
 
 ## D — On-device A/B self-update (sysupdate) *(in progress)*
 
-**Decided model (ParticleOS *default*, driven via `updatectl`):** on-device
-self-update by **local rebuild**, **no timer**, **no update server**. The device
-rebuilds the image from this repo, stages the fresh split artifacts in a local
-dir, and `updatectl` applies them to the inactive A/B slot. This mirrors
-ParticleOS's local update flow but uses `updatectl`/`systemd-sysupdated` instead
-of the raw `mkosi sysupdate` verb, so the device has a persistent, queryable
-update target (`updatectl`, `updatectl check`, `updatectl update`).
+**Decided model (ParticleOS *default*, driven via direct `systemd-sysupdate`):**
+on-device self-update by **local rebuild**, **no timer**, **no update server**.
+The device rebuilds the image from this repo, stages the fresh split artifacts in
+a local dir, and `systemd-sysupdate --transfer-source=<staging>` applies them to
+the inactive A/B slot. (Originally driven via `updatectl`/`systemd-sysupdated`;
+switched to a direct `systemd-sysupdate` call so the same `PathRelativeTo=explicit`
+transfers serve both this path and the offline `--image` path — `updatectl` has no
+way to pass `--transfer-source`.)
 
 - **In-image** `mkosi.extra/usr/lib/sysupdate.d/*.transfer` — `[Source]
-  Type=regular-file Path=/var/lib/arch-ansible/updates` (a local staging dir, not
-  a URL). This is the on-device target `updatectl` drives. ParticleOS's
-  `obs-sysupdate` profile has the same *structure* but a `Type=url-file` OBS
-  source; we use a local source because we self-build. (The OBS/url-file path
-  with a signed remote is the only thing the in-image transfers would need a
-  `SHA256SUMS`/keyring for — not applicable to a local source.)
-- **Host-side** `mkosi.sysupdate/*.transfer` (`[Source] Path=/
-  PathRelativeTo=explicit`) — kept for offline `mkosi sysupdate` testing against
-  a built disk image; not the device path.
+  Type=regular-file Path=/ PathRelativeTo=explicit`, so the source dir is whatever
+  `--transfer-source=` names: the local staging dir on-device, or the build output
+  for `--image`. ParticleOS's `obs-sysupdate` profile has the same *structure* but
+  a `Type=url-file` OBS source; we use a local source because we self-build. (The
+  OBS/url-file path with a signed remote is the only thing the in-image transfers
+  would need a `SHA256SUMS`/keyring for — not applicable to a local source.)
+- **Host-side** `mkosi.sysupdate/*.transfer` — now **byte-identical** to the
+  in-image copy above (same explicit format), kept for offline `mkosi sysupdate`
+  testing against a built disk image. Keep the two copies in sync.
 - Staging dir `/var/lib/arch-ansible/updates` is created by a tmpfiles.d entry;
   `bin/update-system` clears it and drops the new build's `*.usr-*.raw` + `.efi`
-  there before calling `updatectl`, so the source advertises exactly one (newer)
-  version.
+  there, then runs `systemd-sysupdate --transfer-source=<staging>`, so the source
+  advertises exactly one (newer) version.
 - Versioning: `ImageVersion` is unset in `mkosi.conf`; mkosi reads the version
   from the `mkosi.version` file. `build-image` writes it from the `mkosi.bump`
   script (a `date +%Y%m%d%H%M%S` timestamp) before each build (the official path
@@ -329,8 +331,10 @@ update target (`updatectl`, `updatectl check`, `updatectl update`).
   build is newer than the running slot, so sysupdate installs to the inactive
   slot; `InstancesMax=2` keeps the A/B pair and prunes older versions.
 - Caveat (also open in ParticleOS's own `TODO`): boot-counting and http
-  sysupdate are still maturing upstream; treat the rollback path as unproven
-  until the verification below passes.
+  sysupdate are still maturing upstream. The local boot-counting + auto-rollback
+  path is now proven in the VM (scenario 4 below) — but only after removing a
+  `default @saved` line from `loader.conf` that was silently defeating it; treat
+  any future change to the loader default-entry policy as rollback-affecting.
 
 ### Verified state (running VM, `diag-update-*.out`)
 
@@ -389,34 +393,59 @@ The structural wiring is confirmed end-to-end:
   finds nothing — the transfers are a single flat target, not components; that
   flag was a diag artifact, since removed.)
 
-**Still pending (expected):** the build-installed UKI has **no `+tries` counter**
-and `systemd-bless-boot` is inert — boot-counting only activates once *sysupdate*
-installs a counted UKI. That's the next test.
+**Resolved:** the build-installed UKI ships with no `+tries` counter, so
+`systemd-bless-boot` is inert on the first boot — but once *sysupdate* installs a
+counted UKI (its transfer carries `TriesLeft=3`), boot-counting activates and the
+bless contract fires. Verified in the VM (see scenario 3 below).
 
-### Verification still to do (Tier-2/3 from the update review)
+### Verification (Tier-2/3 from the update review) — complete
 
 On-device `bin/update-system` build is now reaching the build/sign step in the
 VM (proves the device can self-build and sign with the pass/YubiKey key). The
-ordered VM test plan, priority `1 → 2 → 4` as the core:
+ordered VM test plan, priority `1 → 2 → 4` as the core. **All six scenarios
+verified in the VM (2026-06-15) across four update cycles
+(`113025 → 185655 → 232355 → 000547`). Scenario 4 caught a real bug — a
+`default @saved` line in `mkosi.extra/efi/loader/loader.conf` that defeated
+auto-rollback; now removed (see scenario 4).**
 
-1. **Apply (inspect before reboot).** `update-system` (no `--reboot`) →
+1. ✅ **Apply (inspect before reboot).** `update-system` (no `--reboot`) →
    `diag-update.sh`: a `_empty` B slot becomes `image_<newts>` (+`_verity`/
    `_verity_sig`), a second counted UKI `…+3-0.efi` appears, the running slot is
    untouched (`ProtectVersion=%A`), `updatectl` lists two versions.
-2. **Reboot into the new slot.** `bootctl`/`/proc/cmdline` `usrhash` flip to the
+2. ✅ **Reboot into the new slot.** `bootctl`/`/proc/cmdline` `usrhash` flip to the
    new version; `/usr` backed by the former B partition; homed login still works
    (home is on the persistent partition).
-3. **Bless contract.** On a good boot `systemd-bless-boot` fires and drops the
+3. ✅ **Bless contract.** On a good boot `systemd-bless-boot` fires and drops the
    `+tries` counter (was inert pre-sysupdate; if it never blesses, healthy boots
-   count down toward a false rollback).
-4. **Rollback / fallback (the safety net).** Force the new slot to fail (e.g.
-   hard-reset 3× before bless) → boot-count exhausts → systemd-boot falls back to
-   the prior good slot; `bootctl list` shows the bad entry failed.
-5. **`/etc` tracks the new `/usr`.** A seeded symlink (`ls -l /etc/sway/config`)
-   resolves into the new `/usr/share/factory`.
-6. **A/B ping-pong + pruning.** A second `update-system` writes the *other* slot;
+   count down toward a false rollback). *Verified:* a counted UKI requires the
+   update to be applied by a slot whose transfer carries `TriesLeft=3`; once it
+   did, `systemd-bless-boot status` reported `good`, the service ran
+   (`Marked boot as 'good'`), and the `LoaderBootCountPath` efivar was present.
+4. ✅ **Rollback / fallback (the safety net).** Force the new slot to fail →
+   boot-count exhausts → systemd-boot falls back to the prior good slot.
+   *Verified, and it caught a bug.* Method: staged a counted slot (`000547`,
+   `+3-0`), masked `systemd-bless-boot` so it could never mark itself good
+   (equivalent to a crash-before-bless, but deterministic and headless — the VM
+   has no QMP socket for real power-cycles), then rebooted. The counter walked
+   `+3-0 → +2-1 → +1-2 → +0-3` perfectly, but the zero-tries slot **kept
+   booting** instead of falling back. Root cause: `default @saved` in
+   `mkosi.extra/efi/loader/loader.conf` pinned sd-boot to the last-booted entry,
+   overriding boot-counting's bad-entry exclusion. Removing that line fixed it:
+   sd-boot then auto-selected the newest entry with tries left, skipped the bad
+   `000547` (`+0-4`), and booted the prior good `232355`. Note: after rollback
+   the bad slot still exists on disk and `updatectl` still lists it as newest
+   (`current`); it stays excluded at boot (0 tries) and the next `update-system`
+   overwrites it (the running good slot is `ProtectVersion=%A`).
+5. ✅ **`/etc` tracks the new `/usr`.** A seeded symlink (`ls -l /etc/sway/config`)
+   resolves into the new `/usr/share/factory`. *Verified:* `/etc/sway` is an
+   `L`-line symlink (tmpfiles `00-factory-etc.conf`) into `/usr/share/factory/etc`,
+   so it resolves into whichever `/usr` slot is active. Note `C`-style
+   ("copy when missing") seeds do *not* track `/usr` by design.
+6. ✅ **A/B ping-pong + pruning.** A second `update-system` writes the *other* slot;
    `InstancesMax=2` prunes so it never exceeds two; `updatectl`/`bootctl` stay
-   consistent — proves the cycle is sustainable, not one-shot.
+   consistent — proves the cycle is sustainable, not one-shot. *Verified:* two
+   `/usr` slots on disk (`232355` on `vda2-4`, `185655` on `vda5-7`), two ESP UKIs,
+   `updatectl` reports exactly current+installed; the oldest `113025` was pruned.
 - **Security:** tamper a staged `usr` artifact → must fail safe (usrhash mismatch
   at boot); wrong-key UKI → firmware rejects. `Verify=`/`SHA256SUMS` is moot for
   the local-rebuild model (no untrusted transport); revisit only if we ever add

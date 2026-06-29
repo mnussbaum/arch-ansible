@@ -1,133 +1,144 @@
 # Bootstrapping
 
-This document describes the complete lifecycle of images in this repository:
-how they are built, signed, installed, what they do on first boot, how they
-handle kernel updates, and how to use the USI for recovery.
+This document describes the complete lifecycle of the image in this repository:
+how it is built, signed, installed, what it does on first boot, how it is
+updated, and how to boot it as a recovery medium.
+
+Parts of the intended design are not yet implemented; those are called out inline
+and tracked in `bootstrapping-todo.md`.
 
 ---
 
-## Image types
+## One image, three roles
 
-### Persistent images
+There is a single, generically-built image — no per-host config is baked in.
+Following the model in [Fitting Everything
+Together](https://0pointer.net/blog/fitting-everything-together.html), the same
+signed image is the installer, the live/recovery environment, and the installed
+system. It ships only the immutable verity `/usr` plus an ESP; the encrypted
+root/home are provisioned on first boot by `systemd-repart`. Which role it plays
+is just a boot-menu choice (a UKI profile under `mkosi.uki-profiles/`), not a
+separate build:
 
-A **persistent image** is a fully provisioned Arch Linux installation. All
-physical machines share a single `workstation` flavor (`mkosi.images/workstation/`)
-— the image is built generically, with no per-host config baked in. Machine
-identity is applied later: the hostname at boot (see below) and per-machine
-traits (monitors, VM guest/host role, etc.) from hardware/facts at firstboot.
+- **Installed system** — written to a machine's internal disk; the default
+  profile self-provisions root/home on first boot and becomes the permanent OS.
+  Machine identity is applied later: the hostname at boot (see below) and
+  per-machine traits (monitors, VM guest/host role, etc.) from hardware/facts at
+  firstboot.
+- **Installer / live USB** — the same image written to a USB drive, used to
+  bootstrap a new machine.
+- **Recovery** — booted from that USB into the **Live System (Recovery)** profile
+  (`mkosi.uki-profiles/15-live.conf`): a volatile root that masks the first-boot
+  self-install, so it can mount and repair an unbootable machine's encrypted disk
+  without provisioning itself.
 
-Persistent images are written directly to the target disk and become the
-machine's permanent operating system.
-
-### USI (Unified System Image)
-
-The **USI** is a bootable live environment written to a USB drive. It is built
-from `mkosi.images/usi/` and serves two purposes:
-
-1. **Installation**: build and write a persistent image to a target machine's disk
-2. **Recovery**: mount an encrypted disk from an unbootable machine, chroot, and repair
-
-The USI is a complete Arch Linux system with sway, Wi-Fi, and all the tools
-needed for both roles. It carries Wi-Fi credentials for known networks so it
-can reach the internet without configuration after booting. The arch-ansible
-repository is baked into the USI at build time so no network access is required
-to initiate an installation.
+The image is a complete Arch Linux system with sway, Wi-Fi, and all the tools
+needed for these roles. It carries Wi-Fi credentials for known networks so it can
+reach the internet without configuration after booting, and the arch-ansible
+repository is baked in at build time so no network access is required to initiate
+an installation.
 
 ---
 
 ## Security model
 
-Every image is built around the following chain of trust:
+The image is built around the following chain of trust:
 
 ```
 UEFI firmware (Secure Boot, custom keys)
-  └── systemd-boot (signed with db key)
-        └── UKI: kernel + initrd + cmdline (signed with db key)
-              └── LUKS2 encrypted root (TPM2 PCR 7 auto-unlock, YubiKey fallback)
-                    └── root filesystem
+  └── systemd-boot (signed)
+        └── UKI: kernel + initrd + cmdline (signed)
+              └── /usr: erofs + dm-verity (root hash in the signed cmdline)
+                    └── encrypted root/swap (LUKS2, TPM2 PCR 7 auto-unlock)
 ```
 
 ### Secure Boot
 
-Custom Secure Boot keys are generated per-machine at image build time by
-`ukify genkey`. The private key and certificate live at
-`/etc/kernel/secure-boot-private-key.pem` and
-`/etc/kernel/secure-boot-certificate.pem`.
+A single software RSA-2048 keypair signs everything: the UKIs (Secure Boot), the
+expected-PCR measurements, and the verity root hash. It is **not** generated
+per-machine. The keypair lives in `pass` (encrypted to the GPG key, so GPG stays
+the only root of trust); `bin/_secureboot_common.sh` materializes it to
+`${ARCH_ANSIBLE_CACHE}/mkosi-secureboot/mkosi.{key,crt}` on every build, outside
+the repo so the `ExtraTrees` sweep can't carry it into the plaintext `/usr`.
+`bin/build-image` passes it to mkosi via `--secure-boot-key/--secure-boot-certificate`,
+`--sign-expected-pcr-key/-certificate`, and `--verity-key/-certificate`.
 
-`bootctl install --secure-boot-auto-enroll=yes` writes `PK.auth`, `KEK.auth`,
-and `db.auth` to the ESP. A single signing key is enrolled at all three levels
-(PK, KEK, db) — no separate platform or exchange keys. On first boot,
-`secure-boot-enroll force` in `loader.conf` causes systemd-boot to pull these
-files into firmware automatically without requiring a UEFI Setup Mode visit.
+mkosi (`SecureBoot=yes`) installs systemd-boot and writes the `PK`/`KEK`/`db`
+auto-enroll files to the ESP. A single key is enrolled at all three levels — no
+separate platform or exchange keys. On first boot, `secure-boot-enroll force` in
+`mkosi.extra/efi/loader/loader.conf` causes systemd-boot to pull these into
+firmware automatically without a UEFI Setup Mode visit. Microsoft certificates
+are **not** enrolled; the hardware used here does not require them for option-ROM
+validation.
 
-The bootloader binary at `/usr/lib/systemd/boot/efi/systemd-bootx64.efi` is
-pre-signed at build time with `systemd-sbsign` so future `bootctl update`
-invocations (triggered by systemd package updates) always copy the signed
-`.efi.signed` version to the ESP rather than the unsigned one.
-
-Microsoft certificates are **not** enrolled. All hardware used here has been
-confirmed to not require them for firmware validation of option ROMs.
+> The key currently lives on disk because pkcs11-provider's CMS/PE signing paths
+> (needed by `systemd-sbsign` and `systemd-repart`) don't yet work; once they do
+> it can move to a YubiKey PIV slot. Per-machine signing / db-key import is not
+> implemented — see `bootstrapping-todo.md`.
 
 ### Unified Kernel Images
 
-All bootable content is packaged as UKIs: EFI binaries that embed the kernel,
-initrd, and kernel command line in a single signed artifact. There is no
-separate kernel or initrd on the ESP — only UKIs. This ensures:
+All bootable content is packaged as UKIs: EFI binaries embedding the kernel,
+initrd, and kernel command line in a single signed artifact. There is no separate
+kernel or initrd on the ESP. This means the kernel command line — including the
+verity root hash — cannot be tampered with, and signatures cover the whole boot
+artifact. A single UKI carries multiple **profiles** (`mkosi.uki-profiles/`):
+`default`, `live` (recovery), `emergency`, `factory-reset`, and
+`factory-reset-with-tpm-clear`, each a boot-menu entry with its own cmdline.
 
-- The kernel command line cannot be tampered with even with physical access
-- systemd-boot discovers UKIs automatically from `/efi/EFI/Linux/`; no boot
-  entries to maintain
-- Signatures cover the complete boot artifact, not individual parts
+### Immutable /usr (dm-verity)
 
-UKIs are assembled by `ukify` via `kernel-install` using
-`/etc/kernel/uki.conf`, which points at the per-machine signing keys. Every
-UKI built by `kernel-install` is automatically signed.
+The OS lives in a read-only `/usr` (erofs, zstd-compressed) protected by
+dm-verity. The verity root hash is embedded in the signed UKI cmdline
+(`root=dissect`, `mount.usr=dissect`), so the kernel only mounts a `/usr` whose
+contents match the signed hash. `/usr` is laid out as A/B slots for atomic
+updates (see [Updates](#updates)). `/etc` is seeded from
+`/usr/share/factory/etc` (via `mkosi.finalize.factory-seed`) so it tracks `/usr`
+across updates instead of freezing at first boot; per-host state (machine-id, ssh
+host keys, shadow) is written into the writable `/etc` on first boot.
 
-### LUKS2 full disk encryption
+### Disk encryption
 
-The root partition is encrypted with LUKS2. Three unlock mechanisms are
-enrolled:
+The root and swap partitions are LUKS2, created and TPM2-enrolled by
+`systemd-repart` when it provisions them on first boot
+(`mkosi.extra/usr/lib/repart.d/{40-swap,50-root}.conf`, `Encrypt=tpm2`). The TPM2
+keyslot is sealed to PCR 7 (Secure Boot state), so a normal boot unlocks with no
+interaction. `home` is a plain btrfs partition; per-user encryption is handled by
+`systemd-homed` (a LUKS volume per home directory) on top of it, with a recovery
+secret seeded into the credstore by `bin/_credstore_common.sh`.
 
-| Slot | Type     | Unlock condition                                      |
-| ---- | -------- | ----------------------------------------------------- |
-| 0    | TPM2     | Boot chain intact (PCR 7 sealed to Secure Boot state) |
-| 1    | FIDO2    | YubiKey — touch required                              |
-| 2    | Recovery | Printed key, stored with GPG paper backup             |
-
-No passphrase keyslot. The recovery key serves the "last resort" role without
-being brute-forceable.
-
-**TPM2 (slot 0)** unlocks automatically on every normal boot with no user
-interaction. It is sealed to PCR 7, which reflects the Secure Boot state
-(enrolled keys + enabled). Any change to Secure Boot keys invalidates this
-slot; the disk falls back to YubiKey unlock, after which the slot is wiped and
-a new one is enrolled.
-
-**FIDO2/YubiKey (slot 1)** is used when TPM2 is unavailable: USI recovery
-sessions, boots with Secure Boot disabled, or after Secure Boot key changes.
-Each physical YubiKey gets its own independent keyslot. `bin/enroll-yubikeys`
-handles enrollment.
-
-**Recovery key (slot 2)** is generated at enrollment time, printed, and stored
-with the machine's GPG paper backup. It is never stored digitally.
+> **Planned, not yet implemented:** FIDO2/YubiKey and printed-recovery-key
+> keyslots on the root volume. `roles/systemd-boot/files/80-systemd-boot.preset`
+> enables `firstboot.service` and `luks-enroll.service`, but those units are not
+> defined anywhere yet, and there is no key-file bootstrap slot. `bin/enroll-yubikeys`
+> and `bin/revoke-luks-yubikey` exist but are untested. See `bootstrapping-todo.md`.
 
 ---
 
-## Disk layout
+## Partition layout
 
-All images use a two-partition layout:
+The **built image** contains only what is needed to boot and self-provision:
 
 ```
-Partition 1   vfat (FAT32)   ESP — systemd-boot + UKIs         1 GiB   /efi
-Partition 2   LUKS2 → ext4   encrypted root filesystem          rest    /
+ESP            vfat        systemd-boot + UKIs                 ≥ 2 GiB   /efi
+usr-verity-sig                signature over the verity hash
+usr-verity                    dm-verity hash tree for /usr
+usr            erofs        read-only /usr (the OS)
 ```
 
-The ESP is 1 GiB to accommodate multiple UKI versions (~100 MiB each: current
-and previous).
+On **first boot**, `systemd-repart` (driven by `/usr/lib/repart.d/`) grows the
+ESP and adds:
 
-Partition UUIDs are not fixed per host: systemd-repart derives them
-deterministically from its seed, and the crypttab is generated by repart at
-build time. There are no per-host partition definitions.
+```
+usr (B slot)               inactive A/B update slot (NoAuto)
+swap           LUKS2/tpm2  4 GiB
+root           btrfs/tpm2  encrypted root, /var subvolume    weight 3
+home           btrfs       homed mounts per-user LUKS here    weight 1
+```
+
+The ESP is ≥ 2 GiB to hold two ~460 MiB UKIs at once during an A/B swap.
+Partition UUIDs are not fixed per host: repart derives them from its seed. There
+are no per-host partition definitions.
 
 ---
 
@@ -138,195 +149,170 @@ provisioned system is available.
 
 ### Step 1 — Build environment
 
-All image building runs inside a Podman container defined by `Containerfile`.
-The container includes mkosi, Ansible, and their Python dependencies.
+mkosi runs on the host directly (`ToolsTree=/`). A `Containerfile` is provided to
+run the build in Podman, but it is not yet verified end-to-end
+(`bootstrapping-todo.md`); it would need `--privileged` because mkosi uses loop
+devices and `systemd-nspawn`.
 
 ```bash
+# optional, untested:
 podman build -t arch-ansible-builder .
 ```
 
-The container requires `--privileged` because mkosi uses loop devices and
-`systemd-nspawn` internally.
-
-### Step 2 — Build the USI
+### Step 2 — Build the image
 
 ```bash
-podman run --privileged -v .:/work/src arch-ansible-builder bin/build-image usi
+bin/build-image
 ```
 
-`bin/build-image usi` runs `mkosi --directory mkosi.images/usi build`, which:
+`bin/build-image` materializes the Secure Boot keypair from `pass`, bumps
+`mkosi.version` (a fresh monotonic version so each build supersedes the running
+slot for sysupdate), and runs `mkosi build`, which:
 
-1. Installs Arch Linux packages into a disk image rootfs (kernel, systemd-boot,
-   systemd-ukify, and all packages declared in `mkosi.common/mkosi.conf`)
-2. Copies the arch-ansible repository into the image via `BuildSources=../`
-3. Runs `mkosi.postinst.chroot` inside `systemd-nspawn`, which invokes
-   `postinst-playbook.yml` via `bin/ansible` (against the `build` identity) —
-   configuring sway, networking, Wi-Fi credentials, fonts, and all user-facing
-   software
-4. During the Ansible run:
-   - `ukify genkey` generates Secure Boot signing keys into the image
-   - The bootloader binary is pre-signed with `systemd-sbsign`
-   - `bootctl install --secure-boot-auto-enroll=yes` installs the bootloader
-     and writes the `.auth` key enrollment files to the ESP
-   - `kernel-install add` builds the initial signed UKIs
-5. mkosi finalizes the disk image
+1. Installs the Arch packages declared in `mkosi.conf` into the rootfs.
+2. Copies the arch-ansible repository in via `BuildSources`/`ExtraTrees` (a
+   tracked-files-only staging copy, so gitignored secrets don't reach `/usr`).
+3. Runs the post-install (Ansible against the `build` identity) inside
+   `systemd-nspawn` — configuring sway, networking, Wi-Fi credentials, fonts, and
+   user-facing software.
+4. Signs the bootloader and UKIs and writes the Secure Boot auto-enroll files to
+   the ESP.
+5. Builds the erofs `/usr`, its dm-verity hash + signature, and emits the disk
+   plus split artifacts (`SplitArtifacts=partitions,uki`).
 
-With `Bootable=yes`, mkosi mounts the ESP inside the nspawn during the build
-script phase, so steps 4 and 5 always run at build time. The resulting image
-ships with a fully configured bootloader, signed UKIs, and key enrollment files
-ready for firmware import on first boot.
+Output is under `~/.cache/mkosi/images/image/` (the split `.usr-*.raw`, `.efi`,
+and the full `.raw`).
 
-Output is under `~/.cache/mkosi/images/usi/`.
-
-### Step 3 — Write USI to USB
+### Step 3 — Write the image to a USB
 
 ```bash
-bin/burn-image usi --hostname=usi /dev/sdX
+bin/burn-image --hostname=recovery /dev/sdX
 ```
 
 `mkosi burn` writes the built image and expands partitions to fill the device.
-`burn-image` also drops a `system.hostname` credential into the ESP so the
-device comes up with the given hostname.
+`burn-image` also drops a `firstboot.hostname` credential into the ESP so the device
+comes up with the given hostname (applied to a static `/etc/hostname` on first boot
+by `systemd-firstboot`).
 
-### Step 4 — Boot USI and install persistent image
+### Step 4 — Boot the USB and install to the target disk
 
-Boot the target machine from the USI USB. The USI connects to Wi-Fi
-automatically. The arch-ansible repository is already present in the USI at
-`~/src/arch-ansible`. From the USI environment, build the (generic) workstation
-image and write it to the target's disk with its hostname:
+Boot the target machine from the USB. It connects to Wi-Fi automatically and the
+arch-ansible repository is already present at `/usr/share/arch-ansible`. Write the
+same image to the target's internal disk with its hostname:
 
 ```bash
-cd ~/src/arch-ansible
-bin/build-image workstation
-bin/burn-image workstation --hostname=<hostname> /dev/nvme0n1
+bin/burn-image --hostname=<hostname> /dev/nvme0n1
 ```
 
-`bin/build-image workstation` runs `mkosi --directory mkosi.images/workstation
-build`, following the same build process as the USI. `bin/burn-image` then
-`mkosi burn`s it to the disk and writes the `system.hostname` credential. The
-persistent image includes the arch-ansible repository and has its own Secure
-Boot signing keys generated at build time.
+On first boot the default profile self-provisions the encrypted root/home.
 
 ---
 
 ## First boot sequence
 
-On first boot of a freshly written persistent image:
+On first boot of a freshly installed image:
 
 ### 1. Secure Boot key enrollment
 
-systemd-boot reads `loader.conf` and finds `secure-boot-enroll force`. It
-reads `PK.auth`, `KEK.auth`, and `db.auth` from `/efi/loader/keys/auto/` and
-writes them into the UEFI Secure Boot key databases before loading any OS. On
-the next boot, Secure Boot is enforced with the machine's custom keys.
+systemd-boot reads `loader.conf`, finds `secure-boot-enroll force`, reads the
+`PK`/`KEK`/`db` auto-enroll files from the ESP, and writes them into the UEFI key
+databases before loading any OS. On subsequent boots, Secure Boot is enforced with
+the custom key.
 
-### 2. LUKS2 unlock — bootstrap keyslot
+### 2. Self-provisioning (systemd-repart)
 
-On the first boot, no TPM2 or YubiKey keyslots are enrolled yet. The LUKS2
-container is opened using a key file embedded by mkosi's `Encrypt=key-file`
-setting during image construction. This bootstrap keyslot is temporary and is
-wiped after LUKS enrollment completes.
+The initrd runs `systemd-repart` against `/usr/lib/repart.d/`. It creates the
+inactive `/usr` B slot, the encrypted swap, the encrypted btrfs root (with the
+`/var` subvolume), and the home partition, sizing them to the disk. Root and swap
+are LUKS2 with a TPM2 keyslot sealed to PCR 7, enrolled at creation time.
 
-### 3. Firstboot service
+### 3. Per-machine runtime config
 
-On first boot a `firstboot.service` systemd oneshot unit runs
-`firstboot-playbook.yml` automatically, applying per-machine runtime config
-(VM guest/host role from facts, network runtime, etc.). It verifies that the
-Secure Boot signing keys and bootloader are present (erroring if anything
-expected from the build step is missing), rebuilds UKIs to incorporate any
-pending changes, and marks itself complete so it does not run again.
+Per-machine traits (VM guest/host role from facts, network runtime, etc.) are
+applied at firstboot from hardware/facts. The hostname comes from the
+`firstboot.hostname` credential written by `burn-image`, which `systemd-firstboot`
+writes to a static `/etc/hostname`. The same credential names a disk provisioned via
+the Installer profile (`systemd-sysinstall` forwards it to the target ESP).
 
-### 4. LUKS2 key enrollment
+> **Not yet implemented:** the `firstboot.service` / `luks-enroll.service` flow
+> the preset enables (FIDO2 + printed-recovery-key enrollment, bootstrap-slot
+> wipe). TPM2/PCR 7 sealing across the Secure Boot enrollment boot has also not
+> been verified against real firmware — see `bootstrapping-todo.md`. (`bin/run-image`
+> works around the PCR 7 instability in QEMU by persisting the OVMF varstore and
+> the emulated TPM across runs.)
 
-LUKS enrollment cannot happen in the same boot as Secure Boot key enrollment:
-PCR 7 only reaches its final stable value after Secure Boot is active with the
-custom keys, which requires a reboot after step 1. The `luks-enroll.service`
-oneshot unit handles this automatically — on the second boot (with Secure Boot
-now active), it:
+---
 
-1. Enrolls a TPM2 keyslot sealed to PCR 7:
-   ```bash
-   systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/<root-partition>
-   ```
-2. Generates a recovery key and displays it on the console:
-   ```bash
-   systemd-cryptenroll --recovery-key /dev/<root-partition>
-   ```
-   **Print and store this with the machine's GPG paper backup.**
-3. Wipes the bootstrap key-file slot written by mkosi:
-   ```bash
-   systemd-cryptenroll --wipe-slot=0 /dev/<root-partition>
-   ```
-4. Creates `/var/lib/luks-enrolled` so the service does not run again.
+## Updates
 
-### 5. YubiKey enrollment
+The OS updates by swapping the read-only `/usr` A/B slots, not by mutating a
+running system — there are no in-place `pacman -Syu` kernel/`/usr` updates.
 
-Run once per YubiKey (primary + backup). The YubiKey must be physically present:
+`bin/update-system` is the on-device path (there is no update server): it rebuilds
+a fresh image version from this repo, drops the split artifacts into the staging
+dir `/var/lib/arch-ansible/updates`, and runs `systemd-sysupdate
+--transfer-source=<staging>` to install them to the inactive slot via the in-image
+transfers (`usr`, `usr-verity`, `usr-verity-sig`, `uki`). It drives
+`systemd-sysupdate` directly rather than `updatectl`/`systemd-sysupdated`, because
+the transfers use `PathRelativeTo=explicit` and the source must be supplied with
+`--transfer-source`, which `updatectl` can't pass.
 
 ```bash
-bin/enroll-yubikeys
+bin/update-system            # build + apply to the inactive slot
+bin/update-system --reboot   # ...and reboot into it
 ```
 
-Each invocation enrolls one FIDO2 device into its own LUKS2 keyslot using
-`systemd-cryptenroll --fido2-device=auto`.
+To update a machine that is installed but can't boot far enough to update itself
+(e.g. a broken laptop), boot it from the live USB and point `update-system` at its
+disk with `--image`. This rebuilds as above, then applies to the target's inactive
+`usr` slot via the **volatile-root** mechanism — *not* `systemd-sysupdate
+--image`, which fails to parse our `Type=regular-file` transfers through systemd
+v261. It symlinks `/run/systemd/volatile-root` at a target *partition* in a
+private mount namespace (so systemd treats the target as the system disk) and runs
+`systemd-sysupdate --definitions=mkosi.sysupdate --transfer-source=<build output>
+--offline update`, with `SYSTEMD_ESP_PATH` pointing the new UKI at the target's
+own ESP. Nothing is dissected, so the TPM2-sealed LUKS root/home/swap are never
+unlocked or touched (user data survives) — only the inactive `usr` slot and the
+ESP are written. The target disk is the second disk in the guest under
+`bin/run-image --device=` (`/dev/vdb`), or the physical disk node otherwise.
+Mechanism details: `offline-update-handoff.md`. (Mechanism validated read-only;
+end-to-end write-test pending.)
 
-### Final keyslot state
+```bash
+bin/update-system --image=/dev/vdb   # offline-update an attached target disk
+```
 
-| Slot | Type     | Enrolled by                          |
-| ---- | -------- | ------------------------------------ |
-| 0    | TPM2     | `luks-enroll.service` (automatic)    |
-| 1    | FIDO2    | `bin/enroll-yubikeys` (user-invoked) |
-| 2    | Recovery | `luks-enroll.service` (printed)      |
-
----
-
-## Kernel updates
-
-Kernel updates are fully automatic. When `pacman -Syu` installs a new `linux`
-package:
-
-1. The `linux` package's `kernel-install` pacman hook fires
-2. `kernel-install add <version> /boot/vmlinuz-linux` runs:
-   - The mkinitcpio plugin regenerates the initrd
-   - ukify assembles a new UKI from the kernel, initrd, and `/etc/kernel/cmdline`
-   - ukify reads `/etc/kernel/uki.conf` and signs the UKI with the machine's
-     `/etc/kernel/secure-boot-private-key.pem`
-   - The signed UKI is placed in `/efi/EFI/Linux/`
-3. On reboot, TPM2 auto-unlocks — PCR 7 is unchanged because the Secure Boot
-   state (same enrolled keys, Secure Boot still enabled) has not changed
-
-No manual steps. No re-enrollment required after kernel updates.
-
-**systemd package updates** trigger `bootctl update` via
-`systemd-boot-update.service` on reboot. `bootctl update` detects the
-pre-signed `systemd-bootx64.efi.signed` in `/usr/lib/` and copies it to the
-ESP rather than the unsigned binary.
-
-**mkinitcpio configuration changes** from Ansible trigger the `Regenerate
-mkinitcpio ramdisk` handler, which runs `mkinitcpio -p linux`. The updated
-initrd is incorporated the next time `kernel-install add` runs (next kernel
-update or manual invocation). A reboot is required.
+Because `/usr` is a single signed, verity-protected artifact, the kernel, initrd,
+and userspace always move together. Boot counting / auto-rollback is driven by the
+UKI's `TriesLeft=` (set in the `uki` transfer), so a failed boot falls back to the
+prior slot automatically.
 
 ---
 
-## System recovery with USI
+## System recovery
 
-Boot the target machine from the USI USB. The TPM2 keyslot will not open the
-target machine's disk (different boot session → different PCR 7 value). Use a
-YubiKey or the recovery key.
+Boot the target machine from the USB and select **Live System (Recovery)** at the
+boot menu. This boots a volatile root (`root=tmpfs`) that masks the first-boot
+self-install, so it behaves like a rescue medium rather than provisioning itself.
+The TPM2 keyslot will not open the target machine's disk (different boot session →
+different PCR 7 value), so use a YubiKey or the recovery key.
+
+In QEMU, `bin/run-image --device=<disk.raw>` emulates this: it boots the image as
+the medium and attaches the disk as `/dev/vdb`; pick **Live System (Recovery)** at
+the menu to repair it (or **Installer** to install onto it).
 
 ### Open the encrypted disk and chroot
 
 `bin/recovery-mount` automates disk discovery, unlocking, mounting, and
-chrooting. Run it from the USI:
+chrooting. Run it from the live/recovery system:
 
 ```bash
 bin/recovery-mount
 ```
 
 It attempts FIDO2 unlock first (prompts for YubiKey touch), then falls back to
-prompting for the recovery key if no token succeeds. TPM2 fails silently in
-this session since PCR 7 differs from the installed system's enrolled value.
+prompting for the recovery key if no token succeeds. TPM2 fails silently in this
+session since PCR 7 differs from the installed system's enrolled value.
 
 To perform these steps manually:
 
@@ -344,57 +330,44 @@ arch-chroot /mnt
 
 ### Common recovery tasks
 
-**Rebuild UKIs** (e.g. after a failed kernel update):
+**Reinstall the bootloader and re-enroll Secure Boot keys** (materialize the key
+from `pass` first, then):
 
 ```bash
-ls /usr/lib/modules/ | xargs -I{} kernel-install add {} /boot/vmlinuz-linux
+bootctl install --no-variables --esp-path=/efi --secure-boot-auto-enroll=yes \
+  --certificate="$SECUREBOOT_CERT" --private-key="$SECUREBOOT_KEY"
 ```
 
-**Reinstall bootloader**:
+**Re-enroll TPM2** (after a Secure Boot key change):
 
 ```bash
-bootctl install \
-  --no-variables \
-  --esp-path=/efi \
-  --secure-boot-auto-enroll=yes \
-  --certificate=/etc/kernel/secure-boot-certificate.pem \
-  --private-key=/etc/kernel/secure-boot-private-key.pem
-```
-
-**Re-enroll TPM2** (after Secure Boot key change):
-
-```bash
-cryptsetup luksDump /dev/<root-partition>           # find TPM2 slot number
-systemd-cryptenroll --wipe-slot=<n> /dev/<root-partition>  # auth via YubiKey
+cryptsetup luksDump /dev/<root-partition>                  # find TPM2 slot number
+systemd-cryptenroll --wipe-slot=<n> /dev/<root-partition>  # auth via YubiKey/recovery
 systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/<root-partition>
 ```
 
-**Revoke a lost YubiKey**:
+**Revoke a lost YubiKey** (untested — see `bootstrapping-todo.md`):
 
 ```bash
-cryptsetup luksDump /dev/<root-partition>           # find FIDO2 slot number
+cryptsetup luksDump /dev/<root-partition>                  # find FIDO2 slot number
 systemd-cryptenroll --wipe-slot=<n> /dev/<root-partition>  # auth via remaining YubiKey
-bin/enroll-yubikeys                                  # enroll replacement
+bin/enroll-yubikeys                                        # enroll replacement
 ```
 
-### Secure Boot and the USI
+### Secure Boot and the recovery USB
 
-The USI carries its own Secure Boot keys, generated at USI build time and
-distinct from those enrolled in the target machine's firmware. To boot the USI
-on a machine with custom Secure Boot keys active, there are two options:
+A recovery USB carries its own Secure Boot key, distinct from the one enrolled in a
+target machine's firmware. To boot it on a machine with custom Secure Boot keys
+active, either:
 
-**Option A — Sign the USI with the machine's db key (recommended):** The
-machine's Secure Boot private key can be imported into a YubiKey PIV slot
-(`ykman piv keys import 9c /etc/kernel/secure-boot-private-key.pem`). When
-building the USI, `bin/build-image usi` signs the USI's EFI binaries using that PIV
-slot via `systemd-sbsign --private-key pkcs11:`. The signed USI boots normally
-under the machine's custom Secure Boot without any firmware changes. The
-private key never leaves hardware.
-
-**Option B — Temporarily disable Secure Boot:** Disable Secure Boot in the
-firmware, perform recovery, then re-enable it before rebooting into the
-installed system. The TPM2 slot survives this cycle as long as the enrolled
-keys are unchanged and Secure Boot is re-enabled before the next normal boot.
+- **Sign the recovery USB with the machine's db key** (planned, not implemented):
+  import the key into a YubiKey PIV slot and have the build sign the EFI binaries
+  via `systemd-sbsign --private-key pkcs11:`, so it boots under the machine's keys
+  with no firmware changes. See `bootstrapping-todo.md`.
+- **Temporarily disable Secure Boot** in firmware, perform recovery, then
+  re-enable it before rebooting into the installed system. The TPM2 slot survives
+  as long as the enrolled keys are unchanged and Secure Boot is re-enabled before
+  the next normal boot.
 
 ---
 
@@ -402,37 +375,38 @@ keys are unchanged and Secure Boot is re-enabled before the next normal boot.
 
 When running an image in QEMU with `bin/run-image`, the host's pcscd socket is
 forwarded into the VM over vsock so that GPG agent and SSH authentication inside
-the VM can reach the YubiKey without USB passthrough. The relay uses `socat`
-and requires the `vhost_vsock` kernel module on the host:
+the VM can reach the YubiKey without USB passthrough. The relay uses `socat` and
+requires the `vhost_vsock` kernel module on the host:
 
 ```bash
 modprobe vhost_vsock
 ```
 
-This relay also allows testing YubiKey LUKS enrollment flows inside the QEMU
-VM before deploying to physical hardware.
+This also allows testing YubiKey LUKS enrollment flows inside the VM before
+deploying to physical hardware.
 
 ---
 
 ## Adding a new host
 
-All machines share the generic `workstation` image; the hostname is supplied at
-install time and per-machine traits are detected at firstboot. To provision a
-new machine, build the workstation image and burn it with the desired hostname:
+All machines share the same generic image; the hostname is supplied at install
+time and per-machine traits are detected at firstboot. To provision a new machine,
+build the image and burn it with the desired hostname:
 
 ```bash
-bin/build-image workstation
-bin/burn-image workstation --hostname=<hostname> /dev/sdX
+bin/build-image
+bin/burn-image --hostname=<hostname> /dev/sdX
 ```
 
 Build-time configuration that can't be detected at runtime goes in `group_vars`
-or the roles behind a runtime condition.
+or behind a runtime condition in the roles.
 
 ---
 
 ## Day-to-day configuration changes
 
-Run `playbook.yml` from the target machine or via SSH. Changes that modify
-`mkinitcpio.conf` or `/etc/kernel/cmdline` trigger a UKI rebuild automatically
-via the Ansible handler; a reboot is required for those changes to take effect.
-All other role changes apply live without a reboot.
+Because `/usr` is read-only, OS-level changes are made by editing this repo and
+rolling a new image with `bin/update-system` (which rebuilds and swaps the
+inactive `/usr` slot), then rebooting into it. Writable state — `/etc`, `/home`,
+and user-level configuration applied by `playbook.yml` — can still be changed live
+on the running machine.

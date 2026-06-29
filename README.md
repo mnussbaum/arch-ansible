@@ -207,66 +207,67 @@ tasks require the GPG agent to be running and the YubiKey to be present before
 
 ## Provisioning
 
-There are two image flavors — `workstation` (the installed system) and `usi` (the
-Unified System Image: a bootable live/recovery environment). Images are built
-generically with `bin/build-image`; `bin/run-image` and `bin/burn-image` then act
-on the built image and set its hostname at boot (no rebuild per machine).
+There is a single image. The same signed image is the installer, the live/rescue
+environment, and the installed system — it ships only the immutable verity `/usr`
+plus an ESP, and provisions its encrypted root/home on first boot via
+`systemd-repart` (the model from [Fitting Everything
+Together](https://0pointer.net/blog/fitting-everything-together.html)). The
+different roles are just boot-menu entries (UKI profiles in `mkosi.uki-profiles/`),
+not separate builds. `bin/build-image` builds it; `bin/run-image` and
+`bin/burn-image` then act on the built image and set its hostname at boot (no
+rebuild per machine).
 
-### Build a new install USB
+### Build a new install/recovery USB
 
-The USI is used to bootstrap new machines and repair broken ones. Plug in a USB
-drive and run:
+The image bootstraps new machines and repairs broken ones. Plug in a USB drive and
+run:
 
 ```
-bin/build-image usi
-bin/burn-image usi --hostname=usi /dev/sda
+bin/build-image
+bin/burn-image --hostname=recovery /dev/sda
 ```
 
 ### Provision a new physical machine
 
-Every physical machine is built from the same `workstation` image; the hostname is
-the only per-machine input (there are no per-host repo files).
+Every machine is built from the same image; the hostname is the only per-machine
+input (there are no per-host repo files).
 
 1. Boot the target machine from the install USB. The repo is already installed at
    `~/src/arch-ansible`. Run:
 
    ```
    cd ~/src/arch-ansible
-   bin/build-image workstation
-   bin/burn-image workstation --hostname=<hostname> <device>
-   # e.g.: bin/burn-image workstation --hostname=bodie /dev/nvme0n1
+   bin/build-image
+   bin/burn-image --hostname=<hostname> <device>
+   # e.g.: bin/burn-image --hostname=bodie /dev/nvme0n1
    ```
 
-2. Reboot into the installed system. Per-machine traits (monitors, etc.) are
-   detected from hardware/facts at firstboot.
+2. Reboot into the installed system. On first boot it self-provisions the
+   encrypted root/home; per-machine traits (monitors, etc.) are detected from
+   hardware/facts at firstboot.
 
 ### QEMU workflows
 
-Build an image, then boot it in a VM with `bin/run-image` (sets the hostname via
+Build the image, then boot it in a VM with `bin/run-image` (sets the hostname via
 `mkosi --machine`).
 
-Run the workstation image (emulates an installed machine):
+Run the image (emulates an installed machine — boots the default profile):
 
 ```
-bin/build-image workstation
-bin/run-image workstation --hostname=qemu
+bin/build-image
+bin/run-image --hostname=qemu
 ```
 
-Run the USI (tests the live/rescue environment):
+Attach a second disk with `--device=<disk.raw>` and pick the role at the boot
+menu. **Live System (Recovery)** boots a volatile root that skips the first-boot
+self-install — `bin/recovery-mount` then discovers the disk's LUKS partition,
+unlocks it, mounts root/usr/efi/home, and chroots in. **Installer** replicates the
+image onto the disk via `systemd-sysinstall` (the install profile boots straight
+into `systemd-sysinstall.service`).
 
 ```
-bin/build-image usi
-bin/run-image usi --hostname=usi
+bin/run-image --hostname=qemu --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
 ```
-
-Run the USI with a workstation disk attached (emulates a recovery USB repairing a
-machine — build both images first):
-
-```
-bin/run-image usi --hostname=usi --recovery=~/.cache/mkosi/images/workstation/arch.raw
-```
-
-Inside the USI, decrypt and mount the attached disk to access the target system.
 
 ## Maintenance
 
