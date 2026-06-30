@@ -49,9 +49,10 @@ SCCACHE_NO_DAEMON=1 SCCACHE_DIR=/root/.cache/sccache \
     SCCACHE_SERVER_PORT=14226 sccache --start-server &
 trap "SCCACHE_SERVER_PORT=14226 sccache --stop-server 2>/dev/null || true" EXIT
 
-# Build against the dedicated build identity supplied via mkosi --profile (the
-# $PROFILES env var, e.g. host_vars/build.yml), not the per-machine $IMAGE_ID,
-# so machine-specific vars stay out of the shared image.
-env NO_ASK_BECOME_PASS=1 HOSTNAME="$PROFILES" ANSIBLE_PLAYBOOK=postinst-playbook.yml \
+# Build against the dedicated `build` identity supplied via mkosi --profile (the
+# $PROFILES env var), not the per-machine $IMAGE_ID, so machine-specific vars stay
+# out of the shared image. (bin/ansible reads ARCH_ANSIBLE_IDENTITY, not HOSTNAME,
+# which bash auto-sets.)
+env NO_ASK_BECOME_PASS=1 ARCH_ANSIBLE_IDENTITY="$PROFILES" ANSIBLE_PLAYBOOK=postinst-playbook.yml \
     SCCACHE_SERVER_PORT=14226 \
     ./bin/ansible "${extra_args[@]}" ${ANSIBLE_TAGS:+--tags "$ANSIBLE_TAGS"}

@@ -18,9 +18,18 @@ fi
 # concurrent roles
 ansible --version >/dev/null 2>&1
 
+# The build sets ARCH_ANSIBLE_IDENTITY to pick its identity from hosts.yml. With none
+# set, an installed machine provisions itself via localhost, regardless of its name
+# (not HOSTNAME -- bash auto-sets that to the machine name). group_vars/all still apply.
+if [[ -n "${ARCH_ANSIBLE_IDENTITY:-}" ]]; then
+  target=(--limit "$ARCH_ANSIBLE_IDENTITY")
+else
+  target=(--inventory localhost, --connection local)
+fi
+
 exec ansible-playbook "${ANSIBLE_PLAYBOOK:-postinst-playbook.yml}" \
   --verbose \
-  --limit ${HOSTNAME:-$(hostname)} \
+  "${target[@]}" \
   --extra-vars "appearance=$appearance" \
   "$@" \
   $maybe_ask_become_pass
