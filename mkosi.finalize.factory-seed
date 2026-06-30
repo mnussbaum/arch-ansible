@@ -42,6 +42,10 @@ DROPLIST=(
     # makepkg.conf is mutated for the nspawn build chroot; those mutations
     # must not persist. The running system doesn't invoke makepkg/yay.
     makepkg.conf
+    # hostname: ship none, so systemd-firstboot --prompt-hostname actually prompts
+    # at first boot (a factory /etc/hostname would suppress it). Skipping the prompt
+    # falls back to DEFAULT_HOSTNAME (os-release); typing one sets /etc/hostname.
+    hostname
 )
 
 is_listed() {
