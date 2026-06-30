@@ -102,7 +102,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
        the LUKS root/swap (swtpm state persists next to the image, so no reseal on
        later runs), and self-provisions. Pass: reaches a provisioned login;
        `hostnamectl` shows `qemu`; `findmnt /usr` is the dm-verity image.
-3. [ ] **On-device A/B update (sysupdate in the booted image)** — in the guest:
+3. [x] **On-device A/B update (sysupdate in the booted image)** — in the guest:
        ```
        cd /usr/share/arch-ansible && gpg --card-status
        bin/update-system --reboot          # no --image = on-device; rebuilds + applies
@@ -140,7 +140,14 @@ reachable YubiKey, or the in-guest build falls back to the network.
        `errexit` aborts before the reboot — covers both (a) and (b). Pending: host
        rebuild + reboot of the live image (in-guest `/usr/share/arch-ansible` is
        read-only), then re-run step 3.
-4. [ ] **Fresh install from a live USB → blank host** — make a blank target and
+       PASSED 2026-06-30 after the fix (rebuilt image booted as `20260630010706`,
+       in-guest `update-system --reboot` built+applied `20260630082348`). Verified in
+       guest: running `IMAGE_VERSION=20260630082348`; active `/usr` on slot B
+       (vda6/vda7); prior slot A (`20260630010706`) retained — NO `_empty` partitions
+       left; both UKIs on the ESP; boot counting active and `systemd-bless-boot`
+       logged "Marked boot as 'good'" with no `+tries` UKI remaining (auto-rollback
+       armed then resolved on first good boot).
+4. [x] **Fresh install from a live USB → blank host** — make a blank target and
        attach it:
        ```
        truncate -s 90G ~/.cache/mkosi/test-target.raw
@@ -155,6 +162,96 @@ reachable YubiKey, or the in-guest build falls back to the network.
        credential forwarded, and the target's first boot provisions + TPM2-seals with
        the name `installtest` landing. (See "Install from the live medium" above for
        the hostname-credential and PCR-7 caveats.)
+       FINDING 2026-06-30 (benign): during install `systemd-sysinstall` logs "Failed
+       to read timezone, skipping timezone propagation: Invalid argument" and
+       continues. Cause: `mkosi.conf` sets `Timezone=US/Pacific`, which mkosi
+       materializes as a RELATIVE symlink `/etc/localtime -> ../usr/share/zoneinfo/
+       US/Pacific`; systemd's timezone read (`get_timezone`) only accepts an ABSOLUTE
+       `/usr/share/zoneinfo/...` target, so the relative form returns -EINVAL and
+       propagation is skipped (target timezone falls back to default/firstboot). Not a
+       blocker for step 4. Fix later on the mkosi side (emit an absolute localtime
+       symlink); confirm with `ls -l /etc/localtime` in the live/installer env.
+       FAILED 2026-06-30 (`installtest` target, blank `/dev/vdb`). The installer hit
+       `FailureAction=halt` (upstream `systemd-sysinstall.service`) — i.e.
+       `systemd-sysinstall` exited non-zero, "Reached target System Halt", no reboot.
+       Evidence on `test-target.raw`: a malformed/incomplete GPT — 4 partitions only
+       (ESP **11.5G**, usr-verity-sig 16K, usr-verity **11.5G**, usr 10G), with NO
+       root/home/swap and NO usr-B (A/B second slot). That 4-partition shape matches
+       the `mkosi.repart/` BUILD layout, NOT the correct installed-system layout the
+       image ships at `/usr/lib/repart.d/` (`mkosi.extra/usr/lib/repart.d/`: 10-esp +
+       usr-A {20/21/22} + usr-B {30/31/32} + 40-swap + 50-root + 60-home). LEADING
+       HYPOTHESIS: `systemd-sysinstall` used the wrong repart definitions (the build
+       set / its own defaults) instead of the shipped device layout, producing a bad
+       partitioning and then erroring. The todo claim above ("defaults to
+       /usr/lib/repart.d/, no extra dir needed") is suspect — likely needs an explicit
+       `/usr/lib/repart.sysinstall.d/` with the installed-system layout. UNCONFIRMED
+       pending the console error from the halted installer (volatile, root=tmpfs — no
+       persisted journal) and an inspection of the image's actual
+       `/usr/lib/repart.d/` + `/usr/lib/repart.sysinstall.d/`.
+       ROOT CAUSE CONFIRMED 2026-06-30 (re-ran `systemd-sysinstall` by hand in the
+       Live profile, unmuted, then debug-mounted the target via the guest agent). The
+       image ships the correct layout at `/usr/lib/repart.d/` (10-esp + usr-A/B +
+       swap/root/home); `/usr/lib/repart.sysinstall.d/` is absent, so sysinstall uses
+       the right dir. sysinstall wiped `/dev/vdb`, created esp + usr-A
+       (verity-sig/verity/usr) via `CopyBlocks=auto` from the running medium's active
+       usr (`/dev/vda5,6,7`, version 20260630082348), wrote the table — then FAILED at
+       "Mounting partitions… Failed to mount image: Invalid argument" → non-zero exit
+       → `FailureAction=halt`. THE REAL BUG (not the signature — that's a red herring):
+       `SYSTEMD_LOG_LEVEL=debug systemd-dissect --mount /dev/vdb` shows the signed
+       verity `/usr` activates fine ("Verity activation via kernel signature logic
+       worked"); the EINVAL is from mounting the **ESP (vfat)** — `blkid /dev/vdb1`
+       has only `PARTLABEL=esp`, NO `TYPE=vfat`: the ESP was never formatted. The
+       device `mkosi.extra/usr/lib/repart.d/10-esp.conf` had no `Format=`, so a
+       freshly-created ESP (blank-disk install) has no filesystem. Normal first boot
+       works because it adopts the build image's already-vfat ESP and repart only
+       grows it. PROVEN: `mkfs.vfat /dev/vdb1` then the same default-policy
+       `systemd-dissect --mount` succeeds (efi + usr both mount). NOTE the earlier
+       "ship the verity cert / verity.d" theory was WRONG — the cert IS already in
+       `/usr/lib/verity.d/mkosi.crt` (verified) and verity validates via the kernel
+       signature path; verity.d was never the issue. FIX APPLIED (uncommitted): added
+       `Format=vfat` to `mkosi.extra/usr/lib/repart.d/10-esp.conf` (repart only formats
+       partitions it newly creates, so the first-boot grow of the existing ESP is
+       untouched). Secondary: sysinstall lays down only esp + usr-A (root/home/swap/
+       usr-B come from the target's first-boot repart, by design) but esp/usr-verity
+       came out oversized (11.5G each, ~57G unallocated) — worth a second look. Pending
+       rebuild + re-run step 4.
+       INSTALL VERIFIED 2026-06-30 after the `Format=vfat` fix (rebuilt
+       `image_20260630111640`, booted Installer onto blank `/dev/vdb`). Installer ran
+       to completion and rebooted (no halt). Target inspected from the Live profile:
+       ESP `vdb1` now `TYPE=vfat`, populated with systemd-boot (`EFI/systemd`,
+       `EFI/BOOT/BOOTX64.EFI`), the signed UKI, and `loader/` boot-counting entries;
+       `/usr` erofs copied (slot A, signed verity intact); `firstboot.hostname.cred`
+       (+ locale/keymap) staged on the ESP (TPM-encrypted, applied at target first
+       boot). root/home/swap/usr-B absent by design (target first-boot repart).
+       FIRST BOOT VERIFIED 2026-06-30 (mostly). Booting the target in isolation
+       needs a single-disk boot: `run-image --boot-device` (bootindex=0) does NOT
+       work — with two mkosi-layout disks present, `systemd-repart` provisioned the
+       MEDIUM (vda) not the target, so the target hung on `root=dissect`. Wrote
+       `bin/boot-disk DISK.raw` (direct QEMU, Secure Boot + persistent per-disk TPM,
+       no medium) to boot the target alone. Result: target self-provisioned correctly
+       — repart built the full device layout (root/home/swap + usr-B inactive slot),
+       LUKS root/swap TPM2-sealed AND auto-unsealed (no passphrase), `/usr` dm-verity,
+       homed user home decrypted. ONE GAP: hostname did NOT land (`hostnamectl`
+       static unset; transient `archlinux`). Cause: `systemd-sysinstall` TPM-seals the
+       firstboot credentials to the INSTALLER's TPM; the cred was delivered fine
+       (`/run/credentials/firstboot.hostname` present) but `systemd-firstboot` failed
+       to decrypt it — "TPM key integrity check failed … does not belong to this TPM"
+       — because `boot-disk` gave the target its own per-disk TPM, different from the
+       installer's (`$output_dir/tpm`). On real hardware install + first boot share
+       one TPM, so it would decrypt. To prove it: re-install, then
+       `boot-disk --tpm-state=$output_dir/tpm` (added that flag) so both share the
+       machine TPM. Design follow-up worth considering: the hostname isn't secret —
+       TPM-sealing it makes naming fragile (breaks on TPM change / re-image); a
+       host-key or unencrypted firstboot cred would be more robust.
+       HOSTNAME CONFIRMED 2026-06-30 — re-ran the whole chain on ONE shared TPM
+       (re-install via run-image Installer, then `boot-disk --tpm-state=$output_dir/
+       tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error) and wrote
+       `/etc/hostname=installtest` (`hostnamectl` static = installtest); provisioning
+       healthy (root btrfs TPM2-unsealed, /usr dm-verity, homed user). Step 4 fully
+       verified end-to-end. (Side note observed: post-install the polluted medium —
+       dirtied by the earlier `--boot-device` accident — hangs on `by-designator/root`
+       when it auto-boots its default profile; harmless to the install, but rebuild
+       the medium before step 5 for a clean Live boot.)
 5. [ ] **Offline update from a live USB → existing host** — reboot with the SAME
        step-4 disk still attached:
        ```
