@@ -186,22 +186,21 @@ and the full `.raw`).
 ### Step 3 — Write the image to a USB
 
 ```bash
-bin/burn-image --hostname=recovery /dev/sdX
+bin/burn-image /dev/sdX
 ```
 
-`mkosi burn` writes the built image and expands partitions to fill the device.
-`burn-image` also drops a `firstboot.hostname` credential into the ESP so the device
-comes up with the given hostname (applied to a static `/etc/hostname` on first boot
-by `systemd-firstboot`).
+`mkosi burn` writes the built image and expands partitions to fill the device. The
+image is generic; each machine names itself on first boot (see *Per-machine runtime
+config* below).
 
 ### Step 4 — Boot the USB and install to the target disk
 
 Boot the target machine from the USB. It connects to Wi-Fi automatically and the
 arch-ansible repository is already present at `/usr/share/arch-ansible`. Write the
-same image to the target's internal disk with its hostname:
+same image to the target's internal disk:
 
 ```bash
-bin/burn-image --hostname=<hostname> /dev/nvme0n1
+bin/burn-image /dev/nvme0n1
 ```
 
 On first boot the default profile self-provisions the encrypted root/home.
@@ -229,10 +228,12 @@ are LUKS2 with a TPM2 keyslot sealed to PCR 7, enrolled at creation time.
 ### 3. Per-machine runtime config
 
 Per-machine traits (VM guest/host role from facts, network runtime, etc.) are
-applied at firstboot from hardware/facts. The hostname comes from the
-`firstboot.hostname` credential written by `burn-image`, which `systemd-firstboot`
-writes to a static `/etc/hostname`. The same credential names a disk provisioned via
-the Installer profile (`systemd-sysinstall` forwards it to the target ESP).
+applied at firstboot from hardware/facts. The hostname is self-assigned: mkosi's
+`Hostname=arch-????-????` is baked into os-release as `DEFAULT_HOSTNAME`, and systemd
+replaces each `?` with a hex character hashed deterministically from the machine-id,
+so every machine gets a unique, stable name (e.g. `arch-92a9-061c`) with no
+per-machine input — whether it self-installs or is provisioned via the Installer
+profile. Override with `hostnamectl hostname <name>`.
 
 > **Not yet implemented:** the `firstboot.service` / `luks-enroll.service` flow
 > the preset enables (FIDO2 + printed-recovery-key enrollment, bootstrap-slot
@@ -389,13 +390,13 @@ deploying to physical hardware.
 
 ## Adding a new host
 
-All machines share the same generic image; the hostname is supplied at install
-time and per-machine traits are detected at firstboot. To provision a new machine,
-build the image and burn it with the desired hostname:
+All machines share the same generic image; each names itself at firstboot
+(machine-id-derived) and per-machine traits are detected at firstboot. To provision
+a new machine, build the image and burn it:
 
 ```bash
 bin/build-image
-bin/burn-image --hostname=<hostname> /dev/sdX
+bin/burn-image /dev/sdX
 ```
 
 Build-time configuration that can't be detected at runtime goes in `group_vars`

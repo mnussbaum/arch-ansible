@@ -24,19 +24,18 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
   `/usr/lib/repart.d/` when `/usr/lib/repart.sysinstall.d/` is absent (which it is),
   so no extra definitions dir is needed. The old stopgap (`bin/install-to-disk` +
   `system-install.{target,service}`) is gone. Still untested end-to-end.
-- **Hostname is set via an install-time credential.** `systemd-sysinstall` only
-  propagates locale/keymap/timezone on its own (no `--copy-hostname`), so a mandatory
-  drop-in (`systemd-sysinstall.service.d/10-firstboot-hostname.conf`) imports a
-  `firstboot.hostname` credential supplied to the installer and forwards it to the
-  target with `--load-credential` (install fails if absent). The credential is
-  supplied explicitly — `run-image --hostname` via `mkosi --credential`, or a
-  `firstboot.hostname.cred` in the medium's ESP `loader/credentials/` written by
-  `burn-image` — never derived from the installer's own running hostname. On the
-  target's first boot, the enabled `systemd-firstboot.service`
-  (`ImportCredential=firstboot.*`) writes the static `/etc/hostname`. This is the
-  single naming mechanism for both routes (self-install and installer); the old
-  `system.hostname` transient cred has been dropped. `firstboot.hostname` is new in
-  systemd 261. Untested end-to-end; verify the name actually lands on a fresh install.
+- **Hostname is self-assigned from the machine-id (no install-time input).**
+  `mkosi.conf` sets `Hostname=arch-????-????`, baked into os-release as
+  `DEFAULT_HOSTNAME`. systemd replaces each `?` with a hex char hashed
+  deterministically from the machine-id, so every install gets a unique, stable name
+  (e.g. `arch-92a9-061c`) — one image, many uniquely-named machines, with no
+  credential and no `systemd-sysinstall` involvement. This replaced an earlier
+  `firstboot.hostname` credential forwarded through `systemd-sysinstall`, which
+  TPM-sealed the (non-secret) name to the installer's TPM and broke on
+  imaging/transplant/TPM-clear (see step-4 notes). Removed with it: the
+  `systemd-sysinstall.service.d` drop-in, `run-image`/`burn-image` `--hostname`.
+  Untested end-to-end; verify the name lands and is stable across reboots on a fresh
+  install. Override a chosen name post-install with `hostnamectl hostname`.
 - Open issue: TPM2 LUKS enrollment happens at repart time (`Encrypt=tpm2`), so
   PCR 7 sealing during the installer boot may not match the installed system's
   first normal boot — verify against real firmware.
@@ -96,12 +95,13 @@ reachable YubiKey, or the in-guest build falls back to the network.
        trusts the chain at boot. Re-run + re-verify after any image change.
 2. [ ] **Boot the image** — normal (default) boot:
        ```
-       bin/run-image --hostname=qemu --console=gui
+       bin/run-image --console=gui
        ```
        First boot runs repart (device A/B `usr` + root/home/swap layout), TPM2-seals
        the LUKS root/swap (swtpm state persists next to the image, so no reseal on
        later runs), and self-provisions. Pass: reaches a provisioned login;
-       `hostnamectl` shows `qemu`; `findmnt /usr` is the dm-verity image.
+       `hostnamectl` shows a self-assigned `arch-…` name; `findmnt /usr` is the
+       dm-verity image.
 3. [x] **On-device A/B update (sysupdate in the booted image)** — in the guest:
        ```
        cd /usr/share/arch-ansible && gpg --card-status
@@ -151,16 +151,15 @@ reachable YubiKey, or the in-guest build falls back to the network.
        attach it:
        ```
        truncate -s 90G ~/.cache/mkosi/test-target.raw
-       bin/run-image --hostname=installtest --console=gui \
+       bin/run-image --console=gui \
          --device="$HOME/.cache/mkosi/test-target.raw"
        ```
        At the boot menu pick **Installer** (`mkosi.uki-profiles/25-install.conf` →
        `systemd-sysinstall.service`), or pick **Live System** and run
-       `systemd-sysinstall` by hand. `run-image` forwards `firstboot.hostname=
-       installtest`. Pass: `/dev/vdb` partitioned (A/B `usr` + root/home/swap, usr-b
-       empty), `/usr` copied, ESP populated via `bootctl install`/`link`, the
-       credential forwarded, and the target's first boot provisions + TPM2-seals with
-       the name `installtest` landing. (See "Install from the live medium" above for
+       `systemd-sysinstall` by hand. Pass: `/dev/vdb` partitioned (A/B `usr` +
+       root/home/swap, usr-b empty), `/usr` copied, ESP populated via `bootctl
+       install`/`link`, and the target's first boot provisions + TPM2-seals and
+       self-assigns a stable `arch-…` hostname. (See "Install from the live medium" above for
        the hostname-credential and PCR-7 caveats.)
        FINDING 2026-06-30 (benign): during install `systemd-sysinstall` logs "Failed
        to read timezone, skipping timezone propagation: Invalid argument" and
@@ -252,10 +251,22 @@ reachable YubiKey, or the in-guest build falls back to the network.
        dirtied by the earlier `--boot-device` accident — hangs on `by-designator/root`
        when it auto-boots its default profile; harmless to the install, but rebuild
        the medium before step 5 for a clean Live boot.)
+       HOSTNAME APPROACH CHANGED 2026-06-30 — dropped the whole firstboot.hostname
+       credential mechanism (per ParticleOS). The TPM-sealing fragility is now moot:
+       there is no credential to seal. Instead `mkosi.conf` sets
+       `Hostname=arch-????-????`, baked into os-release as `DEFAULT_HOSTNAME`; systemd
+       replaces each `?` with a hex char hashed deterministically from the machine-id,
+       so every install gets a unique, stable name (e.g. `arch-92a9-061c`) with no
+       install-time input. Removed: the `systemd-sysinstall.service.d` hostname
+       drop-in, `--hostname`/`--credential` from `run-image`, and the ESP cred-writing
+       from `burn-image`. Self-naming needs a quick re-verify on the next build
+       (`boot-disk` a fresh install → `hostnamectl` shows `arch-…`, stable across
+       reboots). NOTE: the step-4 commands below/above still say `--hostname=…`; that
+       flag is gone now — drop it (the disk names itself).
 5. [ ] **Offline update from a live USB → existing host** — reboot with the SAME
        step-4 disk still attached:
        ```
-       bin/run-image --hostname=qemu --console=gui \
+       bin/run-image --console=gui \
          --device="$HOME/.cache/mkosi/test-target.raw"
        ```
        At the boot menu pick **Live System (Recovery)**, then in the guest:

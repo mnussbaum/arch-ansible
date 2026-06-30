@@ -224,13 +224,14 @@ run:
 
 ```
 bin/build-image
-bin/burn-image --hostname=recovery /dev/sda
+bin/burn-image /dev/sda
 ```
 
 ### Provision a new physical machine
 
-Every machine is built from the same image; the hostname is the only per-machine
-input (there are no per-host repo files).
+Every machine is built from the same image and names itself on first boot — a
+unique, stable hostname derived from its machine-id (e.g. `arch-92a9-061c`) — so
+there are no per-machine inputs or per-host repo files.
 
 1. Boot the target machine from the install USB. The repo is already installed at
    `~/src/arch-ansible`. Run:
@@ -238,24 +239,23 @@ input (there are no per-host repo files).
    ```
    cd ~/src/arch-ansible
    bin/build-image
-   bin/burn-image --hostname=<hostname> <device>
-   # e.g.: bin/burn-image --hostname=bodie /dev/nvme0n1
+   bin/burn-image <device>
    ```
 
 2. Reboot into the installed system. On first boot it self-provisions the
-   encrypted root/home; per-machine traits (monitors, etc.) are detected from
-   hardware/facts at firstboot.
+   encrypted root/home and picks its hostname; per-machine traits (monitors, etc.)
+   are detected from hardware/facts at firstboot. Rename later with
+   `hostnamectl hostname <name>` if you want a chosen name.
 
 ### QEMU workflows
 
-Build the image, then boot it in a VM with `bin/run-image` (sets the hostname via
-`mkosi --machine`).
+Build the image, then boot it in a VM with `bin/run-image`.
 
 Run the image (emulates an installed machine — boots the default profile):
 
 ```
 bin/build-image
-bin/run-image --hostname=qemu
+bin/run-image
 ```
 
 Attach a second disk with `--device=<disk.raw>` and pick the role at the boot
@@ -266,7 +266,7 @@ image onto the disk via `systemd-sysinstall` (the install profile boots straight
 into `systemd-sysinstall.service`).
 
 ```
-bin/run-image --hostname=qemu --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
+bin/run-image --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
 ```
 
 ## Maintenance

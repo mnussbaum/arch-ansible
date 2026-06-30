@@ -29,10 +29,8 @@ while [[ $# -gt 0 ]]; do
       echo "  DISK.raw   The disk image to boot (the only disk attached)." >&2
       echo "  --memory   Guest RAM (default 4G)." >&2
       echo "  --cpus     vCPUs (default 4)." >&2
-      echo "  --tpm-state DIR  Persistent swtpm state dir (default DISK.tpm). Point at the" >&2
-      echo "              installer's TPM (e.g. \$output_dir/tpm) to mirror a real machine," >&2
-      echo "              where install + first boot share one TPM — required for the" >&2
-      echo "              installer's TPM-sealed firstboot credentials to decrypt." >&2
+      echo "  --tpm-state DIR  Persistent swtpm state dir (default DISK.tpm). The disk's" >&2
+      echo "              first boot seals LUKS to this TPM and later boots unseal against it." >&2
       exit
       ;;
     --memory=*) memory="${1#*=}" ;;

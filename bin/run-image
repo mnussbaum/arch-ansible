@@ -3,7 +3,6 @@
 set -o errexit
 set -o nounset
 
-hostname=""
 runtime=qemu
 device=""
 boot_device=""
@@ -13,11 +12,9 @@ mkosi_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
-      echo "Run the built image in a VM, setting its hostname at boot. Build it first with build-image." >&2
-      echo "Usage: $0 --hostname=<hostname> [--runtime=qemu] [--device=DISK.raw] [mkosi options...]" >&2
-      echo "  --hostname  Hostname for the machine, required. Applied at boot via mkosi --machine" >&2
-      echo "              (systemd.hostname=), and also forwarded as a firstboot.hostname credential" >&2
-      echo "              so the Installer profile names the disk it provisions the same." >&2
+      echo "Run the built image in a VM. Build it first with build-image." >&2
+      echo "Usage: $0 [--runtime=qemu] [--device=DISK.raw] [mkosi options...]" >&2
+      echo "  The machine names itself at first boot (mkosi Hostname=, machine-id derived)." >&2
       echo "  --runtime   VMM to use, passed to mkosi --vmm; default qemu." >&2
       echo "  --device    Attach DISK.raw as a second disk in the guest (/dev/vdb). At the boot" >&2
       echo "              menu, pick 'Live System (Recovery)' to repair it, or 'Installer' to" >&2
@@ -28,8 +25,6 @@ while [[ $# -gt 0 ]]; do
       echo "  Any other options are forwarded to mkosi (e.g. --console gui)." >&2
       exit
       ;;
-    --hostname=*) hostname="${1#*=}" ;;
-    --hostname) hostname="$2"; shift ;;
     --runtime=*) runtime="${1#*=}" ;;
     --runtime) runtime="$2"; shift ;;
     --device=*) device="${1#*=}" ;;
@@ -45,8 +40,6 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
-
-: "${hostname:?--hostname is required}"
 
 source bin/_cache_common.sh
 
@@ -88,7 +81,7 @@ if [[ "$runtime" == "qemu" ]]; then
     # the medium bootindex=1; bootindex=0 here is higher priority, so the firmware
     # boots this disk's own ESP/UKI first (the medium stays as a fallback). Use to
     # exercise the installed target's first boot (repart root/home/swap, TPM2-seal,
-    # firstboot credentials) which booting the medium can't reach.
+    # self-naming) which booting the medium can't reach.
     vmm_args+=(
       "-drive" "if=none,id=bootdevice,file=$boot_device,format=raw"
       "-device" "virtio-blk-pci,drive=bootdevice,bootindex=0"
@@ -192,8 +185,6 @@ fi
 
 mkosi \
   --output-directory="$output_dir" \
-  --machine="$hostname" \
-  --credential="firstboot.hostname=$hostname" \
   --vmm="$runtime" \
   --cpus=4 \
   --ram=4G \
