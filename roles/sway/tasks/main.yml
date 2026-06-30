@@ -19,6 +19,7 @@
       - swaybg
       - swayidle
       - swaylock
+      - sway-systemd # starts sway-session.target (waybar et al. hang off it)
       - chayang
       - libnotify
       - mako
