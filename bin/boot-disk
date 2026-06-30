@@ -1,0 +1,122 @@
+#!/bin/bash
+
+# Boot a single raw disk image directly in QEMU under Secure Boot, with a
+# persistent emulated TPM. Unlike run-image (which always boots the mkosi medium
+# and attaches extra disks as non-boot drives), this boots ONLY the given disk —
+# nothing else is attached. Use it to exercise an installed target's own first
+# boot (systemd-repart creates root/home/swap, TPM2-seals LUKS, applies firstboot
+# credentials). With a second mkosi-layout disk present, repart picks the wrong
+# disk, so isolation matters.
+#
+# Firmware varstore and TPM state are per-disk and persistent (next to the disk),
+# so PCR 7 and the TPM2-sealed LUKS keyslots stay stable across reboots like real
+# hardware.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+disk=""
+memory=4G
+cpus=4
+tpm_state=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      echo "Boot a single raw disk image directly under Secure Boot + persistent TPM." >&2
+      echo "Usage: $0 DISK.raw [--memory 4G] [--cpus 4]" >&2
+      echo "  DISK.raw   The disk image to boot (the only disk attached)." >&2
+      echo "  --memory   Guest RAM (default 4G)." >&2
+      echo "  --cpus     vCPUs (default 4)." >&2
+      echo "  --tpm-state DIR  Persistent swtpm state dir (default DISK.tpm). Point at the" >&2
+      echo "              installer's TPM (e.g. \$output_dir/tpm) to mirror a real machine," >&2
+      echo "              where install + first boot share one TPM — required for the" >&2
+      echo "              installer's TPM-sealed firstboot credentials to decrypt." >&2
+      exit
+      ;;
+    --memory=*) memory="${1#*=}" ;;
+    --memory) memory="$2"; shift ;;
+    --cpus=*) cpus="${1#*=}" ;;
+    --cpus) cpus="$2"; shift ;;
+    --tpm-state=*) tpm_state="${1#*=}" ;;
+    --tpm-state) tpm_state="$2"; shift ;;
+    *) disk="$1" ;;
+  esac
+  shift
+done
+
+: "${disk:?DISK.raw is required}"
+[[ -f "$disk" ]] || { echo "error: '$disk' is not a file" >&2; exit 1; }
+disk=$(realpath "$disk")
+
+source bin/_cache_common.sh
+
+# Secure Boot cert (same key that signs the image's UKIs/verity). Enrolled into a
+# per-disk varstore below so the disk's signed UKI is trusted and the firmware
+# boots in user mode — PCR 7 stable across reboots. Materialize from pass if the
+# cached copy is gone (the only path here that may touch GPG).
+secureboot_cert="$ARCH_ANSIBLE_CACHE/mkosi-secureboot/mkosi.crt"
+if [[ ! -f "$secureboot_cert" ]]; then
+  source bin/_secureboot_common.sh
+  materialize_secureboot_keypair
+  secureboot_cert="$SECUREBOOT_CERT"
+fi
+
+# Per-disk firmware varstore: a copy of the OVMF template with our cert enrolled
+# (PK/KEK/db), so the disk owns its own boot entries and firmware state. Built
+# directly with virt-fw-vars (its --enroll-cert is broken in virt-firmware 26.x;
+# the file-based --set-pk/--add-kek/--add-db options work — see run-image).
+ovmf_vars="$disk.ovmf_vars.fd"
+if [[ ! -f "$ovmf_vars" || "$secureboot_cert" -nt "$ovmf_vars" ]]; then
+  virt-fw-vars \
+    --input /usr/share/edk2/x64/OVMF_VARS.4m.fd \
+    --output "$ovmf_vars" \
+    --set-pk OvmfEnrollDefaultKeys "$secureboot_cert" \
+    --add-kek OvmfEnrollDefaultKeys "$secureboot_cert" \
+    --add-db OvmfEnrollDefaultKeys "$secureboot_cert" \
+    --secure-boot
+fi
+
+# Persistent TPM. The disk's first boot seals LUKS to this TPM; reusing the same
+# state dir on later boots lets it unseal (an ephemeral TPM can't). Defaults to a
+# per-disk dir; override with --tpm-state to share the installer's TPM.
+: "${tpm_state:=$disk.tpm}"
+mkdir -p "$tpm_state"
+if [[ ! -e "$tpm_state/tpm2-00.permall" ]]; then
+  swtpm_setup --tpm2 --tpmstate "$tpm_state" --createek
+fi
+swtpm socket --tpm2 --tpmstate "dir=$tpm_state" \
+  --ctrl "type=unixio,path=$tpm_state/swtpm-sock" \
+  --pid "file=$tpm_state/swtpm.pid" --daemon
+trap 'kill "$(cat "$tpm_state/swtpm.pid" 2>/dev/null)" 2>/dev/null || true' EXIT
+
+# Fresh guest-agent socket (left around from a prior run otherwise).
+qga_sock=/tmp/qemu-guest-agent.sock
+rm -f "$qga_sock"
+
+# Direct QEMU boot. q35+smm and the secure cfi.pflash global enable Secure Boot;
+# the disk is the only drive, bootindex=0. GTK display + virtio-tablet mirror
+# run-image's GUI handling; the virtserial qga port exposes the guest agent.
+# Not exec'd, so the EXIT trap still tears down swtpm when QEMU quits.
+qemu-system-x86_64 \
+  -machine type=q35,smm=on,hpet=off \
+  -smp "$cpus" -m "$memory" -cpu host -accel kvm \
+  -global ICH9-LPC.disable_s3=1 \
+  -global driver=cfi.pflash01,property=secure,value=on \
+  -drive if=pflash,format=raw,unit=0,readonly=on,file=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd \
+  -drive if=pflash,format=raw,unit=1,file="$ovmf_vars" \
+  -drive if=none,id=target,file="$disk",format=raw \
+  -device virtio-blk-pci,drive=target,bootindex=0 \
+  -object rng-random,filename=/dev/urandom,id=rng0 \
+  -device virtio-rng-pci,rng=rng0 \
+  -nic user,model=virtio-net-pci \
+  -chardev "socket,id=chrtpm,path=$tpm_state/swtpm-sock" \
+  -tpmdev emulator,id=tpm0,chardev=chrtpm \
+  -device tpm-tis,tpmdev=tpm0 \
+  -device virtio-vga \
+  -display gtk,gl=on,zoom-to-fit=off,grab-on-hover=on \
+  -device virtio-tablet \
+  -chardev "socket,path=$qga_sock,server=on,wait=off,id=qga0" \
+  -device virtio-serial \
+  -device virtserialport,chardev=qga0,name=org.qemu.guest_agent.0

@@ -6,6 +6,7 @@ set -o nounset
 hostname=""
 runtime=qemu
 device=""
+boot_device=""
 recovery_alias=""
 mkosi_args=()
 
@@ -21,6 +22,9 @@ while [[ $# -gt 0 ]]; do
       echo "  --device    Attach DISK.raw as a second disk in the guest (/dev/vdb). At the boot" >&2
       echo "              menu, pick 'Live System (Recovery)' to repair it, or 'Installer' to" >&2
       echo "              install onto it. (--recovery is a deprecated alias.)" >&2
+      echo "  --boot-device  Attach DISK.raw and boot IT instead of the medium (bootindex=0)." >&2
+      echo "              Use to boot an already-installed target disk (its own first boot:" >&2
+      echo "              provision + TPM2-seal). The medium stays attached as a fallback." >&2
       echo "  Any other options are forwarded to mkosi (e.g. --console gui)." >&2
       exit
       ;;
@@ -30,6 +34,8 @@ while [[ $# -gt 0 ]]; do
     --runtime) runtime="$2"; shift ;;
     --device=*) device="${1#*=}" ;;
     --device) device="$2"; shift ;;
+    --boot-device=*) boot_device="${1#*=}" ;;
+    --boot-device) boot_device="$2"; shift ;;
     --recovery=*) device="${1#*=}"; recovery_alias=1 ;;
     --recovery) device="$2"; shift; recovery_alias=1 ;;
     *)
@@ -76,6 +82,18 @@ if [[ "$runtime" == "qemu" ]]; then
     )
     echo "==> Attached $device as /dev/vdb. At the boot menu, pick 'Live System" >&2
     echo "    (Recovery)' to repair it, or 'Installer' to install onto it." >&2
+  fi
+  if [[ -n "$boot_device" ]]; then
+    # Attach an already-installed target and boot IT, not the medium. mkosi gives
+    # the medium bootindex=1; bootindex=0 here is higher priority, so the firmware
+    # boots this disk's own ESP/UKI first (the medium stays as a fallback). Use to
+    # exercise the installed target's first boot (repart root/home/swap, TPM2-seal,
+    # firstboot credentials) which booting the medium can't reach.
+    vmm_args+=(
+      "-drive" "if=none,id=bootdevice,file=$boot_device,format=raw"
+      "-device" "virtio-blk-pci,drive=bootdevice,bootindex=0"
+    )
+    echo "==> Booting $boot_device (bootindex=0), not the medium." >&2
   fi
 
   # With a GUI console, override mkosi's hardcoded SDL display (qemu.py uses
