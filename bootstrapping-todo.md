@@ -77,31 +77,102 @@ The full validation sequence — each step gates the next, and steps 4→5 chain
 host installed in step 4 is the target updated in step 5). Drive these in QEMU via
 `bin/run-image`; a YubiKey is available in the guest for signing/unlock.
 
-1. [ ] **Build an image** — `bin/build-image`. Pass: signed UKI + split
-       usr/verity/verity-sig artifacts land in `~/.cache/mkosi/images/image`, version
-       bumped (`mkosi.version`).
-2. [ ] **Boot the image** — `bin/run-image --hostname=qemu`, normal (default)
-       boot. First boot runs repart (device A/B `usr` + root/home/swap layout),
-       TPM2-seals the LUKS root/swap, and self-provisions. Pass: reaches a provisioned
-       login, the hostname credential landed, `/usr` is the dm-verity image.
-3. [ ] **On-device A/B update (sysupdate in the booted image)** — in the booted
-       system, `bin/update-system` (no `--image`; add `--reboot` to switch slots).
+Drive it as ONE QEMU session. Steps 2–3 exercise the **booted image itself** (no
+second disk); steps 4–5 act on a **separate target disk** (`/dev/vdb`) — and step 4
+produces the very disk step 5 updates. In-guest `bin/*` come from the booted image's
+read-only `/usr/share/arch-ansible`, so a script fix needs a host rebuild (step 1) +
+reboot before it's live in the guest. Steps 3 and 5 rebuild the image *inside* the
+guest, so the guest needs the primed caches + `/usr/share/password-store` + a
+reachable YubiKey, or the in-guest build falls back to the network.
+
+1. [x] **Build an image** — `bin/build-image` (add `--caching force` to stay offline
+       on a primed cache). Pass: signed UKI + split usr/verity/verity-sig artifacts
+       land in `~/.cache/mkosi/images/image`, version bumped (`mkosi.version`).
+       VERIFIED 2026-06-29 for `image_20260629164917_x86-64`: `sbverify --cert
+       ~/.cache/mkosi-secureboot/mkosi.crt <uki>.efi` → "Signature verification OK";
+       verity-sig `certificateFingerprint` == the `CN=arch-ansible SecureBoot` cert
+       (`B2:DA:95…97:83`) and its `rootHash` matches the `usr` partition's hash. Same
+       cert is pre-enrolled into the OVMF varstore by `run-image`, so the firmware
+       trusts the chain at boot. Re-run + re-verify after any image change.
+2. [ ] **Boot the image** — normal (default) boot:
+       ```
+       bin/run-image --hostname=qemu --console=gui
+       ```
+       First boot runs repart (device A/B `usr` + root/home/swap layout), TPM2-seals
+       the LUKS root/swap (swtpm state persists next to the image, so no reseal on
+       later runs), and self-provisions. Pass: reaches a provisioned login;
+       `hostnamectl` shows `qemu`; `findmnt /usr` is the dm-verity image.
+3. [ ] **On-device A/B update (sysupdate in the booted image)** — in the guest:
+       ```
+       cd /usr/share/arch-ansible && gpg --card-status
+       bin/update-system --reboot          # no --image = on-device; rebuilds + applies
+       ```
        Pass: the new version fills the inactive `usr` slot, a new UKI is dropped with
-       `TriesLeft=`, and a reboot lands on the new slot with boot-counting /
-       auto-rollback intact.
-4. [ ] **Fresh install from a live USB → blank host** — boot the **Installer**
-       profile (`mkosi.uki-profiles/25-install.conf` → `systemd-sysinstall.service`)
-       against a blank disk, or boot **Live System** and run `systemd-sysinstall` by
-       hand. Pass: disk partitioned, `/usr` copied, ESP populated via `bootctl
-install`/`link`, the `firstboot.hostname` credential forwarded, and the
-       target's first boot provisions + TPM2-seals. (See "Install from the live
-       medium" above for the hostname-credential and PCR-7 caveats.)
-5. [ ] **Offline update from a live USB → existing host** — boot **Live System
-       (Recovery)**, then `bin/update-system --image=/dev/vdb` against an
-       already-installed target (use the step-4 host as the target). Pass: the new
-       version fills the _inactive_ `usr` slot, the new UKI lands on the _target's_
-       ESP, the prior slot is retained, and root/home/swap are untouched (homed user
-       data survives). Mechanism + design: see `offline-update-handoff.md`.
+       `TriesLeft=`, and the reboot lands on the new slot with boot-counting /
+       auto-rollback intact (verify the active slot flipped via `bootctl list` /
+       `IMAGE_VERSION`). NOTE: this is the unverified `updatectl`→direct-
+       `systemd-sysupdate` switch — watch the apply output.
+       FAILED 2026-06-30 (`image_20260629164917` guest). Silent no-op: the in-guest
+       rebuild succeeded and staged all four artifacts for `20260630065151` into
+       `/var/lib/arch-ansible/updates`, but `systemd-sysupdate --transfer-source=…
+       --offline update` applied nothing — after `--reboot` the running version was
+       still `20260629164917`, the inactive `usr` slot (vda5/6/7) was still labeled
+       `_empty`, and no boot-counted UKI was dropped. `systemd-sysupdate … --offline
+       list` confirms it discovers NO available instance from the staged source even
+       though the files match the shipped `MatchPattern=%M_@v_%a.usr-%a.@u.raw`.
+       ROOT CAUSE (confirmed by matrix): the **`--offline` flag** suppresses
+       enumeration of the local `regular-file` source. Dropping `--offline` from the
+       exact same `list` makes the staged version appear as an installable candidate
+       (`↻ 20260630065151 … ✓ candidate`). The script's inline comment assumed
+       `--offline` only "skips network metadata fetch"; in systemd 260/261 it instead
+       skips local source discovery, so `update` becomes a silent no-op (exit 0).
+       Two bugs: (a) **remove `--offline`** from both `systemd-sysupdate … update`
+       calls in `bin/update-system` (on-device line ~225 AND the `--image`/offline
+       branch line ~204 — the `--image` path has the identical latent bug, so step 5
+       would also no-op); there are no url-file transfers, so no network is contacted
+       regardless. (b) `update-system` reboots after a no-op apply — line ~226 runs
+       `systemctl reboot` unconditionally; it should assert the active version
+       actually changed before `--reboot`.
+       FIX APPLIED 2026-06-30 (`bin/update-system`, uncommitted): dropped `--offline`
+       from both `systemd-sysupdate … update` calls and now pass the explicit
+       just-built version (`new_version=$(cat mkosi.version)`) → `update "$new_version"`.
+       An undiscoverable version exits 1 (vs. bare `update`'s no-op exit 0), so
+       `errexit` aborts before the reboot — covers both (a) and (b). Pending: host
+       rebuild + reboot of the live image (in-guest `/usr/share/arch-ansible` is
+       read-only), then re-run step 3.
+4. [ ] **Fresh install from a live USB → blank host** — make a blank target and
+       attach it:
+       ```
+       truncate -s 90G ~/.cache/mkosi/test-target.raw
+       bin/run-image --hostname=installtest --console=gui \
+         --device="$HOME/.cache/mkosi/test-target.raw"
+       ```
+       At the boot menu pick **Installer** (`mkosi.uki-profiles/25-install.conf` →
+       `systemd-sysinstall.service`), or pick **Live System** and run
+       `systemd-sysinstall` by hand. `run-image` forwards `firstboot.hostname=
+       installtest`. Pass: `/dev/vdb` partitioned (A/B `usr` + root/home/swap, usr-b
+       empty), `/usr` copied, ESP populated via `bootctl install`/`link`, the
+       credential forwarded, and the target's first boot provisions + TPM2-seals with
+       the name `installtest` landing. (See "Install from the live medium" above for
+       the hostname-credential and PCR-7 caveats.)
+5. [ ] **Offline update from a live USB → existing host** — reboot with the SAME
+       step-4 disk still attached:
+       ```
+       bin/run-image --hostname=qemu --console=gui \
+         --device="$HOME/.cache/mkosi/test-target.raw"
+       ```
+       At the boot menu pick **Live System (Recovery)**, then in the guest:
+       ```
+       cd /usr/share/arch-ansible && gpg --card-status
+       bin/update-system --image=/dev/vdb
+       ```
+       Pass: the new version fills the _inactive_ `usr` slot (the empty usr-b from
+       step 4), the new UKI lands on the _target's_ ESP, the prior slot is retained,
+       and root/home/swap are untouched (homed user data survives). Slot-safety note:
+       offline `%A` = the live USB's version, not the target's active slot, so
+       retention relies on `InstancesMax=2` + oldest-instance eviction, not
+       `ProtectVersion` — eyeball it. Mechanism + design: see
+       `offline-update-handoff.md`.
 
 Orthogonal checks (fold into the steps above as real hardware becomes available):
 

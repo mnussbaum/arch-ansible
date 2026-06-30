@@ -134,13 +134,18 @@ fi
 bin/build-image "${build_args[@]}"
 
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
+# The version build-image just bumped to (./mkosi.bump > mkosi.version). We pass it
+# explicitly to `systemd-sysupdate update` below so a no-op can't pass silently: if
+# sysupdate can't discover this exact version in the source it exits non-zero (vs.
+# bare `update`, which prints "No update needed" and exits 0), and errexit aborts
+# before any reboot.
+new_version=$(cat mkosi.version)
 
 if [[ -n "$image" ]]; then
   # Offline path: apply the freshly built artifacts to the target disk's inactive
   # /usr slot via the volatile-root mechanism (see the header for why not
   # --image). --transfer-source points the transfers at our build output (no
-  # staging copy needed); --offline skips any network metadata fetch. The binary
-  # isn't on PATH.
+  # staging copy needed). The binary isn't on PATH.
 
   # volatile-root needs a block device. A raw image file is loop-mounted (-P so
   # its partitions get device nodes); a real disk node is used as-is. Everything
@@ -201,9 +206,8 @@ if [[ -n "$image" ]]; then
       exec /usr/lib/systemd/systemd-sysupdate \
         --definitions="$4" \
         --transfer-source="$5" \
-        --offline \
-        update
-    ' bash "$runtmp" "$esp_part" "$esp_mnt" "$PWD/mkosi.sysupdate" "$output_dir"
+        update "$6"
+    ' bash "$runtmp" "$esp_part" "$esp_mnt" "$PWD/mkosi.sysupdate" "$output_dir" "$new_version"
 else
   staging=/var/lib/arch-ansible/updates
 
@@ -220,8 +224,7 @@ else
   # come from --transfer-source, which updatectl has no way to pass. sysupdate
   # auto-discovers the running system's disk and writes the new version to the
   # inactive usr slot; the guard above (we're on a real device) keeps that
-  # discovery off a build host's disk. --offline: the regular-file transfers are
-  # local, no network fetch.
-  sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" --offline update
+  # discovery off a build host's disk.
+  sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" update "$new_version"
   [[ -n "$reboot" ]] && sudo systemctl reboot
 fi
