@@ -86,48 +86,42 @@ fi
 cd "$(dirname "$0")/.."
 
 if [[ -z "$image" ]]; then
-  # Guard: only run where /usr is the dissected verity image, i.e. an actual
-  # hermetic device. On a build host /usr is btrfs on the root fs, and sysupdate
-  # there could match unrelated partitions. (--image targets a separate disk, so
-  # the running system's /usr is irrelevant — skip the guard in that mode.)
+  # Guard: on-device apply only where /usr is the dissected verity image, i.e. an
+  # actual hermetic device. On a build host /usr is btrfs on the root fs, and
+  # sysupdate there could match unrelated partitions. (--image targets a separate
+  # disk, so the running system's /usr is irrelevant — skip the guard in that mode.)
   usr_src=$(findmnt -no SOURCE /usr 2>/dev/null || true)
   if [[ "$usr_src" != /dev/mapper/usr ]]; then
     echo "Refusing: /usr is '$usr_src', not /dev/mapper/usr." >&2
     echo "Run update-system on the target device, or pass --image=DISK." >&2
     exit 1
   fi
+fi
 
-  # Build a fresh, bumped image version (build-image materializes the signing
-  # keys from pass and passes --bump, so each build is newer than the running
-  # slot). TRANSITIONAL (drop after full cutover): we already proved we're
-  # on-device above, so select the in-image source paths
-  # (mkosi.conf.d/10-sources-device).
+# Select the build context by the in-image device sources themselves. The
+# mkosi.conf.d/10-sources-device set is bind-mounted from paths that exist only on a
+# device / the live medium — the yay package they carry at /usr/lib/arch-ansible/
+# yay-pkg. Present ⇒ device target (caches on /var/cache/arch-ansible, sources from
+# /usr/share|lib); absent ⇒ a dev-host checkout, host target (~/.cache, ~/.local).
+# --image runs on the live medium, so it lands here on device too. bin/build-image
+# (below) sources the same _cache_common.sh.
+if [[ -d /usr/lib/arch-ansible/yay-pkg ]]; then
   export ARCH_ANSIBLE_TARGET=device
-
-  # Resolve ARCH_ANSIBLE_CACHE now that the target is device: build caches +
-  # mkosi scratch land on /var/cache/arch-ansible (the encrypted root btrfs),
-  # not the small homed /home partition. bin/build-image (below) sources this
-  # too.
   source bin/_cache_common.sh
   arch_ansible_ensure_cache
 
-  # The .chroot postinst's pacman needs a sync DB, and a device has no system
-  # one (and /var doesn't persist). Seed a persistent, home-resident copy that
-  # 10-sources-device.conf feeds into the image. Only fetch it when missing:
-  # once primed, builds reuse it and run offline (delete the dir to force a
-  # refresh). Root: pacman -Sy refuses to run unprivileged even with a custom
-  # --dbpath. DBs are SigLevel DatabaseOptional, so this needs no keyring (works
-  # on a never-provisioned device). No `|| true`: if it's missing and the sync
-  # fails (offline + unprimed) the build can't proceed, so let it fail loudly.
+  # The .chroot postinst's pacman needs a sync DB, and a device has no system one
+  # (and /var doesn't persist). Seed a persistent copy that 10-sources-device.conf
+  # feeds into the image. Only fetch it when missing; once primed, builds reuse it
+  # offline. Root: pacman -Sy refuses to run unprivileged even with a custom
+  # --dbpath. DBs are SigLevel DatabaseOptional, so this needs no keyring. No
+  # `|| true`: if it's missing and the sync fails, the build can't proceed.
   pacman_db="$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-db"
   if [[ ! -f "$pacman_db/sync/core.db" ]]; then
     mkdir -p "$pacman_db"
     sudo pacman -Sy --dbpath "$pacman_db" --logfile /dev/null
   fi
 else
-  # --image builds on this host with the default (host) target. We still need
-  # ARCH_ANSIBLE_OUTPUT_DIR resolved (the same value build-image will use) to
-  # locate the freshly built artifacts that --transfer-source feeds to sysupdate.
   source bin/_cache_common.sh
 fi
 
