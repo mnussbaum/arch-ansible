@@ -85,6 +85,42 @@ fi
 
 cd "$(dirname "$0")/.."
 
+# Persistent scratch for an offline rebuild on a live medium, whose root is tmpfs
+# (RAM) — far too small for a full image build. Carve a partition from the medium's
+# own unallocated space (run-image --runtime-size / burn-image grow the medium well
+# past the ~10G image) and point ARCH_ANSIBLE_CACHE at it. Reused across runs via the
+# arch-scratch filesystem label. Exports ARCH_ANSIBLE_CACHE (honored by
+# _cache_common.sh); adding a partition in free space leaves the in-use image
+# partitions untouched (partx -a registers only the new one, no full re-read).
+provision_scratch() {
+  local mnt=/run/arch-scratch dev disk part
+  dev=$(blkid -L arch-scratch 2>/dev/null || true)
+  if [[ -z "$dev" ]]; then
+    # Whole disk backing the running verity /usr = the live medium (not the target).
+    for part in $(dmsetup deps -o devname /dev/mapper/usr 2>/dev/null \
+                  | grep -oE '\([a-z0-9]+\)' | tr -d '()'); do
+      disk=$(lsblk -no PKNAME "/dev/$part" 2>/dev/null | head -1)
+      [[ -n "$disk" ]] && break
+    done
+    [[ -n "${disk:-}" ]] || { echo "scratch: can't find the medium disk" >&2; exit 1; }
+    disk="/dev/$disk"
+    # sfdisk (util-linux, always in the image) appends a partition spanning the free
+    # space; --no-reread avoids re-reading the in-use table, partx -a registers only
+    # the new partition. (No start/size ⇒ first free sector to end of disk.)
+    echo 'type=linux, name=arch-scratch' | sudo sfdisk --append --no-reread "$disk" >/dev/null
+    sudo partx -a "$disk" 2>/dev/null || true
+    sudo udevadm settle
+    dev=$(lsblk -rno PATH,PARTLABEL "$disk" | awk '$2=="arch-scratch"{print $1}' | tail -1)
+    [[ -n "$dev" ]] || { echo "scratch: partition not created on $disk" >&2; exit 1; }
+    sudo mkfs.btrfs -q -L arch-scratch "$dev"
+  fi
+  sudo mkdir -p "$mnt"
+  mountpoint -q "$mnt" || sudo mount "$dev" "$mnt"
+  sudo chown "$(id -u):$(id -g)" "$mnt"
+  export ARCH_ANSIBLE_CACHE="$mnt/cache"
+  mkdir -p "$ARCH_ANSIBLE_CACHE"
+}
+
 if [[ -z "$image" ]]; then
   # Guard: on-device apply only where /usr is the dissected verity image, i.e. an
   # actual hermetic device. On a build host /usr is btrfs on the root fs, and
@@ -107,8 +143,25 @@ fi
 # (below) sources the same _cache_common.sh.
 if [[ -d /usr/lib/arch-ansible/yay-pkg ]]; then
   export ARCH_ANSIBLE_TARGET=device
+
+  # A live medium's root is tmpfs (RAM), too small for a full rebuild — carve
+  # persistent scratch from the medium's free space and repoint the caches there.
+  # A provisioned device already has a real root fs, so leave it on /var/cache.
+  if [[ "$(findmnt -no FSTYPE / 2>/dev/null)" == tmpfs ]]; then
+    provision_scratch
+  fi
+
   source bin/_cache_common.sh
   arch_ansible_ensure_cache
+
+  # Seed the package cache baked into /usr (mkosi.conf ExtraTree) so the rebuild
+  # installs offline instead of re-downloading ~1G. cp -n leaves a primed cache
+  # (reused scratch) alone.
+  pkg_dst="$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg"
+  if [[ -d /usr/lib/arch-ansible/pkg-cache ]]; then
+    mkdir -p "$pkg_dst"
+    cp -rn /usr/lib/arch-ansible/pkg-cache/. "$pkg_dst/" 2>/dev/null || true
+  fi
 
   # The .chroot postinst's pacman needs a sync DB, and a device has no system one
   # (and /var doesn't persist). Seed a persistent copy that 10-sources-device.conf
