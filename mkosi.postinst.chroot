@@ -23,6 +23,14 @@ touch /root/.cache-writeback-since
 mkdir -p /var/cache/yay
 rsync -a --ignore-existing /work/src/yay-cache/ /var/cache/yay/ 2>/dev/null || true
 
+# Same delta-seed for neovim's plugin/parser dir: the SkeletonTree froze the host
+# cache into the snapshot; this brings in anything written back since (e.g. plugins
+# a previous build fetched). The neovim role's headless install then finds these
+# present and skips re-fetching them. -a preserves mtimes so seeded files stay
+# older than the writeback marker and aren't re-staged by mkosi.finalize.
+mkdir -p /etc/skel/.local/share/nvim/site
+rsync -a --ignore-existing /work/src/nvim-site/ /etc/skel/.local/share/nvim/site/ 2>/dev/null || true
+
 extra_args=()
 if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   eval "extra_args=($ANSIBLE_EXTRA_ARGS)"

@@ -43,4 +43,5 @@ if [[ -f "$marker" ]]; then
     _stage_delta "$BUILDROOT/var/cache/yay"         yay
     _stage_delta "$BUILDROOT/root/.cargo/registry" cargo-registry
     _stage_delta "$BUILDROOT/root/.cache/sccache"  sccache
+    _stage_delta "$BUILDROOT/etc/skel/.local/share/nvim/site" nvim-site
 fi

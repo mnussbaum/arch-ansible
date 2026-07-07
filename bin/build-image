@@ -95,7 +95,18 @@ output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 # ${ARCH_ANSIBLE_CACHE} (bin/_cache_common.sh).
 mkdir -p "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg" "$output_dir" \
   "$ARCH_ANSIBLE_CACHE/yay" \
+  "$ARCH_ANSIBLE_CACHE/nvim/site" \
   "$ARCH_ANSIBLE_CACHE/cargo/registry" "$ARCH_ANSIBLE_CACHE/sccache"
+
+# Prime an empty nvim plugin/parser cache from the invoking user's personal nvim,
+# so the very first build (or one after a cache wipe) skips re-fetching ~130M of
+# plugins and recompiling tree-sitter parsers. Only when the cache is empty —
+# once it self-primes via mkosi.finalize writebacks we leave it alone, so the
+# image's plugin set tracks plugins.lua rather than drifting toward the host's.
+if [[ -z "$(ls -A "$ARCH_ANSIBLE_CACHE/nvim/site" 2>/dev/null)" \
+      && -d "$HOME/.local/share/nvim/site" ]]; then
+  rsync -a "$HOME/.local/share/nvim/site/" "$ARCH_ANSIBLE_CACHE/nvim/site/"
+fi
 
 # Fresh, monotonic image version so each build supersedes the running slot for
 # systemd-sysupdate. mkosi reads mkosi.version for ImageVersion (unset in
@@ -131,6 +142,7 @@ mkosi \
 cwb="$output_dir/cache-writeback"
 if [[ -d "$cwb" ]]; then
   [[ -d "$cwb/yay" ]]            && rsync -a "$cwb/yay/"            "$ARCH_ANSIBLE_CACHE/yay/"
+  [[ -d "$cwb/nvim-site" ]]      && rsync -a "$cwb/nvim-site/"      "$ARCH_ANSIBLE_CACHE/nvim/site/"
   [[ -d "$cwb/cargo-registry" ]] && rsync -a "$cwb/cargo-registry/" "$ARCH_ANSIBLE_CACHE/cargo/registry/"
   [[ -d "$cwb/sccache" ]]        && rsync -a "$cwb/sccache/"        "$ARCH_ANSIBLE_CACHE/sccache/"
   rm -rf "$cwb"
