@@ -3,6 +3,13 @@
 # Use the yay module from the vendored mnussbaum.ansible_yay collection. The
 # `package:` action dispatches on pkg_mgr, so set it to the collection's FQCN
 # so the module resolves without per-role `collections:` keywords.
+#
+# --caching force stays on pacman instead: yay always queries the AUR RPC
+# (aur.archlinux.org) to resolve any -S target, even a cached one, so it can't
+# run offline. Under force, AUR packages install from the pre-built [aur-local]
+# repo (pacman.conf.j2) that a prior online build populated in /var/cache/aur-repo
+# — no yay, no network. See offline-aur-handoff.md.
 - name: Switch to yay for AUR support
   set_fact:
     ansible_facts: "{{ ansible_facts | combine({'pkg_mgr': 'mnussbaum.ansible_yay.yay'}) }}"
+  when: build_caching | default('available') != 'force'

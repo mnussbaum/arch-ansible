@@ -37,10 +37,19 @@ if [[ -f "$marker" ]]; then
         local src="$1" name="$2"
         [[ -d "$src" ]] || return 0
         mkdir -p "$stage/$name"
-        find "$src" \( -type f -o -type l \) -newer "$marker" -printf '%P\0' \
+        # Include directories, not just files/symlinks: an empty dir carries no
+        # file to drag it across, and rsync --files-from won't create absent
+        # parents. yay's mirror clones (mirror=true fetches +refs/*:refs/*) pack
+        # every ref into packed-refs, leaving refs/ empty — drop it and git stops
+        # recognising the dir as a repo, so discovery escapes to the parent AUR
+        # clone and makepkg aborts ("is not a clone of ..."). rsync copies a
+        # listed dir non-recursively, so empty refs/ is recreated while non-empty
+        # dirs still arrive via their own (newer) files.
+        find "$src" -mindepth 1 \( -type f -o -type l -o -type d \) -newer "$marker" -printf '%P\0' \
             | rsync -a --from0 --files-from=- "$src/" "$stage/$name/"
     }
     _stage_delta "$BUILDROOT/var/cache/yay"         yay
+    _stage_delta "$BUILDROOT/var/cache/aur-repo"    aur-repo
     _stage_delta "$BUILDROOT/root/.cargo/registry" cargo-registry
     _stage_delta "$BUILDROOT/root/.cache/sccache"  sccache
     _stage_delta "$BUILDROOT/etc/skel/.local/share/nvim/site" nvim-site

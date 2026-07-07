@@ -30,17 +30,42 @@
     regexp: '^#?EXTRACTFLAGS='
     line: "EXTRACTFLAGS=(\"--no-same-owner\" \"-xf\")"
 
+# zstd, not lzop: lzop is an *external* libarchive filter, and repo-add inspects a
+# package with a quick bsdtar read (-tqf, stop at the first member .PKGINFO). That
+# early-closes the pipe to lzop, which dies with a broken pipe and makes bsdtar
+# reject the package ("is not a package file") — so a local [aur-local] repo of
+# lzop packages can't be built at all. zstd decompresses inside libarchive (no
+# external process, no broken pipe) and is the Arch default. See offline-aur-handoff.md.
 - name: Set makepkg package extension
   lineinfile:
     path: /etc/makepkg.conf
     regexp: '^#?PKGEXT='
-    line: "PKGEXT='.pkg.tar.lzo'"
+    line: "PKGEXT='.pkg.tar.zst'"
 
 - name: Set makepkg source extension
   lineinfile:
     path: /etc/makepkg.conf
     regexp: '^#?SRCEXT='
     line: "SRCEXT='.src.tar.gz'"
+
+# Route every AUR package makepkg builds into a persistent, cached local repo
+# dir instead of makepkg's default (the ephemeral build tree under BUILDDIR).
+# Combined with the [aur-local] repo + CacheDir wired up in pacman.conf.j2 for
+# --caching force, this lets a later offline build install these packages with
+# plain pacman and zero network — yay (and its AUR RPC) is only needed on an
+# online build to (re)populate this dir. The dir round-trips across builds like
+# the yay clone cache (SkeletonTree seed + BuildSource live-mount + finalize
+# write-back); makepkg.conf itself is dropped from the shipped image.
+- name: Ensure the local AUR repo cache dir exists
+  file:
+    path: /var/cache/aur-repo
+    state: directory
+
+- name: Set makepkg PKGDEST to the local AUR repo cache dir
+  lineinfile:
+    path: /etc/makepkg.conf
+    regexp: '^#?PKGDEST='
+    line: "PKGDEST=/var/cache/aur-repo"
 
 # --caching force: make AUR builds cache/offline only, the makepkg analogue of
 # the pacman.conf XferCommand. makepkg sources makepkg.conf top-to-bottom, so a

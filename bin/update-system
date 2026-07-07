@@ -176,6 +176,16 @@ if [[ -d /usr/lib/arch-ansible/yay-pkg ]]; then
     cp -rn /usr/lib/arch-ansible/pkg-cache/. "$pkg_dst/" 2>/dev/null || true
   fi
 
+  # Same for the local AUR repo baked into /usr (mkosi.conf ExtraTree): seed it into
+  # the build's aur-repo cache so a --caching force rebuild installs AUR packages
+  # from the [aur-local] repo offline instead of needing yay/network. cp -n leaves a
+  # primed cache (reused scratch) alone.
+  aur_dst="$ARCH_ANSIBLE_CACHE/aur-repo"
+  if [[ -d /usr/lib/arch-ansible/aur-repo ]]; then
+    mkdir -p "$aur_dst"
+    cp -rn /usr/lib/arch-ansible/aur-repo/. "$aur_dst/" 2>/dev/null || true
+  fi
+
   # The .chroot postinst's pacman needs a sync DB, and a device has no system one
   # (and /var doesn't persist). Seed a persistent copy that 10-sources-device.conf
   # feeds into the image. Only fetch it when missing; once primed, builds reuse it

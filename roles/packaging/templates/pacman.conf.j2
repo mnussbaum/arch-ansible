@@ -92,6 +92,20 @@ Include = /etc/pacman.d/mirrorlist
 
 [extra]
 Include = /etc/pacman.d/mirrorlist
+{% if pacman_aur_local_repo | default(false) %}
+
+# --caching force (build-time only): install AUR packages from the local repo of
+# pre-built packages in /var/cache/aur-repo (populated by yay on a prior online
+# build) instead of querying/building from the AUR. Gated on pacman_aur_local_repo,
+# which only the postinst pre_tasks render defines, so the shipped re-render drops
+# it. A `file://` Server alone is not enough under XferCommand=/usr/bin/false —
+# /var/cache/aur-repo is ALSO listed as a CacheDir so pacman installs the files
+# directly without invoking the (failing) downloader. SigLevel Optional TrustAll:
+# locally built AUR packages are unsigned.
+[aur-local]
+SigLevel = Optional TrustAll
+Server = file:///var/cache/aur-repo
+{% endif %}
 
 # If you want to run 32 bit applications on your x86_64 system,
 # enable the multilib repositories as required here.

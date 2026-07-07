@@ -95,6 +95,7 @@ output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 # ${ARCH_ANSIBLE_CACHE} (bin/_cache_common.sh).
 mkdir -p "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg" "$output_dir" \
   "$ARCH_ANSIBLE_CACHE/yay" \
+  "$ARCH_ANSIBLE_CACHE/aur-repo" \
   "$ARCH_ANSIBLE_CACHE/nvim/site" \
   "$ARCH_ANSIBLE_CACHE/cargo/registry" "$ARCH_ANSIBLE_CACHE/sccache"
 
@@ -142,6 +143,7 @@ mkosi \
 cwb="$output_dir/cache-writeback"
 if [[ -d "$cwb" ]]; then
   [[ -d "$cwb/yay" ]]            && rsync -a "$cwb/yay/"            "$ARCH_ANSIBLE_CACHE/yay/"
+  [[ -d "$cwb/aur-repo" ]]       && rsync -a "$cwb/aur-repo/"       "$ARCH_ANSIBLE_CACHE/aur-repo/"
   [[ -d "$cwb/nvim-site" ]]      && rsync -a "$cwb/nvim-site/"      "$ARCH_ANSIBLE_CACHE/nvim/site/"
   [[ -d "$cwb/cargo-registry" ]] && rsync -a "$cwb/cargo-registry/" "$ARCH_ANSIBLE_CACHE/cargo/registry/"
   [[ -d "$cwb/sccache" ]]        && rsync -a "$cwb/sccache/"        "$ARCH_ANSIBLE_CACHE/sccache/"

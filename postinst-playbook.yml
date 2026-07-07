@@ -28,12 +28,39 @@
         # Reuse repo packages mkosi already downloaded: its package cache is
         # mounted at /work/src/pacman-cache (BuildSources in mkosi.conf). Listed
         # after the in-image cache so new downloads still go to the latter.
+        # /var/cache/aur-repo is the local AUR repo (setup-aur.yml's PKGDEST); it
+        # must be a CacheDir, not just a file:// Server, so --caching force can
+        # install its packages under XferCommand=/usr/bin/false (see pacman.conf.j2).
         # Build-only like the vars above — dropped by the post_tasks re-render.
-        pacman_cache_dirs: "/var/cache/pacman/pkg /work/src/pacman-cache"
+        pacman_cache_dirs: "/var/cache/pacman/pkg /work/src/pacman-cache /var/cache/aur-repo"
+        # --caching force: enable the [aur-local] repo section so AUR packages
+        # resolve from the pre-built local repo with no network/yay. Only on force;
+        # an online build keeps yay (use-yay.yml). Dropped by the post_tasks re-render.
+        pacman_aur_local_repo: "{{ build_caching | default('available') == 'force' }}"
       tags: [packaging, min-user-session]
     - import_role:
         name: packaging
         tasks_from: init-keyring
+      tags: [packaging, min-user-session]
+    # --caching force: seed the [aur-local] sync DB by a local file copy so pacman
+    # sees the AUR targets without `-Sy` (which would hit the network). The real
+    # tarball, not the aur-local.db symlink repo-add creates. If the DB is absent
+    # (first-ever force build with no prior online build to prime it) pacman later
+    # fails with a clear "target not found" — force requires prior priming.
+    - name: Check for a pre-built local AUR repo DB
+      stat:
+        path: /var/cache/aur-repo/aur-local.db.tar.gz
+      register: aur_local_db
+      when: build_caching | default('available') == 'force'
+      tags: [packaging, min-user-session]
+    - name: Seed the local AUR repo sync DB (offline force installs)
+      copy:
+        src: /var/cache/aur-repo/aur-local.db.tar.gz
+        dest: /var/lib/pacman/sync/aur-local.db
+        remote_src: true
+      when:
+        - build_caching | default('available') == 'force'
+        - aur_local_db.stat.exists
       tags: [packaging, min-user-session]
   post_tasks:
     - import_role:
@@ -45,6 +72,29 @@
     - import_role:
         name: packaging
         tasks_from: restore-build-overrides
+      tags: [packaging, min-user-session]
+    # Online build: (re)build the [aur-local] repo DB from the packages yay just
+    # built into /var/cache/aur-repo (PKGDEST, setup-aur.yml), so it round-trips to
+    # the host cache (mkosi.finalize write-back) and a later --caching force build
+    # installs these packages from it offline. Runs in-chroot (where repo-add and a
+    # matching libarchive live). Packages are .pkg.tar.zst (setup-aur.yml) so
+    # repo-add's quick read works — lzop would break it. Skipped under force
+    # (nothing new is built then).
+    - name: Rebuild the local AUR repo DB from built packages
+      # NB: avoid a bash `${#arr[@]}` length check here — its literal `{#` opens a
+      # Jinja comment and Ansible fails to parse the task. `${pkgs[0]:-}` (empty when
+      # nullglob matched nothing) tests non-empty without a Jinja-hostile token.
+      shell: |
+        set -euo pipefail
+        shopt -s nullglob
+        pkgs=()
+        for f in /var/cache/aur-repo/*.pkg.tar.*; do [[ $f == *.sig ]] || pkgs+=("$f"); done
+        [[ -n "${pkgs[0]:-}" ]] || exit 0
+        repo-add --new /var/cache/aur-repo/aur-local.db.tar.gz "${pkgs[@]}"
+      args:
+        executable: /bin/bash
+      changed_when: true
+      when: build_caching | default('available') != 'force'
       tags: [packaging, min-user-session]
     - name: Apply user-unit presets (mkosi only presets system units)
       command: systemctl --global preset-all

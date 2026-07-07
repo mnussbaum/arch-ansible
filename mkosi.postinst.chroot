@@ -31,6 +31,13 @@ rsync -a --ignore-existing /work/src/yay-cache/ /var/cache/yay/ 2>/dev/null || t
 mkdir -p /etc/skel/.local/share/nvim/site
 rsync -a --ignore-existing /work/src/nvim-site/ /etc/skel/.local/share/nvim/site/ 2>/dev/null || true
 
+# Same delta-seed for the local AUR repo (pre-built packages + aur-local.db). The
+# SkeletonTree froze the host cache into the snapshot; this brings in packages a
+# previous online build wrote back since. Under --caching force the postinst
+# installs AUR packages from here; an online build refreshes/rebuilds it.
+mkdir -p /var/cache/aur-repo
+rsync -a --ignore-existing /work/src/aur-repo/ /var/cache/aur-repo/ 2>/dev/null || true
+
 extra_args=()
 if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   eval "extra_args=($ANSIBLE_EXTRA_ARGS)"
