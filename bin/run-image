@@ -181,13 +181,37 @@ if [[ "$runtime" == "qemu" ]]; then
     "--firmware=uefi-secure-boot"
     "--firmware-variables=$ovmf_vars"
   )
+
+  # Networking backend. mkosi defaults to QEMU SLIRP (user-mode), whose
+  # single-threaded userspace TCP stack collapses under parallel HTTPS — pacman's
+  # ParallelDownloads=5 stalls the in-guest rebuild to ~0 B/s (a single stream is
+  # fine). passt is the modern user-mode replacement: same rootless, WiFi-friendly
+  # model (no bridge/tap, so it works over the host's wlan0 where --runtime-network
+  # =interface can't) but a proper multi-threaded stack. --runtime-network=none
+  # stops mkosi adding its own SLIRP nic; QEMU launches passt itself for the netdev.
+  # Fall back to mkosi's SLIRP when passt isn't installed.
+  if command -v passt >/dev/null 2>&1; then
+    mkosi_args+=("--runtime-network=none")
+    vmm_args+=(
+      "-netdev" "passt,id=net0"
+      "-device" "virtio-net-pci,netdev=net0"
+    )
+  fi
 fi
+
+# VM sizing. Rust/meson AUR rebuilds in the guest (e.g. pwvucontrol) scale
+# almost linearly with vCPUs — cargo parallelizes to the core count — so default
+# generously while leaving the host a couple of cores and headroom. Override per
+# run with ARCH_ANSIBLE_VM_CPUS / ARCH_ANSIBLE_VM_RAM.
+default_cpus=$(( $(nproc) > 4 ? $(nproc) - 2 : $(nproc) ))
+vm_cpus="${ARCH_ANSIBLE_VM_CPUS:-$default_cpus}"
+vm_ram="${ARCH_ANSIBLE_VM_RAM:-8G}"
 
 mkosi \
   --output-directory="$output_dir" \
   --vmm="$runtime" \
-  --cpus=4 \
-  --ram=4G \
+  --cpus="$vm_cpus" \
+  --ram="$vm_ram" \
   --vsock=yes \
   --vsock-cid=3 \
   --tpm=no \

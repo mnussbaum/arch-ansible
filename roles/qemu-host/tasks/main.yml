@@ -6,6 +6,10 @@
     name:
       - qemu-desktop
       - edk2-ovmf
+      # User-mode network backend for `mkosi vm` (bin/run-image passes
+      # --runtime-network=none + a passt netdev). Replaces QEMU's SLIRP, whose
+      # single-threaded stack stalls parallel HTTPS (the in-guest offline rebuild).
+      - passt
       - sdl2
       - socat
       - swtpm

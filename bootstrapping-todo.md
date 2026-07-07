@@ -93,7 +93,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
        (`B2:DA:95…97:83`) and its `rootHash` matches the `usr` partition's hash. Same
        cert is pre-enrolled into the OVMF varstore by `run-image`, so the firmware
        trusts the chain at boot. Re-run + re-verify after any image change.
-2. [ ] **Boot the image** — normal (default) boot:
+2. [x] **Boot the image** — normal (default) boot:
        ```
        bin/run-image --console=gui
        ```
@@ -102,6 +102,19 @@ reachable YubiKey, or the in-guest build falls back to the network.
        later runs), and self-provisions. Pass: reaches a provisioned login;
        `hostnamectl` shows a self-assigned `arch-…` name; `findmnt /usr` is the
        dm-verity image.
+       PASSED 2026-07-01 (`image_20260630170801`). Full device layout (esp 2G + usr-A
+       + empty usr-B + LUKS swap + LUKS root btrfs `/` TPM2-unsealed + homed
+       `home-mnussbaum`); `/usr` = `/dev/mapper/usr` erofs (dm-verity). Reached greetd
+       + user session. NAMING (new prompt path) verified: firstboot prompted, typed
+       `wee` → `/etc/hostname=wee` (clean, no `?`), `hostnamectl --static=wee`;
+       DEFAULT_HOSTNAME retained for the skip case. ANSIBLE DECOUPLING verified: the
+       user-first-login playbook actually RAN against localhost (created ~/.aws/config,
+       ~/.pgpass, touched ~/.config/user-first-login-done) — no "no hosts matched", so
+       the old silent no-op on a self-named host is fixed. KNOWN MINOR: first-boot
+       `--transient` still shows the DEFAULT_HOSTNAME (`arch-bcca-9ede`) because the
+       running hostname was set early, before firstboot wrote `/etc/hostname`; static
+       is correct and transient converges to `wee` on reboot (harmless — nothing keys
+       on the name anymore).
 3. [x] **On-device A/B update (sysupdate in the booted image)** — in the guest:
        ```
        cd /usr/share/arch-ansible && gpg --card-status
@@ -263,7 +276,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
        (`boot-disk` a fresh install → `hostnamectl` shows `arch-…`, stable across
        reboots). NOTE: the step-4 commands below/above still say `--hostname=…`; that
        flag is gone now — drop it (the disk names itself).
-5. [ ] **Offline update from a live USB → existing host** — reboot with the SAME
+5. [x] **Offline update from a live USB → existing host** — reboot with the SAME
        step-4 disk still attached:
        ```
        bin/run-image --console=gui \
@@ -281,6 +294,38 @@ reachable YubiKey, or the in-guest build falls back to the network.
        retention relies on `InstancesMax=2` + oldest-instance eviction, not
        `ProtectVersion` — eyeball it. Mechanism + design: see
        `offline-update-handoff.md`.
+       PASSED 2026-07-07 (medium `20260706145110`, target `test-target.raw` from step
+       4 at `20260630111640`). In-guest `update-system --image=/dev/vdb` built
+       `20260707050812` and applied it offline to the target. Verified on `/dev/vdb`:
+       the previously-`_empty` usr-B slot (vdb5/6/7) now holds
+       `image_20260707050812_{verity_sig,verity,∅}` (16K / 400M DM_verity_hash / 8G
+       erofs); usr-A (vdb2/3/4 `20260630111640`) retained; new UKI
+       `EFI/Linux/image_20260707050812_x86-64+3-0.efi` on the TARGET ESP with
+       boot-counting (TriesLeft=3, TriesDone=0); swap/root (crypto_LUKS) + home (btrfs)
+       untouched, never unlocked. TWO BUGS FIXED to get here:
+       (a) SCRATCH PROVISIONING (`provision_scratch`, committed `c58d41a`): the first
+       cold run died with "scratch: can't find the medium disk". The disk resolution
+       used `dmsetup deps -o devname | lsblk -no PKNAME | head` — name-resolution can be
+       empty on the cold first-boot invocation, `-no PKNAME` grabbed the dm-child row
+       (partition, not disk), and the pipe could SIGPIPE under `pipefail`. Rewrote to
+       resolve via sysfs (`/sys/block/<dm>/slaves/*` + `lsblk -dno PKNAME`) and replaced
+       the `sfdisk --append`/`partx`/`mkfs.btrfs` carve with `systemd-repart` (BLKPG
+       in-place add + Format=btrfs, idempotent, discovery by partlabel).
+       (b) IN-GUEST REBUILD NETWORK STALL: the rebuild downloads the package-version
+       drift delta (baked pkg-cache is 2.1G but the fresh `-Sy` DB resolves to newer
+       builds → cache miss), and QEMU's default SLIRP user-net collapses to <1 B/s under
+       pacman's `ParallelDownloads=5` (a single stream is 239 KB/s). Fix: `bin/run-image`
+       now uses **passt** (`--runtime-network=none` + a passt netdev) when installed —
+       multi-threaded user-mode net that survives parallel HTTPS; `roles/qemu-host`
+       installs `passt`. (Falls back to SLIRP if absent.)
+       CAVEATS / FOLLOW-UPS: (1) NOT network-free — the rebuild still fetched the drift
+       delta over passt (as designed: "works with wifi up"). True no-network
+       (`--caching force` + a sync DB baked consistent with the pkg-cache) is still
+       future work, overlapping `offline-aur-handoff.md`. (2) UKI DIR MISMATCH: the new
+       UKI is at `EFI/Linux/` (standard, boots fine) but the target's *original* UKI is
+       at `image/image_20260630111640_x86-64.efi` — the installer (step 4) and sysupdate
+       place UKIs in different dirs; harmless to boot here but may affect A/B
+       cleanup/rollback. Investigate.
 
 Orthogonal checks (fold into the steps above as real hardware becomes available):
 
