@@ -65,8 +65,3 @@ GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume={{ partitions['root'].logical
 GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} resume_offset={{ swapfile_offset.stdout }}"
 {% endif %}
 {% endif %}
-
-{% if "nvme" in partitions["root"].physical_device %}
-# Save power, force necessary for NVMe
-GRUB_CMDLINE_LINUX="${GRUB_CMDLINE_LINUX:-} pcie_aspm=force"
-{% endif %}
