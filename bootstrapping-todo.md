@@ -57,9 +57,8 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
   transfers through systemd v261) to the **volatile-root** mechanism: symlink
   `/run/systemd/volatile-root` at a target _partition_ in a private mount
   namespace + `SYSTEMD_ESP_PATH` for the UKI. Mechanism validated read-only on the
-  host; guest write-test pending (E2E step 5). Full design, the
-  partition-not-whole-disk gotcha, and the live-build signing-key handling: see
-  `offline-update-handoff.md`.
+  host; guest write-test pending (E2E step 5). Watch for the
+  partition-not-whole-disk gotcha and the live-build signing-key handling.
 - **`ProtectVersion=%A` — resolved (correct as-is).** `%A` = `IMAGE_VERSION`,
   which the image sets (verified `IMAGE_VERSION="…"` in the UKI's `.osrel`), so on
   a real device / live USB it protects the running version — the man-page
@@ -292,8 +291,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
        and root/home/swap are untouched (homed user data survives). Slot-safety note:
        offline `%A` = the live USB's version, not the target's active slot, so
        retention relies on `InstancesMax=2` + oldest-instance eviction, not
-       `ProtectVersion` — eyeball it. Mechanism + design: see
-       `offline-update-handoff.md`.
+       `ProtectVersion` — eyeball it.
        PASSED 2026-07-07 (medium `20260706145110`, target `test-target.raw` from step
        4 at `20260630111640`). In-guest `update-system --image=/dev/vdb` built
        `20260707050812` and applied it offline to the target. Verified on `/dev/vdb`:
@@ -321,11 +319,98 @@ reachable YubiKey, or the in-guest build falls back to the network.
        CAVEATS / FOLLOW-UPS: (1) NOT network-free — the rebuild still fetched the drift
        delta over passt (as designed: "works with wifi up"). True no-network
        (`--caching force` + a sync DB baked consistent with the pkg-cache) is still
-       future work, overlapping `offline-aur-handoff.md`. (2) UKI DIR MISMATCH: the new
-       UKI is at `EFI/Linux/` (standard, boots fine) but the target's *original* UKI is
-       at `image/image_20260630111640_x86-64.efi` — the installer (step 4) and sysupdate
-       place UKIs in different dirs; harmless to boot here but may affect A/B
-       cleanup/rollback. Investigate.
+       future work, overlapping the offline-AUR install path. (2) UKI ENTRY-TYPE
+       MISMATCH (installer Type #1 vs sysupdate Type #2) — diagnosed; DECISION: go
+       Type #2-only and retire `systemd-sysinstall`; plan below.
+
+Follow-ups (software; discovered during E2E, not yet done):
+
+- [ ] **Make install pure Type #2: retire `systemd-sysinstall`, install via
+      repart + `bootctl install` + `systemd-sysupdate`.**
+      DIAGNOSED 2026-07-07; DECIDED Type #2-only 2026-07-24. Today two systemd
+      kernel-management workflows are mixed across the lifecycle and never clean up
+      after each other:
+      - `systemd-sysinstall` (step 4, install) installs the kernel via `bootctl link`
+        (`man systemd-sysinstall` step 7). `bootctl link` is **hardwired to Boot Loader
+        Spec Type #1** (`man bootctl`: "Creates one or more Type #1 boot loader entries"
+        — no Type #2 mode): it copies the UKI under the entry-token dir (`/image/`, token
+        `image` = `ImageId`) and writes one `loader/entries/image-commit_N.<ver>[@profile]
+        .conf` per UKI profile (the `@1..@6` seen on the target = profiles, not tries),
+        each with `extra /image/firstboot.{hostname,locale,keymap}.cred` sidecars.
+      - mkosi (the medium) and `mkosi.sysupdate/20-uki.transfer` use **Type #2**: the
+        multi-profile UKI lives in `EFI/Linux/` and sd-boot auto-expands the profiles
+        (`man sysupdate.d`: `Path=/EFI/Linux`, `EFI/Linux/foobarOS_@v.efi`). Boot
+        counting via the `+tries-done` filename.
+      Both are valid BLS and sd-boot reads both, so boot works — but sysupdate's
+      transfer (`MatchPattern` on `EFI/Linux/*.efi`, `InstancesMax=2`) is blind to the
+      installer's Type #1 set, so after a target is offline-updated the original
+      install's `/image/` UKI + its 7 Type #1 entries **persist forever** (never GC'd).
+      Impact isn't a wrong default (both share `sort-key=image`; the newer Type #2
+      version always sorts above the frozen install version, so it stays the default),
+      but the Type #1 entries pin the **install-time `usrhash`**; once A/B rotation
+      recycles that usr slot (only 2 slots), they point at a `/usr` that no longer
+      exists and become **unbootable menu traps** a user can still manually select.
+      They also waste ~113 MB of ESP permanently (fine on our 2G ESP; would matter on
+      particleOS's 1G). The `extra /image/firstboot.*.cred` are vestigial too (the
+      TPM-sealed firstboot-credential path was removed; hostname self-assigns).
+
+      DECISION: standardize on **Type #2 end-to-end** rather than install-Type-1-then-GC.
+      The mkosi-built medium is *already* pure Type #2 (`EFI/Linux/<uki>.efi` + sd-boot,
+      no `/image/`, no `loader/entries/`); a pure-Type-2 install just reproduces that
+      layout onto the target, UKI-named the way sysupdate names it so A/B rotation
+      continues seamlessly. Install and update then share one convention and one code
+      path, and the whole seam (plus any `bootctl unlink` GC) ceases to exist.
+
+      Why not the alternatives: (a) *first-boot `bootctl unlink` GC* — keeps `sysinstall`
+      and papers over the seam; still emits Type #1, still has the rotate-away window,
+      needs careful "only after a Type #2 UKI is booted" sequencing. Demoted to a
+      one-time migration tool (below), not the strategy. (b) *make the installer emit
+      Type #2* — not possible: `bootctl link` has no Type #2 mode and `systemd-sysinstall`
+      hardcodes it, and there's no upstream issue/RFE to add it (tracker + PR #41877 +
+      systemd `TODO.md` checked 2026-07-24; particleOS ships the same Type-1-install /
+      Type-2-update split untreated, so we'd be ahead of the reference, not catching up).
+
+      PLAN — replace the `install` UKI profile's `systemd-sysinstall.service` with our
+      own installer (new `bin/install-system` or an `install` mode wrapping the existing
+      `update-system --image` engine). Four steps; step 3 already exists and is
+      E2E-validated:
+      1. Partition the bare target disk with our `mkosi.repart/` definitions (ESP +
+         usr A/B + LUKS root/home/swap). NEW WORK: this is the real cost — the LUKS
+         format + `systemd-cryptenroll` TPM2/PCR-7 sealing that `sysinstall` did for
+         free. (Ties into the existing sysinstall PCR-7 / hostname caveats under
+         "Install from the live medium".)
+      2. Lay down sd-boot on the fresh ESP: `bootctl install --variables=yes`. NEW (one
+         call; Type-agnostic — sd-boot reads both, we just never write Type #1).
+      3. Populate usr slot A + write the initial Type #2 UKI to `EFI/Linux/` via
+         `systemd-sysupdate` (volatile-root + `SYSTEMD_ESP_PATH`). ALREADY HAVE THIS —
+         it is exactly `bin/update-system --image` (lines ~214–280); a pure-Type-2
+         install is that path aimed at a freshly-partitioned empty disk. The first UKI
+         lands `+3-0`, so boot-counting/auto-rollback covers the initial install too
+         (Type #1 install entries never had this).
+      4. Deliver firstboot creds (hostname/locale/keymap) as global
+         `loader/credentials/*.cred` on the ESP instead of per-entry `extra=` sidecars
+         (same mechanism that already places `nvpcr-anchor.*.cred`). NOTE the scope
+         shift: global creds apply to every profile, not one entry — fine for firstboot.
+      Then drop `mkosi.uki-profiles/25-install.conf`'s `systemd-sysinstall` wiring (and
+      the `systemd-sysinstall.service.d` bits) in favor of the new installer.
+
+      Caveats to carry: (i) reimplementing sysinstall's LUKS/TPM enrollment + any
+      interactive disk-picker/erase/confirm UX is ours now (biggest chunk; orthogonal to
+      entry type). (ii) divergence from the particleOS reference installer — lose
+      shared-fate with upstream sysinstall testing + future features (keep-home RFE
+      #42395, auto disk selection, varlink direction). (iii) first-install rollback
+      cliff (single instance, 3 bad boots blesses nothing to fall back to) — pre-existing
+      in our Type #2 update path, not new, but now also the install's day-one posture.
+
+      Migration for already-installed Type #1 targets: a one-time `bootctl unlink` of the
+      `image-commit_*` entries (removes the entry + its now-unreferenced `/image/` UKI +
+      `.cred` sidecars per `man bootctl`), run only once the target is already booted on
+      a Type #2 UKI (it won't unlink the booted entry). `update-system --image` is a
+      natural place to do this opportunistically after applying.
+
+      Verify after: fresh install (no sysinstall) → `bootctl list` shows only Type #2
+      entries, ESP has `EFI/Linux/` + sd-boot and **no** `/image/` or `loader/entries/`;
+      then one update → A/B pair rotates, still zero Type #1 leftovers.
 
 Orthogonal checks (fold into the steps above as real hardware becomes available):
 
