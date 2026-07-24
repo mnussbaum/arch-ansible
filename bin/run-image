@@ -66,7 +66,7 @@ if [[ "$runtime" == "qemu" ]]; then
     # the medium; which role it plays is a boot-menu choice (see
     # mkosi.uki-profiles/): "Live System (Recovery)" to mount/repair this disk
     # (recovery-mount finds its LUKS), or "Installer" to replicate the image onto
-    # it (systemd-sysinstall wipes and provisions it). Used as a blank target for
+    # it (`install-system` wipes and provisions it). Used as a blank target for
     # install, or a provisioned disk for recovery.
     [[ -n "$recovery_alias" ]] && echo "==> note: --recovery is a deprecated alias for --device." >&2
     vmm_args+=(

@@ -1,0 +1,177 @@
+#!/bin/bash
+# Install this OS onto a target disk from a booted live medium, producing a pure
+# Boot Loader Spec Type #2 layout (a bare UKI in the ESP's EFI/Linux/), so that
+# install and systemd-sysupdate share ONE boot-entry convention and no stale
+# Type #1 entries accumulate. This replaces systemd-sysinstall, whose `bootctl
+# link` step is hardwired to Type #1 (UKI under /image/ + loader/entries/*.conf
+# that sysupdate's A/B rotation can never GC). Mirrors ParticleOS's own move off
+# systemd-sysinstall (systemd/particleos#166).
+#
+# The entire install is a single systemd-repart run against the target, driven by
+# the image's baked /usr/lib/repart.d/:
+#   - the ESP def (10-esp.conf) carries CopyFiles=/boot:/, so repart populates the
+#     freshly-created target ESP with systemd-boot + the Type #2 UKI + loader/
+#     copied from THIS medium's /boot — no bootctl needed;
+#   - usr-A (22-usr-a.conf, CopyBlocks=auto) is cloned from the running /usr;
+#   - swap/root/home are DEFERRED (--defer-partitions) to the target's own first
+#     boot, where its repart.service creates them and TPM2-seals the LUKS
+#     root/swap; usr-B (NoAuto) is likewise created there.
+# So this tool only lays down esp + usr-A; the installed system self-provisions
+# the rest (and self-assigns its arch-XXXX-XXXX hostname) on first boot.
+#
+# Two ways to run it:
+#   install-system DISK      one-shot against a named target (block dev or raw
+#                            image file); ITS CONTENTS ARE ERASED.
+#   install-system --guided  interactive: enumerate eligible target disks, pick
+#                            one, confirm, install. This is what the Installer UKI
+#                            profile auto-runs (arch-install.service). The menu
+#                            always offers dropping to a shell as an escape hatch.
+# The medium's own disk is always refused.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+reboot=""
+assume_yes=""
+guided=""
+target=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)
+      echo "Install this OS onto a target disk (pure Type #2 boot layout)." >&2
+      echo "Usage: $0 [--reboot] [--yes] DISK" >&2
+      echo "       $0 --guided [--reboot] [--yes]" >&2
+      echo "  DISK       Target block device (e.g. /dev/sda) or raw image file." >&2
+      echo "             ITS CONTENTS ARE ERASED." >&2
+      echo "  --guided   Interactive: pick the target from a menu of eligible disks." >&2
+      echo "  --reboot   Reboot into the target after a successful install." >&2
+      echo "  --yes      Skip the destructive-write confirmation prompt." >&2
+      exit
+      ;;
+    --guided) guided=1 ;;
+    --reboot) reboot=1 ;;
+    --yes|-y) assume_yes=1 ;;
+    --*) echo "Unknown option: $1" >&2; exit 1 ;;
+    *)
+      [[ -n "$target" ]] && { echo "Refusing: more than one target given." >&2; exit 1; }
+      target="$1"
+      ;;
+  esac
+  shift
+done
+
+# Whole disk backing the running verity /usr = the live medium we booted from.
+# Resolve it via sysfs (/sys/block/<dm>/slaves/* is kernel-populated at device
+# setup, so this works even on a cold first-boot invocation). Prints the medium's
+# whole-disk node, or nothing if it can't be determined.
+medium_disk() {
+  local dm part slaves
+  dm=$(basename "$(readlink -f /dev/mapper/usr 2>/dev/null)" 2>/dev/null) || return 0
+  [[ -n "$dm" ]] || return 0
+  slaves=(/sys/block/"$dm"/slaves/*)
+  [[ -e "${slaves[0]}" ]] || return 0
+  part=$(basename "${slaves[0]}")
+  local d
+  d=$(lsblk -dno PKNAME "/dev/$part" 2>/dev/null) || return 0
+  [[ -n "$d" ]] && echo "/dev/$d"
+}
+
+# Eligible install targets: whole-disk block devices that aren't the live medium.
+candidate_disks() {
+  local md name type
+  md=$(medium_disk)
+  while read -r name type; do
+    [[ "$type" == disk ]] || continue
+    [[ -n "$md" && "$name" -ef "$md" ]] && continue
+    echo "$name"
+  done < <(lsblk -dpno NAME,TYPE)
+}
+
+# Wipe TARGET and install onto it. Shared by the one-shot and guided paths, so the
+# medium guard and confirmation always apply.
+install_to() {
+  local tgt="$1"
+
+  if [[ ! -b "$tgt" && ! -f "$tgt" ]]; then
+    echo "Refusing: target '$tgt' is not a block device or a file." >&2
+    return 1
+  fi
+  if [[ -b "$tgt" ]]; then
+    # Whole disk only: repart writes a fresh table over the whole device.
+    if [[ -n "$(lsblk -dno PKNAME "$tgt" 2>/dev/null)" ]]; then
+      echo "Refusing: '$tgt' is a partition; pass its whole disk." >&2
+      return 1
+    fi
+    local md
+    md=$(medium_disk)
+    if [[ -n "$md" && "$md" -ef "$tgt" ]]; then
+      echo "Refusing: '$tgt' is the live medium's own disk." >&2
+      return 1
+    fi
+  fi
+
+  if [[ -z "$assume_yes" ]]; then
+    echo "About to ERASE '$tgt' and install this OS onto it." >&2
+    local reply
+    read -rp "Type 'yes' to continue: " reply
+    [[ "$reply" == "yes" ]] || { echo "Aborted." >&2; return 1; }
+  fi
+
+  # The one install step. --empty=force wipes any existing table and lays down a
+  # fresh GPT; --defer-partitions leaves root/home/swap for the target's
+  # first-boot repart (which TPM2-seals them). CopyFiles/CopyBlocks in the baked
+  # repart.d do the ESP + usr-A population (see the header). Uses the medium's own
+  # /usr/lib/repart.d/ (repart's default definitions dir).
+  sudo systemd-repart --dry-run=no --empty=force \
+    --defer-partitions=swap,root,home "$tgt"
+
+  echo "Installed onto '$tgt'. Reboot and pick the regular profile (not Installer)." >&2
+  [[ -n "$reboot" ]] && sudo systemctl reboot
+  return 0
+}
+
+if [[ -n "$guided" ]]; then
+  [[ -n "$target" ]] && { echo "Refusing: pass a DISK or --guided, not both." >&2; exit 1; }
+  while true; do
+    mapfile -t disks < <(candidate_disks)
+    echo
+    echo "===== Install this OS (Type #2) ====="
+    if [[ ${#disks[@]} -eq 0 ]]; then
+      echo "No eligible target disks found (only the live medium is present)."
+    else
+      echo "Target disks:"
+      local_i=1
+      for d in "${disks[@]}"; do
+        # Show size/model to help pick the right disk.
+        info=$(lsblk -dno SIZE,MODEL "$d" 2>/dev/null | sed 's/  */ /g;s/^ *//;s/ *$//')
+        printf "  %d) %s   %s\n" "$local_i" "$d" "$info"
+        local_i=$((local_i + 1))
+      done
+    fi
+    echo "  s) Drop to a shell"
+    echo "  r) Reboot     p) Power off"
+    read -rp "Choice: " choice
+    case "$choice" in
+      s|S)
+        echo "Dropping to a shell. Run 'install-system --guided' or 'exit' to return." >&2
+        bash || true
+        ;;
+      r|R) sudo systemctl reboot ;;
+      p|P) sudo systemctl poweroff ;;
+      ''|*[!0-9]*) echo "Not a valid choice." >&2 ;;
+      *)
+        idx=$((choice - 1))
+        if [[ $idx -ge 0 && $idx -lt ${#disks[@]} ]]; then
+          install_to "${disks[$idx]}" || true
+        else
+          echo "Out of range." >&2
+        fi
+        ;;
+    esac
+  done
+fi
+
+# One-shot mode.
+[[ -n "$target" ]] || { echo "Refusing: no target disk given (see --help)." >&2; exit 1; }
+install_to "$target"
