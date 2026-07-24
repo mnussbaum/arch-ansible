@@ -244,6 +244,39 @@ profile. Override with `hostnamectl hostname <name>`.
 
 ---
 
+## Installation
+
+Boot a machine from the live USB and pick the **Installer** profile. It
+auto-launches a guided installer on the console (`bin/install-system --guided`
+via `arch-install.service`): it lists the eligible target disks (every whole disk
+except the live medium), you pick one and confirm, and it installs. The menu also
+offers dropping to a shell — where you can run `install-system DISK` directly — as
+an escape hatch, and the other VTs autologin root as a second one.
+
+```bash
+install-system /dev/sda            # non-interactive: ERASES /dev/sda, installs onto it
+install-system --reboot /dev/sda   # ...and reboot into it when done
+```
+
+The whole install is a single `systemd-repart` run against the target, driven by
+the image's baked `/usr/lib/repart.d/`. It lays down only the ESP and the active
+`usr` slot: the ESP def carries `CopyFiles=/boot:/`, so repart populates the
+freshly-created target ESP with systemd-boot + the bare UKI + `loader/` copied
+straight from the running medium's `/boot`, and `usr-A` (`CopyBlocks=auto`) is
+cloned from the running `/usr`. `root`/`home`/`swap` are *deferred* to the
+target's own first boot, where its `systemd-repart` creates them and TPM2-seals
+the LUKS `root`/`swap`; the inactive `usr-B` slot is created there too.
+
+This produces a pure **Boot Loader Spec Type #2** ESP — a bare UKI under
+`EFI/Linux/`, no `loader/entries/*.conf` — the same convention
+`systemd-sysupdate` uses for A/B updates, so install and update share one layout
+and nothing accumulates stale boot entries. It replaces `systemd-sysinstall`,
+whose `bootctl link` step is hardwired to Type #1 (a UKI under `/image/` plus
+per-profile loader entries) that the Type #2 update path can never garbage
+collect (mirrors [systemd/particleos#166](https://github.com/systemd/particleos/pull/166)).
+
+---
+
 ## Updates
 
 The OS updates by swapping the read-only `/usr` A/B slots, not by mutating a
