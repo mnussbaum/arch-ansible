@@ -276,8 +276,7 @@ own ESP. Nothing is dissected, so the TPM2-sealed LUKS root/home/swap are never
 unlocked or touched (user data survives) — only the inactive `usr` slot and the
 ESP are written. The target disk is the second disk in the guest under
 `bin/run-image --device=` (`/dev/vdb`), or the physical disk node otherwise.
-Mechanism details: `offline-update-handoff.md`. (Mechanism validated read-only;
-end-to-end write-test pending.)
+(Mechanism validated read-only; end-to-end write-test pending.)
 
 ```bash
 bin/update-system --image=/dev/vdb   # offline-update an attached target disk

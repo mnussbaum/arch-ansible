@@ -35,7 +35,7 @@
 # early-closes the pipe to lzop, which dies with a broken pipe and makes bsdtar
 # reject the package ("is not a package file") — so a local [aur-local] repo of
 # lzop packages can't be built at all. zstd decompresses inside libarchive (no
-# external process, no broken pipe) and is the Arch default. See offline-aur-handoff.md.
+# external process, no broken pipe) and is the Arch default.
 - name: Set makepkg package extension
   lineinfile:
     path: /etc/makepkg.conf
