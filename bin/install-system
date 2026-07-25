@@ -32,6 +32,14 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+# Only meaningful on the booted live medium, where the Installer/Live profiles run
+# as root (and there is no /etc/sudoers, so `sudo` isn't available). Fail clearly
+# rather than deep inside systemd-repart if somehow invoked unprivileged.
+if [[ $EUID -ne 0 ]]; then
+  echo "Refusing: install-system must run as root (boot the Installer profile)." >&2
+  exit 1
+fi
+
 reboot=""
 assume_yes=""
 guided=""
@@ -123,11 +131,11 @@ install_to() {
   # first-boot repart (which TPM2-seals them). CopyFiles/CopyBlocks in the baked
   # repart.d do the ESP + usr-A population (see the header). Uses the medium's own
   # /usr/lib/repart.d/ (repart's default definitions dir).
-  sudo systemd-repart --dry-run=no --empty=force \
+  systemd-repart --dry-run=no --empty=force \
     --defer-partitions=swap,root,home "$tgt"
 
   echo "Installed onto '$tgt'. Reboot and pick the regular profile (not Installer)." >&2
-  [[ -n "$reboot" ]] && sudo systemctl reboot
+  [[ -n "$reboot" ]] && systemctl reboot
   return 0
 }
 
@@ -157,8 +165,8 @@ if [[ -n "$guided" ]]; then
         echo "Dropping to a shell. Run 'install-system --guided' or 'exit' to return." >&2
         bash || true
         ;;
-      r|R) sudo systemctl reboot ;;
-      p|P) sudo systemctl poweroff ;;
+      r|R) systemctl reboot ;;
+      p|P) systemctl poweroff ;;
       ''|*[!0-9]*) echo "Not a valid choice." >&2 ;;
       *)
         idx=$((choice - 1))
