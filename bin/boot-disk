@@ -108,6 +108,7 @@ qemu-system-x86_64 \
   -device virtio-blk-pci,drive=target,bootindex=0 \
   -object rng-random,filename=/dev/urandom,id=rng0 \
   -device virtio-rng-pci,rng=rng0 \
+  -serial file:"$disk.serial.log" \
   -nic user,model=virtio-net-pci \
   -chardev "socket,id=chrtpm,path=$tpm_state/swtpm-sock" \
   -tpmdev emulator,id=tpm0,chardev=chrtpm \
