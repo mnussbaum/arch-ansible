@@ -30,7 +30,7 @@ TTYReset=yes
 TTYVHangup=yes
 StandardInput=tty
 StandardOutput=tty
-StandardError=journal+console
+StandardError=tty
 KillMode=process
 SendSIGHUP=yes
 

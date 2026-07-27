@@ -131,12 +131,87 @@ install_to() {
   # first-boot repart (which TPM2-seals them). CopyFiles/CopyBlocks in the baked
   # repart.d do the ESP + usr-A population (see the header). Uses the medium's own
   # /usr/lib/repart.d/ (repart's default definitions dir).
-  systemd-repart --dry-run=no --empty=force \
-    --defer-partitions=swap,root,home "$tgt"
+  # Check the exit status explicitly: the guided loop calls install_to under
+  # `|| true`, which disables errexit inside this function, so a failed repart
+  # would otherwise fall through to the success message below.
+  if ! systemd-repart --dry-run=no --empty=force \
+      --defer-partitions=swap,root,home "$tgt"; then
+    echo "Install FAILED: systemd-repart errored; '$tgt' is not usable." >&2
+    return 1
+  fi
 
-  echo "Installed onto '$tgt'. Reboot and pick the regular profile (not Installer)." >&2
+  echo "Installed onto '$tgt'." >&2
   [[ -n "$reboot" ]] && systemctl reboot
   return 0
+}
+
+# ESP partition number on the freshly-installed target. The esp def sorts first so
+# it's normally partition 1, but detect it by GPT type to be safe.
+target_esp_partnum() {
+  local disk="$1" name parttype
+  while read -r name parttype; do
+    [[ "$parttype" == c12a7328-f81f-11d2-ba4b-00a0c93ec93b ]] || continue
+    echo "${name##*[!0-9]}"; return 0
+  done < <(lsblk -rno NAME,PARTTYPE "$disk")
+  return 1
+}
+
+# Point the firmware at the target so a reboot lands on it: systemd-repart writes
+# no UEFI entry, so without this a reboot returns to the installer medium. A boot
+# variable is orthogonal to Boot Loader Spec Type #1/#2. Returns non-zero (caller
+# then tells the user to use the firmware boot menu) if it can't be done.
+register_target_boot() {
+  local disk="$1" partnum next
+  [[ -d /sys/firmware/efi/efivars ]] || return 1
+  command -v efibootmgr >/dev/null || return 1
+  udevadm settle 2>/dev/null || true
+  partnum=$(target_esp_partnum "$disk") || return 1
+  efibootmgr --create --disk "$disk" --part "$partnum" \
+    --loader '\EFI\systemd\systemd-bootx64.efi' \
+    --label "Arch Linux" --unicode >/dev/null 2>&1 || return 1
+  # --create prepends the new entry to BootOrder; also set it as the one-shot
+  # BootNext so this immediate reboot goes to the target.
+  next=$(efibootmgr 2>/dev/null | awk '/^BootOrder:/{print $2}' | cut -d, -f1)
+  [[ -n "$next" ]] && efibootmgr --bootnext "$next" >/dev/null 2>&1
+  return 0
+}
+
+# Escape hatch when the user cancels the auto-reboot countdown.
+stay_menu() {
+  local tgt="$1" choice
+  while true; do
+    echo
+    echo "Installed onto '$tgt' — not rebooted."
+    echo "  r) Reboot into it   p) Power off   s) Drop to a shell"
+    read -rp "Choice: " choice
+    case "$choice" in
+      r|R) systemctl reboot ;;
+      p|P) systemctl poweroff ;;
+      s|S) echo "Type 'exit' to return." >&2; bash || true ;;
+      *) echo "Not a valid choice." >&2 ;;
+    esac
+  done
+}
+
+# After a successful guided install: make the target the next boot device, then
+# auto-reboot into it (its first boot creates root/home/swap, TPM2-seals them, and
+# self-names) with a short escape hatch.
+finish_install() {
+  local tgt="$1"
+  echo
+  echo "===== Install complete ====="
+  if register_target_boot "$tgt"; then
+    echo "'$tgt' set as the next boot device."
+  else
+    echo "Couldn't set a boot entry automatically — after reboot, pick '$tgt'" >&2
+    echo "from the firmware boot menu." >&2
+  fi
+  echo "Rebooting into the installed system in 10s — press any key to stay here."
+  if read -rsn1 -t 10; then
+    stay_menu "$tgt"
+  else
+    systemctl reboot
+  fi
 }
 
 if [[ -n "$guided" ]]; then
@@ -171,7 +246,9 @@ if [[ -n "$guided" ]]; then
       *)
         idx=$((choice - 1))
         if [[ $idx -ge 0 && $idx -lt ${#disks[@]} ]]; then
-          install_to "${disks[$idx]}" || true
+          if install_to "${disks[$idx]}"; then
+            finish_install "${disks[$idx]}"
+          fi
         else
           echo "Out of range." >&2
         fi
