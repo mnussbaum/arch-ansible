@@ -14,8 +14,9 @@ export USER=root HOME=/root
 # reliably predates anything this postinst builds regardless of restore mtimes.
 touch /root/.cache-writeback-since
 
-# Seed yay's clone dir (/var/cache/yay; yay uses that path when running as root)
-# from the host cache. The SkeletonTree seeds the same data into the incremental
+# Seed yay's clone dir (/var/cache/yay; setup-aur.yml pins yay's buildDir to it,
+# so root-run yay builds here despite HOME=/root) from the host cache. The
+# SkeletonTree seeds the same data into the incremental
 # snapshot, but writebacks since the snapshot was created aren't visible there.
 # This rsync brings in the delta: --ignore-existing skips what's already in the
 # image (snapshot-seeded content stays) and only adds entries that are newer on

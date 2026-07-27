@@ -109,6 +109,27 @@ if [[ -z "$(ls -A "$ARCH_ANSIBLE_CACHE/nvim/site" 2>/dev/null)" \
   rsync -a "$HOME/.local/share/nvim/site/" "$ARCH_ANSIBLE_CACHE/nvim/site/"
 fi
 
+# Bootstrap the yay package on a cold cache. mkosi.build installs yay from the
+# local AUR repo (yay-bin-*.pkg.tar.zst) before the postinst runs — but that
+# package is normally produced BY the postinst (setup-aur.yml force-builds it),
+# a chicken-and-egg a fresh clone can't satisfy. Break it here: on the host, when
+# the repo has no yay-bin, clone it from the AUR and makepkg it into the repo
+# cache once (online). Subsequent builds reuse it; the postinst then keeps it
+# fresh and bakes it into /usr for offline device rebuilds — which is why this is
+# host-only (a device is offline and gets yay-bin from that /usr carry-forward).
+# makepkg runs as the invoking user; PKGDEST/PKGEXT match setup-aur.yml so the
+# filename is exactly what mkosi.build globs.
+if [[ "${ARCH_ANSIBLE_TARGET:-host}" != device ]] \
+   && ! compgen -G "$ARCH_ANSIBLE_CACHE/aur-repo/yay-bin-[0-9]*.pkg.tar.zst" > /dev/null; then
+  echo "Cold cache: building the yay bootstrap package…" >&2
+  yay_clone="$ARCH_ANSIBLE_CACHE/yay/yay-bin"
+  [[ -d "$yay_clone/.git" ]] \
+    || git clone --depth=1 https://aur.archlinux.org/yay-bin.git "$yay_clone"
+  ( cd "$yay_clone" \
+    && PKGDEST="$ARCH_ANSIBLE_CACHE/aur-repo" PKGEXT='.pkg.tar.zst' \
+       makepkg --force --noconfirm --nodeps --skippgpcheck )
+fi
+
 # Fresh, monotonic image version so each build supersedes the running slot for
 # systemd-sysupdate. mkosi reads mkosi.version for ImageVersion (unset in
 # mkosi.conf); partitions and the UKI are labeled image_<version>_<arch>.

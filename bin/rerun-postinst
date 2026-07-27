@@ -56,7 +56,7 @@ init_script="$work_dir/init.sh"
 cat > "$init_script" << 'INIT'
 #!/bin/bash
 set -euo pipefail
-pacman -U --needed --noconfirm /work/src/yay-pkg/yay-bin-*.pkg.tar.lzo
+pacman -U --needed --noconfirm /work/src/yay-pkg/yay-bin-[0-9]*.pkg.tar.zst
 INIT
 
 if [[ "$shell" == true ]]; then
@@ -74,7 +74,7 @@ systemd-nspawn \
   --directory="$merged" \
   --bind="$repo_root:/work/src" \
   --bind="$HOME/.local/share/password-store:/work/src/password-store" \
-  --bind-ro="$ARCH_ANSIBLE_CACHE/yay/yay-bin:/work/src/yay-pkg" \
+  --bind-ro="$ARCH_ANSIBLE_CACHE/aur-repo:/work/src/yay-pkg" \
   --bind="$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg:/var/cache/pacman/pkg" \
   --bind-ro=/etc/pacman.d/mirrorlist \
   --bind-ro="$init_script:/run/rerun-postinst-init.sh" \

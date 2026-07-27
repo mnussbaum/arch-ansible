@@ -67,6 +67,28 @@
     regexp: '^#?PKGDEST='
     line: "PKGDEST=/var/cache/aur-repo"
 
+# Pin yay's clone/build dir to /var/cache/yay. yay defaults buildDir to
+# $HOME/.cache/yay and the postinst runs it as root (HOME=/root), so without this
+# it builds into /root/.cache/yay — but the SkeletonTree seed, the postinst delta-
+# seed (mkosi.postinst.chroot), and mkosi.finalize's write-back all target
+# /var/cache/yay. Pinning makes yay's actual build dir match that plumbing so the
+# AUR git clones + downloaded sources round-trip across builds (fast/offline
+# rebuilds) instead of yay re-cloning everything every build. Written where the
+# root-run yay reads it ($HOME/.config/yay/config.json); a partial config leaves
+# every other yay default untouched.
+- name: Ensure yay's config dir exists
+  file:
+    path: "{{ ansible_env.HOME }}/.config/yay"
+    state: directory
+    mode: '0755'
+
+- name: Pin yay's build dir to the cached, round-tripped /var/cache/yay
+  copy:
+    content: |
+      {"buildDir": "/var/cache/yay"}
+    dest: "{{ ansible_env.HOME }}/.config/yay/config.json"
+    mode: '0644'
+
 # --caching force: make AUR builds cache/offline only, the makepkg analogue of
 # the pacman.conf XferCommand. makepkg sources makepkg.conf top-to-bottom, so a
 # trailing block wins over the defaults; the file is dropped from the final
