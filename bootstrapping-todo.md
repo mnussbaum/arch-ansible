@@ -16,29 +16,39 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 
 ## Install from the live medium
 
-- **`systemd-sysinstall` (`mkosi.uki-profiles/25-install.conf`)** — the `install`
-  UKI profile boots straight into the upstream `systemd-sysinstall.service`
-  (`systemd-sysinstall --variables=yes --reboot=yes --mute-console=yes`). That tool
-  does the `systemd-repart` `/usr` copy, `bootctl link`/`bootctl install` ESP
-  population, and credential setup itself. It defaults its repart definitions to
-  `/usr/lib/repart.d/` when `/usr/lib/repart.sysinstall.d/` is absent (which it is),
-  so no extra definitions dir is needed. The old stopgap (`bin/install-to-disk` +
-  `system-install.{target,service}`) is gone. Still untested end-to-end.
-- **Hostname is self-assigned from the machine-id (no install-time input).**
-  `mkosi.conf` sets `Hostname=arch-????-????`, baked into os-release as
-  `DEFAULT_HOSTNAME`. systemd replaces each `?` with a hex char hashed
-  deterministically from the machine-id, so every install gets a unique, stable name
-  (e.g. `arch-92a9-061c`) — one image, many uniquely-named machines, with no
-  credential and no `systemd-sysinstall` involvement. This replaced an earlier
-  `firstboot.hostname` credential forwarded through `systemd-sysinstall`, which
-  TPM-sealed the (non-secret) name to the installer's TPM and broke on
-  imaging/transplant/TPM-clear (see step-4 notes). Removed with it: the
-  `systemd-sysinstall.service.d` drop-in, `run-image`/`burn-image` `--hostname`.
-  Untested end-to-end; verify the name lands and is stable across reboots on a fresh
-  install. Override a chosen name post-install with `hostnamectl hostname`.
-- Open issue: TPM2 LUKS enrollment happens at repart time (`Encrypt=tpm2`), so
-  PCR 7 sealing during the installer boot may not match the installed system's
-  first normal boot — verify against real firmware.
+- **`bin/install-system` (`mkosi.uki-profiles/25-install.conf`)** — VALIDATED
+  2026-08-19. `systemd-sysinstall` is RETIRED (it was hardwired to Boot Loader Spec
+  Type #1; see the Type #2 follow-up below). The `install` UKI profile now boots to
+  `multi-user.target` and auto-runs `arch-install.service` → `bin/install-system
+  --guided` on tty1. The whole install is one `systemd-repart` run:
+  `systemd-repart --dry-run=no --empty=force --defer-partitions=swap,root,home DISK`
+  — the ESP is populated by `CopyFiles=/boot:/` in the shipped
+  `mkosi.extra/usr/lib/repart.d/10-esp.conf`, usr-A is cloned by `CopyBlocks=auto`,
+  and root/home/swap are deferred to the target's own first boot. No `bootctl`, no
+  Type #1 entries. A one-shot mode (`install-system --yes DISK`) exists for scripted
+  runs and is what `bin/vm-test install` drives.
+  The profile also sets `systemd.unit=multi-user.target`, without which the baked
+  graphical login (greetd/sway) takes over the console before the guided installer
+  can run. Verified: `arch-install.service` active, `greetd.service` inactive.
+- **Hostname and root password are PROMPTED at the target's first boot.** The
+  earlier "self-assigned from machine-id, no install-time input" design is only the
+  *fallback*: `mkosi.conf` still sets `Hostname=arch-????-????` (baked into
+  os-release as `DEFAULT_HOSTNAME`, `?` → hex hashed from the machine-id), but
+  `mkosi.extra/usr/lib/systemd/system/systemd-firstboot.service.d/10-prompt-hostname.conf`
+  adds `--prompt-hostname` to the upstream ExecStart, which already carries
+  `--prompt-root-password`. So a fresh install asks TWO questions on first boot.
+  Both prompts go to `/dev/console`, which the cmdline pins to tty0
+  (`console=ttyS0 console=tty0`, last wins) — so a headless first boot BLOCKS
+  FOREVER with nothing on serial to explain why. Supply
+  `firstboot.hostname` + `passwd.plaintext-password.root` as credentials to skip
+  them (`bin/vm-test boot` passes both over SMBIOS). Skipping the hostname prompt
+  leaves `/etc/hostname` absent and keeps the `DEFAULT_HOSTNAME`. Override
+  post-install with `hostnamectl hostname`.
+- Open issue: TPM2 LUKS enrollment happens at repart time (`Encrypt=tpm2`). Under
+  the Type #2 installer root/swap are DEFERRED to the target's own first boot, so
+  sealing now happens on the target under its own firmware — the installer's TPM is
+  no longer involved. Confirmed working in QEMU (seal on first boot, silent unseal
+  on the second). PCR 7 stability against REAL firmware is still unverified.
 
 ## Secure Boot and the recovery medium
 
@@ -56,9 +66,12 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
   `systemd-sysupdate --image` (which still fails to parse our `Type=regular-file`
   transfers through systemd v261) to the **volatile-root** mechanism: symlink
   `/run/systemd/volatile-root` at a target _partition_ in a private mount
-  namespace + `SYSTEMD_ESP_PATH` for the UKI. Mechanism validated read-only on the
-  host; guest write-test pending (E2E step 5). Watch for the
-  partition-not-whole-disk gotcha and the live-build signing-key handling.
+  namespace + `SYSTEMD_ESP_PATH` for the UKI. Guest write-test PASSED 2026-07-07
+  (E2E step 5). Watch for the partition-not-whole-disk gotcha and the live-build
+  signing-key handling. Note it needs host root (`losetup`, `unshare`, and mounting
+  the target ESP), so it can't be driven unattended where sudo wants a password —
+  `bin/vm-test boot --share` sidesteps that by running sysupdate ON the target
+  instead (see "Driving the tests headlessly").
 - **`ProtectVersion=%A` — resolved (correct as-is).** `%A` = `IMAGE_VERSION`,
   which the image sets (verified `IMAGE_VERSION="…"` in the UKI's `.osrel`), so on
   a real device / live USB it protects the running version — the man-page
@@ -72,8 +85,60 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 ## End-to-end testing
 
 The full validation sequence — each step gates the next, and steps 4→5 chain (the
-host installed in step 4 is the target updated in step 5). Drive these in QEMU via
-`bin/run-image`; a YubiKey is available in the guest for signing/unlock.
+host installed in step 4 is the target updated in step 5).
+
+**Steps 4 and 5 are now fully automated and need no human at a VM window** — see
+"Driving the tests headlessly" immediately below. Steps 2, 3 and anything needing an
+in-guest rebuild still go through `bin/run-image` with a YubiKey in the guest for
+signing/unlock.
+
+### Driving the tests headlessly (`bin/vm-test`)
+
+`bin/vm-test` runs the install/boot/update loop with `-display none` — no GTK
+window, no keyboard, no VT switching (which historically leaked keystrokes to the
+HOST compositor). Two properties of the image make it work:
+
+* OVMF mirrors the firmware console to the serial port, so sd-boot's menu is
+  readable on serial and QEMU's HMP `sendkey` moves the selection. The menu is
+  drawn with absolute cursor addressing, not lines, so vm-test replays it onto a
+  screen model to read the entry list;
+* every UKI profile carries `console=ttyS0` plus an agetty autologin credential, so
+  a root shell lands on a unix socket and commands round-trip over it.
+
+```bash
+# Q1 — fresh install (recreates the target file first; see the truncate gotcha)
+bin/vm-test install ~/.cache/mkosi/test-target.raw
+bin/vm-test install DISK --medium IMAGE.raw     # install a specific version
+
+# Q2 — boot the installed target ALONE + health checks
+bin/vm-test boot ~/.cache/mkosi/test-target.raw
+bin/vm-test boot DISK --journal                 # + journal warnings
+
+# Q3 — A/B update, driven ON the target (no host privilege needed)
+bin/vm-test boot DISK --share ~/.cache/mkosi/vm-test-src \
+  --run '/usr/lib/systemd/systemd-sysupdate --transfer-source=/mnt/vmtest update <VERSION>'
+bin/vm-test boot DISK --entry '<VERSION>'       # boot a specific sd-boot entry
+```
+
+Both subcommands exit non-zero if the run misses its checkpoint, so they script.
+Things worth knowing:
+
+* **`--share DIR`** exports DIR over virtiofs (tag `vmtest-share`, at
+  `/mnt/vmtest`) via an unprivileged `virtiofsd`. This is what makes an offline A/B
+  update possible without host root: hand the guest the build artifacts and run
+  `systemd-sysupdate` **on the target itself**, where `/dev/vda` is already a block
+  device — no `losetup`, no `unshare`, no `sudo`. (The `update-system --image` path
+  needs all three.) The tag is deliberately NOT mkosi's `/run/host/shared`, so
+  `mnt-shared.mount` stays inert and the two don't interfere.
+* **On a stalled boot it screendumps the VGA console to a PNG.** `/dev/console` is
+  tty0, so systemd's output and every firstboot/LUKS prompt are invisible on
+  serial; a blocked boot looks exactly like a slow one. The screendump is the only
+  way to tell them apart and is what diagnosed the first-boot hang.
+* `install` **recreates the target file** (rm + truncate) by default — `truncate`
+  on an existing same-size file is a no-op, and the stale GPT auto-activates and
+  fails repart with EBUSY. `--no-fresh` opts out.
+* `boot` attaches the target **alone**. With the medium also attached, first-boot
+  repart sees two mkosi-layout disks and provisions the wrong one.
 
 Drive it as ONE QEMU session. Steps 2–3 exercise the **booted image itself** (no
 second disk); steps 4–5 act on a **separate target disk** (`/dev/vdb`) — and step 4
@@ -275,6 +340,27 @@ reachable YubiKey, or the in-guest build falls back to the network.
        (`boot-disk` a fresh install → `hostnamectl` shows `arch-…`, stable across
        reboots). NOTE: the step-4 commands below/above still say `--hostname=…`; that
        flag is gone now — drop it (the disk names itself).
+       RE-RUN AND PASSED 2026-08-19 on the **Type #2** installer (`bin/install-system`,
+       no sysinstall), headless via `bin/vm-test install`. Verified by reading the
+       target back from inside the installer: partitions `esp` + usr-A
+       {verity_sig,verity,erofs} + three `_empty` usr-B slots, with root/home/swap
+       correctly DEFERRED; ESP holds `EFI/systemd/`, `EFI/Linux/<uki>.efi`,
+       `EFI/BOOT/`, `loader/`; **`loader/entries` = 0 files** and **no `/image/`** —
+       a pure Type #2 layout. The target's first boot then provisioned everything
+       (`/` = `/dev/mapper/root` btrfs on LUKS, `/usr` = `/dev/mapper/usr` erofs on
+       dm-verity, `/home` btrfs, LUKS swap), Secure Boot `enabled (user)`,
+       `Measured UKI: yes`, and reached `systemctl is-system-running` = **running**
+       with zero failed units. Second boot unsealed silently
+       ("Automatically discovered security TPM2 token unlocks volume";
+       `systemd-tty-ask-password-agent --list` empty), so the TPM2 path works
+       across reboots. TWO FIXES were needed to get a genuinely clean boot:
+       (a) `mkosi.uki-profiles/25-install.conf` gained
+       `systemd.unit=multi-user.target` — otherwise greetd grabs the console before
+       the guided installer; (b) `mnt-shared.mount` gained
+       `ConditionCredential=fstab.extra` — `ConditionVirtualization=vm` is true in
+       EVERY VM but the virtiofs tag only exists under `mkosi vm --runtime-tree`, so
+       the mount failed and that ONE failed unit pinned `is-system-running` at
+       `degraded` for the whole boot, masking the very signal this step tests.
 5. [x] **Offline update from a live USB → existing host** — reboot with the SAME
        step-4 disk still attached:
        ```
@@ -323,11 +409,55 @@ reachable YubiKey, or the in-guest build falls back to the network.
        MISMATCH (installer Type #1 vs sysupdate Type #2) — diagnosed; DECISION: go
        Type #2-only and retire `systemd-sysinstall`; plan below.
 
+       RE-RUN AND PASSED 2026-08-19 against a Type #2 install, headless. Driven ON
+       the target via `bin/vm-test boot --share` + `systemd-sysupdate` rather than
+       `update-system --image` from a Live boot: the target's `/dev/vda` is already
+       a block device there, so it needs no `losetup`/`unshare`/`sudo`, and the
+       artifacts come in over virtiofs. This exercises the sysupdate transfers and
+       slot rotation; it does NOT exercise `update-system`'s own build glue or
+       `provision_scratch` (both already covered by the 2026-07-07 run).
+       Verified on the target: the update landed in the inactive slot
+       (`Successfully installed … as '…3p7' (partition)`), both UKIs present in
+       `EFI/Linux/` with the new one boot-counted (`+3-0`), **`loader/entries` = 0 —
+       zero Type #1 leftovers**, root/home/swap untouched. Booting the updated slot
+       (`vm-test boot --entry <VERSION>`) came up on that `IMAGE_VERSION`, `/usr` =
+       `/dev/mapper/usr` erofs, `is-system-running` = **running**, zero failed units —
+       and afterwards the UKI had been renamed to drop the `+3-0` counter, i.e.
+       sd-boot BLESSED the entry, so boot counting / auto-rollback works.
+       FIRST ATTEMPT FAILED, and the bug was real: `systemd-sysupdate` aborted at 98%
+       of the `/usr` copy with `File too large` / `Failed to decode and write:
+       Argument list too long`. The A/B slots had NO headroom — usr-B was exactly
+       8 GiB (its `SizeMinBytes` floor) and usr-A had been sized to the *previous*
+       image by `CopyBlocks=auto`, so the new 8.66 GB `/usr` fit in NEITHER (over B
+       by 67.9 MiB, over A by 500 KiB). Compounding it, `esp` and `usr-a-verity` had
+       no `SizeMaxBytes` at all, so at the default `Weight=1000` repart handed each a
+       ~1/6 share of ALL free space — 5.9 GiB apiece on a 60G disk, and it scales
+       with the disk (a ~160 GB ESP on a 1 TB NVMe). FIXED in
+       `mkosi.extra/usr/lib/repart.d/`: usr-a and usr-b are now both
+       `SizeMin=SizeMax=16G` (identical, so the pair is interchangeable), the verity
+       slots both `512M`, the ESP `SizeMin=SizeMax=2G`; root and home are the only
+       growable partitions left, in their deliberate 3:1 split, which makes the
+       layout correct at any disk size. `CopyBlocks=auto` stays on usr-a for CONTENT
+       but no longer decides SIZE. Confirmed en route: a partition larger than its
+       erofs is fine (16 GiB slot holding an 8.5 GiB erofs mounts and boots), because
+       dm-verity takes the data size from the verity metadata.
+
 Follow-ups (software; discovered during E2E, not yet done):
 
+- [ ] **Exercise the A/B update in the newer-over-older direction.** The 2026-08-19
+      re-run applied an *older* version onto a newer install (the only artifacts
+      available at the time), so the updated slot had to be selected explicitly with
+      `vm-test boot --entry`. The natural case — a newer version applied over an
+      older install, where sd-boot picks the new slot as the default with no
+      intervention — is still unproven. Two consecutive builds closes it.
+
 - [x] **Make install pure Type #2: retire `systemd-sysinstall`, install via a
-      single `systemd-repart` run.** IMPLEMENTED 2026-07-24 (code done; pending a
-      rebuild + E2E re-run of steps 4/5). DIAGNOSED 2026-07-07. Two systemd
+      single `systemd-repart` run.** IMPLEMENTED 2026-07-24. **VALIDATED END TO END
+      2026-08-19** — steps 4 and 5 both re-run headlessly on the new installer; a
+      fresh install is pure Type #2 (`loader/entries` empty, no `/image/`), boots
+      clean, and still A/B-updates with zero Type #1 leftovers. See the step 4/5
+      notes above for the five fixes that were needed along the way.
+      DIAGNOSED 2026-07-07. Two systemd
       kernel-management workflows were mixed across the lifecycle and never cleaned
       up after each other:
       - `systemd-sysinstall` (step 4, install) installs the kernel via `bootctl link`
