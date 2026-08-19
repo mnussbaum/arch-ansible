@@ -1,0 +1,934 @@
+#!/usr/bin/env python3
+"""Headless, scripted QEMU runs for end-to-end install/boot validation.
+
+run-image and boot-disk both open a GTK window and assume a human at the
+keyboard: someone picks an entry in the sd-boot menu, answers the guided
+installer, and reads health checks off the screen. That makes validating the
+Type #2 install a manual loop, and pressing keys at the QEMU window is actively
+hazardous — without the keyboard grab a Ctrl+Alt+F<n> lands on the HOST
+compositor.
+
+vm-test drives the same VMs with no display at all. Two properties of the image
+make that possible:
+
+  * OVMF's ConSplitter mirrors the firmware console onto the serial port, so
+    sd-boot's menu is readable on serial and QEMU's HMP `sendkey` can move the
+    selection — no display, no keyboard, no VT switching;
+  * every UKI profile carries `console=ttyS0` and an agetty autologin
+    credential, so a root shell lands on the serial socket and commands and
+    their output round-trip over it. (`console=tty0` comes last, so /dev/console
+    — and thus systemd's own boot output and any password prompt — still goes to
+    the invisible VGA console. Read those back with `journalctl` over serial.)
+
+Subcommands:
+
+  install  Boot the built medium's Installer profile with TARGET attached as
+           /dev/vdb, run `install-system --yes /dev/vdb`, then inspect the
+           layout it wrote. Recreates TARGET from scratch first: `truncate` on
+           an existing same-size file is a no-op, and the stale partitions left
+           behind auto-activate and make repart fail with EBUSY.
+
+  boot     Boot an installed TARGET *alone* — nothing else attached, because
+           first-boot systemd-repart provisions the wrong disk when a second
+           mkosi-layout disk (the medium) is present — and report
+           `systemctl is-system-running`, failed units, and the resulting
+           partition/mount layout. Firmware varstore and TPM state persist next
+           to the disk, so the second run exercises the TPM2 unseal path.
+
+Both subcommands exit non-zero if the run doesn't reach its checkpoint, so they
+compose into a scripted validation pass.
+"""
+
+import argparse
+import os
+import re
+import shlex
+import shutil
+import signal
+import socket
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+
+# --- terminal-output handling ------------------------------------------------
+#
+# sd-boot draws its menu with CSI cursor/colour sequences and agetty/bash echo
+# more of the same. We keep the raw byte stream in the log file (so a failed run
+# can be inspected exactly as the guest emitted it) but match against an
+# escape-stripped copy.
+_ANSI = re.compile(
+    rb"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC ... BEL/ST
+    rb"|\x1b\[[0-9;?]*[ -/]*[@-~]"  # CSI
+    rb"|\x1b[@-Z\\-_]"  # two-byte escapes
+)
+# A read can split an escape sequence; hold the tail back until it completes
+# rather than letting its bytes leak into the match text as literal garbage.
+_PARTIAL = re.compile(rb"\x1b(?:\[[0-9;?]*[ -/]*|\][^\x07\x1b]*)?$")
+
+
+class Console:
+    """The guest's serial port: a byte log plus an expect-style match buffer."""
+
+    def __init__(self, path, log_path, echo=False):
+        self.sock = _connect(path)
+        self.log = open(log_path, "wb")
+        self.echo = echo
+        self._pending = b""
+        self._lock = threading.Lock()
+        self.text = ""
+        self.raw = bytearray()
+        self.pos = 0
+        self.eof = False
+        threading.Thread(target=self._read_loop, daemon=True).start()
+
+    def _read_loop(self):
+        while True:
+            try:
+                data = self.sock.recv(65536)
+            except OSError:
+                break
+            if not data:
+                break
+            self.log.write(data)
+            self.log.flush()
+            with self._lock:
+                self.raw += data
+                buf = self._pending + data
+                m = _PARTIAL.search(buf)
+                if m:
+                    self._pending, buf = buf[m.start():], buf[: m.start()]
+                else:
+                    self._pending = b""
+                clean = _ANSI.sub(b"", buf).replace(b"\r", b"").replace(b"\x00", b"")
+                chunk = clean.decode("utf-8", "replace")
+                self.text += chunk
+            if self.echo and chunk:
+                sys.stdout.write(chunk)
+                sys.stdout.flush()
+        self.eof = True
+
+    def expect(self, pattern, timeout=120, consume=True):
+        """Wait for `pattern` after the last consumed match. Returns the Match."""
+        rx = re.compile(pattern, re.M) if isinstance(pattern, str) else pattern
+        deadline = time.monotonic() + timeout
+        while True:
+            with self._lock:
+                m = rx.search(self.text, self.pos)
+                if m:
+                    if consume:
+                        self.pos = m.end()
+                    return m
+                tail = self.text[-2000:]
+            if time.monotonic() > deadline:
+                raise TimeoutError(
+                    f"timed out after {timeout}s waiting for {rx.pattern!r}.\n"
+                    f"--- last serial output ---\n{tail}\n--- end ---"
+                )
+            if self.eof:
+                raise EOFError(
+                    f"serial closed (guest exited?) while waiting for "
+                    f"{rx.pattern!r}.\n--- last serial output ---\n{tail}\n--- end ---"
+                )
+            time.sleep(0.05)
+
+    def send(self, data):
+        self.sock.sendall(data.encode())
+
+    def snapshot(self):
+        with self._lock:
+            return self.text
+
+    def raw_snapshot(self):
+        with self._lock:
+            return bytes(self.raw)
+
+
+class Monitor:
+    """QEMU's HMP monitor — used only for `sendkey`, which needs no display."""
+
+    def __init__(self, path):
+        self.sock = _connect(path)
+        threading.Thread(target=self._drain, daemon=True).start()
+
+    def _drain(self):
+        while True:
+            try:
+                if not self.sock.recv(65536):
+                    break
+            except OSError:
+                break
+
+    def cmd(self, line):
+        self.sock.sendall((line + "\n").encode())
+        # HMP has no completion signal we care about; a small gap keeps a burst
+        # of sendkeys from outrunning the guest's key queue.
+        time.sleep(0.03)
+
+    def sendkey(self, key, times=1):
+        for _ in range(times):
+            self.cmd(f"sendkey {key}")
+
+    def screendump(self, path):
+        self.cmd(f"screendump {path}")
+
+
+def _connect(path, timeout=30):
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(str(path))
+            return s
+        except OSError:
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(0.05)
+
+
+# --- guest shell -------------------------------------------------------------
+
+READY = "__VM_READY__"
+BEGIN_RE = r"^__VM_BEGIN__$"
+RC_RE = r"__RC_(\d+)__END__"
+
+
+class Shell:
+    """A root shell on the serial console, driven with sentinel markers.
+
+    Every command is bracketed by two markers, each written so that the tty's
+    echo of the command line cannot be mistaken for the marker itself: bash
+    concatenates `"__VM_BEG""IN__"` into the output we look for, while the
+    echoed line still reads `__VM_BEG""IN__`. Bracketing (rather than splitting
+    on the echoed command) is what makes this robust — agetty wraps long
+    command lines, so the echo is not reliably one line, let alone the exact
+    bytes we sent.
+    """
+
+    def __init__(self, console, log):
+        self.c = console
+        self.log = log
+
+    def wait_ready(self, timeout=600):
+        """Poke the console until a shell answers."""
+        deadline = time.monotonic() + timeout
+        while True:
+            self.c.send("\n")
+            # Split so the command echo can't match the marker we look for.
+            self.c.send(f'echo "__VM""_READY__"\n')
+            try:
+                self.c.expect(rf"^{READY}$", timeout=5)
+                return
+            except TimeoutError:
+                if time.monotonic() > deadline:
+                    raise TimeoutError("no root shell on the serial console")
+            except EOFError:
+                raise
+
+    def run(self, cmd, timeout=120, check=False, quiet=False):
+        """Run `cmd`, return (rc, output). Output excludes the command echo."""
+        self.c.send('echo "__VM_BEG""IN__"; ' + cmd + '; echo "__RC_$?__END__"\n')
+        begin = self.c.expect(BEGIN_RE, timeout=timeout)
+        m = self.c.expect(RC_RE, timeout=timeout)
+        rc = int(m.group(1))
+        out = self.c.text[begin.end(): m.start()].strip("\n")
+        if not quiet:
+            self.log(f"$ {cmd}")
+            if out:
+                self.log(out)
+            self.log(f"[rc={rc}]")
+        if check and rc != 0:
+            raise RuntimeError(f"guest command failed (rc={rc}): {cmd}\n{out}")
+        return rc, out
+
+
+# --- QEMU --------------------------------------------------------------------
+
+
+def cache_dir():
+    if v := os.environ.get("ARCH_ANSIBLE_CACHE"):
+        return Path(v)
+    if os.environ.get("ARCH_ANSIBLE_TARGET") == "device":
+        return Path("/var/cache/arch-ansible")
+    return Path.home() / ".cache"
+
+
+def output_dir():
+    return cache_dir() / "mkosi/images/image"
+
+
+def secureboot_cert():
+    cert = cache_dir() / "mkosi-secureboot/mkosi.crt"
+    if not cert.is_file():
+        sys.exit(
+            f"error: {cert} is missing. Run bin/build-image once to materialize "
+            "the Secure Boot keypair (it may prompt for GPG/YubiKey, which a "
+            "headless run can't answer)."
+        )
+    return cert
+
+
+def newest_medium():
+    """The most recently built mkosi medium (image_<version>_<arch>.raw)."""
+    cands = [
+        p
+        for p in output_dir().glob("image_*.raw")
+        # Skip the per-partition artifacts mkosi drops alongside the disk image.
+        if re.fullmatch(r"image_\d+_[a-z0-9-]+\.raw", p.name)
+    ]
+    if not cands:
+        sys.exit(f"error: no built image found in {output_dir()}; run bin/build-image")
+    return max(cands, key=lambda p: p.stat().st_mtime)
+
+
+def make_varstore(dest, cert):
+    """OVMF varstore with our Secure Boot cert enrolled (PK/KEK/db).
+
+    Kept per-VM and persistent so PCR 7 is stable across boots — a TPM2-sealed
+    LUKS keyslot enrolled on first boot can only be unsealed if the firmware
+    comes up in the same Secure Boot state. (virt-fw-vars' --enroll-cert is
+    broken in virt-firmware 26.x; the file-based options work — same approach as
+    bin/run-image and bin/boot-disk.)
+    """
+    if dest.is_file() and dest.stat().st_mtime >= cert.stat().st_mtime:
+        return dest
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [
+            "virt-fw-vars",
+            "--input", "/usr/share/edk2/x64/OVMF_VARS.4m.fd",
+            "--output", str(dest),
+            "--set-pk", "OvmfEnrollDefaultKeys", str(cert),
+            "--add-kek", "OvmfEnrollDefaultKeys", str(cert),
+            "--add-db", "OvmfEnrollDefaultKeys", str(cert),
+            "--secure-boot",
+        ],
+        check=True,
+    )
+    return dest
+
+
+def start_swtpm(state_dir):
+    state_dir.mkdir(parents=True, exist_ok=True)
+    if not (state_dir / "tpm2-00.permall").exists():
+        subprocess.run(
+            ["swtpm_setup", "--tpm2", "--tpmstate", str(state_dir), "--createek"],
+            check=True,
+        )
+    sock = state_dir / "swtpm-sock"
+    pidfile = state_dir / "swtpm.pid"
+    subprocess.run(
+        [
+            "swtpm", "socket", "--tpm2",
+            "--tpmstate", f"dir={state_dir}",
+            "--ctrl", f"type=unixio,path={sock}",
+            "--pid", f"file={pidfile}",
+            "--daemon",
+        ],
+        check=True,
+    )
+    return sock, pidfile
+
+
+def stop_swtpm(pidfile):
+    try:
+        os.kill(int(pidfile.read_text().strip()), signal.SIGTERM)
+    except (OSError, ValueError):
+        pass
+
+
+# Deliberately NOT mkosi's "/run/host/shared" tag: that one is claimed by
+# mnt-shared.mount, which is gated on mkosi's fstab.extra credential. Using our
+# own tag keeps the two mechanisms independent — this share is mounted explicitly
+# by whoever asked for it, and mnt-shared.mount stays inert.
+SHARE_TAG = "vmtest-share"
+SHARE_MNT = "/mnt/vmtest"
+
+
+def start_virtiofsd(share_dir, run_dir, name):
+    """Export `share_dir` to the guest over virtiofs.
+
+    Runs unprivileged (`--sandbox none`, no user namespace), which is enough to
+    serve a directory the invoking user already owns — and, unlike the host-side
+    sudo the offline `update-system --image` path needs, requires no privilege
+    escalation at all.
+    """
+    share_dir = Path(share_dir).resolve()
+    if not share_dir.is_dir():
+        sys.exit(f"error: --share {share_dir} is not a directory")
+    for exe in ("virtiofsd", "/usr/lib/virtiofsd", "/usr/libexec/virtiofsd"):
+        path = shutil.which(exe) or (exe if Path(exe).is_file() else None)
+        if path:
+            break
+    else:
+        sys.exit("error: virtiofsd not found (pacman -S virtiofsd)")
+    sock = run_dir / f"{name}-virtiofs.sock"
+    sock.unlink(missing_ok=True)
+    proc = subprocess.Popen(
+        [path, "--socket-path", str(sock), "--shared-dir", str(share_dir),
+         "--sandbox", "none"],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    for _ in range(100):
+        if sock.exists():
+            break
+        time.sleep(0.05)
+    else:
+        proc.terminate()
+        sys.exit("error: virtiofsd never created its socket")
+    return {"proc": proc, "sock": sock, "dir": share_dir}
+
+
+class Vm:
+    """A headless QEMU guest with serial + monitor wired to unix sockets."""
+
+    def __init__(self, name, drives, varstore, tpm_state, run_dir, log,
+                 memory="4G", cpus=4, credentials=(), echo=False, share=None):
+        self.name = name
+        self.log = log
+        self.run_dir = run_dir
+        run_dir.mkdir(parents=True, exist_ok=True)
+        self.serial_sock = run_dir / f"{name}-serial.sock"
+        self.monitor_sock = run_dir / f"{name}-monitor.sock"
+        self.serial_log = run_dir / f"{name}-serial.log"
+        for p in (self.serial_sock, self.monitor_sock):
+            p.unlink(missing_ok=True)
+
+        tpm_sock, self.tpm_pidfile = start_swtpm(tpm_state)
+        self.virtiofsd = None
+        if share:
+            self.virtiofsd = start_virtiofsd(share, run_dir, name)
+
+        args = [
+            "qemu-system-x86_64",
+            "-machine", "type=q35,smm=on,hpet=off",
+            "-smp", str(cpus), "-m", memory, "-cpu", "host", "-accel", "kvm",
+            "-global", "ICH9-LPC.disable_s3=1",
+            "-global", "driver=cfi.pflash01,property=secure,value=on",
+            "-drive",
+            "if=pflash,format=raw,unit=0,readonly=on,"
+            "file=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd",
+            "-drive", f"if=pflash,format=raw,unit=1,file={varstore}",
+            "-object", "rng-random,filename=/dev/urandom,id=rng0",
+            "-device", "virtio-rng-pci,rng=rng0",
+            "-chardev", f"socket,id=chrtpm,path={tpm_sock}",
+            "-tpmdev", "emulator,id=tpm0,chardev=chrtpm",
+            "-device", "tpm-tis,tpmdev=tpm0",
+            "-nic", "user,model=virtio-net-pci",
+            # Keep the VGA adapter (so /dev/tty0 and thus /dev/console exist in
+            # the guest exactly as they do under the GUI runners) but never open
+            # a window.
+            "-device", "virtio-vga",
+            "-display", "none",
+            # Guest RAM as a shareable memfd. Plain -m memory can't be mapped by
+            # an external vhost-user process, so virtiofsd needs this even when
+            # no share is configured for this run (harmless if unused).
+            "-object", f"memory-backend-memfd,id=mem,size={memory},share=on",
+            "-numa", "node,memdev=mem",
+            # wait=on: QEMU holds the machine reset until we attach, so none of
+            # sd-boot's menu is lost to a connect race.
+            "-chardev",
+            f"socket,id=serial0,path={self.serial_sock},server=on,wait=on",
+            "-serial", "chardev:serial0",
+            "-monitor", f"unix:{self.monitor_sock},server,nowait",
+        ]
+        for i, d in enumerate(drives):
+            opts = f"if=none,id=drive{i},file={d['file']},format=raw"
+            if d.get("snapshot"):
+                opts += ",snapshot=on"
+            args += ["-drive", opts]
+            dev = f"virtio-blk-pci,drive=drive{i}"
+            if "bootindex" in d:
+                dev += f",bootindex={d['bootindex']}"
+            args += ["-device", dev]
+        for cred in credentials:
+            args += ["-smbios", f"type=11,value=io.systemd.credential:{cred}"]
+        if self.virtiofsd:
+            args += [
+                "-chardev", f"socket,id=vfs0,path={self.virtiofsd['sock']}",
+                "-device",
+                f"vhost-user-fs-pci,queue-size=1024,chardev=vfs0,tag={SHARE_TAG}",
+            ]
+
+        self.log(f"==> launching {name} headless (serial log: {self.serial_log})")
+        self.proc = subprocess.Popen(
+            args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
+        )
+        self.console = Console(self.serial_sock, self.serial_log, echo=echo)
+        self.monitor = Monitor(self.monitor_sock)
+        self.shell = Shell(self.console, self.log)
+
+    def screenshot(self, tag="screen"):
+        """Capture the VGA console to a PPM (converted to PNG when possible).
+
+        The image's cmdline ends with `console=tty0`, so /dev/console — and
+        therefore systemd's status output, systemd-firstboot's prompts and any
+        LUKS passphrase query — lands on the VGA console, not on serial. With no
+        display attached, a screendump is the only way to see it, so this is the
+        first thing to reach for when a headless boot goes quiet.
+        """
+        ppm = self.run_dir / f"{self.name}-{tag}.ppm"
+        self.monitor.screendump(str(ppm))
+        for _ in range(50):
+            if ppm.exists() and ppm.stat().st_size:
+                break
+            time.sleep(0.1)
+        if not ppm.exists():
+            return None
+        png = ppm.with_suffix(".png")
+        if shutil.which("magick") or shutil.which("convert"):
+            tool = shutil.which("magick") or shutil.which("convert")
+            if subprocess.run([tool, str(ppm), str(png)]).returncode == 0:
+                ppm.unlink(missing_ok=True)
+                return png
+        return ppm
+
+    def wait(self, timeout=300):
+        try:
+            return self.proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return None
+
+    def close(self):
+        if self.proc.poll() is None:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+        stop_swtpm(self.tpm_pidfile)
+        if self.virtiofsd:
+            self.virtiofsd["proc"].terminate()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+
+
+# --- sd-boot menu ------------------------------------------------------------
+
+
+def select_boot_entry(vm, title, timeout=120):
+    """Pick the sd-boot menu entry whose title contains `title`.
+
+    Any keypress cancels sd-boot's countdown (loader.conf sets `timeout 5`),
+    so we tap `up` from the moment the VM starts until the menu shows up — that
+    both stops the clock in time and parks the highlight on the first entry
+    (sd-boot clamps at the ends rather than wrapping). From a known position the
+    selection is a plain count of `down` presses, so we never have to work out
+    which entry the firmware defaulted to.
+    """
+    deadline = time.monotonic() + timeout
+    while True:
+        vm.monitor.sendkey("up")
+        if re.search(re.escape(title), vm.console.snapshot()):
+            break
+        if time.monotonic() > deadline:
+            raise TimeoutError(
+                f"sd-boot menu never showed an entry matching {title!r}.\n"
+                f"--- serial ---\n{vm.console.snapshot()[-3000:]}\n--- end ---"
+            )
+        time.sleep(0.25)
+
+    # Give the menu a moment to finish drawing, then park firmly at the top.
+    time.sleep(1.0)
+    vm.monitor.sendkey("up", times=25)
+    time.sleep(0.5)
+
+    entries = menu_entries(vm.console.raw_snapshot())
+    if not entries:
+        raise RuntimeError(
+            "could not parse the sd-boot menu.\n"
+            f"--- serial ---\n{vm.console.snapshot()[-3000:]}\n--- end ---"
+        )
+    matches = [i for i, e in enumerate(entries) if title in e]
+    if not matches:
+        raise RuntimeError(f"no entry matching {title!r} in menu: {entries}")
+    idx = matches[0]
+    vm.log(f"==> sd-boot entries: {entries}")
+    vm.log(f"==> selecting #{idx} ({entries[idx]!r})")
+    vm.monitor.sendkey("down", times=idx)
+    time.sleep(0.5)
+    vm.monitor.sendkey("ret")
+    return entries[idx]
+
+
+# sd-boot doesn't emit its menu line by line: it centres each entry by absolute
+# cursor address (CSI <row>;<col> H) and then repaints individual rows as the
+# selection or the countdown changes. Stripping the escapes leaves one run-on
+# line of padding, so the menu has to be reconstructed on a screen model.
+_ESC_SEQ = re.compile(
+    rb"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-Z\\-_]"
+)
+_BOX_OR_BLANK = re.compile(r"^[─-╿\s]*$")
+_COUNTDOWN = re.compile(r"^Boot in \d+\s*s\.?$")
+
+
+def render_screen(raw):
+    """Replay a raw terminal stream into {row: text}, honouring CSI ... H."""
+    # Everything before the last full-screen erase belongs to a previous screen
+    # (firmware chatter, an earlier repaint), so drop it.
+    cut = raw.rfind(b"\x1b[2J")
+    if cut >= 0:
+        raw = raw[cut:]
+    rows, row, col, i, n = {}, 1, 1, 0, len(raw)
+    while i < n:
+        if raw[i] == 0x1B:
+            m = _ESC_SEQ.match(raw, i)
+            if not m:
+                i += 1
+                continue
+            seq = m.group(0)
+            if seq.endswith(b"H") and seq.startswith(b"\x1b["):
+                parts = seq[2:-1].split(b";")
+                row = int(parts[0]) if parts[0] else 1
+                col = int(parts[1]) if len(parts) > 1 and parts[1] else 1
+            i = m.end()
+            continue
+        if raw[i] in (0x0A, 0x0D):
+            if raw[i] == 0x0A:
+                row += 1
+            col = 1
+            i += 1
+            continue
+        j = i
+        while j < n and raw[j] != 0x1B and raw[j] not in (0x0A, 0x0D):
+            j += 1
+        text = raw[i:j].decode("utf-8", "replace")
+        line = rows.setdefault(row, [])
+        if len(line) < col - 1:
+            line.extend(" " * (col - 1 - len(line)))
+        for k, ch in enumerate(text):
+            if col - 1 + k < len(line):
+                line[col - 1 + k] = ch
+            else:
+                line.append(ch)
+        col += len(text)
+        i = j
+    return {r: "".join(cs) for r, cs in rows.items()}
+
+
+def menu_entries(raw):
+    """Titles of the entries in the sd-boot menu currently on screen, in order."""
+    screen = render_screen(raw)
+    out = []
+    for r in sorted(screen):
+        title = screen[r].strip()
+        # Skip the separator rule, the "Boot in Ns." status line, and any row
+        # a repaint has since blanked.
+        if _BOX_OR_BLANK.match(title) or _COUNTDOWN.match(title):
+            continue
+        out.append(title)
+    return out
+
+
+# --- subcommands -------------------------------------------------------------
+
+
+def wait_for_shell(vm, timeout, log):
+    """Wait for the serial root shell, capturing the VGA console if it never comes.
+
+    A boot that stalls on tty0 — a LUKS passphrase query, systemd-firstboot's
+    prompt, an emergency shell — looks identical on serial to one that is simply
+    slow: silence. The screendump is what tells the two apart.
+    """
+    interval = 60
+    waited = 0
+    while True:
+        try:
+            vm.shell.wait_ready(timeout=min(interval, timeout - waited))
+            return
+        except TimeoutError:
+            waited += interval
+            if waited >= timeout:
+                shot = vm.screenshot("stalled")
+                log(f"==> no root shell after {timeout}s; VGA console: {shot}")
+                raise TimeoutError(
+                    f"no root shell on serial after {timeout}s. The boot is "
+                    f"stalled on something only /dev/console (tty0) shows — see "
+                    f"the screendump at {shot}."
+                )
+            shot = vm.screenshot(f"waiting-{waited}s")
+            log(f"==> still waiting ({waited}s); VGA console: {shot}")
+        except EOFError:
+            shot = vm.screenshot("died")
+            log(f"==> guest exited; VGA console: {shot}")
+            raise
+
+
+def log_to(stream):
+    def log(msg):
+        stream.write(str(msg).rstrip("\n") + "\n")
+        stream.flush()
+
+    return log
+
+
+def cmd_install(args):
+    log = log_to(sys.stdout)
+    medium = Path(args.medium) if args.medium else newest_medium()
+    target = Path(args.target).resolve()
+
+    if args.fresh:
+        # `truncate -s N` on an existing N-byte file is a no-op: it sets the
+        # size and leaves every byte alone. The stale GPT then auto-activates
+        # when the medium boots and repart fails with "Device or resource busy".
+        # Removing the file first is the only way to get a genuinely blank disk.
+        log(f"==> recreating {target} ({args.size}) from scratch")
+        target.unlink(missing_ok=True)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        subprocess.run(["truncate", "-s", args.size, str(target)], check=True)
+    elif not target.is_file():
+        sys.exit(f"error: {target} does not exist (drop --no-fresh to create it)")
+
+    cert = secureboot_cert()
+    run_dir = output_dir() / "vm-test"
+    varstore = make_varstore(run_dir / "installer-vars.fd", cert)
+
+    log(f"==> medium: {medium.name}")
+    with Vm(
+        name="installer",
+        drives=[
+            # snapshot=on: the installer only reads the medium (root=tmpfs), and
+            # discarding writes keeps the built artifact byte-identical.
+            {"file": medium, "bootindex": 0, "snapshot": True},
+            {"file": target},
+        ],
+        varstore=varstore,
+        tpm_state=run_dir / "installer-tpm",
+        run_dir=run_dir,
+        log=log,
+        memory=args.memory,
+        cpus=args.cpus,
+        echo=args.verbose,
+    ) as vm:
+        select_boot_entry(vm, "Installer")
+
+        log("==> waiting for a root shell on ttyS0 …")
+        wait_for_shell(vm, args.boot_timeout, log)
+        sh = vm.shell
+
+        # The greetd fix (systemd.unit=multi-user.target in the Installer
+        # profile) is exactly this pair of facts: the guided installer is up on
+        # tty1 and the graphical login never started.
+        log("\n===== Installer environment =====")
+        sh.run("systemctl is-system-running || true")
+        sh.run("systemctl is-active arch-install.service || true")
+        sh.run("systemctl is-active greetd.service || true")
+        sh.run("systemctl get-default")
+        sh.run("systemctl --failed --no-legend --plain || true")
+
+        # Stop the guided installer before driving the one-shot path, so the two
+        # can't race for the target. An explicit stop wins over Restart=always.
+        sh.run("systemctl stop arch-install.service || true")
+
+        log("\n===== install-system --yes /dev/vdb =====")
+        rc, _ = sh.run(
+            "/usr/share/arch-ansible/bin/install-system --yes /dev/vdb 2>&1",
+            timeout=args.install_timeout,
+        )
+        if rc != 0:
+            log("==> INSTALL FAILED")
+            sh.run("journalctl -b --no-pager -p warning | tail -60 || true")
+            return 1
+
+        # Validation question #1: a pure Type #2 layout — sd-boot plus a bare UKI
+        # in EFI/Linux/, no /image/ dir and no loader/entries/*.conf.
+        log("\n===== Written layout (validation question #1) =====")
+        sh.run("udevadm settle; lsblk -o NAME,SIZE,TYPE,PARTLABEL,FSTYPE /dev/vdb")
+        sh.run("mkdir -p /mnt/esp && mount /dev/vdb1 /mnt/esp")
+        sh.run("find /mnt/esp -maxdepth 3 | sort")
+        sh.run("ls -A /mnt/esp/loader/entries 2>/dev/null | wc -l")
+        sh.run("ls -A /mnt/esp/image 2>/dev/null | wc -l")
+        sh.run("umount /mnt/esp")
+
+        log("\n==> powering off")
+        sh.c.send("systemctl poweroff\n")
+        vm.wait(timeout=120)
+
+    log(f"\n==> CHECKPOINT A reached: {target} installed.")
+    log(f"    Next: bin/vm-test boot {target}")
+    return 0
+
+
+HEALTH_CHECKS = [
+    "systemctl is-system-running",
+    "systemctl --failed --no-legend --plain",
+    "hostnamectl",
+    # One target per call: findmnt prints nothing for a multi-target invocation.
+    "findmnt -no SOURCE,FSTYPE /",
+    "findmnt -no SOURCE,FSTYPE /usr",
+    "lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS",
+    "bootctl status 2>&1 | head -30",
+    "systemd-analyze blame 2>/dev/null | head -10",
+]
+
+
+def cmd_boot(args):
+    log = log_to(sys.stdout)
+    disk = Path(args.disk).resolve()
+    if not disk.is_file():
+        sys.exit(f"error: {disk} is not a file")
+
+    cert = secureboot_cert()
+    run_dir = output_dir() / "vm-test"
+    # Varstore and TPM live next to the disk (matching bin/boot-disk), so the
+    # LUKS keyslot sealed on first boot can be unsealed on every later boot.
+    varstore = make_varstore(Path(f"{disk}.ovmf_vars.fd"), cert)
+
+    # Answers for everything the installed system's first boot asks the user, all
+    # delivered as SMBIOS type 11 credentials. This matters more than it looks:
+    # systemd-firstboot prompts on /dev/console, which the image pins to tty0
+    # (`console=tty0` comes last on the cmdline), so a headless boot that hits a
+    # prompt just goes silent forever with nothing on serial to say why.
+    creds = [
+        # Testing convenience only: a root shell on every getty, so the system's
+        # health can be read back over serial without a password and without
+        # switching VTs. Never use this for a real install.
+        "agetty.autologin=root",
+        # First prompt: systemd-firstboot --prompt-hostname (added by
+        # mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf).
+        f"firstboot.hostname={args.hostname}",
+        # Second prompt: --prompt-root-password, from the same ExecStart. Test
+        # credential only — a real install is meant to be answered by the human
+        # sitting at the console.
+        f"passwd.plaintext-password.root={args.root_password}",
+    ]
+
+    with Vm(
+        name=disk.stem,
+        # The ONLY disk. With the medium also attached, first-boot repart sees
+        # two mkosi-layout disks and provisions the wrong one, so root is never
+        # created and the boot hangs on /dev/disk/by-designator/root.
+        drives=[{"file": disk, "bootindex": 0}],
+        varstore=varstore,
+        tpm_state=Path(f"{disk}.tpm"),
+        run_dir=run_dir,
+        log=log,
+        memory=args.memory,
+        cpus=args.cpus,
+        credentials=creds,
+        echo=args.verbose,
+        share=args.share,
+    ) as vm:
+        if args.entry:
+            select_boot_entry(vm, args.entry)
+
+        log("==> waiting for a root shell on ttyS0 …")
+        # First boot does the whole provisioning run (repart creates root/home/
+        # swap, TPM2-seals LUKS, homed/firstboot units), so allow plenty.
+        wait_for_shell(vm, args.boot_timeout, log)
+        sh = vm.shell
+
+        log("\n===== Health checks (validation question #2) =====")
+        state = None
+        for check in HEALTH_CHECKS:
+            rc, out = sh.run(check + " || true", timeout=120)
+            if check.startswith("systemctl is-system-running"):
+                state = out.strip().splitlines()[-1] if out.strip() else "?"
+
+        # Did anything ask for a passphrase? First boot seals to the TPM, later
+        # boots must unseal silently; a pending ask-password request (or a
+        # cryptsetup unit that fell back to a prompt) is the failure signal, and
+        # it would otherwise be invisible on tty0.
+        log("\n===== LUKS / TPM =====")
+        sh.run("systemd-tty-ask-password-agent --list 2>&1 | head || true")
+        sh.run("journalctl -b --no-pager -o cat -u systemd-cryptsetup@root.service "
+               "2>&1 | tail -10 || true")
+        sh.run("cryptsetup luksDump /dev/disk/by-designator/root-luks 2>/dev/null "
+               "| grep -i -A2 'tokens\\|systemd-tpm2' | head -20 || true")
+
+        if args.share:
+            sh.run(f"mkdir -p {SHARE_MNT} && mount -t virtiofs {SHARE_TAG} "
+                   f"{SHARE_MNT} && ls {SHARE_MNT} | head -5", check=True)
+
+        if args.run:
+            log("\n===== --run =====")
+            for cmd in args.run:
+                sh.run(cmd, timeout=args.run_timeout)
+
+        if args.journal:
+            log("\n===== Journal (warnings and worse) =====")
+            sh.run("journalctl -b --no-pager -p warning | tail -80 || true")
+
+        log("\n==> powering off")
+        sh.c.send("systemctl poweroff\n")
+        vm.wait(timeout=180)
+
+    log(f"\n==> is-system-running = {state}")
+    if state == "running":
+        log("==> CHECKPOINT B: clean boot.")
+        return 0
+    log("==> NOT a clean boot — see the failed units above.")
+    return 1
+
+
+def main():
+    p = argparse.ArgumentParser(
+        description="Headless, scripted QEMU validation runs.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
+    p.add_argument("--memory", default="4G", help="guest RAM (default 4G)")
+    p.add_argument("--cpus", type=int, default=4, help="vCPUs (default 4)")
+    p.add_argument("-v", "--verbose", action="store_true",
+                   help="mirror the raw serial stream to stdout as it arrives")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    i = sub.add_parser("install", help="install the built medium onto TARGET")
+    i.add_argument("target", help="target disk image (recreated unless --no-fresh)")
+    i.add_argument("--medium", help="medium to boot (default: newest built image)")
+    i.add_argument("--size", default="100G",
+                   help="target size when created (default 100G: the fixed\n"
+                        "partitions total ~49G, so a 60G disk leaves too little\n"
+                        "root for the on-device build scratch)")
+    i.add_argument("--no-fresh", dest="fresh", action="store_false",
+                   help="reuse the existing target file instead of recreating it")
+    i.add_argument("--boot-timeout", type=int, default=600)
+    i.add_argument("--install-timeout", type=int, default=1800)
+    i.set_defaults(func=cmd_install)
+
+    b = sub.add_parser("boot", help="boot an installed disk alone and check it")
+    b.add_argument("disk", help="installed disk image to boot (nothing else attached)")
+    b.add_argument("--hostname", default="arch-vmtest",
+                   help="firstboot.hostname credential (skips the prompt)")
+    b.add_argument("--root-password", default="root",
+                   help="passwd.plaintext-password.root credential, answering "
+                        "first boot's root-password prompt (test VMs only)")
+    b.add_argument("--entry", help="sd-boot entry title to select (default: let it "
+                                   "boot the default entry)")
+    b.add_argument("--boot-timeout", type=int, default=900)
+    b.add_argument("--journal", action="store_true",
+                   help="also dump journal warnings before powering off")
+    b.add_argument("--run", action="append", metavar="CMD",
+                   help="run CMD in the booted system after the health checks "
+                        "(repeatable). Root's /etc is writable, so changes made "
+                        "here persist into the disk's next boot.")
+    b.add_argument("--run-timeout", type=int, default=1800,
+                   help="per---run-command timeout (default 1800s; an A/B "
+                        "update copies ~8G)")
+    b.add_argument("--share", metavar="DIR",
+                   help=f"export DIR to the guest over virtiofs, mounted at "
+                        f"{SHARE_MNT}. Use it to hand the guest build artifacts "
+                        f"(e.g. the mkosi output dir for an A/B update).")
+    b.set_defaults(func=cmd_boot)
+
+    args = p.parse_args()
+    os.chdir(REPO)
+    for tool in ("qemu-system-x86_64", "swtpm", "virt-fw-vars"):
+        if not shutil.which(tool):
+            sys.exit(f"error: {tool} not found in PATH")
+    try:
+        return args.func(args)
+    except (TimeoutError, EOFError, RuntimeError) as e:
+        print(f"\nerror: {e}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

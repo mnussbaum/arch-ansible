@@ -20,6 +20,7 @@ disk=""
 memory=4G
 cpus=4
 tpm_state=""
+autologin=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -31,6 +32,9 @@ while [[ $# -gt 0 ]]; do
       echo "  --cpus     vCPUs (default 4)." >&2
       echo "  --tpm-state DIR  Persistent swtpm state dir (default DISK.tpm). The disk's" >&2
       echo "              first boot seals LUKS to this TPM and later boots unseal against it." >&2
+      echo "  --autologin  Auto-login root on every getty (agetty.autologin credential via" >&2
+      echo "              SMBIOS). Testing convenience so you can inspect the booted system" >&2
+      echo "              without a password or VT switching; do NOT use for real installs." >&2
       exit
       ;;
     --memory=*) memory="${1#*=}" ;;
@@ -39,6 +43,7 @@ while [[ $# -gt 0 ]]; do
     --cpus) cpus="$2"; shift ;;
     --tpm-state=*) tpm_state="${1#*=}" ;;
     --tpm-state) tpm_state="$2"; shift ;;
+    --autologin) autologin=1 ;;
     *) disk="$1" ;;
   esac
   shift
@@ -97,6 +102,9 @@ rm -f "$qga_sock"
 # the disk is the only drive, bootindex=0. GTK display + virtio-tablet mirror
 # run-image's GUI handling; the virtserial qga port exposes the guest agent.
 # Not exec'd, so the EXIT trap still tears down swtpm when QEMU quits.
+# Optional SMBIOS-delivered credentials (currently just the root autologin).
+smbios_args=()
+[[ -n "$autologin" ]] && smbios_args+=(-smbios "type=11,value=io.systemd.credential:agetty.autologin=root")
 qemu-system-x86_64 \
   -machine type=q35,smm=on,hpet=off \
   -smp "$cpus" -m "$memory" -cpu host -accel kvm \
@@ -116,6 +124,7 @@ qemu-system-x86_64 \
   -device virtio-vga \
   -display gtk,gl=on,zoom-to-fit=off,grab-on-hover=on \
   -device virtio-tablet \
+  "${smbios_args[@]}" \
   -chardev "socket,path=$qga_sock,server=on,wait=off,id=qga0" \
   -device virtio-serial \
   -device virtserialport,chardev=qga0,name=org.qemu.guest_agent.0
