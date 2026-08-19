@@ -50,7 +50,17 @@ if [[ -f "$marker" ]]; then
     }
     _stage_delta "$BUILDROOT/var/cache/yay"         yay
     _stage_delta "$BUILDROOT/var/cache/aur-repo"    aur-repo
-    _stage_delta "$BUILDROOT/root/.cargo/registry" cargo-registry
+    # cargo: write back only the downloaded .crate archives (cache/) and the
+    # registry index (index/), whose files carry current mtimes and round-trip
+    # through the -newer delta cleanly. NOT src/: cargo extracts each .crate
+    # there preserving the archive's stored (old) mtimes, so -newer matches the
+    # freshly-created src/<crate>/ *directory* but none of its old-mtime contents
+    # — and rsync copies a listed dir non-recursively (see refs/ above), writing
+    # back an empty src/<crate>/. That empty dir then makes cargo skip re-extraction
+    # and fail reading the absent Cargo.toml. src/ is fully rebuilt from cache/,
+    # so the postinst drops it and cargo re-extracts cleanly each build.
+    _stage_delta "$BUILDROOT/root/.cargo/registry/cache" cargo-registry/cache
+    _stage_delta "$BUILDROOT/root/.cargo/registry/index" cargo-registry/index
     _stage_delta "$BUILDROOT/root/.cache/sccache"  sccache
     _stage_delta "$BUILDROOT/etc/skel/.local/share/nvim/site" nvim-site
 fi

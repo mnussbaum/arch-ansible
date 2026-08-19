@@ -39,6 +39,27 @@ rsync -a --ignore-existing /work/src/nvim-site/ /etc/skel/.local/share/nvim/site
 mkdir -p /var/cache/aur-repo
 rsync -a --ignore-existing /work/src/aur-repo/ /var/cache/aur-repo/ 2>/dev/null || true
 
+# Delta-seed cargo's registry cache — the downloaded .crate archives (cache/) and
+# the registry index (index/) — from the host writebacks-since, then drop the
+# extracted src/ tree. cargo extracts each .crate into src/ preserving the
+# archive's stored (old) mtimes, so it can't round-trip through the finalize
+# -newer delta: that writes back an empty src/<crate>/ dir, which makes cargo skip
+# re-extraction and then fail reading the absent Cargo.toml ("No such file"). src/
+# is fully rebuildable from the round-tripped cache/, so wipe whatever the snapshot
+# and seed carried (both may hold those poisoned empty dirs) and let cargo
+# re-extract cleanly from the .crate archives this build.
+mkdir -p /root/.cargo/registry
+rsync -a --ignore-existing /work/src/cargo-registry/ /root/.cargo/registry/ 2>/dev/null || true
+rm -rf /root/.cargo/registry/src
+
+# Same delta-seed for sccache's compilation cache. Unlike cargo a stale sccache
+# never hard-fails (a missing entry is just a cache miss -> recompile), but the
+# frozen snapshot alone still misses every object a previous build wrote back,
+# so those recompiles are wasted. This brings the writebacks-since in so cache
+# hits actually land; --ignore-existing keeps snapshot-seeded content untouched.
+mkdir -p /root/.cache/sccache
+rsync -a --ignore-existing /work/src/sccache-cache/ /root/.cache/sccache/ 2>/dev/null || true
+
 extra_args=()
 if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   eval "extra_args=($ANSIBLE_EXTRA_ARGS)"
