@@ -9,9 +9,20 @@
 # mount the tag at /mnt/shared instead. The What= below is the virtiofs tag,
 # not a real path. ConditionVirtualization keeps this inert on physical
 # hardware (e.g. a burned install/recovery USB).
+#
+# ConditionVirtualization alone is not enough, though: it is true in EVERY VM,
+# while the virtiofs tag only exists when the VM was launched by `mkosi vm` with
+# a runtime tree. Booted any other way — bin/boot-disk, bin/vm-test, or a burned
+# USB run under QEMU — the mount fails, and one failed unit pins
+# `systemctl is-system-running` at `degraded` for the whole boot, which is
+# exactly the signal the install/boot validation relies on. Gate on the
+# fstab.extra system credential instead: mkosi writes it (naming this virtiofs
+# tag) for the runtime tree and nothing else does, so the unit is now inert
+# precisely when the share is absent.
 [Unit]
 Description=Host shared directory (virtiofs)
 ConditionVirtualization=vm
+ConditionCredential=fstab.extra
 
 [Mount]
 What=/run/host/shared
