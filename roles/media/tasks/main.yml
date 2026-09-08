@@ -70,12 +70,6 @@
     src: 99-ov01a10-digital-gain.rules
     dest: /usr/lib/udev/rules.d/99-ov01a10-digital-gain.rules
 
-- name: Install systemd-sleep hook to fix IPu6 camera after suspend/resume
-  copy:
-    src: ipu6-suspend.sh
-    dest: /usr/lib/systemd/system-sleep/ipu6-suspend.sh
-    mode: a+x
-
 - name: Install headphone profile toggle script
   copy:
     src: toggle-headphone-profile
