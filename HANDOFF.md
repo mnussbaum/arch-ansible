@@ -242,9 +242,11 @@ Lessons for next time: **never `rm` with an unguarded glob built from a variable
 and don't assume bash builtins in this zsh environment. Prefer
 `find … -maxdepth 1 -name 'image_<ver>_*' -delete` per explicit version.
 
-Follow-up worth doing: `bin/build-image` has **no retention policy**, which is how
-353 GB accumulated. Adding a "keep last N versions" prune at the end of a
-successful build would prevent a repeat.
+**FIXED (2026-09-18):** `bin/build-image` had **no retention policy**, which is how
+353 GB accumulated. It now prunes the output dir to the newest N versions (default
+3, `--keep N|all`) after a successful build, deleting each version by an explicit
+`find -maxdepth 1 -name "image_<ver>_*" -delete` — never a glob built from a
+variable — and refusing to prune the version it just built.
 
 ## What's left
 
@@ -257,7 +259,10 @@ successful build would prevent a repeat.
 3. **`bootstrapping-todo.md` needs updating** with the results above (all three
    validation questions now pass; steps 4 and 5 are re-verified on the Type #2
    installer).
-4. **Add a retention policy to `bin/build-image`** — see the artifact-loss note.
+4. ~~Add a retention policy to `bin/build-image`.~~ **DONE** (2026-09-18) — see
+   the artifact-loss note. Logic tested in a sandbox against a synthetic output
+   dir (keep=N / keep=all / current-version protection / unversioned files left
+   alone); not yet exercised by a real build, since no build has run since.
 5. **Real hardware needs a reinstall** to pick up the new partition geometry.
 6. **Only one A/B direction was exercised.** The update applied an *older* version
    (`20260819002736`, the salvaged artifacts) onto a newer install, so the
