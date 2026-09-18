@@ -76,16 +76,26 @@
 # rebuilds) instead of yay re-cloning everything every build. Written where the
 # root-run yay reads it ($HOME/.config/yay/config.json); a partial config leaves
 # every other yay default untouched.
+#
+# gpgflags routes yay's PGP key import over plain hkp. yay imports every missing
+# validpgpkeys entry before building and aborts the install if that fails — v13
+# does it unconditionally (its pgpfetch setting is parsed but never read). An Arch
+# update broke dirmngr's hkps transport to every keyserver while plain hkp kept
+# working, which failed the build on aws-cli-bin. yay prepends gpgflags to all its
+# gpg calls, --recv-keys included. Plaintext is fine here: makepkg only accepts a
+# signature from a key whose full fingerprint is pinned in validpgpkeys, so a
+# tampered response can't substitute a key. Online builds only — --caching force
+# never runs yay (use-yay.yml).
 - name: Ensure yay's config dir exists
   file:
     path: "{{ ansible_env.HOME }}/.config/yay"
     state: directory
     mode: '0755'
 
-- name: Pin yay's build dir to the cached, round-tripped /var/cache/yay
+- name: Configure yay (cached build dir, keyserver over hkp)
   copy:
     content: |
-      {"buildDir": "/var/cache/yay"}
+      {"buildDir": "/var/cache/yay", "gpgflags": "--keyserver hkp://keyserver.ubuntu.com:80"}
     dest: "{{ ansible_env.HOME }}/.config/yay/config.json"
     mode: '0644'
 
