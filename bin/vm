@@ -1,15 +1,25 @@
 #!/usr/bin/env python3
-"""Headless, scripted QEMU runs for end-to-end install/boot validation.
+"""One command to run this project's VMs: live medium, install, and boot.
 
-run-image and boot-disk both open a GTK window and assume a human at the
-keyboard: someone picks an entry in the sd-boot menu, answers the guided
-installer, and reads health checks off the screen. That makes validating the
-Type #2 install a manual loop, and pressing keys at the QEMU window is actively
-hazardous — without the keyboard grab a Ctrl+Alt+F<n> lands on the HOST
-compositor.
+Three jobs used to mean three scripts (run-image, boot-disk, vm-test) with three
+sets of flags and two different ways of building the same VM. They are now three
+subcommands here, and the display is a flag rather than a different program:
 
-vm-test drives the same VMs with no display at all. Two properties of the image
-make that possible:
+  live     Boot the built medium (the installer / live system) via `mkosi vm`,
+           optionally with another disk attached to install onto or repair.
+  install  Boot the medium's Installer profile with TARGET attached as /dev/vdb,
+           run `install-system --yes /dev/vdb`, then inspect the layout it wrote.
+           Recreates TARGET first: `truncate` on an existing same-size file is a
+           no-op, and the stale partitions left behind auto-activate and make
+           repart fail with EBUSY.
+  boot     Boot an installed TARGET *alone* — nothing else attached, because
+           first-boot systemd-repart provisions the wrong disk when a second
+           mkosi-layout disk (the medium) is present — and report
+           `systemctl is-system-running`, failed units, and the mount layout.
+
+`install` and `boot` are headless and scripted; both exit non-zero if the run
+misses its checkpoint, so they compose into a validation pass. Two properties of
+the image make that possible:
 
   * OVMF's ConSplitter mirrors the firmware console onto the serial port, so
     sd-boot's menu is readable on serial and QEMU's HMP `sendkey` can move the
@@ -18,25 +28,16 @@ make that possible:
     credential, so a root shell lands on the serial socket and commands and
     their output round-trip over it. (`console=tty0` comes last, so /dev/console
     — and thus systemd's own boot output and any password prompt — still goes to
-    the invisible VGA console. Read those back with `journalctl` over serial.)
+    the invisible VGA console. Read those back with `journalctl` over serial, or
+    reach for the screendump this takes when a headless boot goes quiet.)
 
-Subcommands:
+`--gui` opens a GTK window instead, for when you want to sit at the machine:
+same VM, same persistent firmware varstore and TPM, no scripted checks. Note
+that without a keyboard grab Ctrl+Alt+F<n> lands on the HOST compositor, so
+`grab-on-hover=on` is set; Ctrl+Alt+G toggles the grab by hand.
 
-  install  Boot the built medium's Installer profile with TARGET attached as
-           /dev/vdb, run `install-system --yes /dev/vdb`, then inspect the
-           layout it wrote. Recreates TARGET from scratch first: `truncate` on
-           an existing same-size file is a no-op, and the stale partitions left
-           behind auto-activate and make repart fail with EBUSY.
-
-  boot     Boot an installed TARGET *alone* — nothing else attached, because
-           first-boot systemd-repart provisions the wrong disk when a second
-           mkosi-layout disk (the medium) is present — and report
-           `systemctl is-system-running`, failed units, and the resulting
-           partition/mount layout. Firmware varstore and TPM state persist next
-           to the disk, so the second run exercises the TPM2 unseal path.
-
-Both subcommands exit non-zero if the run doesn't reach its checkpoint, so they
-compose into a scripted validation pass.
+Firmware varstore and TPM state persist next to the disk, so Secure Boot PCR 7
+and a TPM2-sealed LUKS keyslot stay stable across runs, like real hardware.
 """
 
 import argparse
@@ -260,8 +261,20 @@ def output_dir():
     return cache_dir() / "mkosi/images/image"
 
 
-def secureboot_cert():
+def secureboot_cert(recover=False):
     cert = cache_dir() / "mkosi-secureboot/mkosi.crt"
+    if not cert.is_file() and recover:
+        # Cache cleared but the image is still present: re-materialize the cert
+        # from pass. The only path here that touches GPG, so it is opt-in — a
+        # headless run can't answer a YubiKey prompt.
+        out = subprocess.run(
+            ["bash", "-c",
+             "source bin/_cache_common.sh; source bin/_secureboot_common.sh; "
+             "materialize_secureboot_keypair >&2; printf %s \"$SECUREBOOT_CERT\""],
+            cwd=REPO, capture_output=True, text=True,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            cert = Path(out.stdout.strip())
     if not cert.is_file():
         sys.exit(
             f"error: {cert} is missing. Run bin/build-image once to materialize "
@@ -291,7 +304,7 @@ def make_varstore(dest, cert):
     LUKS keyslot enrolled on first boot can only be unsealed if the firmware
     comes up in the same Secure Boot state. (virt-fw-vars' --enroll-cert is
     broken in virt-firmware 26.x; the file-based options work — same approach as
-    bin/run-image and bin/boot-disk.)
+    bin/vm live and bin/vm boot --gui.)
     """
     if dest.is_file() and dest.stat().st_mtime >= cert.stat().st_mtime:
         return dest
@@ -382,15 +395,101 @@ def start_virtiofsd(share_dir, run_dir, name):
     return {"proc": proc, "sock": sock, "dir": share_dir}
 
 
+def build_qemu_args(drives, varstore, tpm_sock, memory, cpus, credentials,
+                    serial, monitor_sock=None, share_sock=None, gui=False):
+    """Assemble the QEMU command line shared by every subcommand.
+
+    Split out of Vm so it can be inspected (and tested) without launching
+    anything. `serial` is either ("socket", path) — the headless case, where the
+    console is driven over a unix socket — or ("file", path), which just logs the
+    guest's serial output for a GUI run.
+    """
+    args = [
+        "qemu-system-x86_64",
+        "-machine", "type=q35,smm=on,hpet=off",
+        "-smp", str(cpus), "-m", memory, "-cpu", "host", "-accel", "kvm",
+        "-global", "ICH9-LPC.disable_s3=1",
+        "-global", "driver=cfi.pflash01,property=secure,value=on",
+        "-drive",
+        "if=pflash,format=raw,unit=0,readonly=on,"
+        "file=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd",
+        "-drive", f"if=pflash,format=raw,unit=1,file={varstore}",
+        "-object", "rng-random,filename=/dev/urandom,id=rng0",
+        "-device", "virtio-rng-pci,rng=rng0",
+        "-chardev", f"socket,id=chrtpm,path={tpm_sock}",
+        "-tpmdev", "emulator,id=tpm0,chardev=chrtpm",
+        "-device", "tpm-tis,tpmdev=tpm0",
+        "-nic", "user,model=virtio-net-pci",
+        # Keep the VGA adapter (so /dev/tty0 and thus /dev/console exist in
+        # the guest exactly as they do under a GUI run) even when headless.
+        "-device", "virtio-vga",
+        # Guest RAM as a shareable memfd. Plain -m memory can't be mapped by
+        # an external vhost-user process, so virtiofsd needs this even when
+        # no share is configured for this run (harmless if unused).
+        "-object", f"memory-backend-memfd,id=mem,size={memory},share=on",
+        "-numa", "node,memdev=mem",
+    ]
+    if gui:
+        # Only the GTK backend forwards window-resize ui_info to virtio-vga, so
+        # the guest's output follows the host window instead of staying at
+        # 1024x768; zoom-to-fit=off resizes the guest rather than scaling a
+        # fixed framebuffer. grab-on-hover=on engages the Wayland
+        # keyboard-shortcuts-inhibit protocol so the host compositor stops
+        # eating $mod bindings (Ctrl+Alt+G toggles the grab by hand).
+        args += ["-display", "gtk,gl=on,zoom-to-fit=off,grab-on-hover=on"]
+        # Absolute pointing device: without it QEMU gives the guest a relative
+        # PS/2 mouse, so the guest cursor drifts out of sync with the host
+        # pointer and clicks land in the wrong place.
+        args += ["-device", "virtio-tablet"]
+    else:
+        args += ["-display", "none"]
+
+    kind, path = serial
+    if kind == "socket":
+        # wait=on: QEMU holds the machine reset until we attach, so none of
+        # sd-boot's menu is lost to a connect race.
+        args += [
+            "-chardev", f"socket,id=serial0,path={path},server=on,wait=on",
+            "-serial", "chardev:serial0",
+        ]
+    else:
+        # Nothing is driving the console, so just capture it to a file the way
+        # the old bin/vm boot --gui did; the window is the interactive surface.
+        args += ["-chardev", f"file,id=serial0,path={path}", "-serial", "chardev:serial0"]
+    if monitor_sock:
+        args += ["-monitor", f"unix:{monitor_sock},server,nowait"]
+
+    for i, d in enumerate(drives):
+        opts = f"if=none,id=drive{i},file={d['file']},format=raw"
+        if d.get("snapshot"):
+            opts += ",snapshot=on"
+        args += ["-drive", opts]
+        dev = f"virtio-blk-pci,drive=drive{i}"
+        if "bootindex" in d:
+            dev += f",bootindex={d['bootindex']}"
+        args += ["-device", dev]
+    for cred in credentials:
+        args += ["-smbios", f"type=11,value=io.systemd.credential:{cred}"]
+    if share_sock:
+        args += [
+            "-chardev", f"socket,id=vfs0,path={share_sock}",
+            "-device",
+            f"vhost-user-fs-pci,queue-size=1024,chardev=vfs0,tag={SHARE_TAG}",
+        ]
+    return args
+
+
 class Vm:
-    """A headless QEMU guest with serial + monitor wired to unix sockets."""
+    """A QEMU guest: headless with serial + monitor on unix sockets, or GUI."""
 
     def __init__(self, name, drives, varstore, tpm_state, run_dir, log,
-                 memory="4G", cpus=4, credentials=(), echo=False, share=None):
+                 memory="4G", cpus=4, credentials=(), echo=False, share=None,
+                 gui=False):
         self.name = name
         self.log = log
         self.run_dir = run_dir
         run_dir.mkdir(parents=True, exist_ok=True)
+        self.gui = gui
         self.serial_sock = run_dir / f"{name}-serial.sock"
         self.monitor_sock = run_dir / f"{name}-monitor.sock"
         self.serial_log = run_dir / f"{name}-serial.log"
@@ -402,64 +501,34 @@ class Vm:
         if share:
             self.virtiofsd = start_virtiofsd(share, run_dir, name)
 
-        args = [
-            "qemu-system-x86_64",
-            "-machine", "type=q35,smm=on,hpet=off",
-            "-smp", str(cpus), "-m", memory, "-cpu", "host", "-accel", "kvm",
-            "-global", "ICH9-LPC.disable_s3=1",
-            "-global", "driver=cfi.pflash01,property=secure,value=on",
-            "-drive",
-            "if=pflash,format=raw,unit=0,readonly=on,"
-            "file=/usr/share/edk2/x64/OVMF_CODE.secboot.4m.fd",
-            "-drive", f"if=pflash,format=raw,unit=1,file={varstore}",
-            "-object", "rng-random,filename=/dev/urandom,id=rng0",
-            "-device", "virtio-rng-pci,rng=rng0",
-            "-chardev", f"socket,id=chrtpm,path={tpm_sock}",
-            "-tpmdev", "emulator,id=tpm0,chardev=chrtpm",
-            "-device", "tpm-tis,tpmdev=tpm0",
-            "-nic", "user,model=virtio-net-pci",
-            # Keep the VGA adapter (so /dev/tty0 and thus /dev/console exist in
-            # the guest exactly as they do under the GUI runners) but never open
-            # a window.
-            "-device", "virtio-vga",
-            "-display", "none",
-            # Guest RAM as a shareable memfd. Plain -m memory can't be mapped by
-            # an external vhost-user process, so virtiofsd needs this even when
-            # no share is configured for this run (harmless if unused).
-            "-object", f"memory-backend-memfd,id=mem,size={memory},share=on",
-            "-numa", "node,memdev=mem",
-            # wait=on: QEMU holds the machine reset until we attach, so none of
-            # sd-boot's menu is lost to a connect race.
-            "-chardev",
-            f"socket,id=serial0,path={self.serial_sock},server=on,wait=on",
-            "-serial", "chardev:serial0",
-            "-monitor", f"unix:{self.monitor_sock},server,nowait",
-        ]
-        for i, d in enumerate(drives):
-            opts = f"if=none,id=drive{i},file={d['file']},format=raw"
-            if d.get("snapshot"):
-                opts += ",snapshot=on"
-            args += ["-drive", opts]
-            dev = f"virtio-blk-pci,drive=drive{i}"
-            if "bootindex" in d:
-                dev += f",bootindex={d['bootindex']}"
-            args += ["-device", dev]
-        for cred in credentials:
-            args += ["-smbios", f"type=11,value=io.systemd.credential:{cred}"]
-        if self.virtiofsd:
-            args += [
-                "-chardev", f"socket,id=vfs0,path={self.virtiofsd['sock']}",
-                "-device",
-                f"vhost-user-fs-pci,queue-size=1024,chardev=vfs0,tag={SHARE_TAG}",
-            ]
+        args = build_qemu_args(
+            drives=drives,
+            varstore=varstore,
+            tpm_sock=tpm_sock,
+            memory=memory,
+            cpus=cpus,
+            credentials=credentials,
+            serial=("file", self.serial_log) if gui else ("socket", self.serial_sock),
+            monitor_sock=self.monitor_sock,
+            share_sock=self.virtiofsd["sock"] if self.virtiofsd else None,
+            gui=gui,
+        )
 
-        self.log(f"==> launching {name} headless (serial log: {self.serial_log})")
+        how = "in a window" if gui else "headless"
+        self.log(f"==> launching {name} {how} (serial log: {self.serial_log})")
         self.proc = subprocess.Popen(
             args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
         )
-        self.console = Console(self.serial_sock, self.serial_log, echo=echo)
+        # Order matters when headless: the serial chardev is server=on,wait=on,
+        # so QEMU holds the machine reset — and has not yet created the monitor
+        # socket — until this client attaches. Connecting the monitor first just
+        # times out. A GUI run has no serial client at all (the human drives the
+        # window and serial goes to the log file), so the monitor is reachable
+        # straight away.
+        self.console = None if gui else Console(self.serial_sock, self.serial_log,
+                                                echo=echo)
+        self.shell = None if gui else Shell(self.console, self.log)
         self.monitor = Monitor(self.monitor_sock)
-        self.shell = Shell(self.console, self.log)
 
     def screenshot(self, tag="screen"):
         """Capture the VGA console to a PPM (converted to PNG when possible).
@@ -669,6 +738,126 @@ def log_to(stream):
     return log
 
 
+def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=False):
+    """The `mkosi vm` command line for a live/medium run, plus its QEMU extras.
+
+    Split out of cmd_live so it can be inspected without starting anything.
+    """
+    if args.runtime != "qemu":
+        # The TPM, varstore and networking wiring below is all QEMU-specific;
+        # another VMM just gets the plain mkosi invocation, as before.
+        return ["mkosi", f"--output-directory={output}", f"--vmm={args.runtime}",
+                "--runtime-size=90G", f"--runtime-tree={shared}:/run/host/shared",
+                "--profile=build"] + args.mkosi_args + ["vm"]
+    vmm = [
+        # The guest-agent socket the old run-image always wired up. qemu-ga is
+        # not actually running in the guest, but the socket is harmless and
+        # keeps the option available.
+        "-chardev", "socket,path=/tmp/qemu-guest-agent.sock,server=on,wait=off,id=qga0",
+        "-device", "virtio-serial",
+        "-device", "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0",
+    ]
+    if args.device:
+        # A second disk as an ordinary internal drive (no bootindex, so the
+        # medium stays the boot device). Which role it plays is a boot-menu
+        # choice: "Live System (Recovery)" to mount/repair it, or "Installer"
+        # to replicate the image onto it.
+        vmm += [
+            "-drive", f"if=none,id=device,file={args.device},format=raw",
+            "-device", "virtio-blk-pci,drive=device",
+        ]
+    if args.boot_device:
+        # Attach an already-installed target and boot IT, not the medium: mkosi
+        # gives the medium bootindex=1, so bootindex=0 wins. For an already
+        # provisioned target's LATER boots only — the medium stays attached, so
+        # a FIRST boot would have systemd-repart provision the wrong disk. Use
+        # `vm boot`, which attaches the target alone, for that.
+        vmm += [
+            "-drive", f"if=none,id=bootdevice,file={args.boot_device},format=raw",
+            "-device", "virtio-blk-pci,drive=bootdevice,bootindex=0",
+        ]
+    if args.gui:
+        vmm += ["-display", "gtk,gl=on,zoom-to-fit=off,grab-on-hover=on",
+                "-device", "virtio-tablet"]
+    vmm += [
+        "-chardev", f"socket,id=chrtpm,path={tpm_sock}",
+        "-tpmdev", "emulator,id=tpm0,chardev=chrtpm",
+        "-device", "tpm-tis,tpmdev=tpm0",
+    ]
+    if passt:
+        # mkosi defaults to QEMU SLIRP, whose single-threaded userspace TCP
+        # stack collapses under parallel HTTPS — pacman's ParallelDownloads=5
+        # stalls an in-guest rebuild to ~0 B/s. passt is the modern user-mode
+        # replacement: same rootless, WiFi-friendly model (no bridge/tap, so it
+        # works over the host's wlan0) but properly multi-threaded.
+        # --runtime-network=none stops mkosi adding its own SLIRP nic.
+        vmm += ["-netdev", "passt,id=net0",
+                "-device", "virtio-net-pci,netdev=net0"]
+
+    # Rust/meson AUR rebuilds in the guest scale almost linearly with vCPUs, so
+    # default generously while leaving the host a couple of cores.
+    nproc = os.cpu_count() or 4
+    cpus = os.environ.get("ARCH_ANSIBLE_VM_CPUS") or (nproc - 2 if nproc > 4 else nproc)
+    ram = os.environ.get("ARCH_ANSIBLE_VM_RAM", "8G")
+
+    cmd = [
+        "mkosi",
+        f"--output-directory={output}",
+        f"--vmm={args.runtime}",
+        f"--cpus={cpus}",
+        f"--ram={ram}",
+        "--vsock=yes",
+        "--vsock-cid=3",
+        # mkosi's --tpm state is ephemeral, so a TPM2-bound LUKS volume enrolled
+        # on one boot can't be unsealed on the next. We run our own swtpm.
+        "--tpm=no",
+        "--runtime-size=90G",
+        f"--runtime-tree={shared}:/run/host/shared",
+        # Pre-enrolled varstore: mkosi's finalize_firmware_variables() copies
+        # --firmware-variables to a throwaway temp file, so the image's runtime
+        # auto-enroll would be discarded on exit and every launch would re-enter
+        # setup mode, shifting PCR 7 out from under the TPM2-bound LUKS keyslot.
+        "--firmware=uefi-secure-boot",
+        f"--firmware-variables={varstore}",
+        "--profile=build",
+    ]
+    if args.gui:
+        cmd.append("--console=gui")
+    cmd += args.mkosi_args + ["vm", "--"] + vmm
+    return cmd
+
+
+def cmd_live(args):
+    log = log_to(sys.stdout)
+    output = output_dir()
+    output.mkdir(parents=True, exist_ok=True)
+    # mkosi maps the host user to root in the guest, so the runtime-tree share
+    # is only writable by root there. World-writable on the host lets the
+    # unprivileged guest user write back through virtiofs too.
+    shared = REPO / ".qemu-host-shared"
+    shared.mkdir(parents=True, exist_ok=True)
+    shared.chmod(0o777)
+
+    pidfile = None
+    if args.runtime == "qemu":
+        varstore = make_varstore(output / "ovmf_vars.fd", secureboot_cert(recover=True))
+        tpm_sock, pidfile = start_swtpm(output / "tpm")
+        cmd = build_live_cmd(args, output, shared, varstore, tpm_sock,
+                             passt=bool(shutil.which("passt")))
+    else:
+        cmd = build_live_cmd(args, output, shared)
+    if args.device:
+        log(f"==> Attached {args.device} as /dev/vdb. At the boot menu, pick "
+            "'Live System (Recovery)' to repair it, or 'Installer' to install onto it.")
+    if args.boot_device:
+        log(f"==> Booting {args.boot_device} (bootindex=0), not the medium.")
+    try:
+        return subprocess.run(cmd, cwd=REPO).returncode
+    finally:
+        if pidfile:
+            stop_swtpm(pidfile)
+
+
 def cmd_install(args):
     log = log_to(sys.stdout)
     medium = Path(args.medium) if args.medium else newest_medium()
@@ -687,7 +876,7 @@ def cmd_install(args):
         sys.exit(f"error: {target} does not exist (drop --no-fresh to create it)")
 
     cert = secureboot_cert()
-    run_dir = output_dir() / "vm-test"
+    run_dir = output_dir() / "vm"
     varstore = make_varstore(run_dir / "installer-vars.fd", cert)
 
     log(f"==> medium: {medium.name}")
@@ -752,7 +941,7 @@ def cmd_install(args):
         vm.wait(timeout=120)
 
     log(f"\n==> CHECKPOINT A reached: {target} installed.")
-    log(f"    Next: bin/vm-test boot {target}")
+    log(f"    Next: bin/vm boot {target}")
     return 0
 
 
@@ -776,8 +965,8 @@ def cmd_boot(args):
         sys.exit(f"error: {disk} is not a file")
 
     cert = secureboot_cert()
-    run_dir = output_dir() / "vm-test"
-    # Varstore and TPM live next to the disk (matching bin/boot-disk), so the
+    run_dir = output_dir() / "vm"
+    # Varstore and TPM live next to the disk (matching bin/vm boot --gui), so the
     # LUKS keyslot sealed on first boot can be unsealed on every later boot.
     varstore = make_varstore(Path(f"{disk}.ovmf_vars.fd"), cert)
 
@@ -807,7 +996,7 @@ def cmd_boot(args):
         # created and the boot hangs on /dev/disk/by-designator/root.
         drives=[{"file": disk, "bootindex": 0}],
         varstore=varstore,
-        tpm_state=Path(f"{disk}.tpm"),
+        tpm_state=Path(args.tpm_state) if args.tpm_state else Path(f"{disk}.tpm"),
         run_dir=run_dir,
         log=log,
         memory=args.memory,
@@ -815,7 +1004,16 @@ def cmd_boot(args):
         credentials=creds,
         echo=args.verbose,
         share=args.share,
+        gui=args.gui,
     ) as vm:
+        if args.gui:
+            # Nothing is scripted here: the window is the interface. Wait for
+            # the user to shut the guest down (or close the window).
+            log("==> GUI run: pick the entry yourself; close the window or run "
+                "`systemctl poweroff` in the guest when done.")
+            vm.proc.wait()
+            return 0
+
         if args.entry:
             select_boot_entry(vm, args.entry)
 
@@ -870,7 +1068,8 @@ def cmd_boot(args):
 
 def main():
     p = argparse.ArgumentParser(
-        description="Headless, scripted QEMU validation runs.",
+        prog="vm",
+        description="Run this project's VMs: live medium, install, or boot.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
@@ -879,6 +1078,22 @@ def main():
     p.add_argument("-v", "--verbose", action="store_true",
                    help="mirror the raw serial stream to stdout as it arrives")
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    lv = sub.add_parser("live", help="boot the built medium (installer / live system)")
+    lv.add_argument("--device", metavar="DISK",
+                    help="attach DISK as a second disk (/dev/vdb) to install onto "
+                         "or repair; the medium still boots")
+    lv.add_argument("--boot-device", metavar="DISK",
+                    help="attach DISK and boot IT instead of the medium. For an "
+                         "already-provisioned target's LATER boots only — NOT its "
+                         "first boot, where the still-attached medium makes repart "
+                         "provision the wrong disk. Use `vm boot` for that.")
+    lv.add_argument("--runtime", default="qemu", help="VMM passed to mkosi --vmm")
+    lv.add_argument("--gui", action="store_true",
+                    help="open a GTK window (adds --console=gui)")
+    lv.add_argument("mkosi_args", nargs=argparse.REMAINDER,
+                    help="remaining options are forwarded to mkosi")
+    lv.set_defaults(func=cmd_live)
 
     i = sub.add_parser("install", help="install the built medium onto TARGET")
     i.add_argument("target", help="target disk image (recreated unless --no-fresh)")
@@ -912,6 +1127,14 @@ def main():
     b.add_argument("--run-timeout", type=int, default=1800,
                    help="per---run-command timeout (default 1800s; an A/B "
                         "update copies ~8G)")
+    b.add_argument("--tpm-state", metavar="DIR",
+                   help="persistent swtpm state dir (default DISK.tpm). The "
+                        "disk's first boot seals LUKS to this TPM and later "
+                        "boots unseal against it, so pointing two VMs at one "
+                        "dir lets them share a TPM.")
+    b.add_argument("--gui", action="store_true",
+                   help="open a GTK window and hand the VM to you instead of "
+                        "running the scripted health checks")
     b.add_argument("--share", metavar="DIR",
                    help=f"export DIR to the guest over virtiofs, mounted at "
                         f"{SHARE_MNT}. Use it to hand the guest build artifacts "
@@ -920,9 +1143,17 @@ def main():
 
     args = p.parse_args()
     os.chdir(REPO)
-    for tool in ("qemu-system-x86_64", "swtpm", "virt-fw-vars"):
+    needed = ["swtpm", "virt-fw-vars"]
+    # `live` drives QEMU through mkosi; the others exec it directly.
+    needed.append("mkosi" if args.cmd == "live" else "qemu-system-x86_64")
+    for tool in needed:
         if not shutil.which(tool):
             sys.exit(f"error: {tool} not found in PATH")
+    if getattr(args, "gui", False) and args.cmd == "boot":
+        for flag in ("entry", "run", "journal"):
+            if getattr(args, flag, None):
+                sys.exit(f"error: --{flag} drives the guest over serial and can't "
+                         "be combined with --gui")
     try:
         return args.func(args)
     except (TimeoutError, EOFError, RuntimeError) as e:

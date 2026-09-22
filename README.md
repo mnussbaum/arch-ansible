@@ -213,7 +213,7 @@ plus an ESP, and provisions its encrypted root/home on first boot via
 `systemd-repart` (the model from [Fitting Everything
 Together](https://0pointer.net/blog/fitting-everything-together.html)). The
 different roles are just boot-menu entries (UKI profiles in `mkosi.uki-profiles/`),
-not separate builds. `bin/build-image` builds it; `bin/run-image` and
+not separate builds. `bin/build-image` builds it; `bin/vm live` and
 `bin/burn-image` then act on the built image and set its hostname at boot (no
 rebuild per machine).
 
@@ -249,13 +249,13 @@ there are no per-machine inputs or per-host repo files.
 
 ### QEMU workflows
 
-Build the image, then boot it in a VM with `bin/run-image`.
+Build the image, then boot it in a VM with `bin/vm live`.
 
 Run the image (emulates an installed machine — boots the default profile):
 
 ```
 bin/build-image
-bin/run-image
+bin/vm live
 ```
 
 Attach a second disk with `--device=<disk.raw>` and pick the role at the boot
@@ -266,7 +266,7 @@ image onto the disk via `systemd-sysinstall` (the install profile boots straight
 into `systemd-sysinstall.service`).
 
 ```
-bin/run-image --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
+bin/vm live --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
 ```
 
 ## Maintenance

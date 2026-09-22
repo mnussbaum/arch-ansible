@@ -238,7 +238,7 @@ profile. Override with `hostnamectl hostname <name>`.
 > **Not yet implemented:** the `firstboot.service` / `luks-enroll.service` flow
 > the preset enables (FIDO2 + printed-recovery-key enrollment, bootstrap-slot
 > wipe). TPM2/PCR 7 sealing across the Secure Boot enrollment boot has also not
-> been verified against real firmware — see `bootstrapping-todo.md`. (`bin/run-image`
+> been verified against real firmware — see `bootstrapping-todo.md`. (`bin/vm live`
 > works around the PCR 7 instability in QEMU by persisting the OVMF varstore and
 > the emulated TPM across runs.)
 
@@ -308,7 +308,7 @@ private mount namespace (so systemd treats the target as the system disk) and ru
 own ESP. Nothing is dissected, so the TPM2-sealed LUKS root/home/swap are never
 unlocked or touched (user data survives) — only the inactive `usr` slot and the
 ESP are written. The target disk is the second disk in the guest under
-`bin/run-image --device=` (`/dev/vdb`), or the physical disk node otherwise.
+`bin/vm live --device=` (`/dev/vdb`), or the physical disk node otherwise.
 (Mechanism validated read-only; end-to-end write-test pending.)
 
 ```bash
@@ -330,7 +330,7 @@ self-install, so it behaves like a rescue medium rather than provisioning itself
 The TPM2 keyslot will not open the target machine's disk (different boot session →
 different PCR 7 value), so use a YubiKey or the recovery key.
 
-In QEMU, `bin/run-image --device=<disk.raw>` emulates this: it boots the image as
+In QEMU, `bin/vm live --device=<disk.raw>` emulates this: it boots the image as
 the medium and attaches the disk as `/dev/vdb`; pick **Live System (Recovery)** at
 the menu to repair it (or **Installer** to install onto it).
 
@@ -406,7 +406,7 @@ active, either:
 
 ## YubiKey relay in QEMU
 
-When running an image in QEMU with `bin/run-image`, the host's pcscd socket is
+When running an image in QEMU with `bin/vm live`, the host's pcscd socket is
 forwarded into the VM over vsock so that GPG agent and SSH authentication inside
 the VM can reach the YubiKey without USB passthrough. The relay uses `socat` and
 requires the `vhost_vsock` kernel module on the host:

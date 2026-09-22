@@ -80,7 +80,7 @@ root                btrfs       /           ~auto   (Encrypt=tpm2, FactoryReset=
 home                btrfs       /home       ~auto   (NOT encrypted, FactoryReset=yes)
 ```
 
-VM testing: `bin/run-image` passes `--runtime-size=90G` to mkosi so first-boot
+VM testing: `bin/vm live` passes `--runtime-size=90G` to mkosi so first-boot
 repart has space (matches the pre-refactor partition allocation).
 
 ---
@@ -293,7 +293,7 @@ Open questions:
   no persistent data — a `FactoryReset`/re-key on mismatch is acceptable for
   swap).
 - **VM testing** is unblocked separately by persistent swtpm in
-  `bin/run-image` (so the emulated TPM survives reboots); the recovery factor
+  `bin/vm live` (so the emulated TPM survives reboots); the recovery factor
   is about real-hardware resilience.
 
 ---
@@ -484,7 +484,7 @@ auto-rollback; now removed (see scenario 4).**
    dissect output.
 8. **pacman keyring runtime service.** When we remove firstboot Ansible (B),
    the pacman-key init has to move to a stock systemd service.
-9. **VM disk size.** `bin/run-image` grows the disk to 90G via
+9. **VM disk size.** `bin/vm live` grows the disk to 90G via
    `--runtime-size=90G`. For real hardware, `bin/burn-image` writes the
    compact image to a real disk and first-boot repart fills the available
    space.

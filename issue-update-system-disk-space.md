@@ -126,7 +126,7 @@ Files changed:
   guarded with `:?`.
 - `bin/build-image` — sources the helper, ensures the base, derives `output_dir`,
   passes `--environment=ARCH_ANSIBLE_CACHE=…`, relocated its `mkdir -p` set.
-- `bin/update-system`, `bin/run-image`, `bin/burn-image`, `bin/rerun-postinst`,
+- `bin/update-system`, `bin/vm live`, `bin/burn-image`, `bin/rerun-postinst`,
   `bin/_credstore_common.sh` — source the helper; output/cache/pacman-db/credstore
   paths derived from the base.
 - `mkosi.conf.d/10-sources-{device,host}.conf` — pacman-db-sync / yay-bin paths →
@@ -189,6 +189,6 @@ while root (which carries `/var/cache` build scratch) is starved at 22G.
 This is a partition-geometry change → it only takes effect on a **fresh install**
 (the running VM's partitions are already sized and the disk is fully allocated, so
 repart can't grow root in place). Verification path: rebuild image on host →
-delete the VM raw → redeploy via `bin/run-image` → re-run `bin/update-system` in
+delete the VM raw → redeploy via `bin/vm live` → re-run `bin/update-system` in
 the new VM; root should now be ~48G and the build complete. (User is handling the
 host rebuild + redeploy.)

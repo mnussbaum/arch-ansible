@@ -13,7 +13,7 @@ mkosi_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
-      echo "Build the image. run-image/burn-image set the hostname at boot." >&2
+      echo "Build the image. vm live/burn-image set the hostname at boot." >&2
       echo "Usage: $0 [--caching force|off|available] [--keep N|all] [--skip-postinst] [--ansible-tags TAGS] [mkosi options...]" >&2
       echo "  --caching        Package cache policy for the package-install AND postinst" >&2
       echo "                   phases (default: available):" >&2

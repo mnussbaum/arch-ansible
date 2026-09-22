@@ -36,7 +36,7 @@ direction — where sd-boot picks the new slot itself — is now proven.
 
 Run with two consecutive builds, V1 `20260918140158` → V2 `20260921222244`:
 
-1. `vm-test install` of V1: pure Type #2 (only the V1 UKI in `EFI/Linux`,
+1. `vm install` of V1: pure Type #2 (only the V1 UKI in `EFI/Linux`,
    `loader/entries` = 0, usr-B slots `_empty` at 16G). 72s.
 2. V1 first boot: `is-system-running` = **running**, 0 failed units, `/usr`
    erofs on dm-verity, root unsealed by the TPM2 token with no passphrase.
@@ -88,10 +88,10 @@ rate the 16 GiB slot is maybe a year out, and changing it needs a reinstall.
 
 ## What changed 2026-08-19
 
-### New: `bin/vm-test` — headless, scripted VM validation
+### New: `bin/vm` — headless, scripted VM validation
 
 The whole validation loop used to need a human at a QEMU GTK window. It doesn't
-any more. `bin/vm-test` drives the same VMs with `-display none`, using two
+any more. `bin/vm` drives the same VMs with `-display none`, using two
 properties of the image:
 
 * OVMF mirrors the firmware console to the serial port, so sd-boot's menu is
@@ -100,12 +100,12 @@ properties of the image:
   root shell lands on a unix socket and commands round-trip over it.
 
 ```bash
-bin/vm-test install ~/.cache/mkosi/test-target.raw   # Q1: fresh install
-bin/vm-test boot    ~/.cache/mkosi/test-target.raw   # Q2: boot + health checks
-bin/vm-test boot DISK --run 'CMD'                    # run CMD in the booted system
-bin/vm-test boot DISK --share DIR                    # virtiofs DIR at /mnt/vmtest
-bin/vm-test boot DISK --journal                      # + journal warnings
-bin/vm-test install DISK --medium IMAGE.raw          # install a specific version
+bin/vm install ~/.cache/mkosi/test-target.raw   # Q1: fresh install
+bin/vm boot    ~/.cache/mkosi/test-target.raw   # Q2: boot + health checks
+bin/vm boot DISK --run 'CMD'                    # run CMD in the booted system
+bin/vm boot DISK --share DIR                    # virtiofs DIR at /mnt/vmtest
+bin/vm boot DISK --journal                      # + journal warnings
+bin/vm install DISK --medium IMAGE.raw          # install a specific version
 ```
 
 Both exit non-zero if the run misses its checkpoint, so they script. Notes:
@@ -132,7 +132,7 @@ Both exit non-zero if the run misses its checkpoint, so they script. Notes:
 
 Added `ConditionCredential=fstab.extra`. `ConditionVirtualization=vm` alone is
 true in *every* VM, but the virtiofs tag only exists when the VM was launched by
-`mkosi vm` with a runtime tree. Under `bin/boot-disk` / `bin/vm-test` the mount
+`mkosi vm` with a runtime tree. Under `bin/vm boot --gui` / `bin/vm` the mount
 failed, and that one failed unit pinned `is-system-running` at `degraded` for the
 entire boot — which is precisely the signal Q2 depends on. mkosi writes an
 `fstab.extra` system credential naming that tag and nothing else does, so the
@@ -233,7 +233,7 @@ at any disk size.
 | `21-usr-a-verity.conf` | **unbounded** → 5.9G | `SizeMin=SizeMax=512M` |
 | `31-usr-b-verity.conf` | 400M | `512M` (matches A) |
 | `10-esp.conf` | 2G min, **unbounded** → 5.9G | `SizeMin=SizeMax=2G` |
-| `bin/vm-test` | target default 60G | 100G (fixed parts total ~49G) |
+| `bin/vm` | target default 60G | 100G (fixed parts total ~49G) |
 
 `CopyBlocks=auto` stays on usr-a for *content*; it just no longer decides size.
 `mkosi.repart/` is untouched — the medium is sized by mkosi with `Minimize=yes`,
@@ -255,7 +255,7 @@ Successfully installed '…efi' as '/boot/EFI/Linux/image_20260819002736_x86-64+
 
 * both UKIs present in `/boot/EFI/Linux/`, new one with `+3-0` (TriesLeft=3);
 * **`loader/entries` = 0** — no Type #1 leftovers;
-* booting the updated slot (`vm-test boot --entry 20260819002736`) comes up on
+* booting the updated slot (`vm boot --entry 20260819002736`) comes up on
   `IMAGE_VERSION=20260819002736`, `/usr` = `/dev/mapper/usr` erofs,
   `is-system-running` = **`running`**, zero failed units;
 * after that successful boot the UKI is renamed to
@@ -347,11 +347,11 @@ variable — and refusing to prune the version it just built.
 
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
-1. **First-boot testing needs the target attached ALONE** — `bin/vm-test boot` or
-   `bin/boot-disk`, never `run-image --boot-device`. The medium is also a
+1. **First-boot testing needs the target attached ALONE** — `bin/vm boot` or
+   `bin/vm boot`, never `vm live --boot-device`. The medium is also a
    mkosi-layout disk, so first-boot repart provisions the WRONG one and the boot
    hangs on `/dev/disk/by-designator/root`.
-2. **`truncate -s 60G` on an existing 60G file is a NO-OP.** `vm-test install`
+2. **`truncate -s 60G` on an existing 60G file is a NO-OP.** `vm install`
    now does the `rm -f` for you.
 3. **The post-install auto-reboot into the target CANNOT be validated in QEMU.**
    `install-system` writes an efibootmgr entry + BootNext, but OVMF re-derives
@@ -360,11 +360,11 @@ variable — and refusing to prune the version it just built.
 4. **Console split:** the cmdline ends `console=ttyS0 console=tty0`, so last wins
    and `/dev/console` = tty0. Kernel messages go to *both*, but **userspace
    prompts go only to tty0** — invisible on serial. A headless boot that hits one
-   just goes silent. `vm-test`'s screendump is how you see it.
+   just goes silent. `bin/vm`'s screendump is how you see it.
 5. **First boot asks TWO questions on tty0**, not one: `systemd-firstboot`
    `--prompt-hostname` *and* `--prompt-root-password` (see
    `mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf`). Both need
-   credentials in an unattended boot; `vm-test boot` supplies both.
+   credentials in an unattended boot; `vm boot` supplies both.
 6. **Host kernel/module mismatch breaks mkosi.** After a host `pacman -Syu` that
    upgrades `linux`, the running kernel's modules are gone until you reboot.
    mkosi's sandbox then fails to mount overlayfs with `OSError: [Errno 19] No
@@ -383,16 +383,28 @@ variable — and refusing to prune the version it just built.
    **`/etc/os-release` does not exist** in this image — read `/usr/lib/os-release`
    (e.g. `grep ^IMAGE_VERSION= /usr/lib/os-release`) to identify the booted slot.
 10. **Do NOT press Ctrl+Alt+F<n> in the QEMU GTK window** — without the keyboard
-   grab it hits the HOST compositor. Moot now that `vm-test` is headless.
+   grab it hits the HOST compositor. `bin/vm --gui` sets `grab-on-hover=on`,
+   and Ctrl+Alt+G toggles the grab by hand; the default runs are headless anyway.
 
 ## VM interaction channels
 
-- `bin/vm-test` — headless serial + HMP monitor + screendump. Preferred.
-- `run-image` mounts host `.qemu-host-shared/` ↔ guest `/mnt/shared` (virtiofs).
-  Note the guest path is `/mnt/shared`, not `/run/host/shared`.
-- `boot-disk` — GUI, `--autologin`, serial captured to `$disk.serial.log`.
+`bin/vm` is the single entry point (2026-09-21); `bin/run-image` and
+`bin/boot-disk` are gone, folded in as `vm live` and `vm boot --gui`.
+
+- `bin/vm install TARGET` / `bin/vm boot DISK` — headless serial + HMP monitor +
+  screendump, scripted health checks, non-zero exit on a missed checkpoint.
+- `bin/vm boot DISK --gui` — GTK window instead of the scripted checks; serial
+  captured to the run dir's `<disk>-serial.log`. Autologin is always on (test
+  credential), and `--tpm-state DIR` shares a TPM between VMs.
+- `bin/vm live` — boots the medium through `mkosi vm`, and mounts host
+  `.qemu-host-shared/` ↔ guest `/mnt/shared` (virtiofs). Note the guest path is
+  `/mnt/shared`, not `/run/host/shared`. `--device DISK` attaches a second disk
+  to install onto or repair; `--boot-device DISK` boots that disk instead (later
+  boots only — see gotcha #1).
+- `--share DIR` (on `boot`) is a separate virtiofs mount at `/mnt/vmtest`, tag
+  `vmtest-share`, deliberately NOT mkosi's `/run/host/shared`.
 - The qemu-guest-agent socket exists but qemu-ga is NOT running in the guest.
-- QEMU's unix monitor accepts **one** client; `vm-test` holds it while running.
+- QEMU's unix monitor accepts **one** client; `bin/vm` holds it while running.
 
 ## Git state
 
@@ -411,12 +423,12 @@ files.
 ## Key files
 
 - `bin/install-system` — the installer (`--guided` menu + one-shot `--yes DISK`).
-- `bin/vm-test` — headless validation harness (this session).
+- `bin/vm` — headless validation harness (this session).
 - `mkosi.uki-profiles/25-install.conf` — Installer UKI profile cmdline.
 - `mkosi.extra/usr/lib/systemd/system/arch-install.service` — auto-runs the guided
   installer on tty1, gated on `arch.install`.
 - `mkosi.extra/usr/lib/repart.d/*` — baked device layout; `10-esp.conf` has
   `CopyFiles=/boot:/`; root/swap `Encrypt=tpm2`; root/home/swap created at the
   target's FIRST BOOT, not at install.
-- `bin/build-image`, `bin/run-image`, `bin/boot-disk` — build/test harness.
+- `bin/build-image`, `bin/vm live`, `bin/vm boot --gui` — build/test harness.
 - `bootstrapping-todo.md` — the E2E checklist; Type #2 item ~line 328.
