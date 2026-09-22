@@ -101,10 +101,10 @@ properties of the image:
 
 ```bash
 bin/vm install ~/.cache/mkosi/test-target.raw   # Q1: fresh install
-bin/vm boot    ~/.cache/mkosi/test-target.raw   # Q2: boot + health checks
-bin/vm boot DISK --run 'CMD'                    # run CMD in the booted system
-bin/vm boot DISK --share DIR                    # virtiofs DIR at /mnt/vmtest
-bin/vm boot DISK --journal                      # + journal warnings
+bin/vm run    ~/.cache/mkosi/test-target.raw   # Q2: boot + health checks
+bin/vm run DISK --run 'CMD'                    # run CMD in the booted system
+bin/vm run DISK --share DIR                    # virtiofs DIR at /mnt/vmtest
+bin/vm run DISK --journal                      # + journal warnings
 bin/vm install DISK --medium IMAGE.raw          # install a specific version
 ```
 
@@ -132,7 +132,7 @@ Both exit non-zero if the run misses its checkpoint, so they script. Notes:
 
 Added `ConditionCredential=fstab.extra`. `ConditionVirtualization=vm` alone is
 true in *every* VM, but the virtiofs tag only exists when the VM was launched by
-`mkosi vm` with a runtime tree. Under `bin/vm boot` (either display mode) the mount
+`mkosi vm` with a runtime tree. Under `bin/vm run` (either display mode) the mount
 failed, and that one failed unit pinned `is-system-running` at `degraded` for the
 entire boot — which is precisely the signal Q2 depends on. mkosi writes an
 `fstab.extra` system credential naming that tag and nothing else does, so the
@@ -255,7 +255,7 @@ Successfully installed '…efi' as '/boot/EFI/Linux/image_20260819002736_x86-64+
 
 * both UKIs present in `/boot/EFI/Linux/`, new one with `+3-0` (TriesLeft=3);
 * **`loader/entries` = 0** — no Type #1 leftovers;
-* booting the updated slot (`vm boot --entry 20260819002736`) comes up on
+* booting the updated slot (`vm run DISK --entry 20260819002736`) comes up on
   `IMAGE_VERSION=20260819002736`, `/usr` = `/dev/mapper/usr` erofs,
   `is-system-running` = **`running`**, zero failed units;
 * after that successful boot the UKI is renamed to
@@ -347,8 +347,8 @@ variable — and refusing to prune the version it just built.
 
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
-1. **First-boot testing needs the target attached ALONE** — `bin/vm boot`
-   (headless or `--gui`), never `vm live --boot-device`. The medium is also a
+1. **First-boot testing needs the target attached ALONE** — `bin/vm run`
+   (headless or `--gui`), never `vm run DISK`. The medium is also a
    mkosi-layout disk, so first-boot repart provisions the WRONG one and the boot
    hangs on `/dev/disk/by-designator/root`.
 2. **`truncate -s 60G` on an existing 60G file is a NO-OP.** `vm install`
@@ -364,7 +364,7 @@ variable — and refusing to prune the version it just built.
 5. **First boot asks TWO questions on tty0**, not one: `systemd-firstboot`
    `--prompt-hostname` *and* `--prompt-root-password` (see
    `mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf`). Both need
-   credentials in an unattended boot; `vm boot` supplies both.
+   credentials in an unattended boot; `vm run DISK` supplies both.
 6. **Host kernel/module mismatch breaks mkosi.** After a host `pacman -Syu` that
    upgrades `linux`, the running kernel's modules are gone until you reboot.
    mkosi's sandbox then fails to mount overlayfs with `OSError: [Errno 19] No
@@ -388,21 +388,30 @@ variable — and refusing to prune the version it just built.
 
 ## VM interaction channels
 
-`bin/vm` is the single entry point (2026-09-21); `bin/run-image` and
-`bin/boot-disk` are gone, folded in as `vm live` and `vm boot --gui`.
+`bin/vm` is the single entry point. `bin/run-image` and `bin/boot-disk` are gone
+(2026-09-21), and `vm live`/`vm boot` became one `vm run [DISK]` (2026-09-22):
+what you boot is the argument, not the command.
 
-- `bin/vm install TARGET` / `bin/vm boot DISK` — headless serial + HMP monitor +
-  screendump, scripted health checks, non-zero exit on a missed checkpoint.
-- `bin/vm boot DISK --gui` — GTK window instead of the scripted checks; serial
-  captured to the run dir's `<disk>-serial.log`. Autologin is always on (test
-  credential), and `--tpm-state DIR` shares a TPM between VMs.
-- `bin/vm live` — boots the medium through `mkosi vm`, and mounts host
+- `bin/vm run DISK` / `bin/vm install TARGET` — headless serial + HMP monitor +
+  screendump, scripted health checks, non-zero exit on a missed checkpoint. The
+  journal dump is automatic when a run does NOT reach `running`.
+- `bin/vm run DISK --gui` — a window instead of the scripted checks; serial
+  captured to the run dir's `<disk>-serial.log`. Autologin is always on, and the
+  first-boot hostname/root-password answers are fixed test credentials
+  (`arch-vmtest` / `root`) rather than flags.
+- `bin/vm run` (no disk) — boots the medium through `mkosi vm`, and mounts host
   `.qemu-host-shared/` ↔ guest `/mnt/shared` (virtiofs). Note the guest path is
   `/mnt/shared`, not `/run/host/shared`. `--device DISK` attaches a second disk
-  to install onto or repair; `--boot-device DISK` boots that disk instead (later
-  boots only — see gotcha #1).
-- `--share DIR` (on `boot`) is a separate virtiofs mount at `/mnt/vmtest`, tag
+  to install onto or repair; `--ephemeral` boots a throwaway snapshot.
+- `--share DIR` (disk runs) is a separate virtiofs mount at `/mnt/vmtest`, tag
   `vmtest-share`, deliberately NOT mkosi's `/run/host/shared`.
+- Flags that no longer exist, deliberately: `--boot-device` (`vm run DISK` is the
+  safe version — see gotcha #1), `--runtime`, `--tpm-state`, `--journal`,
+  `--hostname`, `--root-password`, and `ARCH_ANSIBLE_VM_CPUS`/`_RAM`
+  (`--memory`/`--cpus` cover both modes now).
+- Sizing: one default for both modes, host CPUs − 2 and 8G. Measured cost on a
+  scripted disk boot is ~6s versus 4 CPUs (18s → 24s); an earlier 114s outlier
+  was host contention, not the defaults.
 - The qemu-guest-agent socket exists but qemu-ga is NOT running in the guest.
 - QEMU's unix monitor accepts **one** client; `bin/vm` holds it while running.
 

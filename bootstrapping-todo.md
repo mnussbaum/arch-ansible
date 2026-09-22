@@ -7,7 +7,7 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 ## Build chain
 
 - **Podman container** (`Containerfile`) — exists but untested end-to-end;
-  `bin/build-image`, `bin/vm live`, and `bin/burn-image` have not been run inside it
+  `bin/build-image`, `bin/vm run`, and `bin/burn-image` have not been run inside it
 
 ## Recovery
 
@@ -41,7 +41,7 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
   (`console=ttyS0 console=tty0`, last wins) — so a headless first boot BLOCKS
   FOREVER with nothing on serial to explain why. Supply
   `firstboot.hostname` + `passwd.plaintext-password.root` as credentials to skip
-  them (`bin/vm boot` passes both over SMBIOS). Skipping the hostname prompt
+  them (`bin/vm run` passes both over SMBIOS). Skipping the hostname prompt
   leaves `/etc/hostname` absent and keeps the `DEFAULT_HOSTNAME`. Override
   post-install with `hostnamectl hostname`.
 - Open issue: TPM2 LUKS enrollment happens at repart time (`Encrypt=tpm2`). Under
@@ -70,7 +70,7 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
   (E2E step 5). Watch for the partition-not-whole-disk gotcha and the live-build
   signing-key handling. Note it needs host root (`losetup`, `unshare`, and mounting
   the target ESP), so it can't be driven unattended where sudo wants a password —
-  `bin/vm boot --share` sidesteps that by running sysupdate ON the target
+  `bin/vm run --share` sidesteps that by running sysupdate ON the target
   instead (see "Driving the tests headlessly").
 - **`ProtectVersion=%A` — resolved (correct as-is).** `%A` = `IMAGE_VERSION`,
   which the image sets (verified `IMAGE_VERSION="…"` in the UKI's `.osrel`), so on
@@ -89,7 +89,7 @@ host installed in step 4 is the target updated in step 5).
 
 **Steps 4 and 5 are now fully automated and need no human at a VM window** — see
 "Driving the tests headlessly" immediately below. Steps 2, 3 and anything needing an
-in-guest rebuild still go through `bin/vm live` with a YubiKey in the guest for
+in-guest rebuild still go through `bin/vm run` with a YubiKey in the guest for
 signing/unlock.
 
 ### Driving the tests headlessly (`bin/vm`)
@@ -111,17 +111,17 @@ bin/vm install ~/.cache/mkosi/test-target.raw
 bin/vm install DISK --medium IMAGE.raw     # install a specific version
 
 # Q2 — boot the installed target ALONE + health checks
-bin/vm boot ~/.cache/mkosi/test-target.raw
-bin/vm boot DISK --journal                 # + journal warnings
+bin/vm run ~/.cache/mkosi/test-target.raw
+bin/vm run DISK --journal                 # + journal warnings
 
 # Q3 — A/B update, driven ON the target (no host privilege needed)
-bin/vm boot DISK --share ~/.cache/mkosi/vm-test-src \
+bin/vm run DISK --share ~/.cache/mkosi/vm-test-src \
   --run '/usr/lib/systemd/systemd-sysupdate --transfer-source=/mnt/vmtest update <VERSION>'
-bin/vm boot DISK --entry '<VERSION>'       # boot a specific sd-boot entry
+bin/vm run DISK --entry '<VERSION>'       # boot a specific sd-boot entry
 ```
 
 `install` and `boot` exit non-zero if the run misses its checkpoint, so they
-script. (`bin/vm live` is the third subcommand: the medium in a window or on the
+script. (`bin/vm run` is the third subcommand: the medium in a window or on the
 terminal, for when a human is driving.)
 Things worth knowing:
 
@@ -157,11 +157,11 @@ reachable YubiKey, or the in-guest build falls back to the network.
    ~/.cache/mkosi-secureboot/mkosi.crt <uki>.efi` → "Signature verification OK";
        verity-sig `certificateFingerprint` == the `CN=arch-ansible SecureBoot` cert
        (`B2:DA:95…97:83`) and its `rootHash` matches the `usr` partition's hash. Same
-       cert is pre-enrolled into the OVMF varstore by `bin/vm live`, so the firmware
+       cert is pre-enrolled into the OVMF varstore by `bin/vm run`, so the firmware
        trusts the chain at boot. Re-run + re-verify after any image change.
 2. [x] **Boot the image** — normal (default) boot:
    ```
-   bin/vm live --gui
+   bin/vm run --gui
    ```
    First boot runs repart (device A/B `usr` + root/home/swap layout), TPM2-seals
    the LUKS root/swap (swtpm state persists next to the image, so no reseal on
@@ -230,7 +230,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
        attach it:
    ```
    truncate -s 90G ~/.cache/mkosi/test-target.raw
-   bin/vm live --gui \
+   bin/vm run --gui \
      --device="$HOME/.cache/mkosi/test-target.raw"
    ```
    At the boot menu pick **Installer** (`mkosi.uki-profiles/25-install.conf` →
@@ -302,11 +302,13 @@ reachable YubiKey, or the in-guest build falls back to the network.
    (+ locale/keymap) staged on the ESP (TPM-encrypted, applied at target first
    boot). root/home/swap/usr-B absent by design (target first-boot repart).
    FIRST BOOT VERIFIED 2026-06-30 (mostly). Booting the target in isolation
-   needs a single-disk boot: `bin/vm live --boot-device` (bootindex=0) does NOT
-   work — with two mkosi-layout disks present, `systemd-repart` provisioned the
-   MEDIUM (vda) not the target, so the target hung on `root=dissect`. Wrote
-   `bin/vm boot --gui DISK.raw` (direct QEMU, Secure Boot + persistent per-disk TPM,
-   no medium) to boot the target alone. Result: target self-provisioned correctly
+   needs a single-disk boot: the then-`run-image --boot-device` (bootindex=0) did
+   NOT work — with two mkosi-layout disks present, `systemd-repart` provisioned
+   the MEDIUM (vda) not the target, so the target hung on `root=dissect`. Wrote
+   `boot-disk DISK.raw` (direct QEMU, Secure Boot + persistent per-disk TPM, no
+   medium) to boot the target alone. (Both are now `bin/vm run [DISK]`: naming a
+   disk attaches it alone, and `--boot-device` is gone precisely because it was
+   this footgun.) Result: target self-provisioned correctly
    — repart built the full device layout (root/home/swap + usr-B inactive slot),
    LUKS root/swap TPM2-sealed AND auto-unsealed (no passphrase), `/usr` dm-verity,
    homed user home decrypted. ONE GAP: hostname did NOT land (`hostnamectl`
@@ -314,16 +316,18 @@ reachable YubiKey, or the in-guest build falls back to the network.
    firstboot credentials to the INSTALLER's TPM; the cred was delivered fine
    (`/run/credentials/firstboot.hostname` present) but `systemd-firstboot` failed
    to decrypt it — "TPM key integrity check failed … does not belong to this TPM"
-   — because `boot-disk` (now `bin/vm boot --gui`) gave the target its own per-disk TPM, different from the
+   — because `boot-disk` gave the target its own per-disk TPM, different from the
    installer's (`$output_dir/tpm`). On real hardware install + first boot share
    one TPM, so it would decrypt. To prove it: re-install, then
-   `bin/vm boot --gui --tpm-state $output_dir/tpm` (added that flag) so both share the
-   machine TPM. Design follow-up worth considering: the hostname isn't secret —
+   `boot-disk --tpm-state $output_dir/tpm` (a flag added for this) so both share
+   the machine TPM. (`--tpm-state` was dropped in the 2026-09-22 consolidation:
+   `bin/vm run DISK` always uses the disk's own `DISK.tpm`. Restore the flag if
+   this cross-TPM scenario needs re-testing.) Design follow-up worth considering: the hostname isn't secret —
    TPM-sealing it makes naming fragile (breaks on TPM change / re-image); a
    host-key or unencrypted firstboot cred would be more robust.
    HOSTNAME CONFIRMED 2026-06-30 — re-ran the whole chain on ONE shared TPM
-   (re-install via `bin/vm live` Installer, then `bin/vm boot --gui --tpm-state $output_dir/
-   tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error) and wrote
+   (re-install via the Installer profile, then `boot-disk --tpm-state
+   $output_dir/tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error) and wrote
    `/etc/hostname=installtest` (`hostnamectl` static = installtest); provisioning
    healthy (root btrfs TPM2-unsealed, /usr dm-verity, homed user). Step 4 fully
    verified end-to-end. (Side note observed: post-install the polluted medium —
@@ -337,9 +341,9 @@ reachable YubiKey, or the in-guest build falls back to the network.
    replaces each `?` with a hex char hashed deterministically from the machine-id,
    so every install gets a unique, stable name (e.g. `arch-92a9-061c`) with no
    install-time input. Removed: the `systemd-sysinstall.service.d` hostname
-   drop-in, `--hostname`/`--credential` from `bin/vm live`, and the ESP cred-writing
+   drop-in, `--hostname`/`--credential` from `bin/vm run`, and the ESP cred-writing
    from `burn-image`. Self-naming needs a quick re-verify on the next build
-   (`bin/vm boot --gui` a fresh install → `hostnamectl` shows `arch-…`, stable across
+   (`bin/vm run --gui` a fresh install → `hostnamectl` shows `arch-…`, stable across
    reboots). NOTE: the step-4 commands below/above still say `--hostname=…`; that
    flag is gone now — drop it (the disk names itself).
    RE-RUN AND PASSED 2026-08-19 on the **Type #2** installer (`bin/install-system`,
@@ -367,7 +371,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
        step-4 disk still attached:
 
    ```
-   bin/vm live --gui \
+   bin/vm run --gui \
      --device="$HOME/.cache/mkosi/test-target.raw"
    ```
 
@@ -404,7 +408,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
    (b) IN-GUEST REBUILD NETWORK STALL: the rebuild downloads the package-version
    drift delta (baked pkg-cache is 2.1G but the fresh `-Sy` DB resolves to newer
    builds → cache miss), and QEMU's default SLIRP user-net collapses to <1 B/s under
-   pacman's `ParallelDownloads=5` (a single stream is 239 KB/s). Fix: `bin/vm live`
+   pacman's `ParallelDownloads=5` (a single stream is 239 KB/s). Fix: `bin/vm run`
    now uses **passt** (`--runtime-network=none` + a passt netdev) when installed —
    multi-threaded user-mode net that survives parallel HTTPS; `roles/qemu-host`
    installs `passt`. (Falls back to SLIRP if absent.)
@@ -416,7 +420,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
    Type #2-only and retire `systemd-sysinstall`; plan below.
 
    RE-RUN AND PASSED 2026-08-19 against a Type #2 install, headless. Driven ON
-   the target via `bin/vm boot --share` + `systemd-sysupdate` rather than
+   the target via `bin/vm run --share` + `systemd-sysupdate` rather than
    `update-system --image` from a Live boot: the target's `/dev/vda` is already
    a block device there, so it needs no `losetup`/`unshare`/`sudo`, and the
    artifacts come in over virtiofs. This exercises the sysupdate transfers and
@@ -426,7 +430,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
    (`Successfully installed … as '…3p7' (partition)`), both UKIs present in
    `EFI/Linux/` with the new one boot-counted (`+3-0`), **`loader/entries` = 0 —
    zero Type #1 leftovers**, root/home/swap untouched. Booting the updated slot
-   (`vm boot --entry <VERSION>`) came up on that `IMAGE_VERSION`, `/usr` =
+   (`vm run DISK --entry <VERSION>`) came up on that `IMAGE_VERSION`, `/usr` =
    `/dev/mapper/usr` erofs, `is-system-running` = **running**, zero failed units —
    and afterwards the UKI had been renamed to drop the `+3-0` counter, i.e.
    sd-boot BLESSED the entry, so boot counting / auto-rollback works.
@@ -453,7 +457,7 @@ Follow-ups (software; discovered during E2E, not yet done):
 - [x] **Exercise the A/B update in the newer-over-older direction.** The 2026-08-19
       re-run applied an _older_ version onto a newer install (the only artifacts
       available at the time), so the updated slot had to be selected explicitly with
-      `vm boot --entry`. The natural case — a newer version applied over an
+      `vm run DISK --entry`. The natural case — a newer version applied over an
       older install, where sd-boot picks the new slot as the default with no
       intervention — was unproven.
       **PASSED 2026-09-21** with two consecutive builds, V1 `20260918140158` → V2
@@ -552,7 +556,7 @@ Follow-ups (software; discovered during E2E, not yet done):
       - `mkosi.uki-profiles/25-install.conf`: dropped `systemd.unit=systemd-sysinstall
         .service`; added the `arch.install` marker + autologin (second escape hatch);
         kept `systemd-repart.service` masked (the medium must not provision itself).
-      - Docs: `bootstrapping.md` gained an Installation section; `bin/vm live`
+      - Docs: `bootstrapping.md` gained an Installation section; `bin/vm run`
         comment updated.
 
       Caveat still to carry: first-install rollback cliff — the copied base UKI is a

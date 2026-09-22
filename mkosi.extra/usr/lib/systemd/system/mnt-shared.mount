@@ -1,5 +1,5 @@
 # Mounts the host-shared directory exposed by `mkosi vm --runtime-tree`
-# (see bin/vm live) over virtiofs.
+# (see bin/vm run) over virtiofs.
 #
 # mkosi derives the virtiofs tag from the runtime-tree target, so the tag is
 # the literal string "/run/host/shared". It also injects an fstab.extra
@@ -12,7 +12,7 @@
 #
 # ConditionVirtualization alone is not enough, though: it is true in EVERY VM,
 # while the virtiofs tag only exists when the VM was launched by `mkosi vm` with
-# a runtime tree. Booted any other way — bin/vm boot (headless or --gui), or a burned
+# a runtime tree. Booted any other way — bin/vm run (headless or --gui), or a burned
 # USB run under QEMU — the mount fails, and one failed unit pins
 # `systemctl is-system-running` at `degraded` for the whole boot, which is
 # exactly the signal the install/boot validation relies on. Gate on the

@@ -87,7 +87,7 @@ cd "$(dirname "$0")/.."
 
 # Persistent scratch for an offline rebuild on a live medium, whose root is tmpfs
 # (RAM) — far too small for a full image build. Carve a partition from the medium's
-# own unallocated space (vm live --runtime-size / burn-image grow the medium well
+# own unallocated space (vm run --runtime-size / burn-image grow the medium well
 # past the ~10G image) and point ARCH_ANSIBLE_CACHE at it. Reused across runs via the
 # arch-scratch partition label. Exports ARCH_ANSIBLE_CACHE (honored by
 # _cache_common.sh); systemd-repart adds the partition via BLKPG, leaving the in-use

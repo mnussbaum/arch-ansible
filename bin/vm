@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
-"""One command to run this project's VMs: live medium, install, and boot.
+"""One command to run this project's VMs.
 
-Three jobs used to mean three scripts (run-image, boot-disk, vm-test) with three
-sets of flags and two different ways of building the same VM. They are now three
-subcommands here, and the display is a flag rather than a different program:
+Running a VM here used to mean picking between three scripts (run-image,
+boot-disk, vm-test) with three sets of flags, two of which built the same VM two
+different ways, and then between two subcommands that differed in more than what
+they booted. There are now two subcommands, and what you are booting is an
+argument rather than a different program:
 
-  live     Boot the built medium (the installer / live system) via `mkosi vm`,
-           optionally with another disk attached to install onto or repair.
-  install  Boot the medium's Installer profile with TARGET attached as /dev/vdb,
-           run `install-system --yes /dev/vdb`, then inspect the layout it wrote.
-           Recreates TARGET first: `truncate` on an existing same-size file is a
-           no-op, and the stale partitions left behind auto-activate and make
-           repart fail with EBUSY.
-  boot     Boot an installed TARGET *alone* — nothing else attached, because
-           first-boot systemd-repart provisions the wrong disk when a second
-           mkosi-layout disk (the medium) is present — and report
-           `systemctl is-system-running`, failed units, and the mount layout.
+  run [DISK]  Boot a VM. With no DISK that is the built medium — the installer /
+              live system, which also self-provisions into a normal system on
+              first boot. With a DISK it is that installed disk, attached ALONE:
+              first-boot systemd-repart provisions the wrong disk when a second
+              mkosi-layout disk (the medium) is present, so root never lands on
+              the target and the boot hangs on /dev/disk/by-designator/root.
+  install     Boot the medium's Installer profile with TARGET attached as
+              /dev/vdb, run `install-system --yes /dev/vdb`, then inspect the
+              layout it wrote. Recreates TARGET first: `truncate` on an existing
+              same-size file is a no-op, and the stale partitions left behind
+              auto-activate and make repart fail with EBUSY.
 
-`install` and `boot` are headless and scripted; both exit non-zero if the run
-misses its checkpoint, so they compose into a validation pass. Two properties of
-the image make that possible:
+Booting a disk is headless and scripted by default — health checks, a non-zero
+exit if the run misses its checkpoint — so it composes into a validation pass.
+Two properties of the image make that possible:
 
   * OVMF's ConSplitter mirrors the firmware console onto the serial port, so
     sd-boot's menu is readable on serial and QEMU's HMP `sendkey` can move the
@@ -31,13 +33,16 @@ the image make that possible:
     the invisible VGA console. Read those back with `journalctl` over serial, or
     reach for the screendump this takes when a headless boot goes quiet.)
 
-`--gui` opens a GTK window instead, for when you want to sit at the machine:
-same VM, same persistent firmware varstore and TPM, no scripted checks. Note
-that without a keyboard grab Ctrl+Alt+F<n> lands on the HOST compositor, so
+`--gui` opens a window instead and hands the VM over, for when you are sitting
+at it. Without a keyboard grab Ctrl+Alt+F<n> lands on the HOST compositor, so
 `grab-on-hover=on` is set; Ctrl+Alt+G toggles the grab by hand.
 
-Firmware varstore and TPM state persist next to the disk, so Secure Boot PCR 7
-and a TPM2-sealed LUKS keyslot stay stable across runs, like real hardware.
+Under the hood the medium still boots through `mkosi vm` (which supplies the
+vsock YubiKey relay, the /run/host/shared runtime tree and the 90G growth) while
+a named disk is driven directly, because `mkosi vm` can only boot the output its
+own config names. Firmware varstore and TPM state persist either way — per-disk
+for a named disk — so Secure Boot PCR 7 and a TPM2-sealed LUKS keyslot stay
+stable across runs, like real hardware.
 """
 
 import argparse
@@ -304,7 +309,7 @@ def make_varstore(dest, cert):
     LUKS keyslot enrolled on first boot can only be unsealed if the firmware
     comes up in the same Secure Boot state. (virt-fw-vars' --enroll-cert is
     broken in virt-firmware 26.x; the file-based options work — same approach as
-    bin/vm live and bin/vm boot --gui.)
+    bin/vm run, with or without --gui.)
     """
     if dest.is_file() and dest.stat().st_mtime >= cert.stat().st_mtime:
         return dest
@@ -352,6 +357,13 @@ def stop_swtpm(pidfile):
     except (OSError, ValueError):
         pass
 
+
+# Answers for the two questions an installed system asks on its first boot
+# (systemd-firstboot --prompt-hostname and --prompt-root-password). Fixed rather
+# than flags: these are test VMs, and a prompt nobody answers hangs the boot
+# silently on tty0.
+FIRSTBOOT_HOSTNAME = "arch-vmtest"
+FIRSTBOOT_ROOT_PASSWORD = "root"
 
 # Deliberately NOT mkosi's "/run/host/shared" tag: that one is claimed by
 # mnt-shared.mount, which is gated on mkosi's fstab.extra credential. Using our
@@ -454,7 +466,7 @@ def build_qemu_args(drives, varstore, tpm_sock, memory, cpus, credentials,
         ]
     else:
         # Nothing is driving the console, so just capture it to a file the way
-        # the old bin/vm boot --gui did; the window is the interactive surface.
+        # the old bin/boot-disk did; the window is the interactive surface.
         args += ["-chardev", f"file,id=serial0,path={path}", "-serial", "chardev:serial0"]
     if monitor_sock:
         args += ["-monitor", f"unix:{monitor_sock},server,nowait"]
@@ -743,12 +755,6 @@ def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=Fal
 
     Split out of cmd_live so it can be inspected without starting anything.
     """
-    if args.runtime != "qemu":
-        # The TPM, varstore and networking wiring below is all QEMU-specific;
-        # another VMM just gets the plain mkosi invocation, as before.
-        return ["mkosi", f"--output-directory={output}", f"--vmm={args.runtime}",
-                "--runtime-size=90G", f"--runtime-tree={shared}:/run/host/shared",
-                "--profile=build"] + args.mkosi_args + ["vm"]
     vmm = [
         # The guest-agent socket the old run-image always wired up. qemu-ga is
         # not actually running in the guest, but the socket is harmless and
@@ -765,16 +771,6 @@ def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=Fal
         vmm += [
             "-drive", f"if=none,id=device,file={args.device},format=raw",
             "-device", "virtio-blk-pci,drive=device",
-        ]
-    if args.boot_device:
-        # Attach an already-installed target and boot IT, not the medium: mkosi
-        # gives the medium bootindex=1, so bootindex=0 wins. For an already
-        # provisioned target's LATER boots only — the medium stays attached, so
-        # a FIRST boot would have systemd-repart provision the wrong disk. Use
-        # `vm boot`, which attaches the target alone, for that.
-        vmm += [
-            "-drive", f"if=none,id=bootdevice,file={args.boot_device},format=raw",
-            "-device", "virtio-blk-pci,drive=bootdevice,bootindex=0",
         ]
     if args.gui:
         vmm += ["-display", "gtk,gl=on,zoom-to-fit=off,grab-on-hover=on",
@@ -794,18 +790,11 @@ def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=Fal
         vmm += ["-netdev", "passt,id=net0",
                 "-device", "virtio-net-pci,netdev=net0"]
 
-    # Rust/meson AUR rebuilds in the guest scale almost linearly with vCPUs, so
-    # default generously while leaving the host a couple of cores.
-    nproc = os.cpu_count() or 4
-    cpus = os.environ.get("ARCH_ANSIBLE_VM_CPUS") or (nproc - 2 if nproc > 4 else nproc)
-    ram = os.environ.get("ARCH_ANSIBLE_VM_RAM", "8G")
-
     cmd = [
         "mkosi",
         f"--output-directory={output}",
-        f"--vmm={args.runtime}",
-        f"--cpus={cpus}",
-        f"--ram={ram}",
+        f"--cpus={args.cpus}",
+        f"--ram={args.memory}",
         "--vsock=yes",
         "--vsock-cid=3",
         # mkosi's --tpm state is ephemeral, so a TPM2-bound LUKS volume enrolled
@@ -823,12 +812,16 @@ def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=Fal
     ]
     if args.gui:
         cmd.append("--console=gui")
-    cmd += args.mkosi_args + ["vm", "--"] + vmm
+    if args.ephemeral:
+        # Boot a throwaway snapshot so the built artifact is not mutated by a
+        # self-provisioning first boot.
+        cmd.append("--ephemeral=yes")
+    cmd += ["vm", "--"] + vmm
     return cmd
 
 
-def cmd_live(args):
-    log = log_to(sys.stdout)
+def run_medium(args, log):
+    """`vm run` with no disk: boot the built medium through `mkosi vm`."""
     output = output_dir()
     output.mkdir(parents=True, exist_ok=True)
     # mkosi maps the host user to root in the guest, so the runtime-tree share
@@ -838,24 +831,35 @@ def cmd_live(args):
     shared.mkdir(parents=True, exist_ok=True)
     shared.chmod(0o777)
 
-    pidfile = None
-    if args.runtime == "qemu":
-        varstore = make_varstore(output / "ovmf_vars.fd", secureboot_cert(recover=True))
-        tpm_sock, pidfile = start_swtpm(output / "tpm")
-        cmd = build_live_cmd(args, output, shared, varstore, tpm_sock,
-                             passt=bool(shutil.which("passt")))
-    else:
-        cmd = build_live_cmd(args, output, shared)
+    varstore = make_varstore(output / "ovmf_vars.fd", secureboot_cert(recover=True))
+    tpm_sock, pidfile = start_swtpm(output / "tpm")
+    cmd = build_live_cmd(args, output, shared, varstore, tpm_sock,
+                         passt=bool(shutil.which("passt")))
     if args.device:
         log(f"==> Attached {args.device} as /dev/vdb. At the boot menu, pick "
             "'Live System (Recovery)' to repair it, or 'Installer' to install onto it.")
-    if args.boot_device:
-        log(f"==> Booting {args.boot_device} (bootindex=0), not the medium.")
     try:
         return subprocess.run(cmd, cwd=REPO).returncode
     finally:
-        if pidfile:
-            stop_swtpm(pidfile)
+        stop_swtpm(pidfile)
+
+
+def cmd_run(args):
+    """One entry point: no disk boots the medium, a disk boots that disk alone."""
+    log = log_to(sys.stdout)
+    medium_only = {"--device": args.device, "--ephemeral": args.ephemeral}
+    disk_only = {"--run": args.run, "--share": args.share, "--entry": args.entry}
+    if args.disk:
+        for flag, val in medium_only.items():
+            if val:
+                sys.exit(f"error: {flag} applies to the medium; drop the DISK "
+                         "argument to boot it")
+        return run_disk(args, log)
+    for flag, val in disk_only.items():
+        if val:
+            sys.exit(f"error: {flag} needs an installed DISK to act on "
+                     "(`vm run DISK ...`)")
+    return run_medium(args, log)
 
 
 def cmd_install(args):
@@ -941,7 +945,7 @@ def cmd_install(args):
         vm.wait(timeout=120)
 
     log(f"\n==> CHECKPOINT A reached: {target} installed.")
-    log(f"    Next: bin/vm boot {target}")
+    log(f"    Next: bin/vm run {target}")
     return 0
 
 
@@ -958,15 +962,15 @@ HEALTH_CHECKS = [
 ]
 
 
-def cmd_boot(args):
-    log = log_to(sys.stdout)
+def run_disk(args, log):
+    """`vm run DISK`: boot an installed disk alone, headless or in a window."""
     disk = Path(args.disk).resolve()
     if not disk.is_file():
         sys.exit(f"error: {disk} is not a file")
 
     cert = secureboot_cert()
     run_dir = output_dir() / "vm"
-    # Varstore and TPM live next to the disk (matching bin/vm boot --gui), so the
+    # Varstore and TPM live next to the disk (as bin/boot-disk did), so the
     # LUKS keyslot sealed on first boot can be unsealed on every later boot.
     varstore = make_varstore(Path(f"{disk}.ovmf_vars.fd"), cert)
 
@@ -982,11 +986,11 @@ def cmd_boot(args):
         "agetty.autologin=root",
         # First prompt: systemd-firstboot --prompt-hostname (added by
         # mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf).
-        f"firstboot.hostname={args.hostname}",
+        f"firstboot.hostname={FIRSTBOOT_HOSTNAME}",
         # Second prompt: --prompt-root-password, from the same ExecStart. Test
         # credential only — a real install is meant to be answered by the human
         # sitting at the console.
-        f"passwd.plaintext-password.root={args.root_password}",
+        f"passwd.plaintext-password.root={FIRSTBOOT_ROOT_PASSWORD}",
     ]
 
     with Vm(
@@ -996,7 +1000,7 @@ def cmd_boot(args):
         # created and the boot hangs on /dev/disk/by-designator/root.
         drives=[{"file": disk, "bootindex": 0}],
         varstore=varstore,
-        tpm_state=Path(args.tpm_state) if args.tpm_state else Path(f"{disk}.tpm"),
+        tpm_state=Path(f"{disk}.tpm"),
         run_dir=run_dir,
         log=log,
         memory=args.memory,
@@ -1050,7 +1054,9 @@ def cmd_boot(args):
             for cmd in args.run:
                 sh.run(cmd, timeout=args.run_timeout)
 
-        if args.journal:
+        if state != "running":
+            # Only on a bad run: the failed units alone rarely say why, and this
+            # is the one chance to read the journal before the guest is gone.
             log("\n===== Journal (warnings and worse) =====")
             sh.run("journalctl -b --no-pager -p warning | tail -80 || true")
 
@@ -1069,33 +1075,57 @@ def cmd_boot(args):
 def main():
     p = argparse.ArgumentParser(
         prog="vm",
-        description="Run this project's VMs: live medium, install, or boot.",
+        description="Run this project's VMs: `run` boots one, `install` makes one.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    p.add_argument("--memory", default="4G", help="guest RAM (default 4G)")
-    p.add_argument("--cpus", type=int, default=4, help="vCPUs (default 4)")
-    p.add_argument("-v", "--verbose", action="store_true",
-                   help="mirror the raw serial stream to stdout as it arrives")
+    # On the subcommands, not the top level: `vm run DISK --cpus 4` is what
+    # anyone types, and a top-level-only option silently fails there.
+    nproc = os.cpu_count() or 4
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--memory", default="8G", help="guest RAM (default 8G)")
+    common.add_argument("--cpus", type=int, default=nproc - 2 if nproc > 4 else nproc,
+                        help="vCPUs (default: host CPUs minus 2, leaving the host "
+                             "room; in-guest rebuilds scale with this)")
+    common.add_argument("-v", "--verbose", action="store_true",
+                        help="mirror the raw serial stream to stdout as it arrives")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    lv = sub.add_parser("live", help="boot the built medium (installer / live system)")
-    lv.add_argument("--device", metavar="DISK",
-                    help="attach DISK as a second disk (/dev/vdb) to install onto "
-                         "or repair; the medium still boots")
-    lv.add_argument("--boot-device", metavar="DISK",
-                    help="attach DISK and boot IT instead of the medium. For an "
-                         "already-provisioned target's LATER boots only — NOT its "
-                         "first boot, where the still-attached medium makes repart "
-                         "provision the wrong disk. Use `vm boot` for that.")
-    lv.add_argument("--runtime", default="qemu", help="VMM passed to mkosi --vmm")
-    lv.add_argument("--gui", action="store_true",
-                    help="open a GTK window (adds --console=gui)")
-    lv.add_argument("mkosi_args", nargs=argparse.REMAINDER,
-                    help="remaining options are forwarded to mkosi")
-    lv.set_defaults(func=cmd_live)
+    r = sub.add_parser("run", parents=[common],
+                       help="boot the medium, or an installed disk")
+    r.add_argument("disk", nargs="?",
+                   help="installed disk to boot ALONE (nothing else attached, "
+                        "because first-boot repart provisions the wrong disk "
+                        "when the medium is also present). Omit it to boot the "
+                        "built medium instead.")
+    r.add_argument("--gui", action="store_true",
+                   help="open a window and hand the VM over, instead of running "
+                        "headless with scripted health checks")
+    r.add_argument("--device", metavar="DISK",
+                   help="medium only: attach DISK as a second disk (/dev/vdb) to "
+                        "install onto or repair")
+    r.add_argument("--ephemeral", action="store_true",
+                   help="medium only: boot a throwaway snapshot, leaving the "
+                        "built image untouched")
+    r.add_argument("--entry", metavar="VERSION",
+                   help="disk only: sd-boot entry to select (default: the "
+                        "default entry)")
+    r.add_argument("--run", action="append", metavar="CMD",
+                   help="disk only: run CMD in the booted system after the health "
+                        "checks (repeatable). Root's /etc is writable, so changes "
+                        "made here persist into the disk's next boot.")
+    r.add_argument("--share", metavar="DIR",
+                   help=f"disk only: export DIR to the guest over virtiofs at "
+                        f"{SHARE_MNT}, to hand it build artifacts (e.g. for an "
+                        f"A/B update)")
+    r.add_argument("--boot-timeout", type=int, default=900)
+    r.add_argument("--run-timeout", type=int, default=1800,
+                   help="per---run-command timeout (default 1800s; an A/B "
+                        "update copies ~10G)")
+    r.set_defaults(func=cmd_run)
 
-    i = sub.add_parser("install", help="install the built medium onto TARGET")
+    i = sub.add_parser("install", parents=[common],
+                       help="install the built medium onto TARGET")
     i.add_argument("target", help="target disk image (recreated unless --no-fresh)")
     i.add_argument("--medium", help="medium to boot (default: newest built image)")
     i.add_argument("--size", default="100G",
@@ -1108,48 +1138,16 @@ def main():
     i.add_argument("--install-timeout", type=int, default=1800)
     i.set_defaults(func=cmd_install)
 
-    b = sub.add_parser("boot", help="boot an installed disk alone and check it")
-    b.add_argument("disk", help="installed disk image to boot (nothing else attached)")
-    b.add_argument("--hostname", default="arch-vmtest",
-                   help="firstboot.hostname credential (skips the prompt)")
-    b.add_argument("--root-password", default="root",
-                   help="passwd.plaintext-password.root credential, answering "
-                        "first boot's root-password prompt (test VMs only)")
-    b.add_argument("--entry", help="sd-boot entry title to select (default: let it "
-                                   "boot the default entry)")
-    b.add_argument("--boot-timeout", type=int, default=900)
-    b.add_argument("--journal", action="store_true",
-                   help="also dump journal warnings before powering off")
-    b.add_argument("--run", action="append", metavar="CMD",
-                   help="run CMD in the booted system after the health checks "
-                        "(repeatable). Root's /etc is writable, so changes made "
-                        "here persist into the disk's next boot.")
-    b.add_argument("--run-timeout", type=int, default=1800,
-                   help="per---run-command timeout (default 1800s; an A/B "
-                        "update copies ~8G)")
-    b.add_argument("--tpm-state", metavar="DIR",
-                   help="persistent swtpm state dir (default DISK.tpm). The "
-                        "disk's first boot seals LUKS to this TPM and later "
-                        "boots unseal against it, so pointing two VMs at one "
-                        "dir lets them share a TPM.")
-    b.add_argument("--gui", action="store_true",
-                   help="open a GTK window and hand the VM to you instead of "
-                        "running the scripted health checks")
-    b.add_argument("--share", metavar="DIR",
-                   help=f"export DIR to the guest over virtiofs, mounted at "
-                        f"{SHARE_MNT}. Use it to hand the guest build artifacts "
-                        f"(e.g. the mkosi output dir for an A/B update).")
-    b.set_defaults(func=cmd_boot)
-
     args = p.parse_args()
     os.chdir(REPO)
     needed = ["swtpm", "virt-fw-vars"]
-    # `live` drives QEMU through mkosi; the others exec it directly.
-    needed.append("mkosi" if args.cmd == "live" else "qemu-system-x86_64")
+    # Booting the medium goes through mkosi; everything else execs QEMU itself.
+    booting_medium = args.cmd == "run" and not args.disk
+    needed.append("mkosi" if booting_medium else "qemu-system-x86_64")
     for tool in needed:
         if not shutil.which(tool):
             sys.exit(f"error: {tool} not found in PATH")
-    if getattr(args, "gui", False) and args.cmd == "boot":
+    if getattr(args, "gui", False) and args.cmd == "run":
         for flag in ("entry", "run", "journal"):
             if getattr(args, flag, None):
                 sys.exit(f"error: --{flag} drives the guest over serial and can't "

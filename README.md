@@ -213,7 +213,7 @@ plus an ESP, and provisions its encrypted root/home on first boot via
 `systemd-repart` (the model from [Fitting Everything
 Together](https://0pointer.net/blog/fitting-everything-together.html)). The
 different roles are just boot-menu entries (UKI profiles in `mkosi.uki-profiles/`),
-not separate builds. `bin/build-image` builds it; `bin/vm live` and
+not separate builds. `bin/build-image` builds it; `bin/vm run` and
 `bin/burn-image` then act on the built image and set its hostname at boot (no
 rebuild per machine).
 
@@ -249,22 +249,25 @@ there are no per-machine inputs or per-host repo files.
 
 ### QEMU workflows
 
-`bin/vm` is the only VM command. It has three subcommands, and `--gui` opens a
-window instead of running headless:
+`bin/vm` is the only VM command. What you boot is an argument, not a different
+command, and `--gui` opens a window instead of running headless:
 
 ```
-bin/vm live                  # boot the built medium (installer / live system)
+bin/vm run                   # the built medium (installer / live system)
+bin/vm run DISK.raw          # an installed disk, attached ALONE
 bin/vm install TARGET.raw    # install the medium onto TARGET, then check the layout
-bin/vm boot TARGET.raw       # boot an installed disk ALONE + health checks
 ```
 
 Build the image first, then run it (emulates an installed machine — boots the
-default profile):
+default profile, which self-provisions on first boot):
 
 ```
 bin/build-image
-bin/vm live
+bin/vm run
 ```
+
+Add `--ephemeral` to boot a throwaway snapshot, leaving the built image
+untouched.
 
 Attach a second disk with `--device=<disk.raw>` and pick the role at the boot
 menu. **Live System (Recovery)** boots a volatile root that skips the first-boot
@@ -275,23 +278,23 @@ reproduces the medium's own Type #2 layout (the install profile boots straight
 into `arch-install.service`).
 
 ```
-bin/vm live --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
+bin/vm run --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
 ```
 
 #### Scripted runs
 
-`install` and `boot` are headless and exit non-zero if the run misses its
-checkpoint, so they compose into a validation pass. A target's first boot needs
-the target attached **alone** — with the medium also attached, first-boot
-`systemd-repart` provisions the wrong disk — which is what `vm boot` does.
+`install`, and `run` with a disk, are headless and exit non-zero if the run
+misses its checkpoint, so they compose into a validation pass. Naming a disk
+attaches it **alone**, which a target's first boot requires: with the medium
+also attached, first-boot `systemd-repart` provisions the wrong disk.
 
 ```
-bin/vm install ~/.cache/mkosi/test-target.raw    # fresh install
-bin/vm boot    ~/.cache/mkosi/test-target.raw    # first boot + health checks
-bin/vm boot DISK --run 'CMD'                     # run CMD in the booted guest
-bin/vm boot DISK --share DIR                     # hand the guest files at /mnt/vmtest
-bin/vm boot DISK --entry VERSION                 # pick an sd-boot entry
-bin/vm boot DISK --gui                           # a window instead of the checks
+bin/vm install ~/.cache/mkosi/test-target.raw   # fresh install
+bin/vm run     ~/.cache/mkosi/test-target.raw   # first boot + health checks
+bin/vm run DISK --run 'CMD'                     # run CMD in the booted guest
+bin/vm run DISK --share DIR                     # hand the guest files at /mnt/vmtest
+bin/vm run DISK --entry VERSION                 # pick an sd-boot entry
+bin/vm run DISK --gui                           # a window instead of the checks
 ```
 
 ## Maintenance
