@@ -345,6 +345,49 @@ variable — and refusing to prune the version it just built.
     (added by `6652888`). It now has uncommitted edits of the user's, so it was
     deliberately left untouched — fold the Q4 result in alongside those.
 
+## The medium must satisfy its own baked repart minimums (fixed 2026-09-22)
+
+`bin/vm run` (the medium booting its DEFAULT profile, i.e. self-provisioning
+into a normal system) died in the initrd:
+
+```
+Failed to start Repartition Root Disk.
+Timed out waiting for device /dev/disk/by-designator/root.  →  Emergency Mode
+Can't fit requested partitions into available free space (71.9G), refusing.
+```
+
+Cause: `6a36902` gave `mkosi.extra/usr/lib/repart.d/21-usr-a-verity.conf` a
+`SizeMinBytes=512M` (it previously had no size constraints at all). Those baked
+definitions are what the medium runs against ITS OWN layout on first boot, and
+the medium's verity partition was ~86M, packed between `verity_sig` and `usr`
+with no free space on either side. repart cannot grow a partition boxed in like
+that, so the whole run fails — note it fails ENTIRELY, it does not skip the one
+partition, so root is never created.
+
+Measured with `systemd-repart --dry-run` on the host (fast, no boot needed):
+the threshold is exactly the existing size — 86M floor plans fine, 87M and above
+fail. `usr-a`'s 16G floor is harmless because it is the LAST partition and all
+the free space follows it.
+
+Fix: `mkosi.repart/11-usr-verity.conf` now carries `SizeMinBytes=512M` so the
+medium ships the same verity slot size the installed system demands
+(`Minimize=yes` stays; the floor wins). Medium grew 12.7G → 13.3G. Verified on
+image `20260922004002`: repart is `active (exited)`, `is-system-running` =
+`running`, zero failed units, and the layout comes up esp 2G / verity 512M /
+usr 16G / empty B slots / swap 4G / root 41G.
+
+**The rule this leaves behind:** any floor added to `mkosi.extra/usr/lib/repart.d/`
+must be matched in `mkosi.repart/` (or be satisfiable by growing into free space
+at the END of the medium), or the medium's own default-profile boot breaks. Only
+that path is affected — installed targets create partitions fresh, and the Live
+and Installer profiles mask repart, which is why every test since `6a36902`
+passed.
+
+Debugging shortcut worth keeping: `systemd-repart --dry-run=yes
+--definitions=mkosi.extra/usr/lib/repart.d IMAGE.raw` reproduces the failure on
+the host in seconds. On a medium copy, `truncate -s 90G` then `sgdisk -e` first,
+so the GPT describes the grown disk the way the guest sees it.
+
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
 1. **First-boot testing needs the target attached ALONE** — `bin/vm run`
