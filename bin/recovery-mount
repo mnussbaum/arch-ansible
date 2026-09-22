@@ -12,24 +12,54 @@
 # LUKS volume *inside* /home, so individual users' files still need
 # `homectl`/login to decrypt — this mounts the home partition, not the per-user
 # homes. Swap is not a filesystem, so it is left alone.
+#
+# Usage: recovery-mount [DISK]
+#   DISK  the disk to recover (e.g. /dev/vdb). Only needed when more than one
+#         candidate root is found; normally it is discovered.
 set -euo pipefail
 
 TARGET=/mnt
+want_disk=${1:+$(basename "$1")}
 
 die() { echo "recovery-mount: $*" >&2; exit 1; }
 
+# --- Which disk is the running system on? ------------------------------------
+# The medium is a full mkosi layout too. Under the Live System profile it has no
+# root partition (repart is masked), but once it has booted its default profile
+# it has self-provisioned one — also labelled "root". Taking the first "root" in
+# lsblk order then picks the MEDIUM (vda sorts before vdb), so rule out every
+# disk backing the running /usr and ESP, walking dm-verity/crypt down to disks.
+boot_disks=" "
+for mnt in /usr /boot /efi; do
+    src=$(findmnt -no SOURCE "$mnt" 2>/dev/null) || continue
+    [[ $src == /dev/* ]] || continue
+    while IFS= read -r line; do
+        eval "$line"
+        # One disk is reached via several paths (both verity partitions, the ESP).
+        [[ ${TYPE:-} == disk && $boot_disks != *" $NAME "* ]] && boot_disks+="$NAME "
+    done < <(lsblk -sPno NAME,TYPE "$src" 2>/dev/null)
+done
+
 # --- Find the root LUKS partition -------------------------------------------
 # Match the GPT partition label "root": swap is also crypto_LUKS, so matching on
-# type alone (as before) could grab the swap partition instead.
-root_luks=""
+# type alone could grab the swap partition instead.
+candidates=()
 while IFS= read -r line; do
     eval "$line"
-    if [[ "${PARTLABEL:-}" == "root" && "${FSTYPE:-}" == "crypto_LUKS" ]]; then
-        root_luks="/dev/$NAME"
-        break
-    fi
+    [[ "${PARTLABEL:-}" == "root" && "${FSTYPE:-}" == "crypto_LUKS" ]] || continue
+    disk=$(lsblk -no PKNAME "/dev/$NAME" | head -1)
+    [[ $boot_disks == *" $disk "* ]] && continue          # the running system's own
+    [[ -n $want_disk && $disk != "$want_disk" ]] && continue
+    candidates+=("/dev/$NAME")
 done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL)
-[[ -n "$root_luks" ]] || die "no LUKS partition labelled 'root' found"
+
+case ${#candidates[@]} in
+    0) die "no LUKS 'root' partition found${want_disk:+ on /dev/$want_disk}" \
+           "(the running system's own disk(s):${boot_disks% } are excluded)" ;;
+    1) root_luks=${candidates[0]} ;;
+    *) die "several candidate roots: ${candidates[*]} — pass the disk to" \
+           "recover, e.g. recovery-mount /dev/$(lsblk -no PKNAME "${candidates[0]}" | head -1)" ;;
+esac
 
 # Scope every other partition to the root's parent disk, so we never pick up the
 # recovery medium's own ESP/usr (its /usr carries the same label as the target's).
@@ -55,14 +85,39 @@ done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL "/dev/$parent")
 [[ -n "$esp" ]] || echo "recovery-mount: warning: no ESP found on /dev/$parent" >&2
 
 # --- Unlock root ------------------------------------------------------------
-# Try enrolled tokens (TPM2 sealed to PCR 7, or FIDO2) first, then the recovery key.
+# The TPM2 token repart enrolls is NOT sealed to PCR 7: it is a signed PCR 11
+# policy (tpm2-pcrs=[], tpm2_pubkey_pcrs=[11]). PCR 11 is extended at every boot
+# phase and the signatures cover only the initrd of a signed UKI boot, so from an
+# already-booted system — which is what this is — that token can never unlock.
+# That is the design, not a fault: it stops a running OS unsealing the disk.
+# Tokens are still tried first, because a FIDO2 token has no such limit.
+#
+# Anything a human can type is a keyslot NOT bound to a hardware token (a
+# passphrase, or a systemd-cryptenroll --recovery-key slot). If there is none,
+# prompting would just loop forever, so say so instead.
+typeable_slots() {
+    cryptsetup luksDump --dump-json-metadata "$1" 2>/dev/null | python3 -c '
+import json, sys
+m = json.load(sys.stdin)
+hw = {"systemd-tpm2", "systemd-fido2", "systemd-pkcs11"}
+bound = {s for t in m["tokens"].values() if t.get("type") in hw for s in t.get("keyslots", [])}
+print(len([k for k in m["keyslots"] if k not in bound]))'
+}
+
 if cryptsetup status cryptroot &>/dev/null; then
     echo "cryptroot already open"
 elif cryptsetup open --token-only "$root_luks" cryptroot 2>/dev/null; then
-    echo "Opened root via enrolled token (TPM2/FIDO2)"
-else
-    echo "No token succeeded; enter recovery key:"
+    echo "Opened root via enrolled token (FIDO2, or a TPM2 policy usable post-boot)"
+elif [[ $(typeable_slots "$root_luks") -gt 0 ]]; then
+    echo "No token unlocked it (a signed-PCR-11 TPM2 token cannot, from a booted"
+    echo "system); enter the recovery key or passphrase:"
     cryptsetup open "$root_luks" cryptroot
+else
+    die "$root_luks has no factor usable from recovery: its only keyslot(s) are" \
+        "bound to hardware tokens that did not unlock, and there is no recovery" \
+        "key or passphrase to type. A signed-PCR-11 TPM2 token only unlocks in" \
+        "the initrd of a normal signed boot. This root needs a recovery key or" \
+        "FIDO2 factor enrolled when it is created (see HANDOFF.md)."
 fi
 
 # --- Mount, mirroring the running system's layout ---------------------------
