@@ -444,12 +444,28 @@ reachable YubiKey, or the in-guest build falls back to the network.
 
 Follow-ups (software; discovered during E2E, not yet done):
 
-- [ ] **Exercise the A/B update in the newer-over-older direction.** The 2026-08-19
+- [x] **Exercise the A/B update in the newer-over-older direction.** The 2026-08-19
       re-run applied an *older* version onto a newer install (the only artifacts
       available at the time), so the updated slot had to be selected explicitly with
       `vm-test boot --entry`. The natural case — a newer version applied over an
       older install, where sd-boot picks the new slot as the default with no
-      intervention — is still unproven. Two consecutive builds closes it.
+      intervention — was unproven.
+      **PASSED 2026-09-21** with two consecutive builds, V1 `20260918140158` → V2
+      `20260921222244`. V1 installed pure Type #2 (only its UKI in `EFI/Linux`,
+      `loader/entries` = 0, usr-B `_empty` at 16G) and first-booted clean
+      (`running`, zero failed units, root unsealed by the TPM2 token). V2's four
+      split artifacts were shared in over virtiofs and applied ON the target with
+      `systemd-sysupdate --transfer-source=/mnt/vmtest update <V2>`: it landed in
+      the inactive slot (parts 5/6/7), its UKI arrived boot-counted as `+3-0`,
+      both UKIs were present and `loader/entries` stayed **0**. Rebooting with
+      **no `--entry`** came up on `IMAGE_VERSION="20260921222244"` — sd-boot chose
+      the new slot itself — with `is-system-running` = **running**, zero failed
+      units, `/usr` = `/dev/mapper/usr` erofs, and the UKI renamed to drop the
+      counter, i.e. sd-boot BLESSED it. Boot counting / auto-rollback works in
+      this direction too.
+      WATCH: `/usr` keeps growing — 8.07 GiB (Aug) → 9.64 GiB (V1) → 10.68 GiB
+      (V2). The 16 GiB slot still has room, but resizing it needs a REINSTALL,
+      so this is worth tracking rather than discovering late.
 
 - [x] **Make install pure Type #2: retire `systemd-sysinstall`, install via a
       single `systemd-repart` run.** IMPLEMENTED 2026-07-24. **VALIDATED END TO END
