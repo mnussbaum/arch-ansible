@@ -513,10 +513,17 @@ what you boot is the argument, not the command.
   to install onto or repair; `--ephemeral` boots a throwaway snapshot.
 - `--share DIR` (disk runs) is a separate virtiofs mount at `/mnt/vmtest`, tag
   `vmtest-share`, deliberately NOT mkosi's `/run/host/shared`.
+- `--tpm-state DIR` overrides the TPM state dir on BOTH modes. The default is
+  per-VM (`DISK.tpm` for a disk, `<output>/tpm` for the medium), so a medium
+  booted to RECOVER a target cannot unseal that target's TPM2-bound LUKS root —
+  point both at one dir to share a TPM, as install and first boot do on real
+  hardware. (Dropped in the 2026-09-22 consolidation as "not necessary" and
+  restored the same day when recovery testing needed exactly it.) The path must
+  be short: swtpm's control socket lives in it and AF_UNIX caps at ~108 bytes.
 - Flags that no longer exist, deliberately: `--boot-device` (`vm run DISK` is the
-  safe version — see gotcha #1), `--runtime`, `--tpm-state`, `--journal`,
-  `--hostname`, `--root-password`, and `ARCH_ANSIBLE_VM_CPUS`/`_RAM`
-  (`--memory`/`--cpus` cover both modes now).
+  safe version — see gotcha #1), `--runtime`, `--journal`, `--hostname`,
+  `--root-password`, and `ARCH_ANSIBLE_VM_CPUS`/`_RAM` (`--memory`/`--cpus`
+  cover both modes now).
 - Sizing: one default for both modes, host CPUs − 2 and 8G. Measured cost on a
   scripted disk boot is ~6s versus 4 CPUs (18s → 24s); an earlier 114s outlier
   was host contention, not the defaults.

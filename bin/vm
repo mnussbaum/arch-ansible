@@ -347,6 +347,14 @@ def make_varstore(dest, cert):
 
 def start_swtpm(state_dir):
     state_dir.mkdir(parents=True, exist_ok=True)
+    # swtpm puts its control socket inside the state dir, and AF_UNIX paths cap
+    # at ~108 bytes. Past that swtpm dies with "Path for UnixIO socket is too
+    # long", which otherwise surfaces as an opaque CalledProcessError traceback.
+    sock_len = len(str(state_dir / "swtpm-sock").encode())
+    if sock_len > 100:
+        sys.exit(f"error: --tpm-state path is too long ({sock_len} bytes for its "
+                 f"control socket; the AF_UNIX limit is ~108). Use a shorter "
+                 f"directory, e.g. under {cache_dir()}/mkosi/.")
     if not (state_dir / "tpm2-00.permall").exists():
         subprocess.run(
             ["swtpm_setup", "--tpm2", "--tpmstate", str(state_dir), "--createek"],
@@ -848,7 +856,8 @@ def run_medium(args, log):
     shared.chmod(0o777)
 
     varstore = make_varstore(output / "ovmf_vars.fd", secureboot_cert(recover=True))
-    tpm_sock, pidfile = start_swtpm(output / "tpm")
+    tpm_sock, pidfile = start_swtpm(Path(args.tpm_state) if args.tpm_state
+                                    else output / "tpm")
     cmd = build_live_cmd(args, output, shared, varstore, tpm_sock,
                          passt=bool(shutil.which("passt")))
     if args.device:
@@ -1016,7 +1025,7 @@ def run_disk(args, log):
         # created and the boot hangs on /dev/disk/by-designator/root.
         drives=[{"file": disk, "bootindex": 0}],
         varstore=varstore,
-        tpm_state=Path(f"{disk}.tpm"),
+        tpm_state=Path(args.tpm_state) if args.tpm_state else Path(f"{disk}.tpm"),
         run_dir=run_dir,
         log=log,
         memory=args.memory,
@@ -1134,6 +1143,13 @@ def main():
                    help=f"disk only: export DIR to the guest over virtiofs at "
                         f"{SHARE_MNT}, to hand it build artifacts (e.g. for an "
                         f"A/B update)")
+    r.add_argument("--tpm-state", metavar="DIR",
+                   help="persistent swtpm state dir. Defaults to DISK.tpm for a "
+                        "disk and <output>/tpm for the medium, so each VM gets "
+                        "its own TPM — which means a medium booted to recover a "
+                        "target CANNOT unseal that target's TPM2-bound LUKS "
+                        "root. Point both at one dir to share a TPM, the way "
+                        "install and first boot share one on real hardware.")
     r.add_argument("--boot-timeout", type=int, default=900)
     r.add_argument("--run-timeout", type=int, default=1800,
                    help="per---run-command timeout (default 1800s; an A/B "
