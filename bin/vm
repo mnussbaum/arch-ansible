@@ -266,6 +266,22 @@ def output_dir():
     return cache_dir() / "mkosi/images/image"
 
 
+def mkosi_env():
+    """The environment `mkosi` needs to expand mkosi.conf.
+
+    mkosi.conf refers to ${ARCH_ANSIBLE_CACHE} and ${ARCH_ANSIBLE_SRCTREE} and
+    expands them from the process environment (bin/_cache_common.sh exports
+    them for the build scripts). Without them mkosi fails config validation
+    before it boots anything: "${ARCH_ANSIBLE_CACHE}/cargo/registry does not
+    exist". An already-exported value wins, matching _cache_common.sh.
+    """
+    env = dict(os.environ)
+    cache = cache_dir()
+    env.setdefault("ARCH_ANSIBLE_CACHE", str(cache))
+    env.setdefault("ARCH_ANSIBLE_SRCTREE", str(cache / "mkosi-srctree"))
+    return env
+
+
 def secureboot_cert(recover=False):
     cert = cache_dir() / "mkosi-secureboot/mkosi.crt"
     if not cert.is_file() and recover:
@@ -839,7 +855,7 @@ def run_medium(args, log):
         log(f"==> Attached {args.device} as /dev/vdb. At the boot menu, pick "
             "'Live System (Recovery)' to repair it, or 'Installer' to install onto it.")
     try:
-        return subprocess.run(cmd, cwd=REPO).returncode
+        return subprocess.run(cmd, cwd=REPO, env=mkosi_env()).returncode
     finally:
         stop_swtpm(pidfile)
 
