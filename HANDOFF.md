@@ -1,6 +1,6 @@
 # Handoff — Type #2 install validation (arch-ansible)
 
-Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-08-19
+Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-21
 
 ## Mission
 
@@ -28,7 +28,65 @@ update then share one convention. Reference: systemd/particleos#166.
    stays empty (zero Type #1 leftovers — the whole point of the rewrite), the
    updated slot boots clean, and boot counting blesses it.
 
-## What changed this session
+## Q4 — newer-over-older A/B update: **CONFIRMED** (2026-09-21)
+
+The last open validation gap is closed. Previously the A/B update had only been
+exercised older-over-newer, which forced an explicit `--entry`; the natural
+direction — where sd-boot picks the new slot itself — is now proven.
+
+Run with two consecutive builds, V1 `20260918140158` → V2 `20260921222244`:
+
+1. `vm-test install` of V1: pure Type #2 (only the V1 UKI in `EFI/Linux`,
+   `loader/entries` = 0, usr-B slots `_empty` at 16G). 72s.
+2. V1 first boot: `is-system-running` = **running**, 0 failed units, `/usr`
+   erofs on dm-verity, root unsealed by the TPM2 token with no passphrase.
+3. V2's four split artifacts hardlinked into `~/.cache/mkosi/vm-test-src-<V2>/`
+   and handed to the guest over virtiofs, then updated **on the target**:
+   `/usr/lib/systemd/systemd-sysupdate --transfer-source=/mnt/vmtest update <V2>`
+   → installed into the inactive B slot (parts 5/6/7) + UKI as `+3-0`; both UKIs
+   in `EFI/Linux`; `loader/entries` still **0**.
+4. **The test: reboot with NO `--entry`.** Result:
+   `IMAGE_VERSION="20260921222244"` — sd-boot chose the new slot by itself —
+   `is-system-running` = **running**, 0 failed units, `/usr` erofs, and the UKI
+   renamed to `image_20260921222244_x86-64.efi` (counter gone = **blessed**).
+
+The 16 GiB slot sizing still holds with room to spare, but `/usr` keeps growing:
+8.07 GiB (Aug) → 9.64 GiB (V1) → **10.68 GiB (V2)**. Worth watching — at this
+rate the 16 GiB slot is maybe a year out, and changing it needs a reinstall.
+
+## Session 2026-09-18 — what changed
+
+* **Retention policy** in `bin/build-image` (`c91855a`): keeps the newest N
+  image versions (`--keep N|all`, default 3) after a successful build. Deletes
+  each version by an explicit `find -maxdepth 1 -name "image_<ver>_*" -delete`,
+  never an rm on a variable-built glob, and never the version just built.
+* **yay PGP fix** (`61d6736`): the build failed in `cli-tools` because
+  `aws-cli-bin` 2.36.48 needed a rebuild and yay's `gpg --recv-keys` failed.
+  Root cause: on the current Arch set (gnupg 2.4.9-3 / gnutls 3.8.13) **dirmngr's
+  hkps transport fails against every keyserver**, while plain `hkp://…:80` works
+  and curl fetches the key over HTTPS fine. yay v13 imports `validpgpkeys`
+  unconditionally (**its `pgpfetch` setting is parsed but never read**, so
+  turning it off does nothing; tried and reverted). Fix: `"gpgflags":
+  "--keyserver hkp://keyserver.ubuntu.com:80"` in the yay config written by
+  `roles/packaging/tasks/setup-aur.yml`. Safe because makepkg pins the full
+  fingerprint. Worth revisiting (and maybe reverting to the default keyserver)
+  once gnupg/gnutls fix hkps.
+* **Build-time analysis** (answering "would a sysext speed this up?" — no; a
+  sysext layer still has to run the same Ansible, and on rolling Arch it needs a
+  rebuild against every new base anyway). On
+  the warm build of V1 (899s total): base packages from mkosi's incremental cache
+  took ~40s, **Ansible took 9m19s**, and presets+erofs+verity+signing took the
+  rest. About 400s of the Ansible time is **38 separate `Install packages`
+  tasks**, each its own yay/pacman transaction that re-runs the image's 31 alpm
+  hooks (and probably a yay AUR RPC round-trip). A sysext layer would still have
+  to run that same Ansible, and on rolling Arch it would need rebuilding against
+  every new base anyway. Candidate speedups, not yet measured: (a) move
+  Ansible's official-repo package lists into mkosi `Packages=` so they land in
+  the incremental cache; (b) lighter, collapse the 38 installs into one
+  transaction. Measure how the ~400s splits (hooks vs extraction vs yay RPC)
+  before picking.
+
+## What changed 2026-08-19
 
 ### New: `bin/vm-test` — headless, scripted VM validation
 
@@ -256,24 +314,36 @@ variable — and refusing to prune the version it just built.
    build succeeded and the resulting image installs and boots clean.)
 2. ~~Q3: fix the slot sizing, then re-run the A/B update.~~ **DONE** — see the
    A/B slot sizing section above.
-3. **`bootstrapping-todo.md` needs updating** with the results above (all three
-   validation questions now pass; steps 4 and 5 are re-verified on the Type #2
-   installer).
+3. ~~`bootstrapping-todo.md` needs updating.~~ **DONE** (`6652888`).
 4. ~~Add a retention policy to `bin/build-image`.~~ **DONE** (2026-09-18) — see
    the artifact-loss note. Logic tested in a sandbox against a synthetic output
    dir (keep=N / keep=all / current-version protection / unversioned files left
-   alone); not yet exercised by a real build, since no build has run since.
+   alone). The 2026-09-18 build ran it for real against 2 versions (a correct
+   no-op), but **the deletion path has never fired against real mkosi output**.
+   It will on the first build that makes a 4th version, which will delete
+   `20260819015333` (not reproducible; the image carrying the sizing fix).
+   Pass `--keep all` on that build if that version should survive. (The
+   2026-09-21 build made only a 3rd version, so it was again a no-op.)
 5. **Real hardware needs a reinstall** to pick up the new partition geometry.
 6. **Only one A/B direction was exercised.** The update applied an *older* version
    (`20260819002736`, the salvaged artifacts) onto a newer install, so the
    updated slot had to be selected explicitly with `--entry`. A natural
    newer-over-older run — where sd-boot picks the new slot as the default — is
-   still unproven. Two consecutive builds would close that gap.
+   now **CONFIRMED** (2026-09-21); see the Q4 section at the top.
 7. Non-blocking warnings seen in the first-boot journal, none of which failed a
    unit: `systemd-tpm2-setup: TPM key integrity check failed` (fresh vTPM, SRK
    regenerated); `systemd-growfs: crypt_resize() of /dev/vda9 failed: Operation
    not permitted`; polkit `/etc/polkit-1/rules.d` read-only; wireplumber writing
    to `/.local/state` as root. Worth a look eventually.
+8. **Build speed**: see the build-time analysis in the 2026-09-18 section.
+   Still unmeasured: how the ~400s of package-install time splits between alpm
+   hooks, extraction, and yay's AUR RPC.
+   (Warm build times for reference: V1 899s, V2 1321s — the latter shared the
+   host with a running VM.)
+9. **Push decision** still pending: 15 commits ahead of `origin/mkosi`.
+10. **`bootstrapping-todo.md` still lists the A/B direction as an open item**
+    (added by `6652888`). It now has uncommitted edits of the user's, so it was
+    deliberately left untouched — fold the Q4 result in alongside those.
 
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
@@ -295,7 +365,24 @@ variable — and refusing to prune the version it just built.
    `--prompt-hostname` *and* `--prompt-root-password` (see
    `mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf`). Both need
    credentials in an unattended boot; `vm-test boot` supplies both.
-6. **Do NOT press Ctrl+Alt+F<n> in the QEMU GTK window** — without the keyboard
+6. **Host kernel/module mismatch breaks mkosi.** After a host `pacman -Syu` that
+   upgrades `linux`, the running kernel's modules are gone until you reboot.
+   mkosi's sandbox then fails to mount overlayfs with `OSError: [Errno 19] No
+   such device: 'newroot/buildroot'`. Check `uname -r` against
+   `ls /usr/lib/modules`, then reboot the host.
+7. **Don't `pgrep -af mkosi` (or `ps` its full cmdline).** `build-image` passes
+   `ANSIBLE_WIFI_NETWORKS` as base64 on mkosi's command line, so that prints
+   every wifi PSK. Use `pgrep -f` with no `-a`, or match by PID.
+8. **Wrap long runs with `run_in_background` directly**, not `nohup … &` inside
+   one; otherwise the completion notice reports the wrapper's exit code, not the
+   build's (a failed build once reported "exit 0" this way). Also note `ls` is
+   aliased to `eza` with icons in this shell, so `ls | grep '^name'` silently
+   matches nothing; use `find -printf` in scripts.
+9. **The guest's root shell has aliases**: `cat` is `bat` and `ls` is `eza`, so
+   a `--run` command gets bat's error text and icon-prefixed listings. Also
+   **`/etc/os-release` does not exist** in this image — read `/usr/lib/os-release`
+   (e.g. `grep ^IMAGE_VERSION= /usr/lib/os-release`) to identify the booted slot.
+10. **Do NOT press Ctrl+Alt+F<n> in the QEMU GTK window** — without the keyboard
    grab it hits the HOST compositor. Moot now that `vm-test` is headless.
 
 ## VM interaction channels
@@ -309,20 +396,13 @@ variable — and refusing to prune the version it just built.
 
 ## Git state
 
-HEAD `2d6a1c2` on branch `mkosi`. **6 commits ahead of `origin/mkosi` — NOT
-pushed** (push decision still pending).
+HEAD `61d6736` on branch `mkosi`. **14 commits ahead of `origin/mkosi` — NOT
+pushed** (push decision still pending). Everything from the 2026-08-19 session is
+committed (`f161383` … `2fe0030`), plus this session's `c91855a` (retention) and
+`61d6736` (yay hkp).
 
-### Uncommitted — CATEGORIZE before committing
-**Type #2 / validation work:**
-- `bin/vm-test` (new) — the headless harness.
-- `mkosi.extra/usr/lib/systemd/system/mnt-shared.mount` — `ConditionCredential`.
-- `mkosi.uki-profiles/25-install.conf` — `systemd.unit=multi-user.target`
-  (the greetd fix; now verified working end-to-end).
-- `bin/boot-disk` — `--autologin` flag + `smbios_args`.
-
-**Separate in-flight work — DO NOT commit with the above:**
-- `mkosi.finalize`, `mkosi.postinst.chroot` — cargo/sccache registry round-trip
-  fixes (the user's own work).
+**Uncommitted: `bootstrapping-todo.md`** (~600 lines changed). This is the
+user's own edit, not agent work. Leave it alone and keep it out of agent commits.
 
 Scope discipline has held all along: the nvim/AUR/build-cache changes are separate
 and must be committed apart from the installer work. Use `git add -p` for mixed
