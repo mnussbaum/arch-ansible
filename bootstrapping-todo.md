@@ -120,7 +120,9 @@ bin/vm boot DISK --share ~/.cache/mkosi/vm-test-src \
 bin/vm boot DISK --entry '<VERSION>'       # boot a specific sd-boot entry
 ```
 
-Both subcommands exit non-zero if the run misses its checkpoint, so they script.
+`install` and `boot` exit non-zero if the run misses its checkpoint, so they
+script. (`bin/vm live` is the third subcommand: the medium in a window or on the
+terminal, for when a human is driving.)
 Things worth knowing:
 
 - **`--share DIR`** exports DIR over virtiofs (tag `vmtest-share`, at

@@ -132,7 +132,7 @@ Both exit non-zero if the run misses its checkpoint, so they script. Notes:
 
 Added `ConditionCredential=fstab.extra`. `ConditionVirtualization=vm` alone is
 true in *every* VM, but the virtiofs tag only exists when the VM was launched by
-`mkosi vm` with a runtime tree. Under `bin/vm boot --gui` / `bin/vm` the mount
+`mkosi vm` with a runtime tree. Under `bin/vm boot` (either display mode) the mount
 failed, and that one failed unit pinned `is-system-running` at `degraded` for the
 entire boot — which is precisely the signal Q2 depends on. mkosi writes an
 `fstab.extra` system credential naming that tag and nothing else does, so the
@@ -347,8 +347,8 @@ variable — and refusing to prune the version it just built.
 
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
-1. **First-boot testing needs the target attached ALONE** — `bin/vm boot` or
-   `bin/vm boot`, never `vm live --boot-device`. The medium is also a
+1. **First-boot testing needs the target attached ALONE** — `bin/vm boot`
+   (headless or `--gui`), never `vm live --boot-device`. The medium is also a
    mkosi-layout disk, so first-boot repart provisions the WRONG one and the boot
    hangs on `/dev/disk/by-designator/root`.
 2. **`truncate -s 60G` on an existing 60G file is a NO-OP.** `vm install`
@@ -423,12 +423,13 @@ files.
 ## Key files
 
 - `bin/install-system` — the installer (`--guided` menu + one-shot `--yes DISK`).
-- `bin/vm` — headless validation harness (this session).
+- `bin/vm` — the one VM command: `live`, `install`, `boot` (+ `--gui`).
 - `mkosi.uki-profiles/25-install.conf` — Installer UKI profile cmdline.
 - `mkosi.extra/usr/lib/systemd/system/arch-install.service` — auto-runs the guided
   installer on tty1, gated on `arch.install`.
 - `mkosi.extra/usr/lib/repart.d/*` — baked device layout; `10-esp.conf` has
   `CopyFiles=/boot:/`; root/swap `Encrypt=tpm2`; root/home/swap created at the
   target's FIRST BOOT, not at install.
-- `bin/build-image`, `bin/vm live`, `bin/vm boot --gui` — build/test harness.
+- `bin/build-image` — builds the image; `bin/vm` — the single VM entry point
+  (`live` / `install` / `boot`, `--gui` for a window).
 - `bootstrapping-todo.md` — the E2E checklist; Type #2 item ~line 328.

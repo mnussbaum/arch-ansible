@@ -249,9 +249,17 @@ there are no per-machine inputs or per-host repo files.
 
 ### QEMU workflows
 
-Build the image, then boot it in a VM with `bin/vm live`.
+`bin/vm` is the only VM command. It has three subcommands, and `--gui` opens a
+window instead of running headless:
 
-Run the image (emulates an installed machine — boots the default profile):
+```
+bin/vm live                  # boot the built medium (installer / live system)
+bin/vm install TARGET.raw    # install the medium onto TARGET, then check the layout
+bin/vm boot TARGET.raw       # boot an installed disk ALONE + health checks
+```
+
+Build the image first, then run it (emulates an installed machine — boots the
+default profile):
 
 ```
 bin/build-image
@@ -262,11 +270,28 @@ Attach a second disk with `--device=<disk.raw>` and pick the role at the boot
 menu. **Live System (Recovery)** boots a volatile root that skips the first-boot
 self-install — `bin/recovery-mount` then discovers the disk's LUKS partition,
 unlocks it, mounts root/usr/efi/home, and chroots in. **Installer** replicates the
-image onto the disk via `systemd-sysinstall` (the install profile boots straight
-into `systemd-sysinstall.service`).
+image onto the disk with `bin/install-system` — one `systemd-repart` run that
+reproduces the medium's own Type #2 layout (the install profile boots straight
+into `arch-install.service`).
 
 ```
 bin/vm live --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
+```
+
+#### Scripted runs
+
+`install` and `boot` are headless and exit non-zero if the run misses its
+checkpoint, so they compose into a validation pass. A target's first boot needs
+the target attached **alone** — with the medium also attached, first-boot
+`systemd-repart` provisions the wrong disk — which is what `vm boot` does.
+
+```
+bin/vm install ~/.cache/mkosi/test-target.raw    # fresh install
+bin/vm boot    ~/.cache/mkosi/test-target.raw    # first boot + health checks
+bin/vm boot DISK --run 'CMD'                     # run CMD in the booted guest
+bin/vm boot DISK --share DIR                     # hand the guest files at /mnt/vmtest
+bin/vm boot DISK --entry VERSION                 # pick an sd-boot entry
+bin/vm boot DISK --gui                           # a window instead of the checks
 ```
 
 ## Maintenance
