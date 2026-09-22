@@ -1,6 +1,6 @@
 # Handoff — Type #2 install validation (arch-ansible)
 
-Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-21
+Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-22
 
 ## Mission
 
@@ -340,8 +340,13 @@ variable — and refusing to prune the version it just built.
    hooks, extraction, and yay's AUR RPC.
    (Warm build times for reference: V1 899s, V2 1321s — the latter shared the
    host with a running VM.)
-9. **Push decision** still pending: 15 commits ahead of `origin/mkosi`.
-10. **`bootstrapping-todo.md` still lists the A/B direction as an open item**
+9. **Push decision** still pending: 22 commits ahead of `origin/mkosi`.
+10. **Make the first-login YubiKey enrollment survivable**: tell the user a tap
+    is required, and retry instead of failing after 37s. See the 2026-09-22
+    section above; it will bite again on the real-hardware install.
+11. **Rotate the PIV PIN** (`ykman piv access change-pin`) — a
+    `SYSTEMD_LOG_LEVEL=debug homectl` run printed it in plaintext on 2026-09-22.
+12. **`bootstrapping-todo.md` still lists the A/B direction as an open item**
     (added by `6652888`). It now has uncommitted edits of the user's, so it was
     deliberately left untouched — fold the Q4 result in alongside those.
 
@@ -388,6 +393,57 @@ Debugging shortcut worth keeping: `systemd-repart --dry-run=yes
 the host in seconds. On a medium copy, `truncate -s 90G` then `sgdisk -e` first,
 so the GPT describes the grown disk the way the guest sees it.
 
+## First login: YubiKey PIV enrollment needs a TOUCH (2026-09-22)
+
+`user-first-login-playbook.yml` failed on a fresh medium boot at
+`roles/user/tasks/first-login.yml` → **Enroll YubiKey PIV**:
+
+```
+sudo -n homectl update mnussbaum --pkcs11-token-uri=pkcs11:…;id=%03
+Successfully logged into security token 'arch-ansible SecureBoot'.
+Operation on home mnussbaum failed: Failed to execute operation: Input/output error
+```
+
+homed's own journal is where the reason lives (`journalctl -u systemd-homed`),
+not the Ansible output:
+
+```
+Successfully logged into security token … with PIN.
+Failed to decrypt key on security token: No user has logged in
+```
+
+**Cause: PIV slot 9D is `PIN required: ONCE` + `Touch required: CACHED`**
+(`ykman piv keys info 9d`). The decrypt blocks on a physical tap; nothing in the
+task says so, and the failure takes ~37s, which reads like a hang.
+
+Once touched, the token half works, but the operation ALSO needs the plaintext
+password in the same attempt — the record's only other factor — and homed fails
+fast (1–3s) and retries when it does not get one, which looks like an endless
+password prompt. It succeeds when the dialog is answered AND the key is tapped
+within the same attempt.
+
+Narrowing this, for next time:
+* `homectl authenticate <user>` tests the password ALONE — no token, no touch.
+  It passing proves the password and the ask-password path are fine.
+* `homectl update <user> --real-name="$(current value)"` is a harmless
+  metadata-only update; it needs no prompt at all, so it separates "updates are
+  broken" from "this particular update is".
+* The password homed wants here is the recovery secret in pass
+  (`linux_users/<user>/recovery-key`), the same value baked into the image as
+  `/usr/lib/credstore/home.new-password`. Comparing the two by sha256 (stripped
+  of the trailing newline) confirms the image and pass agree.
+* Verify a candidate against the record's yescrypt hash without typing it:
+  `crypt(3)` via ctypes on `privileged.hashedPassword` from
+  `homectl inspect <user> --json=short` (root sees the privileged section).
+
+**NEVER run `homectl` with `SYSTEMD_LOG_LEVEL=debug`.** It dumps the whole user
+record it sends, INCLUDING `secret.tokenPin` in plaintext (and the hashed
+passwords). Doing that during this debug leaked the PIV PIN into a session
+transcript; rotate with `ykman piv access change-pin` if it happens.
+
+Worth fixing in the playbook: the enrollment task should say a tap is required
+and retry, rather than failing opaquely after 37s.
+
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
 1. **First-boot testing needs the target attached ALONE** — `bin/vm run`
@@ -425,7 +481,16 @@ so the GPT describes the grown disk the way the guest sees it.
    a `--run` command gets bat's error text and icon-prefixed listings. Also
    **`/etc/os-release` does not exist** in this image — read `/usr/lib/os-release`
    (e.g. `grep ^IMAGE_VERSION= /usr/lib/os-release`) to identify the booted slot.
-10. **Do NOT press Ctrl+Alt+F<n> in the QEMU GTK window** — without the keyboard
+10. **Only ONE medium VM at a time.** `vm run` (no disk) hardcodes
+    `--vsock-cid=3`, so a second one dies instantly with "VSock connection ID 3
+    is already in use by another virtual machine". mkosi suggests
+    `VsockConnectionId=auto`; worth adopting. A `vm run DISK` guest uses no
+    vsock and is unaffected.
+11. **`vm run` MUTATES the built medium** unless `--ephemeral` is passed: mkosi
+    grows it to `--runtime-size=90G` and the default profile self-provisions
+    into it. Use `--ephemeral` for throwaway boots, or work on a
+    `cp --sparse=always` copy (12G real for a 90G apparent file).
+12. **Do NOT press Ctrl+Alt+F<n> in the QEMU GTK window** — without the keyboard
    grab it hits the HOST compositor. `bin/vm --gui` sets `grab-on-hover=on`,
    and Ctrl+Alt+G toggles the grab by hand; the default runs are headless anyway.
 
@@ -455,18 +520,25 @@ what you boot is the argument, not the command.
 - Sizing: one default for both modes, host CPUs − 2 and 8G. Measured cost on a
   scripted disk boot is ~6s versus 4 CPUs (18s → 24s); an earlier 114s outlier
   was host contention, not the defaults.
-- The qemu-guest-agent socket exists but qemu-ga is NOT running in the guest.
+- **qemu-ga IS running in the guest** (this note previously said it was not —
+  corrected 2026-09-22). `vm run` with no disk wires its socket at
+  `/tmp/qemu-guest-agent.sock`, which gives ROOT COMMAND EXECUTION in a live VM
+  from the host — including one a human is sitting in front of, without touching
+  their session. It is how the first-login failure below was diagnosed. Talk to
+  it with `guest-exec` + `guest-exec-status` (capture-output, base64 out-data)
+  and `guest-file-open/write/close`; `guest-ping` checks it is alive. Only the
+  medium path wires it up; a `vm run DISK` guest has no agent (use `--run`).
 - QEMU's unix monitor accepts **one** client; `bin/vm` holds it while running.
 
 ## Git state
 
-HEAD `61d6736` on branch `mkosi`. **14 commits ahead of `origin/mkosi` — NOT
-pushed** (push decision still pending). Everything from the 2026-08-19 session is
-committed (`f161383` … `2fe0030`), plus this session's `c91855a` (retention) and
-`61d6736` (yay hkp).
+HEAD `19abeb1` on branch `mkosi`. **22 commits ahead of `origin/mkosi` — NOT
+pushed** (push decision still pending). Working tree clean.
 
-**Uncommitted: `bootstrapping-todo.md`** (~600 lines changed). This is the
-user's own edit, not agent work. Leave it alone and keep it out of agent commits.
+Since 2026-09-21: `c91855a` (retention), `61d6736` (yay over hkp), `521dd5e` +
+`ffba894` + `021f6a5` (docs), `e1e0652` (bin/vm consolidation), `a19b2b2` (docs
+sweep), `1c7452d` (`vm run [DISK]` merge), `60fec37` (mkosi cache env vars),
+`19abeb1` (medium verity floor).
 
 Scope discipline has held all along: the nvim/AUR/build-cache changes are separate
 and must be committed apart from the installer work. Use `git add -p` for mixed
