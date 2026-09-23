@@ -1,0 +1,100 @@
+#!/bin/bash
+# Build any AUR package that mkosi is about to install but that the local repo
+# does not have yet. Run by bin/build-image before mkosi.
+#
+# Why before mkosi: mkosi installs the AUR packages listed in
+# mkosi.conf.d/90-packages.conf from the local aur-repo (PackageDirectories= in
+# mkosi.conf), which only works if they are already built. yay builds them, but
+# yay runs in the postinst — long after mkosi's package phase — so a cold cache
+# fails with "target not found".
+#
+# A mkosi build script cannot do this either: build scripts run AFTER the
+# image's own Packages= are installed ($PACKAGEDIR feeds OTHER images in a
+# multi-image build). Measured, not assumed: hiding one package and building
+# failed at the package phase with mkosi.build never reached.
+#
+# THE LIST IS NOT PARSED BY HAND. `mkosi --json summary` resolves the real
+# merged config (mkosi.conf + every mkosi.conf.d fragment, ~0.14s), and one
+# `pacman -Sp` over those names reports each one the official repos do not have
+# (~0.19s) — which is exactly the set that must come from the local repo. An
+# earlier version keyed off a "# --- AUR" comment marker in the config, which
+# silently skipped any AUR package filed above the marker and would have tried
+# to build official packages listed below it.
+#
+# The slow path runs ONLY for packages missing from the repo. Steady state is
+# those two commands and an exit. Keeping packages CURRENT is not this script's
+# job: `yay -Sua` in the postinst does that, and doing it here would put an AUR
+# RPC round-trip on every build.
+#
+# Building may ask for sudo (makepkg --syncdeps installs makedepends). That only
+# happens on a cold cache or when a package is newly listed.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+
+# mkosi.conf expands ${ARCH_ANSIBLE_CACHE} and ${ARCH_ANSIBLE_SRCTREE} from the
+# environment, so `mkosi summary` fails config validation without them. Exported
+# already when bin/build-image calls this; sourced here so the script also works
+# standalone. (Suppressing mkosi's stderr hid exactly this failure once.)
+if [[ -z ${ARCH_ANSIBLE_CACHE:-} ]]; then
+    # shellcheck source=bin/_cache_common.sh
+    source "$root/bin/_cache_common.sh"
+fi
+
+repo=$ARCH_ANSIBLE_CACHE/aur-repo
+mkdir -p "$repo"
+
+# Every package the main image will install, straight from mkosi's own resolved
+# configuration (the initrd image has its own, much shorter, list).
+mapfile -t wanted < <(mkosi --directory "$root" --json summary | python3 -c '
+import json, sys
+images = json.load(sys.stdin)["Images"]
+main = [i for i in images if (i.get("Image") or i.get("Name")) == "main"]
+if not main:
+    sys.exit("build-missing-aur: mkosi summary has no main image")
+print("\n".join(main[0].get("Packages") or []))')
+[[ ${#wanted[@]} -gt 0 ]] || { echo "build-missing-aur: mkosi summary listed no packages" >&2; exit 1; }
+
+# Whatever the official repos cannot resolve must come from the local repo.
+# One pacman call reports them all; other failures it may print (an unsatisfiable
+# dependency on THIS host, say) are irrelevant here and deliberately ignored.
+mapfile -t aur < <(pacman -Sp "${wanted[@]}" 2>&1 >/dev/null \
+    | sed -n 's/^error: target not found: //p')
+[[ ${#aur[@]} -gt 0 ]] || exit 0
+
+missing=()
+for pkg in "${aur[@]}"; do
+    # Built packages are <name>-<ver>-<rel>-<arch>.pkg.tar.zst; anchor on the
+    # version so "kubectl-bin" cannot satisfy a lookup for "kubectl".
+    compgen -G "$repo/$pkg-[0-9]*.pkg.tar.zst" > /dev/null \
+        || compgen -G "$repo/$pkg-[0-9]*:*.pkg.tar.zst" > /dev/null \
+        || missing+=("$pkg")
+done
+[[ ${#missing[@]} -gt 0 ]] || exit 0
+
+echo "==> ${#missing[@]} of ${#aur[@]} AUR packages missing from $repo" >&2
+echo "==> building: ${missing[*]}" >&2
+echo "==> (makepkg --syncdeps may ask for sudo to install build dependencies)" >&2
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+
+for pkg in "${missing[@]}"; do
+    echo "==> $pkg" >&2
+    git clone --quiet --depth=1 "https://aur.archlinux.org/$pkg.git" "$work/$pkg"
+    # --skippgpcheck: fetching validpgpkeys needs a keyserver, and dirmngr's hkps
+    # transport is broken on current Arch (see roles/packaging/tasks/setup-aur.yml).
+    # Integrity still comes from the PKGBUILD's pinned checksums.
+    ( cd "$work/$pkg" && PKGDEST="$repo" PKGEXT='.pkg.tar.zst' \
+        makepkg --syncdeps --noconfirm --skippgpcheck --needed )
+done
+
+# Deliberately NO repo-add here. mkosi's PackageDirectories= builds its own
+# repository from the directory contents, so dropping the package files in is
+# enough for the install; aur-local.db exists for the IN-IMAGE [aur-local] repo
+# and the postinst rebuilds it. Running repo-add as the host user also broke
+# that: it bakes uid/gid 1000 into the DB's tar entries, and the in-image
+# repo-add then fails with "Can't set user=1000/group=1000 ... Invalid argument".
+echo "==> built ${#missing[@]} package(s) into $repo" >&2

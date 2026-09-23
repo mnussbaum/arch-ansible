@@ -72,6 +72,12 @@ fi
 
 source bin/_cache_common.sh
 arch_ansible_ensure_cache
+
+# mkosi installs the AUR packages listed in mkosi.conf.d/90-packages.conf from
+# the local aur-repo, so they must exist before its package phase runs. Costs a
+# glob per package (~6ms) when they all do, which is the normal case; only a
+# cold cache or a newly listed package triggers an actual build.
+bin/build-missing-aur
 arch_ansible_stage_srctree
 
 # Point pass at the shipped password-store when building from a live/volatile
