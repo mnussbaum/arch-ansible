@@ -1,0 +1,96 @@
+#!/bin/bash
+# Enroll a YubiKey (FIDO2) as the root volume's recovery factor, on first boot.
+#
+# Why: the TPM2 token systemd-repart enrolls on root is a SIGNED PCR 11 policy
+# (tpm2-pcrs=[], tpm2_pubkey_pcrs=[11]). PCR 11 is extended at every boot phase
+# and the signatures cover only the initrd of a normal signed UKI boot, so that
+# token cannot unlock root from a recovery medium or any already-booted system —
+# by design, so a running OS cannot unseal the disk. A root with ONLY that token
+# is therefore unrecoverable as soon as its measured boot stops matching (TPM
+# cleared, board replaced), and bin/recovery-mount can never open it. FIDO2 has
+# no such limit: it unlocks anywhere the key is present.
+#
+# How: 50-root.conf uses Encrypt=key-file+tpm2, which (with no --key-file) gives
+# the new root a zero-length-key keyslot next to the TPM2 one — systemd-repart's
+# documented hook for "partitions during early first boot that receive their
+# user-supplied password only in a later setup step". That empty key is what
+# authorizes this enrollment; nothing else could, since the TPM token is unusable
+# post-boot.
+#
+# The empty-key slot is a genuine exposure while it lasts: anyone with the disk
+# can open it. So this NEVER leaves it behind. Either the YubiKey is enrolled and
+# the empty slot wiped in one systemd-cryptenroll call, or — when no key shows up
+# — the empty slot is wiped anyway and the machine is left TPM-only (no worse
+# than before this factor existed) with a loud warning. Refusing to boot instead
+# would brick a machine whose YubiKey is simply elsewhere.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+dev=${1:-/dev/disk/by-designator/root-luks}
+wait_secs=${ENROLL_FIDO2_WAIT:-120}
+
+log() { echo "enroll-root-fido2: $*"; }
+
+[[ -e "$dev" ]] || { log "no root LUKS device at $dev; nothing to do"; exit 0; }
+
+# Idempotent: a FIDO2 token already enrolled means this ran before (or a human
+# did it). Leave everything alone, including any empty slot, which the wipe
+# below would otherwise remove behind their back.
+if cryptsetup luksDump "$dev" | grep -q 'systemd-fido2'; then
+    log "a FIDO2 token is already enrolled on $dev; nothing to do"
+    exit 0
+fi
+
+# Is the bootstrap slot even there? If repart made this root before
+# Encrypt=key-file+tpm2 (or a human already wiped it), there is no empty key to
+# authorize with, and enrolling would need a factor we do not have.
+# (systemd-cryptenroll has no dry-run, so ask cryptsetup whether the empty key
+# opens any slot — --test-passphrase checks without activating anything.)
+if ! cryptsetup open --test-passphrase --key-file=/dev/null "$dev" 2>/dev/null; then
+    log "WARNING: no empty-key slot on $dev to authorize enrollment."
+    log "WARNING: this root predates Encrypt=key-file+tpm2, or the slot is gone."
+    log "WARNING: it has no recovery factor; bin/recovery-mount cannot open it."
+    exit 0
+fi
+
+# --fido2-device=list prints a table with a header; the rows are device paths,
+# so match those rather than "any output" (and there is no --no-legend here).
+have_key() { systemd-cryptenroll --fido2-device=list 2>/dev/null | grep -q '^/dev/'; }
+
+if ! have_key; then
+    log "Insert the YubiKey to enroll as this machine's recovery factor."
+    log "Waiting up to ${wait_secs}s (boot continues either way)…"
+    for (( i = 0; i < wait_secs; i++ )); do
+        have_key && break
+        sleep 1
+    done
+fi
+
+if have_key; then
+    log "Enrolling FIDO2 token (touch the key when it blinks)…"
+    # One call: enrolls the token AND drops the empty-key slot, so there is no
+    # window where both the new factor and the empty key are valid.
+    if systemd-cryptenroll "$dev" \
+        --unlock-key-file=/dev/null \
+        --fido2-device=auto \
+        --wipe-slot=empty; then
+        log "FIDO2 enrolled on $dev and the empty-key slot wiped."
+        exit 0
+    fi
+    log "WARNING: FIDO2 enrollment failed; falling back to wiping the empty slot."
+fi
+
+log "WARNING: no YubiKey enrolled on $dev."
+systemd-cryptenroll "$dev" --unlock-key-file=/dev/null --wipe-slot=empty
+log "WARNING: the empty-key slot is wiped, so the disk is not left open to"
+log "WARNING: anyone holding it — but root is now TPM-only: unopenable from a"
+log "WARNING: recovery medium, and unrecoverable if its measured boot changes."
+log "WARNING:"
+log "WARNING: systemd-cryptenroll cannot add a factor now — it can only"
+log "WARNING: authorize with a key file, FIDO2 or TPM2, and this root has none"
+log "WARNING: that works post-boot. While THIS boot lasts the volume key is"
+log "WARNING: still in the kernel, so an admin can add a keyslot directly:"
+log "WARNING:   dmsetup table --showkeys /dev/mapper/root   # 5th field = key"
+log "WARNING:   cryptsetup luksAddKey --volume-key-file=... $dev"
+log "WARNING: Otherwise this root needs reinstalling to gain a recovery factor."

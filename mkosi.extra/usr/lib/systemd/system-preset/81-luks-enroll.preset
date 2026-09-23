@@ -1,0 +1,3 @@
+# Root LUKS gets a YubiKey (FIDO2) factor at first boot; see
+# mkosi.extra/usr/lib/systemd/system/luks-enroll-fido2.service.
+enable luks-enroll-fido2.service
