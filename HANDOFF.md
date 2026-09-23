@@ -511,6 +511,64 @@ hands QEMU a varstore with the cert already enrolled, so PCR 7 is stable from
 the start. Order on hardware: enrol keys, reboot with Secure Boot on, then
 provision.
 
+## When systemd 262 lands in Arch (surveyed 2026-09-23)
+
+v262 was released 2026-09-22; Arch core is still 261.3, so none of this is
+actionable yet. Several items land squarely on work done in this branch.
+
+**Adopt, roughly in this order:**
+
+1. **`systemd-cryptenroll-firstboot.service` replaces our enrollment service.**
+   Upstream now ships a first-boot wizard for "enrolling additional unlock
+   mechanisms … in TPM-enabled scenarios which default to unattended TPM-based
+   disk encryption, but where enrollment of additional mechanisms to decrypt the
+   disks for recovery purposes shall be suggested to the user" — i.e. exactly
+   `luks-enroll-fido2.service` + `bin/enroll-root-fido2`. Swapping to it deletes
+   ~90 lines of ours. Check first how it picks the device and whether it can be
+   pointed at a YubiKey unattended.
+2. **`systemd-cryptenroll --unlock-headless`** = `--unlock-tpm2` when a TPM
+   exists, else `--unlock-empty`. That is our authorization logic, including the
+   TPM-less case we do not handle.
+3. **pcrlock, for the PCR 7 brittleness we knowingly accepted.** v262 adds
+   Varlink methods to relax policy before an fwupd-prepared firmware update,
+   `--strict=` so a requested PCR cannot be silently dropped from a policy, and
+   policy re-prediction after an update via
+   `systemd-sysupdate-notify-pcrlock.socket`. We use no pcrlock today; this is
+   the principled fix, with the FIDO2 factor as the fallback rather than the
+   plan.
+4. **`systemd-sysupdate cleanup` + its new persistent file database**: files it
+   installed that no current match pattern claims are now removed. This branch
+   exists because stale boot entries accumulated, so it is on-theme.
+
+**The trap — do not adopt without deciding:** signed-policy references
+(`systemd-measure --policyref=`, `--tpm2-public-key-policyref=` in cryptenroll
+and repart, `ukify --sign-initrd-pcrs`). Today the UKI signs expected PCR 11
+values for the LATER boot phases too, which is precisely why post-boot
+`systemd-cryptenroll --unlock-tpm2-device=auto` works and why the bootstrap
+keyslot could be dropped (see the PCR 7 + 11 section). An initrd-only signed
+policy is stronger — a running OS then cannot unseal the disk — but it BREAKS
+that enrollment path, ours and AstrOS's. Adopting it means moving enrollment
+into the initrd or authorizing it with a different factor.
+
+**Explicitly NOT for us:** `bootctl link-auto` and
+`systemd-sysupdate-notify-bootctl.socket`. `bootctl link` writes Boot Loader
+Spec **Type #1** entries — the thing this whole branch retired.
+
+**Housekeeping on the 262 rebuild:**
+
+* `systemd-sysupdate.service`/`.timer` are renamed to `…-update.service`/
+  `.timer` (compat symlinks exist). We reference neither.
+* `systemd-sysupdated` is deprecated in favour of Varlink straight to
+  `systemd-sysupdate`; we already drive the binary directly, for the
+  `--transfer-source` reason recorded in `bin/update-system`.
+* **NvPCR anchoring changed** and is the most likely surprise: definitions must
+  ship in the UKI, which must embed an initrd-bound signed policy
+  (`ukify --sign-initrd-pcrs`). Existing NvPCRs auto-upgrade, and the old anchor
+  secret in /var/lib and the ESP is removed. We do extend the `cryptsetup`
+  NvPCR at boot, so watch the first 262 build for it.
+* TPM2 PIN enrollment can now be hardened with Argon2id (`--tpm2-with-pin=yes`),
+  if a PIN is ever added.
+
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
 1. **First-boot testing needs the target attached ALONE** — `bin/vm run`
