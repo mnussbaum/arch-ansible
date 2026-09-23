@@ -1,18 +1,17 @@
-# Enroll a YubiKey (FIDO2) on the root volume at first boot, and get rid of the
-# empty-key bootstrap slot 50-root.conf's Encrypt=key-file+tpm2 leaves behind.
-# See bin/enroll-root-fido2 for why root needs a second factor at all (its TPM2
-# token is a signed PCR 11 policy, so it only unlocks inside the initrd of a
-# normal signed boot — never from a recovery medium).
+# Enroll a YubiKey (FIDO2) on the root volume at first boot. See
+# bin/enroll-root-fido2 for why root needs a second factor at all: its TPM2
+# token binds PCR 7 and a signed PCR 11 policy, so the seal breaks whenever the
+# measured boot legitimately changes, and because PCR 11 belongs to THIS UKI no
+# recovery medium can ever satisfy it.
 #
 # Ordered like systemd-homed-firstboot.service: first boot only, before anyone
-# can log in, so the window in which an empty key opens root is as short as
-# possible and the human who is sitting there at install time is the one asked
-# for the YubiKey.
+# can log in, so the human sitting there at install time is the one asked for
+# the YubiKey. It talks to tty1 because it has to prompt for a physical tap.
 #
-# NOT a hard boot dependency: if no key turns up the script wipes the empty slot
-# anyway and warns loudly, leaving root TPM-only rather than blocking a machine
-# whose YubiKey is simply elsewhere. It talks to tty1 because it has to prompt
-# for a physical tap.
+# NOT a hard boot dependency, and nothing to clean up if it fails: the TPM2
+# token authorizes the enrollment, so there is no bootstrap keyslot, and a key
+# can still be enrolled later from any normal boot. Blocking instead would
+# strand a machine whose YubiKey is simply elsewhere.
 [Unit]
 Description=Enroll a FIDO2 token on the root volume (first boot)
 Documentation=man:systemd-cryptenroll(1)

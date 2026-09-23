@@ -85,12 +85,14 @@ done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL "/dev/$parent")
 [[ -n "$esp" ]] || echo "recovery-mount: warning: no ESP found on /dev/$parent" >&2
 
 # --- Unlock root ------------------------------------------------------------
-# The TPM2 token repart enrolls is NOT sealed to PCR 7: it is a signed PCR 11
-# policy (tpm2-pcrs=[], tpm2_pubkey_pcrs=[11]). PCR 11 is extended at every boot
-# phase and the signatures cover only the initrd of a signed UKI boot, so from an
-# already-booted system — which is what this is — that token can never unlock.
-# That is the design, not a fault: it stops a running OS unsealing the disk.
-# Tokens are still tried first, because a FIDO2 token has no such limit.
+# The TPM2 token repart enrolls binds PCR 7 AND a signed PCR 11 policy
+# (tpm2-pcrs=[7], tpm2_pubkey_pcrs=[11]), and both must be satisfied. PCR 11
+# measures THIS UKI and its boot phases, so a recovery boot — a different UKI,
+# and the Live profile signs no expected PCRs at all — can never match it, no
+# matter that PCR 7 does. The token therefore cannot unlock from here. (On the
+# volume's OWN booted system it can, which is how luks-enroll-fido2.service
+# authorizes enrollment; that is not this case.) Tokens are still tried first,
+# because a FIDO2 token has no such limit.
 #
 # Anything a human can type is a keyslot NOT bound to a hardware token (a
 # passphrase, or a systemd-cryptenroll --recovery-key slot). If there is none,

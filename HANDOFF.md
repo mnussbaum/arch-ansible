@@ -474,11 +474,42 @@ passthrough — the vsock relay carries pcscd (PIV/smartcard), not FIDO2 HID —
 that branch first runs on real hardware. What a VM exercises, and what was
 verified on image `20260922233147`, is the no-key fallback.
 
-Note for after the wipe: `systemd-cryptenroll` can then add nothing (it
-authorizes only with a key file, FIDO2 or TPM2, and none work post-boot). While
-that boot lasts the volume key is still in the kernel, so
-`cryptsetup luksAddKey --volume-key-file` (key from `dmsetup table --showkeys`)
-is the escape hatch; otherwise the root needs reinstalling to gain a factor.
+**Correction (2026-09-23, same day):** the first version of this used an
+empty-key bootstrap slot (`Encrypt=key-file+tpm2`) because the TPM2 token was
+believed unusable post-boot. That was wrong, and the belief came from
+over-generalising a RECOVERY boot, where a different UKI means PCR 11 can never
+match. On the volume's own booted system `systemd-cryptenroll
+--unlock-tpm2-device=auto` works — measured, and what AstrOS uses to enroll its
+recovery key at first boot. So the bootstrap slot is gone, along with the window
+in which an empty password opened root, and a factor can be added later from any
+normal boot:
+
+```
+systemd-cryptenroll /dev/disk/by-designator/root-luks --unlock-tpm2-device=auto --fido2-device=auto
+systemd-cryptenroll /dev/disk/by-designator/root-luks --unlock-tpm2-device=auto --recovery-key
+```
+
+### PCR 7 + 11 (2026-09-23)
+
+`TPM2PCRs=7` on root and swap (`repart.d`, systemd >= 259) adds a literal PCR 7
+binding next to the signed PCR 11 policy repart takes by default from mkosi's
+`SignExpectedPcr=` key. Verified on a fresh install: `tpm2-pcrs: [7]`,
+`tpm2_pubkey_pcrs: [11]` — `TPM2PCRs=` ADDS to the signed policy rather than
+replacing it.
+
+Mirrors the two reference images, which differ: **ParticleOS** sets no
+`TPM2PCRs=` and so binds signed PCR 11 only; **AstrOS** sets `TPM2PCRs=7` and
+advertises "sealed against PCR11+7". PCR 7 alone is brittle across firmware and
+Secure Boot changes; signed PCR 11 alone leaves the seal indifferent to Secure
+Boot being switched off.
+
+STILL OPEN, and the reason the FIDO2 factor matters: on real hardware the seal
+must be taken when PCR 7 is FINAL. If the target's first boot is also the boot
+where sd-boot auto-enrols the keys from `/loader/keys/auto`, it may seal against
+the setup-mode value and fail on every later boot. VMs hide this — `bin/vm`
+hands QEMU a varstore with the cert already enrolled, so PCR 7 is stable from
+the start. Order on hardware: enrol keys, reboot with Secure Boot on, then
+provision.
 
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 

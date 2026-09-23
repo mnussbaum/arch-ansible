@@ -154,7 +154,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
        on a primed cache). Pass: signed UKI + split usr/verity/verity-sig artifacts
        land in `~/.cache/mkosi/images/image`, version bumped (`mkosi.version`).
        VERIFIED 2026-06-29 for `image_20260629164917_x86-64`: `sbverify --cert
-   ~/.cache/mkosi-secureboot/mkosi.crt <uki>.efi` → "Signature verification OK";
+~/.cache/mkosi-secureboot/mkosi.crt <uki>.efi` → "Signature verification OK";
        verity-sig `certificateFingerprint` == the `CN=arch-ansible SecureBoot` cert
        (`B2:DA:95…97:83`) and its `rootHash` matches the `usr` partition's hash. Same
        cert is pre-enrolled into the OVMF varstore by `bin/vm run`, so the firmware
@@ -194,10 +194,10 @@ reachable YubiKey, or the in-guest build falls back to the network.
    FAILED 2026-06-30 (`image_20260629164917` guest). Silent no-op: the in-guest
    rebuild succeeded and staged all four artifacts for `20260630065151` into
    `/var/lib/arch-ansible/updates`, but `systemd-sysupdate --transfer-source=…
-   --offline update` applied nothing — after `--reboot` the running version was
+--offline update` applied nothing — after `--reboot` the running version was
    still `20260629164917`, the inactive `usr` slot (vda5/6/7) was still labeled
    `_empty`, and no boot-counted UKI was dropped. `systemd-sysupdate … --offline
-   list` confirms it discovers NO available instance from the staged source even
+list` confirms it discovers NO available instance from the staged source even
    though the files match the shipped `MatchPattern=%M_@v_%a.usr-%a.@u.raw`.
    ROOT CAUSE (confirmed by matrix): the **`--offline` flag** suppresses
    enumeration of the local `regular-file` source. Dropping `--offline` from the
@@ -237,14 +237,14 @@ reachable YubiKey, or the in-guest build falls back to the network.
    `systemd-sysinstall.service`), or pick **Live System** and run
    `systemd-sysinstall` by hand. Pass: `/dev/vdb` partitioned (A/B `usr` +
    root/home/swap, usr-b empty), `/usr` copied, ESP populated via `bootctl
-   install`/`link`, and the target's first boot provisions + TPM2-seals and
+install`/`link`, and the target's first boot provisions + TPM2-seals and
    self-assigns a stable `arch-…` hostname. (See "Install from the live medium" above for
    the hostname-credential and PCR-7 caveats.)
    FINDING 2026-06-30 (benign): during install `systemd-sysinstall` logs "Failed
    to read timezone, skipping timezone propagation: Invalid argument" and
    continues. Cause: `mkosi.conf` sets `Timezone=US/Pacific`, which mkosi
    materializes as a RELATIVE symlink `/etc/localtime -> ../usr/share/zoneinfo/
-   US/Pacific`; systemd's timezone read (`get_timezone`) only accepts an ABSOLUTE
+US/Pacific`; systemd's timezone read (`get_timezone`) only accepts an ABSOLUTE
    `/usr/share/zoneinfo/...` target, so the relative form returns -EINVAL and
    propagation is skipped (target timezone falls back to default/firstboot). Not a
    blocker for step 4. Fix later on the mkosi side (emit an absolute localtime
@@ -327,7 +327,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
    host-key or unencrypted firstboot cred would be more robust.
    HOSTNAME CONFIRMED 2026-06-30 — re-ran the whole chain on ONE shared TPM
    (re-install via the Installer profile, then `boot-disk --tpm-state
-   $output_dir/tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error) and wrote
+$output_dir/tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error) and wrote
    `/etc/hostname=installtest` (`hostnamectl` static = installtest); provisioning
    healthy (root btrfs TPM2-unsealed, /usr dm-verity, homed user). Step 4 fully
    verified end-to-end. (Side note observed: post-install the polluted medium —
@@ -436,7 +436,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
    sd-boot BLESSED the entry, so boot counting / auto-rollback works.
    FIRST ATTEMPT FAILED, and the bug was real: `systemd-sysupdate` aborted at 98%
    of the `/usr` copy with `File too large` / `Failed to decode and write:
-   Argument list too long`. The A/B slots had NO headroom — usr-B was exactly
+Argument list too long`. The A/B slots had NO headroom — usr-B was exactly
    8 GiB (its `SizeMinBytes` floor) and usr-A had been sized to the _previous_
    image by `CopyBlocks=auto`, so the new 8.66 GB `/usr` fit in NEITHER (over B
    by 67.9 MiB, over A by 500 KiB). Compounding it, `esp` and `usr-a-verity` had
@@ -490,7 +490,7 @@ Follow-ups (software; discovered during E2E, not yet done):
       Spec Type #1** (`man bootctl`: "Creates one or more Type #1 boot loader entries"
       — no Type #2 mode): it copies the UKI under the entry-token dir (`/image/`, token
       `image` = `ImageId`) and writes one `loader/entries/image-commit_N.<ver>[@profile]
-      .conf` per UKI profile (the `@1..@6` seen on the target = profiles, not tries),
+    .conf` per UKI profile (the `@1..@6` seen on the target = profiles, not tries),
       each with `extra /image/firstboot.{hostname,locale,keymap}.cred` sidecars. - mkosi (the medium) and `mkosi.sysupdate/20-uki.transfer` use **Type #2**: the
       multi-profile UKI lives in `EFI/Linux/` and sd-boot auto-expands the profiles
       (`man sysupdate.d`: `Path=/EFI/Linux`, `EFI/Linux/foobarOS_@v.efi`). Boot
@@ -626,5 +626,4 @@ Orthogonal checks (fold into the steps above as real hardware becomes available)
 - Remove ARCH_ANSIBLE_SRCTREE copying used to avoid copying secrets dir with repo into image
 - I wonder if we can run the user ansible in a seperate user home image build
   process. And then mount it in instead of running it on user first log in
-- Make firstboot user playbook live image aware. No need to enroll yubikey and such
 - Do I still need the bsdtar wrapping for nspawn building?

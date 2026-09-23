@@ -1,28 +1,27 @@
 #!/bin/bash
 # Enroll a YubiKey (FIDO2) as the root volume's recovery factor, on first boot.
 #
-# Why: the TPM2 token systemd-repart enrolls on root is a SIGNED PCR 11 policy
-# (tpm2-pcrs=[], tpm2_pubkey_pcrs=[11]). PCR 11 is extended at every boot phase
-# and the signatures cover only the initrd of a normal signed UKI boot, so that
-# token cannot unlock root from a recovery medium or any already-booted system —
-# by design, so a running OS cannot unseal the disk. A root with ONLY that token
-# is therefore unrecoverable as soon as its measured boot stops matching (TPM
-# cleared, board replaced), and bin/recovery-mount can never open it. FIDO2 has
-# no such limit: it unlocks anywhere the key is present.
+# Why root needs one: the TPM2 token repart enrolls binds PCR 7 AND a signed PCR
+# 11 policy. That is the right posture for automatic unlock, but it means the
+# seal breaks whenever the measured boot legitimately changes — a firmware
+# update, a Secure Boot key re-enrollment, a cleared TPM or a replaced board —
+# and, because PCR 11 belongs to THIS UKI, nothing can unlock the volume from a
+# recovery medium. Without a second factor such a root is simply gone, and
+# bin/recovery-mount cannot open it.
 #
-# How: 50-root.conf uses Encrypt=key-file+tpm2, which (with no --key-file) gives
-# the new root a zero-length-key keyslot next to the TPM2 one — systemd-repart's
-# documented hook for "partitions during early first boot that receive their
-# user-supplied password only in a later setup step". That empty key is what
-# authorizes this enrollment; nothing else could, since the TPM token is unusable
-# post-boot.
+# FIDO2 has neither limit: it unlocks wherever the key is present, including
+# from a recovery boot.
 #
-# The empty-key slot is a genuine exposure while it lasts: anyone with the disk
-# can open it. So this NEVER leaves it behind. Either the YubiKey is enrolled and
-# the empty slot wiped in one systemd-cryptenroll call, or — when no key shows up
-# — the empty slot is wiped anyway and the machine is left TPM-only (no worse
-# than before this factor existed) with a loud warning. Refusing to boot instead
-# would brick a machine whose YubiKey is simply elsewhere.
+# Authorization comes from the TPM2 token itself (--unlock-tpm2-device=auto),
+# which works from the booted system because the UKI ships signed PCR 11 values
+# for the later boot phases too. This is what AstrOS does to enroll its recovery
+# key at first boot. No bootstrap keyslot is needed, so root is never briefly
+# openable with an empty password.
+#
+# Failing to enroll is therefore not fatal and leaves nothing to clean up: the
+# volume keeps its TPM2 token, and a key can be enrolled later from any normal
+# boot with exactly the command printed below. Blocking the boot instead would
+# strand a machine whose YubiKey is simply elsewhere.
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -34,40 +33,15 @@ log() { echo "enroll-root-fido2: $*"; }
 
 [[ -e "$dev" ]] || { log "no root LUKS device at $dev; nothing to do"; exit 0; }
 
-# Idempotent: a FIDO2 token already enrolled means this ran before (or a human
-# did it). Leave everything alone, including any empty slot, which the wipe
-# below would otherwise remove behind their back.
+# Idempotent: a FIDO2 token already enrolled means this ran before, or a human
+# did it by hand.
 if cryptsetup luksDump "$dev" | grep -q 'systemd-fido2'; then
     log "a FIDO2 token is already enrolled on $dev; nothing to do"
     exit 0
 fi
 
-# Is the bootstrap slot even there? If repart made this root before
-# Encrypt=key-file+tpm2 (or a human already wiped it), there is no empty key to
-# authorize with, and enrolling would need a factor we do not have.
-# Look at the metadata, NOT at a trial unlock: on the volume's own running
-# system `cryptsetup open --test-passphrase --key-file=...` succeeds whatever key
-# you hand it (the volume key is already in the kernel), so it cannot tell an
-# empty-key slot from anything else. repart's key-file slot is the one keyslot no
-# token references, so count those instead. The wipe itself stays precise —
-# --wipe-slot=empty only removes slots an empty passphrase actually opens.
-untokened_slots() {
-    cryptsetup luksDump --dump-json-metadata "$1" 2>/dev/null | python3 -c '
-import json, sys
-m = json.load(sys.stdin)
-bound = {s for t in m["tokens"].values() for s in t.get("keyslots", [])}
-print(len([k for k in m["keyslots"] if k not in bound]))'
-}
-
-if [[ $(untokened_slots "$dev") -eq 0 ]]; then
-    log "WARNING: no empty-key slot on $dev to authorize enrollment."
-    log "WARNING: this root predates Encrypt=key-file+tpm2, or the slot is gone."
-    log "WARNING: it has no recovery factor; bin/recovery-mount cannot open it."
-    exit 0
-fi
-
 # --fido2-device=list prints a table with a header; the rows are device paths,
-# so match those rather than "any output" (and there is no --no-legend here).
+# so match those rather than "any output" (there is no --no-legend here).
 have_key() { systemd-cryptenroll --fido2-device=list 2>/dev/null | grep -q '^/dev/'; }
 
 if ! have_key; then
@@ -81,28 +55,18 @@ fi
 
 if have_key; then
     log "Enrolling FIDO2 token (touch the key when it blinks)…"
-    # One call: enrolls the token AND drops the empty-key slot, so there is no
-    # window where both the new factor and the empty key are valid.
-    if systemd-cryptenroll "$dev" \
-        --unlock-key-file=/dev/null \
-        --fido2-device=auto \
-        --wipe-slot=empty; then
-        log "FIDO2 enrolled on $dev and the empty-key slot wiped."
+    if systemd-cryptenroll "$dev" --unlock-tpm2-device=auto --fido2-device=auto; then
+        log "FIDO2 enrolled on $dev."
         exit 0
     fi
-    log "WARNING: FIDO2 enrollment failed; falling back to wiping the empty slot."
+    log "WARNING: FIDO2 enrollment failed."
+else
+    log "WARNING: no YubiKey appeared within ${wait_secs}s."
 fi
 
-log "WARNING: no YubiKey enrolled on $dev."
-systemd-cryptenroll "$dev" --unlock-key-file=/dev/null --wipe-slot=empty
-log "WARNING: the empty-key slot is wiped, so the disk is not left open to"
-log "WARNING: anyone holding it — but root is now TPM-only: unopenable from a"
-log "WARNING: recovery medium, and unrecoverable if its measured boot changes."
-log "WARNING:"
-log "WARNING: systemd-cryptenroll cannot add a factor now — it can only"
-log "WARNING: authorize with a key file, FIDO2 or TPM2, and this root has none"
-log "WARNING: that works post-boot. While THIS boot lasts the volume key is"
-log "WARNING: still in the kernel, so an admin can add a keyslot directly:"
-log "WARNING:   dmsetup table --showkeys /dev/mapper/root   # 5th field = key"
-log "WARNING:   cryptsetup luksAddKey --volume-key-file=... $dev"
-log "WARNING: Otherwise this root needs reinstalling to gain a recovery factor."
+log "WARNING: $dev has only its TPM2 token, so it cannot be unlocked from a"
+log "WARNING: recovery medium, and is unrecoverable if its measured boot"
+log "WARNING: changes (firmware update, Secure Boot re-enrollment, cleared TPM,"
+log "WARNING: replaced board). Enroll a key later from any normal boot with:"
+log "WARNING:   systemd-cryptenroll $dev --unlock-tpm2-device=auto --fido2-device=auto"
+log "WARNING: or a printed recovery key with --recovery-key instead."
