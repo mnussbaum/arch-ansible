@@ -45,9 +45,21 @@ fi
 # Is the bootstrap slot even there? If repart made this root before
 # Encrypt=key-file+tpm2 (or a human already wiped it), there is no empty key to
 # authorize with, and enrolling would need a factor we do not have.
-# (systemd-cryptenroll has no dry-run, so ask cryptsetup whether the empty key
-# opens any slot — --test-passphrase checks without activating anything.)
-if ! cryptsetup open --test-passphrase --key-file=/dev/null "$dev" 2>/dev/null; then
+# Look at the metadata, NOT at a trial unlock: on the volume's own running
+# system `cryptsetup open --test-passphrase --key-file=...` succeeds whatever key
+# you hand it (the volume key is already in the kernel), so it cannot tell an
+# empty-key slot from anything else. repart's key-file slot is the one keyslot no
+# token references, so count those instead. The wipe itself stays precise —
+# --wipe-slot=empty only removes slots an empty passphrase actually opens.
+untokened_slots() {
+    cryptsetup luksDump --dump-json-metadata "$1" 2>/dev/null | python3 -c '
+import json, sys
+m = json.load(sys.stdin)
+bound = {s for t in m["tokens"].values() for s in t.get("keyslots", [])}
+print(len([k for k in m["keyslots"] if k not in bound]))'
+}
+
+if [[ $(untokened_slots "$dev") -eq 0 ]]; then
     log "WARNING: no empty-key slot on $dev to authorize enrollment."
     log "WARNING: this root predates Encrypt=key-file+tpm2, or the slot is gone."
     log "WARNING: it has no recovery factor; bin/recovery-mount cannot open it."
