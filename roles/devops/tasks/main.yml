@@ -5,10 +5,6 @@
     content: loop
     dest: /usr/lib/modules-load.d/loop.conf
 
-# kubectl-bin provides/conflicts the official `kubectl`, and `kubectx` depends
-# on `kubectl`. Installed together in one transaction, the resolver pulls the
-# official `kubectl` to satisfy kubectx and it conflicts with kubectl-bin.
-# Install kubectl-bin first so it already satisfies kubectx's dependency.
 - name: Create docker daemon config dir
   file:
     path: /etc/docker

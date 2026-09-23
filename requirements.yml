@@ -1,6 +1,3 @@
 roles:
   - src: mnussbaum.base16-builder-ansible
   - src: mnussbaum.firefox_ext_sideloader
-collections:
-  - name: mnussbaum.ansible_yay
-    version: 1.0.1

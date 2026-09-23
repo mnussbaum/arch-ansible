@@ -569,6 +569,37 @@ Spec **Type #1** entries — the thing this whole branch retired.
 * TPM2 PIN enrollment can now be hardened with Argon2id (`--tpm2-with-pin=yes`),
   if a PIN is ever added.
 
+## TODO: the offline (`--caching force`) AUR path was removed (2026-09-23)
+
+Packages moved out of Ansible and into mkosi (`mkosi.conf.d/90-packages.conf`
+plus `PackageDirectories=` pointing at the local aur-repo), so nothing inside
+the image installs AUR packages any more. The in-image machinery that used to
+make that work offline was therefore dead, and has been deleted:
+
+* the `[aur-local]` repo section in `roles/packaging/templates/pacman.conf.j2`
+  and its `pacman_aur_local_repo` gate;
+* the pre_tasks that seeded `/var/lib/pacman/sync/aur-local.db` by file copy so
+  pacman saw AUR targets without `-Sy` (which would hit the network);
+* the post_task that rebuilt `aur-local.db.tar.gz` with `repo-add` after yay
+  built new packages;
+* `/var/cache/aur-repo` as a pacman `CacheDir` (it was listed there so
+  `XferCommand=/usr/bin/false` could still install those files).
+
+**What this costs, and what restoring it needs.** `bin/build-image --caching
+force` is the fully-offline build (a device rebuilding itself with no network).
+Official packages still come from mkosi's own package cache, and AUR packages
+from `PackageDirectories=`, which is a plain directory read — so in principle
+force still works. NOT VERIFIED: no `--caching force` build has been run since
+the migration. If it turns out mkosi needs a pacman-visible repo rather than a
+directory, the pieces above are the shape of what to put back, and
+`bin/build-missing-aur` would additionally need a `--offline` mode that fails
+loudly instead of cloning from the AUR.
+
+Also gone with it, and worth knowing if the offline path is revisited: the
+vendored `mnussbaum.ansible_yay` collection, `roles/packaging/tasks/use-yay.yml`
+and the `pkg_mgr` fact, all of which existed so Ansible's `package:` action
+dispatched through yay. There are no `package:` tasks left anywhere.
+
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
 1. **First-boot testing needs the target attached ALONE** — `bin/vm run`

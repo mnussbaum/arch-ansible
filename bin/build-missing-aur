@@ -92,9 +92,10 @@ for pkg in "${missing[@]}"; do
 done
 
 # Deliberately NO repo-add here. mkosi's PackageDirectories= builds its own
-# repository from the directory contents, so dropping the package files in is
-# enough for the install; aur-local.db exists for the IN-IMAGE [aur-local] repo
-# and the postinst rebuilds it. Running repo-add as the host user also broke
-# that: it bakes uid/gid 1000 into the DB's tar entries, and the in-image
-# repo-add then fails with "Can't set user=1000/group=1000 ... Invalid argument".
+# repository from the directory contents, so dropping the package files in is all
+# pacman needs. Running repo-add as the host user was also actively harmful while
+# the image still kept its own [aur-local] DB: it bakes uid/gid 1000 into the tar
+# entries, and the in-image repo-add then failed with "Can't set
+# user=1000/group=1000 ... Invalid argument". That DB is gone now (see HANDOFF's
+# note on the offline path), so there is nothing to republish either.
 echo "==> built ${#missing[@]} package(s) into $repo" >&2

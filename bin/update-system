@@ -177,9 +177,9 @@ if [[ -d /usr/lib/arch-ansible/yay-pkg ]]; then
   fi
 
   # Same for the local AUR repo baked into /usr (mkosi.conf ExtraTree): seed it into
-  # the build's aur-repo cache so a --caching force rebuild installs AUR packages
-  # from the [aur-local] repo offline instead of needing yay/network. cp -n leaves a
-  # primed cache (reused scratch) alone.
+  # the build's aur-repo cache, which is what mkosi installs the AUR packages from
+  # (PackageDirectories= in mkosi.conf) — no yay or network needed for them. cp -n
+  # leaves a primed cache (reused scratch) alone.
   aur_dst="$ARCH_ANSIBLE_CACHE/aur-repo"
   if [[ -d /usr/lib/arch-ansible/aur-repo ]]; then
     mkdir -p "$aur_dst"
