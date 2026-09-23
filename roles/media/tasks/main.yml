@@ -1,37 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    name:
-      - alsa-utils
-      - libcamera
-      - libcamera-ipa
-      - pipewire
-      - pipewire-alsa
-      - pipewire-docs
-      - pipewire-pulse
-      - pipewire-libcamera
-      - sof-firmware
-      - pwvucontrol
-      - gstreamer
-      - gst-plugin-va
-      - gst-plugins-base
-      - gst-plugins-good
-      - gst-plugin-pipewire
-      - gst-libav
-      - gst-plugin-libcamera
-      - playerctl
-      - rtkit
-      - wireplumber
-      - lollypop
-      - mpv
-      - xdg-desktop-portal
-      - xdg-desktop-portal-wlr
-      - xdg-desktop-portal-gtk
-      - calibre-bin
-      - intel-media-driver
-    state: present
-
 - name: Create XDG portal config dir
   file:
     path: /etc/xdg-desktop-portal

@@ -1,12 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install pacakges
-  package:
-    state: present
-    name:
-      - greetd
-      - greetd-gtkgreet
-
 - name: Check greeter system user
   command: systemd-sysusers --dry-run /usr/lib/sysusers.d/greetd.conf
   register: sysusers_dry

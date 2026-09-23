@@ -1,19 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - cairo
-      - fontconfig
-      - freetype2
-      - gsfonts
-      - libxft
-      - ttf-cascadia-code
-      - ttf-noto-nerd
-      - noto-fonts-emoji
-      - gucharmap
-
 - name: Enable LCD filter
   file:
     src: /usr/share/fontconfig/conf.avail/11-lcdfilter-default.conf

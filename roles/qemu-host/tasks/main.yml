@@ -1,20 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - qemu-desktop
-      - edk2-ovmf
-      # User-mode network backend for `mkosi vm` (bin/vm run passes
-      # --runtime-network=none + a passt netdev). Replaces QEMU's SLIRP, whose
-      # single-threaded stack stalls parallel HTTPS (the in-guest offline rebuild).
-      - passt
-      - sdl2
-      - socat
-      - swtpm
-      - virt-firmware
-
 - name: Enable kvm CPU pass-through
   copy:
     content: "options kvm_intel nested=1"

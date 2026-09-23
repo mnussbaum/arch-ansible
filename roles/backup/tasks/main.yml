@@ -1,13 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - fuse2
-      - restic
-      - udisks2
-
 - name: Create restic-backup config dir
   file:
     path: /etc/restic-backup

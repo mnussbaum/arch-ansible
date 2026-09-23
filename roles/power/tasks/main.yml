@@ -1,15 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - ethtool
-      - powerstat
-      - powertop
-      - thermald
-      - tlp
-
 - name: Create thermald drop-in directory
   file:
     path: /usr/lib/systemd/system/thermald.service.d

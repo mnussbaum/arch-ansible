@@ -2,11 +2,6 @@
 ---
 # TODO: Make waybars reveal over full screen when screen is touched or mouse is moved
 
-- name: Install package
-  package:
-    name: waybar
-    state: present
-
 - name: Create waybar config dir
   file:
     path: /etc/xdg/waybar

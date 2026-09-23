@@ -1,13 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - bluez
-      - bluez-tools
-      - bluez-utils
-
 - name: Install bluetooth main.conf
   copy:
     src: main.conf

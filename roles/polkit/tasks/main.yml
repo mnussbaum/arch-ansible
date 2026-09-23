@@ -1,12 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install gnome polkit agent package
-  package:
-    state: present
-    name: polkit-gnome
-
-# This allows the machinectl connection plugin used to bootstrap Rasp-pi hosts
-# to run without requiring the entire playbook to be run as root
 - name: Allow all users to run machinectl commands
   copy:
     src: polkit-00-machinectl.rules

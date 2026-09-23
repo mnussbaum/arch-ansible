@@ -1,11 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - xdg-user-dirs
-
 - name: Create wheel group
   group: name=wheel state=present
 

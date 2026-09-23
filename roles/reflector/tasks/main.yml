@@ -1,11 +1,6 @@
 # vim:ft=yaml.ansible:
 ---
 # Reflector ranks mirrors
-- name: Install reflector
-  package:
-    name: reflector
-    state: present
-
 - name: Install reflector service
   copy:
     src: reflector.service

@@ -614,7 +614,6 @@ Orthogonal checks (fold into the steps above as real hardware becomes available)
   - Test live image and recovery in qemu
   - Test live image and recovery on real device
 - Fix colorscheme changer for the new world. Needs a whole new strategy
-- Add eeek tasks back in once fully done
 - Remove old host directory setup once fully cut over to image based hosts
 - Confirm hermetic plan is finished
 - Move to sys-extensions flatpaks and distrobox

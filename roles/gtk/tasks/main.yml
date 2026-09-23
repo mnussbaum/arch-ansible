@@ -1,11 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install themes
-  package:
-    state: present
-    name:
-      - gnome-themes-extra
-
 - name: Create config dir
   file:
     path: /etc/gtk-3.0

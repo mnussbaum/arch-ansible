@@ -1,15 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - ruby
-      - ruby-irb
-      - ruby-bundler
-      - rubocop
-      - ruby-lsp
-
 - name: Install global gemrc
   copy:
     src: gemrc

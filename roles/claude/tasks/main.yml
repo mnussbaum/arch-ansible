@@ -1,11 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - claude-code
-
 - name: Create skel claude config dir
   file:
     path: /etc/skel/.claude

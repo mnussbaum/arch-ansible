@@ -1,15 +1,5 @@
 # vim:ft=yaml.ansible
 ---
-- name: Install package
-  package:
-    state: present
-    name:
-      - zsh
-      - zsh-syntax-highlighting
-      - python-pystache # For base16_builder
-      - starship
-      - zoxide
-
 - name: Install zshrc
   copy:
     dest: /etc/zsh/zshrc

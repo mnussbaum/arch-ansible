@@ -5,13 +5,6 @@
     url: https://raw.githubusercontent.com/dandavison/delta/master/themes.gitconfig
     dest: /usr/share/delta-themes.gitconfig
 
-- name: Install delta diff tool
-  package:
-    name:
-      - git-delta
-      - mergiraf
-    state: present
-
 - name: Install gitconfig
   template:
     src: gitconfig.j2

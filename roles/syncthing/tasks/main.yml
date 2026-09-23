@@ -1,11 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - syncthing
-
 - name: Create systemd service override dir
   file:
     path: /usr/lib/systemd/user/syncthing.service.d

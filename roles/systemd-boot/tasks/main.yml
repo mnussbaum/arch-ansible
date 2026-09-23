@@ -1,13 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - opensc
-      - pkcs11-provider
-      - systemd-ukify
-
 - name: Install systemd preset
   copy:
     src: 80-systemd-boot.preset

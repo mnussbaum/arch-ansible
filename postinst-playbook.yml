@@ -69,6 +69,24 @@
       vars:
         disable_sandbox: false
       tags: [packaging, min-user-session]
+    # mkosi now INSTALLS the AUR packages itself (mkosi.conf PackageDirectories=
+    # points pacman at the same /var/cache/aur-repo, and they are listed in
+    # mkosi.conf.d/90-packages.conf), which is why no role has a `package:` task
+    # any more. yay is still what BUILDS them, though, so without this the repo
+    # would freeze at whatever versions it already holds and the image would
+    # never see an AUR update again. -Sua upgrades exactly the AUR packages that
+    # are installed — i.e. the set mkosi just installed — building any newer
+    # version into PKGDEST for the DB rebuild below and for the next build.
+    # MUST run before restore-build-overrides below: that puts the real
+    # systemd-run, makepkg and sudo back, and yay then dies with "System has
+    # not been booted with systemd as init system" inside the chroot.
+    - name: Rebuild AUR packages that have newer versions
+      shell: yay -Sua --noconfirm
+      args:
+        executable: /bin/bash
+      changed_when: true
+      when: build_caching | default('available') != 'force'
+      tags: [packaging, min-user-session]
     - import_role:
         name: packaging
         tasks_from: restore-build-overrides

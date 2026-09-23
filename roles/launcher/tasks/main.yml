@@ -1,12 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - wofi
-      - wofipassmenu
-
 - name: Install wofi-toggle wrapper script
   copy:
     src: wofi-toggle

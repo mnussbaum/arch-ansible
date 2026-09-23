@@ -1,13 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - zathura
-      - zathura-pdf-poppler
-      - xournalpp
-
 - name: Create zathura config dir
   file:
     path: /etc/xdg/zathura

@@ -1,14 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - libinput
-      - libinput-tools
-      - libinput-gestures
-      - wtype
-
 - name: Install libinput-gestures service
   copy:
     dest: /usr/lib/systemd/user/libinput-gestures.service

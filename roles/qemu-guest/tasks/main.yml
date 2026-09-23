@@ -1,11 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - qemu-guest-agent
-
 - name: Create systemd-vconsole-setup drop-in directory
   file:
     path: /usr/lib/systemd/system/systemd-vconsole-setup.service.d

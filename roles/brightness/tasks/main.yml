@@ -1,13 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - wl-gammarelay
-      - brightnessctl
-      - upower
-
 - name: Install day-or-night binary
   copy:
     src: day-or-night

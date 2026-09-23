@@ -133,25 +133,6 @@
     - "{{ nvim_data_dir }}"
     - "{{ nvim_data_dir }}/site/autoload"
 
-- name: Install neovim packages
-  package:
-    state: present
-    name:
-      - ansible-lint
-      - ansible-language-server
-      - clang
-      - ctags
-      - neovim
-      - tree-sitter-cli
-      - python-pynvim
-      - yaml-language-server
-      - vscode-json-languageserver
-      - yarn
-      - tree-sitter
-      - stylua
-      - buf-bin
-      - beancount-language-server
-
 - name: Install init.lua config
   copy:
     src: nvim/init.lua

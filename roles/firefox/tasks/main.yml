@@ -1,20 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install HW acceleration driver packages
-  package:
-    state: present
-    name: libva-intel-driver
-
-- name: Install packages
-  package:
-    state: present
-    name:
-      - firefox
-      - mozlz4-bin
-      - firefox-ublock-origin
-      - firefox-tridactyl
-      - firefox-tridactyl-native-bin
-
 - name: Make skel default profile dir
   file:
     path: /etc/skel/.mozilla/firefox/default.profile

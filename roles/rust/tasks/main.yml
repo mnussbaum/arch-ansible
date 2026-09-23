@@ -1,8 +1,2 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    name:
-      - rust
-      - rust-analyzer
-      - rust-src

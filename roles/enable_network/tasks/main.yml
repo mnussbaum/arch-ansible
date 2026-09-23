@@ -1,14 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - wireless_tools
-      - iwd
-      - wireguard-tools
-      - systemd-resolvconf
-
 - name: Install systemd preset
   copy:
     src: 80-enable_network.preset

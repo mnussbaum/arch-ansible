@@ -1,11 +1,2 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - ruff
-      - pyright
-      - python-pip
-      - python-pylint
-      - uv

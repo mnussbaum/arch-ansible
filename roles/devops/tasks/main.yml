@@ -9,26 +9,6 @@
 # on `kubectl`. Installed together in one transaction, the resolver pulls the
 # official `kubectl` to satisfy kubectx and it conflicts with kubectl-bin.
 # Install kubectl-bin first so it already satisfies kubectx's dependency.
-- name: Install kubectl
-  become: true
-  package:
-    state: present
-    name: kubectl-bin
-
-- name: Install packages
-  become: true
-  package:
-    state: present
-    name:
-      - docker
-      - docker-buildx
-      - docker-compose
-      - amazon-ecr-credential-helper
-      - kubectx
-      - helm
-      - stern
-      - terraform
-
 - name: Create docker daemon config dir
   file:
     path: /etc/docker

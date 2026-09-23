@@ -1,20 +1,5 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - ccid
-      - gcr
-      - gnupg
-      - imagemagick
-      - paperkey
-      - pcsclite
-      - pinentry
-      - qrencode
-      - yubikey-manager
-      - zbar
-
 - name: Install pinentry wrapper
   copy:
     src: pinentry-auto

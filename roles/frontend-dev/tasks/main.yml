@@ -1,11 +1,2 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - npm
-      - typescript-language-server
-      - prettier
-      - vscode-css-languageserver
-      - vscode-html-languageserver

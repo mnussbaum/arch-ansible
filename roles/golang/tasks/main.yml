@@ -1,12 +1,2 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Install packages
-  package:
-    state: present
-    name:
-      - go
-      - goimports-reviser-bin
-      - gopls
-      - golangci-lint
-      - staticcheck
-  become: yes
