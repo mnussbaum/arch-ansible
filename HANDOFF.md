@@ -1,6 +1,6 @@
 # Handoff — Type #2 install validation (arch-ansible)
 
-Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-22
+Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-23
 
 ## Mission
 
@@ -341,12 +341,15 @@ variable — and refusing to prune the version it just built.
    (Warm build times for reference: V1 899s, V2 1321s — the latter shared the
    host with a running VM.)
 9. **Push decision** still pending: 22 commits ahead of `origin/mkosi`.
-10. **Make the first-login YubiKey enrollment survivable**: tell the user a tap
+10. **Exercise the root FIDO2 enrollment on real hardware** — the branch a VM
+    cannot reach (no FIDO2 passthrough). Until then every installed root is
+    TPM-only and unrecoverable from a recovery medium.
+11. **Make the first-login YubiKey enrollment survivable**: tell the user a tap
     is required, and retry instead of failing after 37s. See the 2026-09-22
     section above; it will bite again on the real-hardware install.
-11. **Rotate the PIV PIN** (`ykman piv access change-pin`) — a
+12. **Rotate the PIV PIN** (`ykman piv access change-pin`) — a
     `SYSTEMD_LOG_LEVEL=debug homectl` run printed it in plaintext on 2026-09-22.
-12. **`bootstrapping-todo.md` still lists the A/B direction as an open item**
+13. **`bootstrapping-todo.md` still lists the A/B direction as an open item**
     (added by `6652888`). It now has uncommitted edits of the user's, so it was
     deliberately left untouched — fold the Q4 result in alongside those.
 
@@ -444,6 +447,39 @@ transcript; rotate with `ykman piv access change-pin` if it happens.
 Worth fixing in the playbook: the enrollment task should say a tap is required
 and retry, rather than failing opaquely after 37s.
 
+## Root needs a recovery factor: FIDO2 at first boot (2026-09-23)
+
+An installed root had ONE keyslot, bound to the TPM2 token repart enrolls — and
+that token is a **signed PCR 11 policy** (`tpm2-pcrs=[]`,
+`tpm2_pubkey_pcrs=[11]`), not PCR 7. PCR 11 is extended at every boot phase and
+the signatures cover only the initrd of a normal signed UKI boot, so it cannot
+unlock from a recovery medium or any booted system — by design, so a running OS
+cannot unseal the disk. Consequences: such a root is unrecoverable once its
+measured boot stops matching (TPM cleared, board swapped), and
+`bin/recovery-mount` can never open it. Nothing enrolled a second factor;
+`bin/revoke-luks-yubikey` had always assumed a FIDO2 slot nothing created.
+
+Now: `50-root.conf` uses `Encrypt=key-file+tpm2`, which with no `--key-file`
+adds a zero-length-key slot beside the TPM2 one (systemd-repart's documented
+hook for first-boot setup). `luks-enroll-fido2.service` runs
+`bin/enroll-root-fido2` on first boot, before login: it authorizes with that
+empty key, enrolls a FIDO2 token and wipes the empty slot in ONE
+`systemd-cryptenroll` call. If no key turns up within 120s it wipes the empty
+slot anyway and warns — root stays TPM-only, but the disk is never left openable
+with an empty password. Blocking the boot instead would brick a machine whose
+YubiKey is elsewhere.
+
+**Still unverified: the FIDO2 enrollment itself.** QEMU here has no FIDO2
+passthrough — the vsock relay carries pcscd (PIV/smartcard), not FIDO2 HID — so
+that branch first runs on real hardware. What a VM exercises, and what was
+verified on image `20260922233147`, is the no-key fallback.
+
+Note for after the wipe: `systemd-cryptenroll` can then add nothing (it
+authorizes only with a key file, FIDO2 or TPM2, and none work post-boot). While
+that boot lasts the volume key is still in the kernel, so
+`cryptsetup luksAddKey --volume-key-file` (key from `dmsetup table --showkeys`)
+is the escape hatch; otherwise the root needs reinstalling to gain a factor.
+
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
 1. **First-boot testing needs the target attached ALONE** — `bin/vm run`
@@ -490,7 +526,20 @@ and retry, rather than failing opaquely after 37s.
     grows it to `--runtime-size=90G` and the default profile self-provisions
     into it. Use `--ephemeral` for throwaway boots, or work on a
     `cp --sparse=always` copy (12G real for a 90G apparent file).
-12. **Do NOT press Ctrl+Alt+F<n> in the QEMU GTK window** — without the keyboard
+12. **Anything new under `bin/` must be `git add`ed before it ships.**
+    `arch_ansible_stage_srctree()` copies `git ls-files`, so an untracked script
+    never reaches `/usr/share/arch-ansible` — while a new unit under
+    `mkosi.extra/` DOES ship, straight from the working tree. That asymmetry
+    once produced an image whose service was installed and enabled but skipped
+    itself on `ConditionPathExists`.
+13. **`cryptsetup open --test-passphrase --key-file=X` LIES on the volume's own
+    running system**: it succeeds whatever key you pass, because the volume key
+    is already in the kernel (a deliberately wrong key also reported "Key slot 1
+    unlocked"). To ask what a LUKS header really holds, read it offline — find
+    the partition offset with `sfdisk -J IMAGE`, then parse the LUKS2 JSON at
+    `offset+4096` (NUL-terminated) in Python. That needs no root, no loop device
+    and no VM, and it is how the empty-slot wipe was actually confirmed.
+14. **Do NOT press Ctrl+Alt+F<n> in the QEMU GTK window** — without the keyboard
    grab it hits the HOST compositor. `bin/vm --gui` sets `grab-on-hover=on`,
    and Ctrl+Alt+G toggles the grab by hand; the default runs are headless anyway.
 
