@@ -490,7 +490,7 @@ Follow-ups (software; discovered during E2E, not yet done):
       Spec Type #1** (`man bootctl`: "Creates one or more Type #1 boot loader entries"
       — no Type #2 mode): it copies the UKI under the entry-token dir (`/image/`, token
       `image` = `ImageId`) and writes one `loader/entries/image-commit_N.<ver>[@profile]
-  .conf` per UKI profile (the `@1..@6` seen on the target = profiles, not tries),
+.conf` per UKI profile (the `@1..@6` seen on the target = profiles, not tries),
       each with `extra /image/firstboot.{hostname,locale,keymap}.cred` sidecars. - mkosi (the medium) and `mkosi.sysupdate/20-uki.transfer` use **Type #2**: the
       multi-profile UKI lives in `EFI/Linux/` and sd-boot auto-expands the profiles
       (`man sysupdate.d`: `Path=/EFI/Linux`, `EFI/Linux/foobarOS_@v.efi`). Boot
@@ -615,7 +615,6 @@ Orthogonal checks (fold into the steps above as real hardware becomes available)
   - Test live image and recovery on real device
 - Fix colorscheme changer for the new world. Needs a whole new strategy
 - Add eeek tasks back in once fully done
-- Remove all luks scripting
 - Remove old host directory setup once fully cut over to image based hosts
 - Confirm hermetic plan is finished
 - Move to sys-extensions flatpaks and distrobox

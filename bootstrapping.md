@@ -371,13 +371,24 @@ bootctl install --no-variables --esp-path=/efi --secure-boot-auto-enroll=yes \
   --certificate="$SECUREBOOT_CERT" --private-key="$SECUREBOOT_KEY"
 ```
 
-**Re-enroll TPM2** (after a Secure Boot key change):
+**Re-enroll TPM2** (after a Secure Boot key change). A fresh install gets its
+TPM2 keyslot from `systemd-repart` (`Encrypt=tpm2` + `TPM2PCRs=7` in
+`mkosi.extra/usr/lib/repart.d/50-root.conf`), bound to PCR 7 AND the signed
+PCR 11 policy — so this is only needed when a Secure Boot change invalidates
+PCR 7:
 
 ```bash
-cryptsetup luksDump /dev/<root-partition>                  # find TPM2 slot number
-systemd-cryptenroll --wipe-slot=<n> /dev/<root-partition>  # auth via YubiKey/recovery
-systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 /dev/<root-partition>
+cryptsetup luksDump /dev/disk/by-designator/root-luks        # find the TPM2 slot
+systemd-cryptenroll --wipe-slot=<n> /dev/disk/by-designator/root-luks
+systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 \
+  --tpm2-public-key=/usr/lib/systemd/tpm2-pcr-public-key.pem \
+  /dev/disk/by-designator/root-luks
 ```
+
+Without `--tpm2-public-key=` the new slot binds PCR 7 only and loses the signed
+PCR 11 policy repart adds by default, so kernel updates keep working but the
+seal no longer follows the measured boot. Authorize the wipe with the YubiKey's
+FIDO2 slot (`--unlock-fido2-device=auto`) if PCR 7 already fails to unseal.
 
 **Revoke a lost YubiKey** (untested — see `bootstrapping-todo.md`):
 

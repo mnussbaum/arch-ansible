@@ -13,9 +13,12 @@
 # this two-phase split - recovery secret at boot, token at first login - is the
 # supported pattern for token-backed homed users.
 #
-# The baked credential is root-only and lives on the LUKS-encrypted root, the
-# same posture as the LUKS bootstrap key in _luks_common.sh. It can't be
-# TPM-bound on a generic, multi-machine image.
+# WHERE THIS ENDS UP, and it is not what an earlier version of this comment
+# claimed: mkosi.conf ships the credstore to /usr/lib/credstore, and /usr is the
+# plain (signed, dm-verity, but UNENCRYPTED) erofs partition — not the LUKS root.
+# Mode 0600 protects it only on a running system; anyone holding the image or a
+# burned USB stick can read this secret straight out of the erofs. It also can't
+# be TPM-bound on a generic, multi-machine image.
 #
 # It is built outside the repo (under ${ARCH_ANSIBLE_CACHE}, see
 # bin/_cache_common.sh): the repo is ExtraTrees'd to /usr/share/arch-ansible and
@@ -39,8 +42,7 @@ fi
 
 : "${ARCH_ANSIBLE_CACHE:?source bin/_cache_common.sh before _credstore_common.sh}"
 credstore_dir="$ARCH_ANSIBLE_CACHE/mkosi-credstore"
-# Preserve _luks_common.sh's cleanup (luks_keyfile is set there when sourced first).
-trap 'rm -rf "$credstore_dir"; rm -f "${luks_keyfile:-}"' EXIT
+trap 'rm -rf "$credstore_dir"' EXIT
 rm -rf "$credstore_dir"
 mkdir -p "$credstore_dir"
 chmod 700 "$credstore_dir"
