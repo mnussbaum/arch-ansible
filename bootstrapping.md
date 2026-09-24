@@ -116,15 +116,23 @@ recovery:
   a different OS cannot unseal the disk. It also means `bin/recovery-mount`
   cannot use the TPM token and needs a second factor.
 
-That second factor is a **YubiKey (FIDO2)**, enrolled on first boot before login
-by `luks-enroll-fido2.service` (`bin/enroll-root-fido2`), authorized by the TPM2
-token itself. Without it a root is unrecoverable once its measured boot
-legitimately changes — a firmware update, a re-enrolled Secure Boot key, a
-cleared TPM or a replaced board. If no key is present the service warns and
-leaves the volume TPM-only; a factor can still be added later from any normal
-boot with the command it prints. *The FIDO2 branch has not run on real hardware
-yet: QEMU has no FIDO2 passthrough (the vsock relay carries pcscd, not FIDO2
-HID).*
+That second factor is enrolled on first boot, in the initrd, by systemd 262's
+own `systemd-cryptenroll-firstboot.service`, which is authorized by the TPM2
+token itself (`--unlock-headless`). It runs right after repart creates root and
+shows a menu on the console: a recovery key, a passphrase, or one entry per
+FIDO2 token plugged in — pick the **YubiKey**. It waits for an answer with no
+timeout, and Enter skips it. Without a second factor a root is unrecoverable
+once its measured boot legitimately changes — a firmware update, a re-enrolled
+Secure Boot key, a cleared TPM or a replaced board. A skipped wizard leaves the volume TPM-only; a
+factor can still be added later from any normal boot:
+
+```
+systemd-cryptenroll /dev/disk/by-designator/root-luks --unlock-tpm2-device=auto --fido2-device=auto
+```
+
+*The FIDO2 branch has not run on real hardware yet: QEMU has no FIDO2
+passthrough (the vsock relay carries pcscd, not FIDO2 HID). `bin/vm run DISK`
+exercises the recovery-key branch instead.*
 
 `home` is a plain btrfs partition; per-user encryption is `systemd-homed` — one
 LUKS volume per home directory — on top of it.
@@ -212,7 +220,7 @@ Two consequences worth knowing:
 
 * **Paths are by role, not by device.** `/dev/disk/by-designator/root-luks` and
   `/dev/mapper/usr` are what scripts use (`bin/recovery-mount`,
-  `bin/enroll-root-fido2`, `bin/revoke-luks-yubikey`); nothing references
+  `bin/revoke-luks-yubikey`); nothing references
   `/dev/sda2` or a UUID.
 * **The same image boots any machine.** Since discovery is by type, there are no
   per-host partition definitions to generate — which is what makes one image
@@ -365,9 +373,9 @@ so every machine gets a unique, stable name (e.g. `arch-92a9-061c`) with no
 per-machine input — whether it self-installs or is provisioned via the Installer
 profile. Override with `hostnamectl hostname <name>`.
 
-> **Not yet implemented:** the `firstboot.service` / `luks-enroll.service` flow
-> the preset enables (FIDO2 + printed-recovery-key enrollment, bootstrap-slot
-> wipe). TPM2/PCR 7 sealing across the Secure Boot enrollment boot has also not
+> **Not yet implemented:** the `firstboot.service` flow the preset enables.
+> (LUKS second-factor enrollment is done: systemd 262's
+> `systemd-cryptenroll-firstboot.service`, above.) TPM2/PCR 7 sealing across the Secure Boot enrollment boot has also not
 > been verified against real firmware — see `bootstrapping-todo.md`. (`bin/vm run`
 > works around the PCR 7 instability in QEMU by persisting the OVMF varstore and
 > the emulated TPM across runs.)

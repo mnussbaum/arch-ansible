@@ -1,6 +1,6 @@
 #!/bin/bash
 # Wipes a LUKS keyslot from the root partition — use after losing a YubiKey
-# whose FIDO2 slot was enrolled by luks-enroll-fido2.service (bin/enroll-root-fido2).
+# whose FIDO2 slot was enrolled at first boot by systemd-cryptenroll-firstboot.service.
 #
 # The wipe needs an existing factor to authorize it. The TPM2 token works from
 # the running system (it binds PCR 7 plus a signed PCR 11 policy whose signature

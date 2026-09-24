@@ -90,8 +90,8 @@ done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL "/dev/$parent")
 # measures THIS UKI and its boot phases, so a recovery boot — a different UKI,
 # and the Live profile signs no expected PCRs at all — can never match it, no
 # matter that PCR 7 does. The token therefore cannot unlock from here. (On the
-# volume's OWN booted system it can, which is how luks-enroll-fido2.service
-# authorizes enrollment; that is not this case.) Tokens are still tried first,
+# volume's OWN boot it can, which is how systemd-cryptenroll-firstboot.service
+# authorizes enrollment from the initrd; that is not this case.) Tokens are still tried first,
 # because a FIDO2 token has no such limit.
 #
 # Anything a human can type is a keyslot NOT bound to a hardware token (a

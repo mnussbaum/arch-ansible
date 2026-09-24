@@ -1,6 +1,6 @@
 # Handoff — Type #2 install validation (arch-ansible)
 
-Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-23
+Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-24
 
 ## Mission
 
@@ -341,9 +341,10 @@ variable — and refusing to prune the version it just built.
    (Warm build times for reference: V1 899s, V2 1321s — the latter shared the
    host with a running VM.)
 9. **Push decision** still pending: 22 commits ahead of `origin/mkosi`.
-10. **Exercise the root FIDO2 enrollment on real hardware** — the branch a VM
-    cannot reach (no FIDO2 passthrough). Until then every installed root is
-    TPM-only and unrecoverable from a recovery medium.
+10. **Exercise the root FIDO2 enrollment on real hardware** — pick the YubiKey
+    in the first-boot wizard (systemd 262). A VM exercises the recovery-key
+    branch; FIDO2 has no passthrough. Plug the key in BEFORE first boot, or
+    use "Rescan".
 11. **Make the first-login YubiKey enrollment survivable**: tell the user a tap
     is required, and retry instead of failing after 37s. See the 2026-09-22
     section above; it will bite again on the real-hardware install.
@@ -449,6 +450,11 @@ and retry, rather than failing opaquely after 37s.
 
 ## Root needs a recovery factor: FIDO2 at first boot (2026-09-23)
 
+> **Superseded 2026-09-24:** the service and script below are deleted; systemd
+> 262's `systemd-cryptenroll-firstboot.service` does this from the initrd. See
+> "systemd 262: adopted". The reasoning about why root needs a second factor
+> still holds.
+
 An installed root had ONE keyslot, bound to the TPM2 token repart enrolls — and
 that token is a **signed PCR 11 policy** (`tpm2-pcrs=[]`,
 `tpm2_pubkey_pcrs=[11]`), not PCR 7. PCR 11 is extended at every boot phase and
@@ -511,63 +517,103 @@ hands QEMU a varstore with the cert already enrolled, so PCR 7 is stable from
 the start. Order on hardware: enrol keys, reboot with Secure Boot on, then
 provision.
 
-## When systemd 262 lands in Arch (surveyed 2026-09-23)
+## systemd 262: adopted (2026-09-24)
 
-v262 was released 2026-09-22; Arch core is still 261.3, so none of this is
-actionable yet. Several items land squarely on work done in this branch.
+Arch shipped `systemd 262-1`; image `20260924142119` is the first built on it.
+Validated in a VM: install (checkpoint A), first boot and a second boot of the
+installed disk both `running` with zero failed units.
+Re-verified on `20260924143935` (with the Live/Installer masks below): Installer
+`running` with no failed units, install, first boot `running` with the recovery
+key enrolled.
 
-**Adopt, roughly in this order:**
+### Root's second factor: upstream `systemd-cryptenroll-firstboot.service`
 
-1. **`systemd-cryptenroll-firstboot.service` replaces our enrollment service.**
-   Upstream now ships a first-boot wizard for "enrolling additional unlock
-   mechanisms … in TPM-enabled scenarios which default to unattended TPM-based
-   disk encryption, but where enrollment of additional mechanisms to decrypt the
-   disks for recovery purposes shall be suggested to the user" — i.e. exactly
-   `luks-enroll-fido2.service` + `bin/enroll-root-fido2`. Swapping to it deletes
-   ~90 lines of ours. Check first how it picks the device and whether it can be
-   pointed at a YubiKey unattended.
-2. **`systemd-cryptenroll --unlock-headless`** = `--unlock-tpm2` when a TPM
-   exists, else `--unlock-empty`. That is our authorization logic, including the
-   TPM-less case we do not handle.
-3. **pcrlock, for the PCR 7 brittleness we knowingly accepted.** v262 adds
-   Varlink methods to relax policy before an fwupd-prepared firmware update,
-   `--strict=` so a requested PCR cannot be silently dropped from a policy, and
-   policy re-prediction after an update via
-   `systemd-sysupdate-notify-pcrlock.socket`. We use no pcrlock today; this is
-   the principled fix, with the FIDO2 factor as the fallback rather than the
-   plan.
-4. **`systemd-sysupdate cleanup` + its new persistent file database**: files it
-   installed that no current match pattern claims are now removed. This branch
-   exists because stale boot entries accumulated, so it is on-theme.
+`luks-enroll-fido2.service`, its preset and `bin/enroll-root-fido2` are
+**deleted**. We could not have kept only ours anyway: mkosi-initrd installs the
+whole `systemd` package on Arch, and the unit ships enabled via
+`initrd.target.wants`, so it runs in our initrd regardless.
 
-**The trap — do not adopt without deciding:** signed-policy references
-(`systemd-measure --policyref=`, `--tpm2-public-key-policyref=` in cryptenroll
-and repart, `ukify --sign-initrd-pcrs`). Today the UKI signs expected PCR 11
-values for the LATER boot phases too, which is precisely why post-boot
-`systemd-cryptenroll --unlock-tpm2-device=auto` works and why the bootstrap
-keyslot could be dropped (see the PCR 7 + 11 section). An initrd-only signed
-policy is stronger — a running OS then cannot unseal the disk — but it BREAKS
-that enrollment path, ours and AstrOS's. Adopting it means moving enrollment
-into the initrd or authorizing it with a different factor.
+How it behaves (from the v262 source, then observed):
 
-**Explicitly NOT for us:** `bootctl link-auto` and
-`systemd-sysupdate-notify-bootctl.socket`. `bootctl link` writes Boot Loader
-Spec **Type #1** entries — the thing this whole branch retired.
+* Runs in the **initrd**, right after repart creates root, gated on an empty
+  `/sysroot/etc/machine-id` and an encrypted `/sysroot/var`. Operates on the
+  volume backing `/sysroot/var` — our root.
+* Authorizes with `--unlock-headless` (TPM2, else empty password). Because it
+  unlocks during the initrd phase, it would keep working under an initrd-only
+  signed policy — the "trap" below no longer bites enrollment.
+* **Interactive, not unattended**: a menu of recovery key / passphrase / one
+  entry per FIDO2 token plugged in / rescan. **No timeout** — first boot waits
+  on tty0 until answered; Enter skips. `--prompt-suppress=password,recovery,fido2`
+  keeps it quiet once any of those exists. `systemd.firstboot=no` disables it.
+* Chooses the YubiKey only if it is plugged in when the menu is drawn (or on
+  "Rescan").
 
-**Housekeeping on the 262 rebuild:**
+Observed on a VM first boot: "Currently enrolled mechanisms: tpm2", menu
+answered "1", "Automatically discovered security TPM2 token unlocks volume",
+"New recovery key enrolled as key slot 1". Header afterwards: token 0
+`systemd-tpm2` (slot 0), token 1 `systemd-recovery` (slot 1). Second boot: no
+wizard, silent TPM unlock.
 
-* `systemd-sysupdate.service`/`.timer` are renamed to `…-update.service`/
-  `.timer` (compat symlinks exist). We reference neither.
-* `systemd-sysupdated` is deprecated in favour of Varlink straight to
-  `systemd-sysupdate`; we already drive the binary directly, for the
-  `--transfer-source` reason recorded in `bin/update-system`.
-* **NvPCR anchoring changed** and is the most likely surprise: definitions must
-  ship in the UKI, which must embed an initrd-bound signed policy
-  (`ukify --sign-initrd-pcrs`). Existing NvPCRs auto-upgrade, and the old anchor
-  secret in /var/lib and the ESP is removed. We do extend the `cryptsetup`
-  NvPCR at boot, so watch the first 262 build for it.
-* TPM2 PIN enrollment can now be hardened with Argon2id (`--tpm2-with-pin=yes`),
-  if a PIN is ever added.
+**`bin/vm run DISK` now answers the wizard** (`--enroll recovery|skip`, default
+recovery). It writes only to tty0 and mutes the kernel console, so serial just
+goes quiet; bin/vm spots the wizard's full-width top+bottom colour bars in a
+screendump and answers over HMP `sendkey`. Screens are saved as
+`<disk>-enroll-menu.png` / `<disk>-enroll-recovery-key.png`. That makes the
+enrollment path VM-testable for the first time. FIDO2 still is not (no
+passthrough).
+
+### NvPCRs: fine on the installed system, broke the Live/Installer profiles
+
+v262 anchors NvPCRs only from an initrd whose UKI embeds a signed PCR policy
+with policyref "initrd". mkosi 27 already passes `ukify --sign-initrd-pcrs`
+(`SignInitrdPcrs=auto`, on for ukify >= 262), so the default profile needed
+nothing: `systemd-tpm2-setup-early` reports "4 NvPCRs initialized" and the
+hardware/login NvPCRs extend. repart enrolls without a policyref, so the
+all-phase signed PCR 11 policy still unlocks root and post-boot
+`--unlock-tpm2-device=auto` keeps working.
+
+The **Live and Installer** profiles set `SignExpectedPcr=no` — deliberately:
+anything they signed with our key would also satisfy an installed root's signed
+PCR 11 policy, from a root-autologin environment. With no initrd-bound policy
+every NvPCR define fails (`Failed to initialize NvPCR index: No such file or
+directory`, TPM rc 0x14c), and because upstream maps only EOPNOTSUPP/ENOBUFS to
+graceful exit codes, `systemd-tpm2-setup-early`, `systemd-pcrproduct` and
+`systemd-pcrlogin@0` FAIL — the Installer booted `degraded`. Fix: both profiles
+mask those units plus `systemd-tpm2-setup.service` on their cmdline. Do NOT
+"fix" this by enabling `SignExpectedPcr=` on those profiles.
+
+### Other 262 items
+
+* **pcrlock** (policy relax before fwupd updates, `--strict=`, re-prediction via
+  `systemd-sysupdate-notify-pcrlock.socket`): not adopted. It is the principled
+  answer to PCR 7 brittleness but a real design change to how root is sealed;
+  take it on as its own piece of work, validated on real hardware.
+* **`systemd-sysupdate cleanup`**: not adopted. No transfer pattern has changed,
+  so it has nothing to collect, and `bin/update-system` drives sysupdate with
+  `--definitions=mkosi.sysupdate` — a cleanup run against a different
+  definition set could delete UKIs. Revisit if a `MatchPattern=` ever changes.
+* **The trap, still**: do not enroll with a policyref
+  (`--tpm2-public-key-policyref=`) without deciding — that is the stronger
+  initrd-only posture, and would break post-boot `--unlock-tpm2-device=auto`
+  (still used by `bin/revoke-luks-yubikey` and the manual enroll command).
+  First-boot enrollment itself would survive it now (it runs in the initrd).
+* **Not for us**: `bootctl link-auto`, `systemd-sysupdate-notify-bootctl.socket`
+  (Type #1 entries).
+* Renamed `systemd-sysupdate.service`/`.timer` → `…-update.*`: we reference
+  neither. `systemd-sysupdated` deprecation: we already drive the binary.
+* TPM2 PIN hardening (`--tpm2-with-pin=yes`, Argon2id) if a PIN is ever added.
+
+### Fixed along the way
+
+* `bin/build-image --caching off` had never worked with pacman 7: the
+  postinst's `pacman -Syy` runs before Ansible templates `DisableSandbox`, and
+  the stock `DownloadUser` cannot be chowned to in mkosi's userns. Now
+  `--disable-sandbox`. (`--caching off` is what busts the incremental cache —
+  needed for any upstream package update like this one.)
+* `bin/vm`: the serial shell exports `SYSTEMD_PAGER= PAGER=cat` (a non-empty
+  `systemctl --failed` opened a pager and hung the run); `vm install` dumps each
+  failed unit's journal; `--tpm-state` paths must stay short, so keep VM disks
+  under e.g. `~/.cache/mkosi/vmt/`, not the Claude scratchpad.
 
 ## TODO: the offline (`--caching force`) AUR path was removed (2026-09-23)
 
