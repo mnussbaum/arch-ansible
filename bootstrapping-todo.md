@@ -591,7 +591,6 @@ Orthogonal checks (fold into the steps above as real hardware becomes available)
   - That we implement https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
 - Code reorgs
   - Move most package installs back into ansible, only leave enough to run ansible
-  - Can remove network_install_root var?
   - Can we move ansible into the build step? Might allow better caching
     - Organize project top level better. Playbooks in one dir, mkosi stuff in another
   - Make it able to handle new hosts without new configs

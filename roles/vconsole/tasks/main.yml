@@ -2,13 +2,13 @@
 ---
 - name: Create keymap config dir
   file:
-    path: "{{ vconsole_install_root }}/usr/share/kbd/keymaps/i386/qwerty"
+    path: "/usr/share/kbd/keymaps/i386/qwerty"
     state: directory
 
 - name: Install custom keymap with caps lock mapped to escape for the console's sake
   archive:
     path: files/us-custom.map
-    dest: "{{ vconsole_install_root }}/usr/share/kbd/keymaps/i386/qwerty/us-custom.map.gz"
+    dest: "/usr/share/kbd/keymaps/i386/qwerty/us-custom.map.gz"
     format: gz
     mode: "u=rw,g=r,o=r"
 

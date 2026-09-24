@@ -73,40 +73,40 @@
     path: "{{ item }}"
     state: directory
   loop:
-    - "{{ network_install_root }}/var/lib/iwd"
-    - "{{ network_install_root }}/etc/iwd"
-    - "{{ network_install_root }}/etc/wireguard"
+    - "/var/lib/iwd"
+    - "/etc/iwd"
+    - "/etc/wireguard"
 
 - name: Configure iwd networks
   template:
     src: iwd_network.conf.j2
-    dest: "{{ network_install_root }}/var/lib/iwd/{{ iwd_config_file_names[item.ssid] }}.{{ iwd_config_file_extensions[item.ssid] }}"
+    dest: "/var/lib/iwd/{{ iwd_config_file_names[item.ssid] }}.{{ iwd_config_file_extensions[item.ssid] }}"
   no_log: true
   loop: "{{ wifi_networks | default([]) }}"
 
 - name: Install udev rule to start iwd on wireless device
   copy:
     src: 90-iwd-on-wireless.rules
-    dest: "{{ network_install_root }}/usr/lib/udev/rules.d/90-iwd-on-wireless.rules"
+    dest: "/usr/lib/udev/rules.d/90-iwd-on-wireless.rules"
 
 - name: Install systemd-networkd config for the primary interface
   copy:
     src: 25-primary.network
-    dest: "{{ network_install_root }}/usr/lib/systemd/network/25-primary.network"
+    dest: "/usr/lib/systemd/network/25-primary.network"
 
 - name: Install resume fix IPv6 flush service
   copy:
     src: wireless-resume-ipv6-flush.service
-    dest: "{{ network_install_root }}/usr/lib/systemd/system/wireless-resume-ipv6-flush.service"
+    dest: "/usr/lib/systemd/system/wireless-resume-ipv6-flush.service"
 
 - name: Install networking.target
   copy:
     src: networking.target
-    dest: "{{ network_install_root }}/usr/lib/systemd/system/networking.target"
+    dest: "/usr/lib/systemd/system/networking.target"
 
 - name: Create drop-in dirs for networking.target PartOf
   file:
-    path: "{{ network_install_root }}/usr/lib/systemd/system/{{ item }}.d"
+    path: "/usr/lib/systemd/system/{{ item }}.d"
     state: directory
   loop:
     - iwd.service
@@ -116,7 +116,7 @@
 - name: Install networking.target PartOf drop-ins
   copy:
     src: networking-target-part-of.conf
-    dest: "{{ network_install_root }}/usr/lib/systemd/system/{{ item }}.d/networking-target-part-of.conf"
+    dest: "/usr/lib/systemd/system/{{ item }}.d/networking-target-part-of.conf"
   loop:
     - iwd.service
     - systemd-networkd.service
