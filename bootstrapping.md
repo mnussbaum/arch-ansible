@@ -101,17 +101,70 @@ host keys, shadow) is written into the writable `/etc` on first boot.
 
 The root and swap partitions are LUKS2, created and TPM2-enrolled by
 `systemd-repart` when it provisions them on first boot
-(`mkosi.extra/usr/lib/repart.d/{40-swap,50-root}.conf`, `Encrypt=tpm2`). The TPM2
-keyslot is sealed to PCR 7 (Secure Boot state), so a normal boot unlocks with no
-interaction. `home` is a plain btrfs partition; per-user encryption is handled by
-`systemd-homed` (a LUKS volume per home directory) on top of it, with a recovery
-secret seeded into the credstore by `bin/_credstore_common.sh`.
+(`mkosi.extra/usr/lib/repart.d/{40-swap,50-root}.conf`, `Encrypt=tpm2`). The
+keyslot is bound to **PCR 7 and a signed PCR 11 policy**: `TPM2PCRs=7` pins the
+Secure Boot state, and repart adds the signed policy by default from mkosi's
+`SignExpectedPcr=` key. A normal boot unlocks with no interaction.
 
-> **Planned, not yet implemented:** FIDO2/YubiKey and printed-recovery-key
-> keyslots on the root volume. `roles/systemd-boot/files/80-systemd-boot.preset`
-> enables `firstboot.service` and `luks-enroll.service`, but those units are not
-> defined anywhere yet, and there is no key-file bootstrap slot. `bin/enroll-yubikeys`
-> and `bin/revoke-luks-yubikey` exist but are untested. See `bootstrapping-todo.md`.
+Those two bindings behave very differently, and the difference matters for
+recovery:
+
+* **PCR 7** is stable within a boot, so the token can also authorize changes
+  from the running system (`systemd-cryptenroll --unlock-tpm2-device=auto`).
+* **Signed PCR 11** measures *this* UKI and its boot phases, so no other
+  image — including a recovery medium — can ever satisfy it. That is the point:
+  a different OS cannot unseal the disk. It also means `bin/recovery-mount`
+  cannot use the TPM token and needs a second factor.
+
+That second factor is a **YubiKey (FIDO2)**, enrolled on first boot before login
+by `luks-enroll-fido2.service` (`bin/enroll-root-fido2`), authorized by the TPM2
+token itself. Without it a root is unrecoverable once its measured boot
+legitimately changes — a firmware update, a re-enrolled Secure Boot key, a
+cleared TPM or a replaced board. If no key is present the service warns and
+leaves the volume TPM-only; a factor can still be added later from any normal
+boot with the command it prints. *The FIDO2 branch has not run on real hardware
+yet: QEMU has no FIDO2 passthrough (the vsock relay carries pcscd, not FIDO2
+HID).*
+
+`home` is a plain btrfs partition; per-user encryption is `systemd-homed` — one
+LUKS volume per home directory — on top of it.
+
+### YubiKey enrollment for homed
+
+A home is created **unattended** on first boot, then gains its hardware token at
+**first login**. A token cannot be enrolled unattended (it needs user presence),
+hence the split:
+
+1. **First boot.** `systemd-homed-firstboot.service` consumes the credentials
+   baked by `bin/_credstore_common.sh` — `home.create.<user>` (the user record)
+   and `home.new-password` (a recovery secret kept in `pass` under
+   `linux_users/<user>/recovery-key`) — and creates the encrypted home with no
+   prompting.
+2. **First login.** `roles/user/tasks/first-login.yml` discovers the YubiKey's
+   PIV URI and runs `homectl update --pkcs11-token-uri=…`, then **drops the
+   password factor**, leaving the token as the login factor and the recovery
+   secret as the fallback.
+
+It pins PIV **slot 9D** (`id=%03`, "Key Management"). Slot 9C is the Secure Boot
+signing key and must never be selected.
+
+Things that will bite you:
+
+* **It needs a physical touch.** Slot 9D is `PIN required: ONCE`,
+  `Touch required: CACHED` (`ykman piv keys info 9d`). The decrypt blocks on a
+  tap and, untouched, fails after ~37s as an opaque
+  `Failed to execute operation: Input/output error`. The real reason is only in
+  `journalctl -u systemd-homed`: `Failed to decrypt key on security token: No
+  user has logged in`.
+* **The password and the touch must land in the same attempt.** homed also wants
+  the plaintext password to authorize the change; missing either makes it fail
+  fast and re-prompt, which looks like an endless password loop.
+* **`homectl authenticate <user>` tests the password alone** — no token, no
+  touch. Use it to tell "wrong password" from "enrollment is failing".
+* **Never run `homectl` under `SYSTEMD_LOG_LEVEL=debug`.** It dumps the record it
+  sends, including `secret.tokenPin` in plaintext.
+* In a VM the YubiKey arrives over the pcscd vsock relay (see *YubiKey relay in
+  QEMU* below); `bin/vm run` with no disk wires it up.
 
 ---
 
@@ -139,6 +192,83 @@ home           btrfs       homed mounts per-user LUKS here    weight 1
 The ESP is ≥ 2 GiB to hold two ~460 MiB UKIs at once during an A/B swap.
 Partition UUIDs are not fixed per host: repart derives them from its seed. There
 are no per-host partition definitions.
+
+### Discoverable partitions
+
+The layout is not described anywhere at runtime — there is **no `/etc/fstab`**
+and no per-host disk config. Every partition is declared only by its GPT type
+UUID, following the [Discoverable Partitions
+Specification](https://uapi-group.org/specifications/specs/discoverable_partitions_specification/),
+and the system finds its own storage from those types:
+
+| `Type=` in `repart.d` | what finds it at boot |
+|---|---|
+| `esp` | `systemd-gpt-auto-generator` mounts it at `/efi` |
+| `usr`, `usr-verity`, `usr-verity-sig` | `mount.usr=dissect` — the verity triple is matched and `/usr` comes up integrity-checked |
+| `root` | `root=dissect`, unlocked via its LUKS2 TPM2 token |
+| `home`, `swap` | auto-mounted / auto-enabled by type |
+
+Two consequences worth knowing:
+
+* **Paths are by role, not by device.** `/dev/disk/by-designator/root-luks` and
+  `/dev/mapper/usr` are what scripts use (`bin/recovery-mount`,
+  `bin/enroll-root-fido2`, `bin/revoke-luks-yubikey`); nothing references
+  `/dev/sda2` or a UUID.
+* **The same image boots any machine.** Since discovery is by type, there are no
+  per-host partition definitions to generate — which is what makes one image
+  serve every machine, and what makes the A/B slots interchangeable.
+
+The A/B `usr` slots are the one place where type alone is ambiguous: both slots
+carry `Type=usr`, so the inactive one is labelled `_empty` and the UKI's
+`systemd.image_filter=usr=image_*` keeps `dissect` from picking it.
+
+---
+
+## Build caches
+
+A build reuses six caches under `${ARCH_ANSIBLE_CACHE}` (`~/.cache` on a host,
+`/var/cache/arch-ansible` on a device — `bin/_cache_common.sh`):
+
+| cache | what it saves |
+|---|---|
+| `mkosi/pacman-pkg` | downloaded packages (mkosi's own `PackageCacheDirectory`) |
+| `aur-repo` | **built** AUR packages; mkosi installs from it via `PackageDirectories=` |
+| `yay` | AUR git clones and build trees |
+| `nvim/site` | ~130 MiB of plugins and compiled tree-sitter parsers |
+| `cargo/registry` | downloaded crates |
+| `sccache` | compiled Rust objects |
+
+### The round-trip pattern
+
+Each of those is wired into the build three times, and the reason is worth
+understanding before changing any of it:
+
+1. **`SkeletonTrees=`** seeds the cache into the image. This is *frozen into
+   mkosi's incremental snapshot*, so it reflects the state when that snapshot
+   was taken, not today.
+2. **`BuildSources=`** mounts the same host directory live at `/work/src/…`, so
+   the postinst sees whatever previous builds have written since the snapshot.
+   `mkosi.postinst.chroot` delta-seeds from there (`rsync --ignore-existing`).
+3. **`mkosi.finalize`** writes new files back out. It cannot touch the host
+   cache from its sandbox, so it stages into the output directory
+   (`cache-writeback/`) and `bin/build-image` rsyncs that into the real cache
+   after mkosi exits.
+
+The write-back is a **delta**, not a copy: finalize touches a marker before the
+postinst runs and stages only files newer than it. One wrinkle is recorded in
+that script — cargo extracts crates into `registry/src/` preserving the
+archive's *old* mtimes, so the delta misses them; only `cache/` and `index/`
+round-trip and `src/` is re-extracted.
+
+### What this costs
+
+Caching is what makes a warm build ~10 minutes instead of an hour, but it is not
+free. In a measured 574s build, **"Copying cached trees" was 88s (15%)** — and
+that is a straight byte-for-byte copy because `~/.cache` is on **ext4**, which
+has no reflink support. `mkosi.conf` sets `UseSubvolumes=auto`, which can do
+nothing there. Moving the mkosi cache onto btrfs (or XFS with reflinks) would
+turn that phase into a near-instant snapshot; `bin/setup-mkosi-cache-volume`
+exists for making such a volume.
 
 ---
 

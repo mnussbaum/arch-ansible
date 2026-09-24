@@ -585,10 +585,6 @@ Orthogonal checks (fold into the steps above as real hardware becomes available)
 
 ## Running todo notes
 
-- Document
-  - Yubikey enrollment for homectl
-  - Cache mounting pattern perf optimization
-  - That we implement https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
 - Code reorgs
   - Move most package installs back into ansible, only leave enough to run ansible
   - Can we move ansible into the build step? Might allow better caching
