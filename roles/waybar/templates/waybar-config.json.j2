@@ -92,8 +92,7 @@
     "position": "bottom",
     "modules-left": [
       "idle_inhibitor",
-      "custom/toggle-headphone-profile",
-      "custom/toggle-eeek-vpn"
+      "custom/toggle-headphone-profile"
     ],
 
     "modules-right": [
@@ -114,18 +113,10 @@
 
     "custom/toggle-headphone-profile": {
       "exec": "headphone-profile-status",
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}', position='left') }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}', last_block=True, position='left') }}",
       "tooltip": false,
       "interval": 1,
       "on-click": "toggle-headphone-profile",
-    },
-
-    "custom/toggle-eeek-vpn": {
-      "exec": "eeek-vpn-status",
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{}', last_block=True, position='left') }}",
-      "interval": 1,
-      "on-click": "toggle-eeek-vpn",
-      "tooltip": false
     },
 
     "network": {

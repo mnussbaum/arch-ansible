@@ -57,6 +57,4 @@
     - waybar-bluetooth-status
     - toggle-bluetooth
     - toggle-wifi
-    - toggle-eeek-vpn
-    - eeek-vpn-status
     - headphone-profile-status

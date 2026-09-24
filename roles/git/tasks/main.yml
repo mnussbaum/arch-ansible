@@ -20,11 +20,6 @@
     src: personal-gitconfig.j2
     dest: /etc/gitconfig.d/personal
 
-- name: Install eeek gitconfig
-  copy:
-    src: eeek-gitconfig
-    dest: /etc/gitconfig.d/eeek
-
 - name: Install attributes file for mergiraf
   copy:
     src: gitattributes
