@@ -33,8 +33,8 @@
     dest: /usr/lib/systemd/user/restic-backup.timer
 
 - name: Install systemd user preset
-  template:
-    src: 80-backup.preset.j2
+  copy:
+    src: 80-backup.preset
     dest: /usr/lib/systemd/user-preset/80-backup.preset
 # TODO:
 #
