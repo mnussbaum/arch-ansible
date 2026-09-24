@@ -75,7 +75,10 @@ fi
 caching="${CACHING:-available}"
 extra_args+=(--extra-vars "build_caching=$caching")
 if [[ "$caching" == off ]]; then
-  pacman -Syy --noconfirm
+  # --disable-sandbox: this runs before Ansible templates the pacman.conf that
+  # sets DisableSandbox, and the stock config's DownloadUser cannot be chowned to
+  # inside mkosi's user namespace ("failed to chown temporary download directory").
+  pacman -Syy --noconfirm --disable-sandbox
 fi
 
 : "${ANSIBLE_WIFI_NETWORKS:?must be set by bin/build-image (from bin/wifi-networks)}"
