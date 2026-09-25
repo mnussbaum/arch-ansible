@@ -1,5 +1,7 @@
 output * bg {{ desktop_background }} fill
 
+input * xkb_options caps:escape
+
 exec "gtkgreet --style /etc/greetd/style.css --layer-shell; swaymsg exit"
 
 bindsym Mod4+shift+e exec swaynag \
