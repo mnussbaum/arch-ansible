@@ -14,6 +14,10 @@
     - import_role:
         name: gpg
         tasks_from: user
+    # Needs the YubiKey-backed gpg agent above to decrypt the wifi entries in pass.
+    - import_role:
+        name: network_configuration
+        tasks_from: wifi-credentials
     - import_role:
         name: ssh
     - import_role:

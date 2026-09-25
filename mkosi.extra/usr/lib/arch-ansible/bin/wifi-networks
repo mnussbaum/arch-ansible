@@ -3,9 +3,10 @@
 
 Wifi config lives entirely in pass: one entry per SSID under wifi/, where the
 entry name is the SSID and the body is that network's iwd config as YAML (a
-`psk:` line, or the WPA-EAP fields). bin/build-image runs this on the host and
-injects the result into the postinst Ansible run, which bakes the iwd configs in
-the chroot. Run it directly to inspect what would be injected.
+`psk:` line, or the WPA-EAP fields). The first-login playbook runs this on the
+machine itself and stores each network as an encrypted systemd credential
+(roles/network_configuration/tasks/wifi-credentials.yml); nothing is baked into
+the image. Run it directly to inspect what would be stored.
 """
 import glob
 import json
@@ -18,6 +19,12 @@ import yaml
 store = os.path.expanduser(
     os.environ.get("PASSWORD_STORE_DIR") or "~/.local/share/password-store"
 )
+# On an installed or live system the store may only exist as the read-only copy
+# the image ships (GPG-encrypted; the YubiKey decrypts it). bin/build-image
+# falls back the same way.
+if not os.environ.get("PASSWORD_STORE_DIR") and not os.path.isdir(store):
+    store = "/usr/share/password-store"
+    os.environ["PASSWORD_STORE_DIR"] = store
 
 networks = []
 for path in sorted(glob.glob(os.path.join(store, "wifi", "*.gpg"))):

@@ -94,10 +94,6 @@ materialize_secureboot_keypair
 
 source bin/_credstore_common.sh
 
-# base64 so the JSON survives the env-var trip through mkosi into the chroot
-# unmangled (no quotes/spaces/colons); decoded in mkosi.postinst.chroot.
-wifi_networks=$(bin/wifi-networks | base64 -w0)
-
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 # Local reusable caches: created empty on first build, then primed and reused
 # across builds. This keeps the build fast/offline with no system caches to draw
@@ -146,7 +142,6 @@ mkosi \
   --verity-key="$SECUREBOOT_KEY" \
   --profile=build \
   --force \
-  --environment="ANSIBLE_WIFI_NETWORKS=$wifi_networks" \
   --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
   `# TRANSITIONAL: selects mkosi.conf.d/10-sources-*.conf; remove after cutover` \
   "${caching_args[@]}" \
