@@ -68,6 +68,18 @@ for rel in "${DROPLIST[@]}"; do
     rm -rf -- "$ETC/$rel"
 done
 
+# Relative symlinks that climb out of /etc (localtime -> ../usr/share/zoneinfo/…,
+# os-release -> ../usr/lib/os-release) would dangle once moved two levels deeper
+# into factory, so make them absolute. Links staying inside /etc move intact.
+while IFS= read -r -d '' link; do
+    target=$(readlink "$link")
+    [[ "$target" == /* ]] && continue
+    rel=${link#"$BUILDROOT"}
+    abs=$(realpath -ms "$(dirname "$rel")/$target")
+    [[ "$abs" == /etc/* ]] && continue
+    ln -sfn "$abs" "$link"
+done < <(find "$ETC" -type l -print0)
+
 mkdir -p "$FACTORY" "$(dirname "$TMPFILES")"
 
 {
@@ -101,6 +113,12 @@ for entry in "$ETC"/*; do
     # every other /etc entry) and leave /etc/systemd/system to systemd.
     if [[ "$name" == systemd ]]; then
         printf 'L /etc/systemd/user - - - - -\n' >> "$TMPFILES"
+        continue
+    fi
+    # Point symlinks straight at their target, not through factory: systemd
+    # only recognizes /etc/localtime when it links directly into zoneinfo.
+    if [[ -L "$FACTORY/$name" ]]; then
+        printf 'L /etc/%s - - - - %s\n' "$name" "$(readlink "$FACTORY/$name")" >> "$TMPFILES"
         continue
     fi
     printf 'L /etc/%s - - - - -\n' "$name" >> "$TMPFILES"
