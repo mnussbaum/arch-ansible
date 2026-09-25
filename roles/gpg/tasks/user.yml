@@ -75,15 +75,5 @@
     create: true
   loop: "{{ gpg_auth_ssh_keygrips }}"
 
-- name: Enable and start GPG user services
-  service:
-    name: "{{ item }}"
-    enabled: true
-    state: started
-    scope: user
-  loop:
-    - gpg-agent.service
-    - gpg-agent-ssh.socket
-    - gpg-agent-extra.socket
-    - gpg-agent-browser.socket
-    - dirmngr.socket
+# gpg-agent and dirmngr sockets are enabled in the image
+# (mkosi.extra/usr/lib/systemd/user/sockets.target.wants/).
