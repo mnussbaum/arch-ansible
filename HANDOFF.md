@@ -584,10 +584,7 @@ mask those units plus `systemd-tpm2-setup.service` on their cmdline. Do NOT
 
 ### Other 262 items
 
-* **pcrlock** (policy relax before fwupd updates, `--strict=`, re-prediction via
-  `systemd-sysupdate-notify-pcrlock.socket`): not adopted. It is the principled
-  answer to PCR 7 brittleness but a real design change to how root is sealed;
-  take it on as its own piece of work, validated on real hardware.
+* **pcrlock**: ADOPTED for PCR 7 — see the next section.
 * **`systemd-sysupdate cleanup`**: not adopted. No transfer pattern has changed,
   so it has nothing to collect, and `bin/update-system` drives sysupdate with
   `--definitions=mkosi.sysupdate` — a cleanup run against a different
@@ -602,6 +599,70 @@ mask those units plus `systemd-tpm2-setup.service` on their cmdline. Do NOT
 * Renamed `systemd-sysupdate.service`/`.timer` → `…-update.*`: we reference
   neither. `systemd-sysupdated` deprecation: we already drive the binary.
 * TPM2 PIN hardening (`--tpm2-with-pin=yes`, Argon2id) if a PIN is ever added.
+
+### pcrlock for PCR 7 (2026-09-24)
+
+Root and swap's TPM2 slots are born literal PCR 7 + signed PCR 11 (repart, in
+the initrd — no pcrlock policy can exist yet), then re-bound after first boot to
+**signed PCR 11 + a systemd-pcrlock policy for PCR 7**. Pieces:
+
+* `81-pcrlock.preset` enables upstream's `systemd-pcrlock-secureboot-policy`,
+  `-secureboot-authority`, `-make-policy` and our `pcrlock-enroll-luks`.
+* `systemd-pcrlock-make-policy.service.d/10-arch-ansible.conf` runs
+  `bin/pcrlock-make-policy --boot`: `--pcr=7 --strict=yes`, our own recovery
+  PIN (`--recovery-pin=query`, `$PIN` from
+  `/var/lib/arch-ansible/pcrlock-recovery-pin`, 0600 on the encrypted root),
+  `--entry-token=machine-id`, orders after `boot.automount`.
+* `bin/pcrlock-enroll-luks` re-enrolls with `--tpm2-pcrlock=
+  --tpm2-public-key-pcrs=11 --tpm2-pcrs= --wipe-slot=tpm2` (new slot first,
+  then wipe); refuses unless `pcrlock.json` covers PCR 7.
+* `bin/pcrlock-secureboot-change CMD…` for planned Secure Boot changes.
+* Live/Installer mask all of it (it would allocate an NV index and write the
+  medium's ESP).
+
+Validated on image `20260924162222` (VM, dbx appends signed with the KEK via
+`sbvarsign`, written through efivarfs — OVMF accepts our ECC key):
+
+1. First boot: policy made, both slots re-bound
+   (`tpm2-pcrs: [], tpm2_pubkey_pcrs: [11], tpm2_pcrlock: true`), `running`.
+2. Planned: `pcrlock-secureboot-change apply.sh dbx-test.auth` — policy covers
+   old + new.
+3. Next boot: PCR 7 moved (`978108…` → `15b5b5…`), root AND swap unlocked
+   silently; `prior.pcrlock` dropped, policy tightened, ESP copy rewritten.
+   Then an UNPLANNED dbx append.
+4. TPM refused ("None of the alternative values for PCR 7…"); recovery key
+   typed at the initrd prompt; make-policy rewrote the policy with our PIN.
+   Swap failed this one boot (no recovery slot) → `degraded`.
+5. Silent TPM unlock of root and swap, `running`.
+
+Traps found on the way, all fixed and explained in `bin/pcrlock-make-policy` /
+`bin/pcrlock-secureboot-change`:
+
+* pcrlock's DEFAULT recovery PIN is random and hidden, and its sealed copy is
+  bound to the current policy — after an unplanned change the policy can never
+  be rewritten. Hence our own PIN.
+* Re-locking after a change without keeping the old variant fails: the
+  current boot's log no longer matches, PCR 7 is dropped, `--strict` refuses.
+* The initrd's ESP copy went stale three ways: make-policy ran before `/boot`
+  was mounted; the entry token was the machine-id at boot but `image` from a
+  shell (and the initrd uses the FIRST matching copy); an unchanged prediction
+  skips the ESP write forever. Fixed by ordering, a pinned token, forcing when
+  ours is missing/older, and deleting other copies.
+
+Open:
+
+* **Real firmware.** Its PCR 7 log may carry events pcrlock does not
+  recognize; `--strict` then fails make-policy (unit failed, system
+  `degraded`) and the volumes stay literal. Check `systemd-pcrlock log --pcr=7`
+  on the laptop first.
+* **Swap has no recovery factor.** Harmless except on the one recovery boot
+  after an unplanned change — and for a hibernation image written before it.
+* **Do not run `systemd-pcrlock remove-policy`**: a new NV index orphans the
+  existing pcrlock-bound slots, and `pcrlock-enroll-luks` only re-binds literal
+  ones, so they would need re-enrolling by hand with the recovery key.
+* fwupd is not integrated with 262's Varlink relax API; wrap it instead.
+* A policy made before the PIN change (images `20260924155604` and earlier)
+  uses a hidden PIN; those test disks are throwaway.
 
 ### Fixed along the way
 

@@ -1186,6 +1186,16 @@ def run_disk(args, log):
         sh.run("journalctl -b --no-pager -o cat "
                "-u systemd-cryptenroll-firstboot.service 2>&1 | tail -10 || true")
         sh.run("systemd-cryptenroll /dev/disk/by-designator/root-luks || true")
+        # How each TPM2 slot is bound: born literal PCR 7 + signed PCR 11, then
+        # moved onto the pcrlock policy by pcrlock-enroll-luks.service.
+        sh.run("systemctl is-active systemd-pcrlock-make-policy.service "
+               "pcrlock-enroll-luks.service || true")
+        sh.run("for d in root-luks swap-luks; do printf '%s: ' $d; "
+               "cryptsetup luksDump --dump-json-metadata /dev/disk/by-designator/$d "
+               "| python3 -c 'import json,sys; print([{k: t.get(k) for k in "
+               "(\"keyslots\", \"tpm2-pcrs\", \"tpm2_pubkey_pcrs\", \"tpm2_pcrlock\")} "
+               "for t in json.load(sys.stdin)[\"tokens\"].values() "
+               "if t[\"type\"] == \"systemd-tpm2\"])'; done || true")
 
         if args.share:
             sh.run(f"mkdir -p {SHARE_MNT} && mount -t virtiofs {SHARE_TAG} "

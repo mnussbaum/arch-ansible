@@ -3,9 +3,10 @@
 # whose FIDO2 slot was enrolled at first boot by systemd-cryptenroll-firstboot.service.
 #
 # The wipe needs an existing factor to authorize it. The TPM2 token works from
-# the running system (it binds PCR 7 plus a signed PCR 11 policy whose signature
-# covers the later boot phases too), so that is tried first; otherwise
-# systemd-cryptenroll falls back to prompting.
+# the running system (it binds PCR 7, via the pcrlock policy after first boot,
+# plus a signed PCR 11 policy whose signature covers the later boot phases
+# too), so that is tried first; otherwise systemd-cryptenroll falls back to
+# prompting.
 #
 # Usage: bin/revoke-luks-yubikey <slot> [DEVICE]
 #

@@ -106,6 +106,10 @@ keyslot is bound to **PCR 7 and a signed PCR 11 policy**: `TPM2PCRs=7` pins the
 Secure Boot state, and repart adds the signed policy by default from mkosi's
 `SignExpectedPcr=` key. A normal boot unlocks with no interaction.
 
+Once first boot has created a policy, `pcrlock-enroll-luks.service` moves the
+PCR 7 half onto a **systemd-pcrlock policy** (see "PCR 7 via pcrlock" below);
+the signed PCR 11 half never changes.
+
 Those two bindings behave very differently, and the difference matters for
 recovery:
 
@@ -133,6 +137,48 @@ systemd-cryptenroll /dev/disk/by-designator/root-luks --unlock-tpm2-device=auto 
 *The FIDO2 branch has not run on real hardware yet: QEMU has no FIDO2
 passthrough (the vsock relay carries pcscd, not FIDO2 HID). `bin/vm run DISK`
 exercises the recovery-key branch instead.*
+
+#### PCR 7 via pcrlock
+
+A literal PCR 7 value breaks on any Secure Boot variable change — a dbx
+revocation update, a new KEK or db entry — and from then on only the recovery
+factor opens the disk. So after first boot, root and swap are re-bound to a
+`systemd-pcrlock` policy for PCR 7, which lives in a TPM NV index and can be
+rewritten without touching the keyslot:
+
+* `systemd-pcrlock-secureboot-policy` / `-secureboot-authority` describe the
+  current Secure Boot state; `systemd-pcrlock-make-policy` (via
+  `bin/pcrlock-make-policy`) turns it into a policy on **PCR 7 only**, with
+  `--strict=yes` so it fails rather than silently dropping PCR 7. A copy goes to
+  the ESP (`loader/credentials/pcrlock.<machine-id>.cred`) for the initrd.
+* `pcrlock-enroll-luks.service` (`bin/pcrlock-enroll-luks`) then re-enrolls each
+  TPM2 slot as signed PCR 11 + pcrlock, wiping the old slot only after the new
+  one exists. If the policy was not made, the volumes keep the literal binding.
+* The policy's recovery PIN is ours, kept root-only on the encrypted root
+  (`/var/lib/arch-ansible/pcrlock-recovery-pin`), so the policy can always be
+  rewritten once root is open.
+
+**Before changing Secure Boot variables**, wrap the change:
+
+```
+sudo /usr/share/arch-ansible/bin/pcrlock-secureboot-change fwupdmgr update
+```
+
+It keeps the old variables as a second variant, runs the command, locks the new
+ones, and rebuilds the policy covering both; the next boot drops the old one.
+The TPM keeps unlocking across the change.
+
+**After an unplanned change** (or a new db certificate, which cannot be
+predicted), the TPM refuses. Unlock root with the recovery key once: that boot
+re-predicts from the new state and rewrites the policy with the stored PIN, and
+the next boot unlocks from the TPM again. Swap has no recovery slot, so it stays
+locked for that one boot (the system comes up `degraded`).
+
+*Validated in a VM (dbx appends signed with the KEK): the planned path unlocks
+silently across the change; the unplanned path needs the recovery key once and
+then heals. Not yet run on real firmware, whose PCR 7 event log may contain
+events pcrlock does not recognize — `--strict` then fails the policy and the
+volumes stay on literal PCR 7.*
 
 `home` is a plain btrfs partition; per-user encryption is `systemd-homed` — one
 LUKS volume per home directory — on top of it.

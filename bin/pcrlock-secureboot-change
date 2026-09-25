@@ -1,0 +1,48 @@
+#!/bin/bash
+# Run a command that changes Secure Boot variables (PK/KEK/db/dbx) without
+# locking the TPM out on the next boot. For example:
+#
+#   sudo bin/pcrlock-secureboot-change fwupdmgr update
+#
+# Root and swap's TPM2 slots are bound to a systemd-pcrlock policy for PCR 7,
+# which measures those variables. Just re-locking after the change does not
+# work: pcrlock must still recognize the CURRENT boot's event log, which was
+# measured with the OLD variables, or it drops PCR 7 and --strict refuses (as
+# measured in a VM). So keep the old variables as a second variant of the
+# component, run the change, lock the new variables, and rebuild the policy
+# covering both. The next boot's systemd-pcrlock-make-policy.service
+# (bin/pcrlock-make-policy --boot) drops the old variant again.
+#
+# Not covered: a change to the Secure Boot AUTHORITY, i.e. booting binaries
+# signed by a different db certificate. That is measured from the boot itself
+# and cannot be predicted beforehand; expect one recovery-key boot, which then
+# heals the policy (see bin/pcrlock-make-policy).
+set -o errexit
+set -o nounset
+set -o pipefail
+
+[[ $# -gt 0 ]] || { echo "usage: $0 COMMAND [ARGS...]" >&2; exit 2; }
+[[ $EUID -eq 0 ]] || { echo "error: run as root" >&2; exit 1; }
+
+here=$(dirname "$(readlink -f "$0")")
+pcrlock=/usr/lib/systemd/systemd-pcrlock
+dir=/var/lib/pcrlock.d/240-secureboot-policy.pcrlock.d
+
+[[ -s "$dir/generated.pcrlock" ]] || {
+    echo "error: no $dir/generated.pcrlock; is pcrlock in use on this machine?" >&2
+    exit 1
+}
+
+cp "$dir/generated.pcrlock" "$dir/prior.pcrlock"
+
+rc=0
+"$@" || rc=$?
+# Re-lock even if the command failed: it may have changed some variables
+# before failing, and covering old + new is safe either way.
+[[ $rc -eq 0 ]] || echo "warning: '$*' exited $rc; re-locking anyway" >&2
+
+"$pcrlock" lock-secureboot-policy
+"$here/pcrlock-make-policy"
+echo "pcrlock policy now covers the old and new Secure Boot variables."
+echo "Reboot to apply; the next boot drops the old variant."
+exit "$rc"
