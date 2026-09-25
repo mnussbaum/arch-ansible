@@ -1,8 +1,9 @@
 # Guided installer, auto-started on tty1 in the Installer UKI profile. Runs
-# bin/install-system --guided (enumerate target disks -> pick -> confirm ->
+# `install-system --guided` (enumerate target disks -> pick -> confirm ->
 # systemd-repart), producing a pure Boot Loader Spec Type #2 install. Replaces
 # the old `systemd.unit=systemd-sysinstall.service` wiring (Type #1 via `bootctl
-# link`). See bin/install-system and mkosi.uki-profiles/25-install.conf.
+# link`). See mkosi.extra/usr/lib/arch-ansible/bin/install-system and
+# mkosi.uki-profiles/25-install.conf.
 #
 # Gated on the `arch.install` kernel-cmdline marker that only the Installer
 # profile sets, so it is inert (condition fails, ordinary getty runs) in the
@@ -13,7 +14,6 @@
 Description=Guided OS installer (Boot Loader Spec Type #2)
 Documentation=man:systemd-repart(8)
 ConditionKernelCommandLine=arch.install
-ConditionPathExists=/usr/share/arch-ansible/bin/install-system
 After=systemd-user-sessions.service getty-pre.target systemd-udevd.service
 Before=getty.target
 Conflicts=getty@tty1.service
@@ -21,7 +21,7 @@ IgnoreOnIsolate=yes
 
 [Service]
 Type=idle
-ExecStart=/usr/share/arch-ansible/bin/install-system --guided
+ExecStart=/usr/lib/arch-ansible/bin/install-system --guided
 Restart=always
 RestartSec=1
 UtmpIdentifier=tty1

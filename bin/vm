@@ -158,8 +158,6 @@ class Monitor:
 
     def __init__(self, path):
         self.sock = _connect(path)
-        # The enrollment-wizard watcher drives the monitor from its own thread.
-        self._lock = threading.Lock()
         threading.Thread(target=self._drain, daemon=True).start()
 
     def _drain(self):
@@ -171,11 +169,10 @@ class Monitor:
                 break
 
     def cmd(self, line):
-        with self._lock:
-            self.sock.sendall((line + "\n").encode())
-            # HMP has no completion signal we care about; a small gap keeps a
-            # burst of sendkeys from outrunning the guest's key queue.
-            time.sleep(0.03)
+        self.sock.sendall((line + "\n").encode())
+        # HMP has no completion signal we care about; a small gap keeps a burst
+        # of sendkeys from outrunning the guest's key queue.
+        time.sleep(0.03)
 
     def sendkey(self, key, times=1):
         for _ in range(times):
@@ -572,26 +569,6 @@ class Vm:
         self.shell = None if gui else Shell(self.console, self.log)
         self.monitor = Monitor(self.monitor_sock)
 
-    def screendump_ppm(self, path):
-        """Raw screendump to `path`, parsed: (width, height, RGB bytes) or None."""
-        path.unlink(missing_ok=True)
-        self.monitor.screendump(str(path))
-        for _ in range(50):
-            if path.exists() and path.stat().st_size:
-                break
-            time.sleep(0.1)
-        try:
-            data = path.read_bytes()
-        except OSError:
-            return None
-        # P6 header: magic, width, height, maxval, then one whitespace byte.
-        m = re.match(rb"P6\s+(\d+)\s+(\d+)\s+(\d+)\s", data)
-        if not m:
-            return None
-        w, h = int(m.group(1)), int(m.group(2))
-        pixels = data[m.end():]
-        return (w, h, pixels) if len(pixels) >= w * h * 3 else None
-
     def screenshot(self, tag="screen"):
         """Capture the VGA console to a PPM (converted to PNG when possible).
 
@@ -759,76 +736,6 @@ def menu_entries(raw):
 
 
 # --- subcommands -------------------------------------------------------------
-
-
-def chrome_on_screen(shot):
-    """Whether the VGA console shows systemd's wizard "chrome".
-
-    systemd 262's interactive first-boot tools (systemd-cryptenroll --firstboot
-    among them) paint a solid full-width bar across the top AND bottom text rows.
-    Nothing else in this boot fills both edges of a black text console, so a
-    band of mostly non-black pixels at each edge is a reliable tell, and it needs
-    no OCR.
-    """
-    if not shot:
-        return False
-    w, h, px = shot
-    band = 8  # pixel rows: well inside one text row (16px) at either edge
-
-    def lit(y0):
-        on = 0
-        for y in range(y0, y0 + band):
-            row = px[y * w * 3:(y + 1) * w * 3]
-            on += sum(1 for x in range(0, len(row), 3)
-                      if row[x] + row[x + 1] + row[x + 2] > 60)
-        return on / (band * w)
-
-    return lit(0) > 0.9 and lit(h - band) > 0.9
-
-
-def answer_enroll_wizard(vm, choice, log, stop, timeout):
-    """Answer systemd-cryptenroll-firstboot.service's menu on tty0.
-
-    On a first boot the initrd stops, right after repart creates root, on an
-    interactive menu with no timeout: recovery key / passphrase / one entry per
-    FIDO2 token / rescan. It writes only to /dev/console (tty0) and mutes the
-    kernel console while it waits, so serial just goes silent. Watch the
-    screendump for its chrome and answer over HMP:
-
-      recovery  "1" (Enroll a recovery key), then a key for its closing
-                "Press any key to proceed". Exercises the whole enrollment path
-                — TPM2 authorization in the initrd, new keyslot — which the
-                YubiKey branch cannot, having no FIDO2 passthrough here.
-      skip      Enter, which leaves the volume TPM-only.
-
-    A later boot never shows the menu (the unit is gated on an empty
-    machine-id, and --prompt-suppress= skips it once a recovery slot exists),
-    so running out of `timeout` just means there was nothing to answer.
-    """
-    probe = vm.run_dir / f"{vm.name}-wizard-probe.ppm"
-    deadline = time.monotonic() + timeout
-    while not chrome_on_screen(vm.screendump_ppm(probe)):
-        if stop.wait(2) or time.monotonic() > deadline:
-            probe.unlink(missing_ok=True)
-            return
-    probe.unlink(missing_ok=True)
-
-    stop.wait(2)  # let the menu finish drawing before the screenshot
-    log(f"==> first-boot enrollment wizard is up; answering: {choice} "
-        f"(screen: {vm.screenshot('enroll-menu')})")
-    if choice == "skip":
-        vm.monitor.sendkey("ret")
-        return
-
-    for key in ("1", "ret"):
-        vm.monitor.sendkey(key)
-    # Unsealing the TPM2 token and adding a keyslot (PBKDF) takes a few seconds;
-    # the key is then shown with "Press any key to proceed". An early keypress
-    # would only sit in the tty buffer until that read, so a generous wait costs
-    # nothing but time.
-    stop.wait(30)
-    log(f"==> recovery key screen: {vm.screenshot('enroll-recovery-key')}")
-    vm.monitor.sendkey("ret")
 
 
 def wait_for_shell(vm, timeout, log):
@@ -1046,7 +953,7 @@ def cmd_install(args):
 
         log("\n===== install-system --yes /dev/vdb =====")
         rc, _ = sh.run(
-            "/usr/share/arch-ansible/bin/install-system --yes /dev/vdb 2>&1",
+            "/usr/lib/arch-ansible/bin/install-system --yes /dev/vdb 2>&1",
             timeout=args.install_timeout,
         )
         if rc != 0:
@@ -1145,22 +1052,10 @@ def run_disk(args, log):
         if args.entry:
             select_boot_entry(vm, args.entry)
 
-        stop_wizard = threading.Event()
-        wizard = threading.Thread(
-            target=answer_enroll_wizard,
-            args=(vm, args.enroll, log, stop_wizard, args.boot_timeout),
-            daemon=True,
-        )
-        wizard.start()
-
         log("==> waiting for a root shell on ttyS0 …")
         # First boot does the whole provisioning run (repart creates root/home/
         # swap, TPM2-seals LUKS, homed/firstboot units), so allow plenty.
-        try:
-            wait_for_shell(vm, args.boot_timeout, log)
-        finally:
-            stop_wizard.set()
-            wizard.join(timeout=60)
+        wait_for_shell(vm, args.boot_timeout, log)
         sh = vm.shell
 
         log("\n===== Health checks (validation question #2) =====")
@@ -1180,11 +1075,6 @@ def run_disk(args, log):
                "2>&1 | tail -10 || true")
         sh.run("cryptsetup luksDump /dev/disk/by-designator/root-luks 2>/dev/null "
                "| grep -i -A2 'tokens\\|systemd-tpm2' | head -20 || true")
-        # What the first-boot enrollment wizard did (it runs in the initrd, whose
-        # journal is carried over): a recovery key shows up as a "recovery" slot
-        # next to "tpm2".
-        sh.run("journalctl -b --no-pager -o cat "
-               "-u systemd-cryptenroll-firstboot.service 2>&1 | tail -10 || true")
         sh.run("systemd-cryptenroll /dev/disk/by-designator/root-luks || true")
         # How each TPM2 slot is bound: born literal PCR 7 + signed PCR 11, then
         # moved onto the pcrlock policy by pcrlock-enroll-luks.service.
@@ -1262,11 +1152,6 @@ def main():
     r.add_argument("--entry", metavar="VERSION",
                    help="disk only: sd-boot entry to select (default: the "
                         "default entry)")
-    r.add_argument("--enroll", choices=("recovery", "skip"), default="recovery",
-                   help="disk only: how to answer the first-boot LUKS enrollment "
-                        "wizard (systemd-cryptenroll-firstboot) if it appears: "
-                        "enroll a recovery key (default; exercises the TPM2-"
-                        "authorized enrollment path) or skip it")
     r.add_argument("--run", action="append", metavar="CMD",
                    help="disk only: run CMD in the booted system after the health "
                         "checks (repeatable). Root's /etc is writable, so changes "

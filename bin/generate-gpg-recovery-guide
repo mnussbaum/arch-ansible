@@ -263,7 +263,7 @@ Arch Linux — this is the fastest path on a borrowed or newly purchased machine
     <br><code>./bin/build-image</code>
     <br><code>./bin/burn-image /dev/sdX</code></li>
   <li>Boot the target machine from that USB and install to its internal disk:
-    <br><code>./bin/install-system /dev/nvme0n1</code></li>
+    <br><code>install-system /dev/nvme0n1</code> (as root)</li>
   <li>Reboot into the new system and note the hostname it assigned itself. Add
     that machine's secrets to <code>pass</code> under
     <code>host_secrets/&lt;hostname&gt;/</code>.</li>

@@ -16,10 +16,10 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 
 ## Install from the live medium
 
-- **`bin/install-system` (`mkosi.uki-profiles/25-install.conf`)** — VALIDATED
+- **`mkosi.extra/usr/lib/arch-ansible/bin/install-system` (`mkosi.uki-profiles/25-install.conf`)** — VALIDATED
   2026-08-19. `systemd-sysinstall` is RETIRED (it was hardwired to Boot Loader Spec
   Type #1; see the Type #2 follow-up below). The `install` UKI profile now boots to
-  `multi-user.target` and auto-runs `arch-install.service` → `bin/install-system
+  `multi-user.target` and auto-runs `arch-install.service` → `mkosi.extra/usr/lib/arch-ansible/bin/install-system
 --guided` on tty1. The whole install is one `systemd-repart` run:
   `systemd-repart --dry-run=no --empty=force --defer-partitions=swap,root,home DISK`
   — the ESP is populated by `CopyFiles=/boot:/` in the shipped
@@ -346,7 +346,7 @@ $output_dir/tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error)
    (`bin/vm run --gui` a fresh install → `hostnamectl` shows `arch-…`, stable across
    reboots). NOTE: the step-4 commands below/above still say `--hostname=…`; that
    flag is gone now — drop it (the disk names itself).
-   RE-RUN AND PASSED 2026-08-19 on the **Type #2** installer (`bin/install-system`,
+   RE-RUN AND PASSED 2026-08-19 on the **Type #2** installer (`mkosi.extra/usr/lib/arch-ansible/bin/install-system`,
    no sysinstall), headless via `bin/vm install`. Verified by reading the
    target back from inside the installer: partitions `esp` + usr-A
    {verity_sig,verity,erofs} + three `_empty` usr-B slots, with root/home/swap
@@ -545,7 +545,7 @@ Follow-ups (software; discovered during E2E, not yet done):
           ESP grow is untouched.
         - `usr-A` is cloned from the running `/usr` by the existing `CopyBlocks=auto`
           (22-usr-a.conf); `--defer-partitions` leaves root/home/swap for first boot.
-        - `bin/install-system`: thin wrapper — one-shot `install-system DISK` (block dev
+        - `mkosi.extra/usr/lib/arch-ansible/bin/install-system`: thin wrapper — one-shot `install-system DISK` (block dev
           or raw file; medium-disk guard; `--yes`/`--reboot`) or `install-system
           --guided` (enumerate eligible disks → pick → confirm → install), with a
           "drop to a shell" escape hatch.

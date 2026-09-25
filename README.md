@@ -273,7 +273,7 @@ Attach a second disk with `--device=<disk.raw>` and pick the role at the boot
 menu. **Live System (Recovery)** boots a volatile root that skips the first-boot
 self-install — `bin/recovery-mount` then discovers the disk's LUKS partition,
 unlocks it, mounts root/usr/efi/home, and chroots in. **Installer** replicates the
-image onto the disk with `bin/install-system` — one `systemd-repart` run that
+image onto the disk with `mkosi.extra/usr/lib/arch-ansible/bin/install-system` — one `systemd-repart` run that
 reproduces the medium's own Type #2 layout (the install profile boots straight
 into `arch-install.service`).
 

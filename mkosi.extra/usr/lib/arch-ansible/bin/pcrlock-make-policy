@@ -1,0 +1,50 @@
+#!/bin/bash
+# Build or refresh the systemd-pcrlock policy. Run at boot with --boot by
+# systemd-pcrlock-make-policy.service, and by bin/pcrlock-secureboot-change.
+#
+# PCR 7 only (PCR 11 is covered by the signed policy), --strict so PCR 7 is
+# never silently dropped, and our own recovery PIN: pcrlock's default PIN is
+# sealed to the current policy, so after an unplanned PCR 7 change the policy
+# could never be rewritten. Ours lives on the encrypted root, so the first boot
+# unlocked by another factor rewrites the policy and the TPM works again.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+pin_file=/var/lib/arch-ansible/pcrlock-recovery-pin
+prior=/var/lib/pcrlock.d/240-secureboot-policy.pcrlock.d/prior.pcrlock
+
+if [[ "${1:-}" == --boot ]]; then
+    # Drop the pre-change variant bin/pcrlock-secureboot-change left behind;
+    # the change has been applied by now.
+    rm -f "$prior"
+fi
+
+if [[ ! -s "$pin_file" ]]; then
+    (umask 077 && mkdir -p "${pin_file%/*}" \
+        && head -c 32 /dev/urandom | base64 -w0 > "$pin_file")
+fi
+
+# The initrd unlocks root with the copy of the policy make-policy writes to the
+# ESP. Keep exactly one current copy: pin its name, rewrite it when missing or
+# older than the policy (make-policy skips it when nothing changed), and
+# delete any other, since the initrd uses the first match.
+policy=/var/lib/systemd/pcrlock.json
+esp=$(bootctl --print-esp-path 2>/dev/null) || esp=
+token=$(</etc/machine-id)
+force=()
+if [[ -n "$esp" ]]; then
+    cred="$esp/loader/credentials/pcrlock.$token.cred"
+    if [[ ! -s "$cred" || "$cred" -ot "$policy" ]]; then
+        force=(--force)
+    fi
+fi
+
+PIN=$(<"$pin_file") /usr/lib/systemd/systemd-pcrlock make-policy \
+    --location=770 --pcr=7 --strict=yes --recovery-pin=query \
+    --entry-token=machine-id "${force[@]}"
+
+if [[ -n "$esp" && -s "$cred" ]]; then
+    find "$esp/loader/credentials" -maxdepth 1 -iname 'pcrlock.*.cred' \
+        ! -name "pcrlock.$token.cred" -print -delete
+fi

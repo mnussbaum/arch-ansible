@@ -1,27 +1,12 @@
 #!/bin/bash
-# Re-enroll root and swap's TPM2 keyslots against the systemd-pcrlock policy for
-# PCR 7, keeping the signed PCR 11 policy. Run by pcrlock-enroll-luks.service
-# every boot; a no-op once both volumes are bound.
+# Move root and swap's TPM2 slots from a literal PCR 7 binding onto the pcrlock
+# policy, keeping signed PCR 11, so Secure Boot variable changes can be
+# re-predicted instead of breaking the seal. Volumes are born literal (repart
+# enrolls in the initrd, before any policy exists) and moved here after boot.
+# Run every boot by pcrlock-enroll-luks.service; a no-op once both are bound.
 #
-# Why: repart binds the TPM2 slot to a LITERAL PCR 7 value (repart.d
-# TPM2PCRs=7). Any Secure Boot variable change — a dbx revocation update, a
-# KEK/db change — moves PCR 7 and breaks that seal for good, leaving only the
-# recovery factor. A pcrlock policy lives in a TPM NV index instead, so it can
-# be re-predicted around a planned change (bin/pcrlock-secureboot-change), or
-# healed after an unplanned one (bin/pcrlock-make-policy), and the keyslot never
-# has to change.
-#
-# Only moves literal bindings. If the policy's NV index is ever REPLACED
-# (`systemd-pcrlock remove-policy`), slots bound to the old index look done here
-# but cannot unlock; re-enroll them by hand with the recovery key.
-#
-# Why after boot, not at creation: repart enrolls in the initrd on first boot,
-# before any policy exists — it is made by systemd-pcrlock-make-policy.service
-# once /var is up. So volumes are born literal-PCR-7 and upgraded here.
-#
-# The re-enrollment is one systemd-cryptenroll call per volume: it authorizes with the
-# existing TPM2 slot, adds the new one, and only then wipes every OTHER tpm2
-# slot. A failure leaves the old binding in place.
+# Only moves literal bindings: slots bound to a replaced NV index (after
+# `systemd-pcrlock remove-policy`) must be re-enrolled by hand.
 set -o errexit
 set -o nounset
 set -o pipefail

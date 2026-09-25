@@ -120,23 +120,22 @@ recovery:
   a different OS cannot unseal the disk. It also means `bin/recovery-mount`
   cannot use the TPM token and needs a second factor.
 
-That second factor is enrolled on first boot, in the initrd, by systemd 262's
-own `systemd-cryptenroll-firstboot.service`, which is authorized by the TPM2
-token itself (`--unlock-headless`). It runs right after repart creates root and
-shows a menu on the console: a recovery key, a passphrase, or one entry per
-FIDO2 token plugged in — pick the **YubiKey**. It waits for an answer with no
-timeout, and Enter skips it. Without a second factor a root is unrecoverable
-once its measured boot legitimately changes — a firmware update, a re-enrolled
-Secure Boot key, a cleared TPM or a replaced board. A skipped wizard leaves the volume TPM-only; a
-factor can still be added later from any normal boot:
+That second factor is the **YubiKey (FIDO2)**, enrolled on root and swap at
+first boot, before login, by `luks-enroll-fido2.service`
+(`/usr/lib/arch-ansible/bin/luks-enroll-fido2`), authorized by the TPM2 token.
+It waits up to two minutes for the key, then says when to enter the FIDO2 PIN
+and touch the key; a missed touch can be retried. Without a second factor a
+root is unrecoverable once its measured boot legitimately changes — a firmware
+update, a re-enrolled Secure Boot key, a cleared TPM or a replaced board. If it
+was skipped, run it again from any normal boot:
 
 ```
-systemd-cryptenroll /dev/disk/by-designator/root-luks --unlock-tpm2-device=auto --fido2-device=auto
+sudo /usr/lib/arch-ansible/bin/luks-enroll-fido2
 ```
 
-*The FIDO2 branch has not run on real hardware yet: QEMU has no FIDO2
-passthrough (the vsock relay carries pcscd, not FIDO2 HID). `bin/vm run DISK`
-exercises the recovery-key branch instead.*
+systemd 262's interactive `systemd-cryptenroll-firstboot.service` is masked on
+the kernel command line in favour of this. The unit is skipped in VMs, which
+have no FIDO2 passthrough.
 
 #### PCR 7 via pcrlock
 
@@ -148,10 +147,10 @@ rewritten without touching the keyslot:
 
 * `systemd-pcrlock-secureboot-policy` / `-secureboot-authority` describe the
   current Secure Boot state; `systemd-pcrlock-make-policy` (via
-  `bin/pcrlock-make-policy`) turns it into a policy on **PCR 7 only**, with
+  `mkosi.extra/usr/lib/arch-ansible/bin/pcrlock-make-policy`) turns it into a policy on **PCR 7 only**, with
   `--strict=yes` so it fails rather than silently dropping PCR 7. A copy goes to
   the ESP (`loader/credentials/pcrlock.<machine-id>.cred`) for the initrd.
-* `pcrlock-enroll-luks.service` (`bin/pcrlock-enroll-luks`) then re-enrolls each
+* `pcrlock-enroll-luks.service` (`mkosi.extra/usr/lib/arch-ansible/bin/pcrlock-enroll-luks`) then re-enrolls each
   TPM2 slot as signed PCR 11 + pcrlock, wiping the old slot only after the new
   one exists. If the policy was not made, the volumes keep the literal binding.
 * The policy's recovery PIN is ours, kept root-only on the encrypted root
@@ -169,16 +168,18 @@ ones, and rebuilds the policy covering both; the next boot drops the old one.
 The TPM keeps unlocking across the change.
 
 **After an unplanned change** (or a new db certificate, which cannot be
-predicted), the TPM refuses. Unlock root with the recovery key once: that boot
-re-predicts from the new state and rewrites the policy with the stored PIN, and
-the next boot unlocks from the TPM again. Swap has no recovery slot, so it stays
-locked for that one boot (the system comes up `degraded`).
+predicted), the TPM refuses. Unlock root and swap with the YubiKey once: that
+boot re-predicts from the new state and rewrites the policy with the stored
+PIN, and the next boot unlocks from the TPM again.
 
 *Validated in a VM (dbx appends signed with the KEK): the planned path unlocks
 silently across the change; the unplanned path needs the recovery key once and
-then heals. Not yet run on real firmware, whose PCR 7 event log may contain
-events pcrlock does not recognize — `--strict` then fails the policy and the
-volumes stay on literal PCR 7.*
+then heals.*
+
+pcrlock needs a TPM 2.0 rev ≥ 1.38 (PolicyAuthorizeNV). On older TPMs — the
+XPS 13 9365's Intel PTT is one — `systemd-pcrlock-make-policy` is skipped and
+root and swap stay on literal PCR 7 + signed PCR 11. Its PCR 7 event log was
+fully recognized, so a newer TPM firmware would be enough.
 
 `home` is a plain btrfs partition; per-user encryption is `systemd-homed` — one
 LUKS volume per home directory — on top of it.
@@ -427,8 +428,8 @@ per-machine input — whether it self-installs or is provisioned via the Install
 profile. Override with `hostnamectl hostname <name>`.
 
 > **Not yet implemented:** the `firstboot.service` flow the preset enables.
-> (LUKS second-factor enrollment is done: systemd 262's
-> `systemd-cryptenroll-firstboot.service`, above.) TPM2/PCR 7 sealing across the Secure Boot enrollment boot has also not
+> (LUKS second-factor enrollment is done: `luks-enroll-fido2.service`, above.)
+> TPM2/PCR 7 sealing across the Secure Boot enrollment boot has also not
 > been verified against real firmware — see `bootstrapping-todo.md`. (`bin/vm run`
 > works around the PCR 7 instability in QEMU by persisting the OVMF varstore and
 > the emulated TPM across runs.)
@@ -438,7 +439,7 @@ profile. Override with `hostnamectl hostname <name>`.
 ## Installation
 
 Boot a machine from the live USB and pick the **Installer** profile. It
-auto-launches a guided installer on the console (`bin/install-system --guided`
+auto-launches a guided installer on the console (`mkosi.extra/usr/lib/arch-ansible/bin/install-system --guided`
 via `arch-install.service`): it lists the eligible target disks (every whole disk
 except the live medium), you pick one and confirm, and it installs. The menu also
 offers dropping to a shell — where you can run `install-system DISK` directly — as
@@ -519,7 +520,7 @@ Boot the target machine from the USB and select **Live System (Recovery)** at th
 boot menu. This boots a volatile root (`root=tmpfs`) that masks the first-boot
 self-install, so it behaves like a rescue medium rather than provisioning itself.
 The TPM2 keyslot will not open the target machine's disk (different boot session →
-different PCR 7 value), so use a YubiKey or the recovery key.
+different PCR 7 value), so use the YubiKey.
 
 In QEMU, `bin/vm run --device=<disk.raw>` emulates this: it boots the image as
 the medium and attaches the disk as `/dev/vdb`; pick **Live System (Recovery)** at
@@ -534,9 +535,9 @@ chrooting. Run it from the live/recovery system:
 bin/recovery-mount
 ```
 
-It attempts FIDO2 unlock first (prompts for YubiKey touch), then falls back to
-prompting for the recovery key if no token succeeds. TPM2 fails silently in this
-session since PCR 7 differs from the installed system's enrolled value.
+It unlocks with the YubiKey (FIDO2; prompts for its PIN and a touch). TPM2
+fails silently in this session, since the installed system's PCR 11 policy
+can't match a recovery boot.
 
 To perform these steps manually:
 
@@ -544,8 +545,6 @@ To perform these steps manually:
 # Unlock with enrolled tokens (FIDO2 prompts for YubiKey touch):
 cryptsetup open --token-only /dev/<root-partition> cryptroot
 
-# Or with the recovery key:
-cryptsetup open /dev/<root-partition> cryptroot
 
 mount /dev/mapper/cryptroot /mnt
 mount /dev/<esp-partition> /mnt/efi

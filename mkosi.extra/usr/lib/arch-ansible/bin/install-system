@@ -126,6 +126,23 @@ install_to() {
     [[ "$reply" == "yes" ]] || { echo "Aborted." >&2; return 1; }
   fi
 
+  # Clear the target's old layout first: repart registers each new partition
+  # with the kernel before writing the table, and the kernel refuses any that
+  # collide with partitions it still knows about.
+  if [[ -b "$tgt" ]]; then
+    wipefs --all --quiet "$tgt"
+    partx --delete "$tgt" 2>/dev/null || true
+    local disk leftover
+    disk=$(basename "$(readlink -f "$tgt")")
+    leftover=$(find "/sys/class/block/$disk/" -mindepth 1 -maxdepth 1 -name "${disk}*" -printf '%f ')
+    if [[ -n "$leftover" ]]; then
+      echo "Install FAILED: the kernel still has partitions of '$tgt' in use ($leftover)." >&2
+      echo "  Something holds them open (mounted? swap? an active LUKS/LVM volume?);" >&2
+      echo "  see lsblk, swapon --show and dmsetup ls." >&2
+      return 1
+    fi
+  fi
+
   # The one install step. --empty=force wipes any existing table and lays down a
   # fresh GPT; --defer-partitions leaves root/home/swap for the target's
   # first-boot repart (which TPM2-seals them). CopyFiles/CopyBlocks in the baked
