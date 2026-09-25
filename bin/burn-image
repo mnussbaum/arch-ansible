@@ -11,7 +11,7 @@ while [[ $# -gt 0 ]]; do
     --help|-h)
       echo "Write the built image to a device. Build it first with build-image." >&2
       echo "Usage: $0 [mkosi options...] <device>" >&2
-      echo "  <device>    Block device to write the image to." >&2
+      echo "  <device>    Whole block device to write the image to. It is wiped first (sudo)." >&2
       echo "  The machine names itself at first boot (mkosi Hostname=, machine-id derived)." >&2
       echo "  Any other options are forwarded to mkosi." >&2
       exit
@@ -28,6 +28,37 @@ while [[ $# -gt 0 ]]; do
 done
 
 : "${device:?Usage: $0 <device>}"
+
+# Clear the device's old layout before burning. After writing the new GPT,
+# systemd-repart syncs the kernel's view one partition at a time with BLKPG, in
+# partition order, and the kernel refuses (EBUSY) any resize or add that
+# overlaps a partition it still knows about. So burning a layout that moved
+# partitions — e.g. the ESP growing 1G→2G, which shifts everything after it —
+# over the old one wrote the disk correctly but failed with "Failed to reread
+# partition table: Device or resource busy", leaving the host with a stale view
+# of the stick. With no old partitions registered, repart only adds.
+[[ -b "$device" ]] || { echo "error: $device is not a block device" >&2; exit 1; }
+disk=$(basename "$(readlink -f "$device")")
+if [[ -e "/sys/class/block/$disk/partition" ]]; then
+  echo "error: $device is a partition; pass the whole disk" >&2
+  exit 1
+fi
+if lsblk -nro MOUNTPOINTS "$device" | grep -q .; then
+  echo "error: something on $device is mounted; unmount it first:" >&2
+  lsblk -o NAME,MOUNTPOINTS "$device" >&2
+  exit 1
+fi
+echo "Wiping $device (sudo)…" >&2
+sudo wipefs --all --quiet "$device"
+# wipefs asks the kernel to re-read the (now absent) table, but that alone can
+# fail on a busy device; partx drops each old partition explicitly.
+sudo partx --delete "$device" 2>/dev/null || true
+leftover=$(find "/sys/class/block/$disk/" -mindepth 1 -maxdepth 1 -name "${disk}*" -printf '%f ')
+if [[ -n "$leftover" ]]; then
+  echo "error: the kernel still has partitions of $device registered ($leftover)." >&2
+  echo "       Something holds them open; replug the device and retry." >&2
+  exit 1
+fi
 
 source bin/_cache_common.sh
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
