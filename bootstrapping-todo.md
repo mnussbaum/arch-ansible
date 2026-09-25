@@ -590,7 +590,6 @@ Orthogonal checks (fold into the steps above as real hardware becomes available)
     - Organize project top level better. Playbooks in one dir, mkosi stuff in another
 - Recovery mode boot strapping
   - Stuff copied from the host that needs to be in containerfile, handle missing files gracefully
-    - yay-bin
     - password-store repo
     - arch-ansible repo
     - nvim packages

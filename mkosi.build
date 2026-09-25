@@ -1,26 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# yay bootstrap: install yay from the pre-built yay-bin package so the postinst's
-# ansible yay module has it. The package comes from the local AUR repo, mounted at
-# /work/src/yay-pkg (see mkosi.conf.d/10-sources-*.conf). bin/build-image builds it
-# there on a cold cache; thereafter it lives in the repo (refreshed when yay self-
-# upgrades during the postinst) and round-trips to the host cache via mkosi.finalize.
-# The repo holds one .pkg.tar.zst per version, so the glob can match several;
-# pacman -U on two files of the same pkgname errors with "duplicate target" (and
-# shipping both would break the device's offline -U too). Pick the highest version.
-yay_pkg=$(printf '%s\n' /work/src/yay-pkg/yay-bin-[0-9]*.pkg.tar.zst | sort -V | tail -1)
-pacman --root "$DESTDIR" -U --needed --noconfirm "$yay_pkg"
-
-# Carry the yay package forward into /usr (which persists across A/B updates,
-# unlike /root) so an in-image build can bind-mount + pacman -U it offline
-# instead of rebuilding. This self-hosting carry-forward is the steady-state way
-# the in-image builder gets yay (and the /usr/lib/arch-ansible/yay-pkg marker
-# bin/update-system uses to detect a device target). Source is the same
-# bind-mount we just installed; see mkosi.conf.d/10-sources-device.conf.
-install -d "$DESTDIR/usr/lib/arch-ansible/yay-pkg"
-install -m0644 "$yay_pkg" "$DESTDIR/usr/lib/arch-ansible/yay-pkg/"
-
 CARGO_HOME=/work/build/cargo-home
 mkdir -p "$CARGO_HOME"
 # Symlink registry from BuildSources so downloaded crates persist via buildcache

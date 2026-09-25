@@ -287,15 +287,22 @@ A build reuses six caches under `${ARCH_ANSIBLE_CACHE}` (`~/.cache` on a host,
 |---|---|
 | `mkosi/pacman-pkg` | downloaded packages (mkosi's own `PackageCacheDirectory`) |
 | `aur-repo` | **built** AUR packages; mkosi installs from it via `PackageDirectories=` |
-| `yay` | AUR git clones and build trees |
+| `aur-chroot` | the devtools clean chroot AUR packages are built in |
 | `nvim/site` | ~130 MiB of plugins and compiled tree-sitter parsers |
 | `cargo/registry` | downloaded crates |
 | `sccache` | compiled Rust objects |
 
+`aur-repo` and `aur-chroot` are maintained outside mkosi: before every build,
+`bin/sync-aur` checks the AUR for newer versions of the image's AUR packages and
+builds missing or outdated ones with `makechrootpkg` into `aur-repo`, keeping only
+the newest version of each. Makedepends go into the chroot, so this works on a
+device with a read-only `/usr`. A run that builds asks for sudo.
+
 ### The round-trip pattern
 
-Each of those is wired into the build three times, and the reason is worth
-understanding before changing any of it:
+The postinst caches (`nvim/site`, `cargo/registry`, `sccache`) are each wired
+into the build three times, and the reason is worth understanding before
+changing any of it:
 
 1. **`SkeletonTrees=`** seeds the cache into the image. This is *frozen into
    mkosi's incremental snapshot*, so it reflects the state when that snapshot

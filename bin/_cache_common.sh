@@ -1,7 +1,8 @@
 # shellcheck shell=bash
 # Resolve ARCH_ANSIBLE_CACHE: the base directory for every build cache and all
 # mkosi scratch (workspace, incremental cache, package cache, build dir, output,
-# the sccache/cargo/yay/pacman caches, and the homed credstore).
+# the sccache/cargo/pacman caches, the AUR repo and build chroot, and the homed
+# credstore).
 #
 # Keyed off ARCH_ANSIBLE_TARGET, the same transitional switch that selects
 # mkosi.conf.d/10-sources-{host,device}.conf:

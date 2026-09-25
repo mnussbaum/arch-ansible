@@ -10,7 +10,7 @@ set -euo pipefail
 #   - pacman's package cache, which mkosi binds RW into this sandbox at
 #     /var/cache/pacman/pkg (the pacman-cache BuildSource's host source), is
 #     written directly; and
-#   - yay/cargo/sccache, which have no such mount, are staged into $OUTPUTDIR
+#   - cargo/sccache/nvim, which have no such mount, are staged into $OUTPUTDIR
 #     (which mkosi copies to the output dir) for bin/build-image to fold into
 #     $ARCH_ANSIBLE_CACHE after mkosi returns.
 
@@ -22,7 +22,7 @@ if [[ -d "$BUILDROOT/var/cache/pacman/pkg" ]]; then
     rsync -a "$BUILDROOT/var/cache/pacman/pkg/" /var/cache/pacman/pkg/
 fi
 
-# --- yay/cargo/sccache: postinst caches -> $OUTPUTDIR (host pickup) ---
+# --- cargo/sccache/nvim: postinst caches -> $OUTPUTDIR (host pickup) ---
 # Stage only what the postinst created this build: files newer than the marker
 # mkosi.postinst.chroot drops at its start. The rest were seeded in via
 # SkeletonTrees and are already on the host, so this keeps the staged delta small
@@ -39,17 +39,15 @@ if [[ -f "$marker" ]]; then
         mkdir -p "$stage/$name"
         # Include directories, not just files/symlinks: an empty dir carries no
         # file to drag it across, and rsync --files-from won't create absent
-        # parents. yay's mirror clones (mirror=true fetches +refs/*:refs/*) pack
-        # every ref into packed-refs, leaving refs/ empty — drop it and git stops
-        # recognising the dir as a repo, so discovery escapes to the parent AUR
-        # clone and makepkg aborts ("is not a clone of ..."). rsync copies a
-        # listed dir non-recursively, so empty refs/ is recreated while non-empty
-        # dirs still arrive via their own (newer) files.
+        # parents. A git clone that packs every ref into packed-refs leaves refs/
+        # empty — drop it and git stops recognising the dir as a repo (this bit
+        # yay's mirror clones, when those were cached here; nvim's vim.pack
+        # clones are git too). rsync copies a listed dir non-recursively, so
+        # empty refs/ is recreated while non-empty dirs still arrive via their
+        # own (newer) files.
         find "$src" -mindepth 1 \( -type f -o -type l -o -type d \) -newer "$marker" -printf '%P\0' \
             | rsync -a --from0 --files-from=- "$src/" "$stage/$name/"
     }
-    _stage_delta "$BUILDROOT/var/cache/yay"         yay
-    _stage_delta "$BUILDROOT/var/cache/aur-repo"    aur-repo
     # cargo: write back only the downloaded .crate archives (cache/) and the
     # registry index (index/), whose files carry current mtimes and round-trip
     # through the -newer delta cleanly. NOT src/: cargo extracts each .crate

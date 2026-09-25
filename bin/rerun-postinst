@@ -50,13 +50,11 @@ if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   extra_env=(--setenv "ANSIBLE_EXTRA_ARGS=$ANSIBLE_EXTRA_ARGS")
 fi
 
-# Write an init script to run inside the container. mkosi.build installs yay
-# during the build phase whose result isn't in main.cache, so we replay it here.
+# Write an init script to run inside the container.
 init_script="$work_dir/init.sh"
 cat > "$init_script" << 'INIT'
 #!/bin/bash
 set -euo pipefail
-pacman -U --needed --noconfirm /work/src/yay-pkg/yay-bin-[0-9]*.pkg.tar.zst
 INIT
 
 if [[ "$shell" == true ]]; then
@@ -74,7 +72,6 @@ systemd-nspawn \
   --directory="$merged" \
   --bind="$repo_root:/work/src" \
   --bind="$HOME/.local/share/password-store:/work/src/password-store" \
-  --bind-ro="$ARCH_ANSIBLE_CACHE/aur-repo:/work/src/yay-pkg" \
   --bind="$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg:/var/cache/pacman/pkg" \
   --bind-ro=/etc/pacman.d/mirrorlist \
   --bind-ro="$init_script:/run/rerun-postinst-init.sh" \

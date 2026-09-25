@@ -8,37 +8,22 @@ chmod -R a+rX /usr/share/arch-ansible /usr/share/password-store
 cd /work/src
 export USER=root HOME=/root
 
-# Reference point for mkosi.finalize's cache write-back: it ships yay/cargo/
-# sccache files created after this back to the host (everything older was seeded
+# Reference point for mkosi.finalize's cache write-back: it ships cargo/sccache/
+# nvim files created after this back to the host (everything older was seeded
 # in via SkeletonTrees). Dropped here, after the incremental cache restore, so it
 # reliably predates anything this postinst builds regardless of restore mtimes.
 touch /root/.cache-writeback-since
 
-# Seed yay's clone dir (/var/cache/yay; setup-aur.yml pins yay's buildDir to it,
-# so root-run yay builds here despite HOME=/root) from the host cache. The
-# SkeletonTree seeds the same data into the incremental
-# snapshot, but writebacks since the snapshot was created aren't visible there.
-# This rsync brings in the delta: --ignore-existing skips what's already in the
-# image (snapshot-seeded content stays) and only adds entries that are newer on
-# the host (e.g. sources downloaded by a previous build's yay and written back).
-mkdir -p /var/cache/yay
-rsync -a --ignore-existing /work/src/yay-cache/ /var/cache/yay/ 2>/dev/null || true
-
-# Same delta-seed for neovim's plugin/parser dir: the SkeletonTree froze the host
-# cache into the snapshot; this brings in anything written back since (e.g. plugins
-# a previous build fetched). The neovim role's headless install then finds these
-# present and skips re-fetching them. -a preserves mtimes so seeded files stay
-# older than the writeback marker and aren't re-staged by mkosi.finalize.
+# Seed neovim's plugin/parser dir from the host cache. The SkeletonTree froze
+# the host cache into the incremental snapshot, but writebacks since the
+# snapshot was created aren't visible there. This rsync brings in the delta
+# (e.g. plugins a previous build fetched): --ignore-existing skips what's
+# already in the image (snapshot-seeded content stays) and only adds entries
+# that are newer on the host. The neovim role's headless install then finds
+# these present and skips re-fetching them. -a preserves mtimes so seeded files
+# stay older than the writeback marker and aren't re-staged by mkosi.finalize.
 mkdir -p /etc/skel/.local/share/nvim/site
 rsync -a --ignore-existing /work/src/nvim-site/ /etc/skel/.local/share/nvim/site/ 2>/dev/null || true
-
-# Same delta-seed for the local AUR repo. The SkeletonTree froze the host cache
-# into the snapshot; this brings in packages a previous online build wrote back
-# since. Nothing INSTALLS from here any more — mkosi does that from the host
-# copy via PackageDirectories= — but the postinst's `yay -Sua` builds into it
-# (PKGDEST) and mkosi.finalize writes the new packages back to the host.
-mkdir -p /var/cache/aur-repo
-rsync -a --ignore-existing /work/src/aur-repo/ /var/cache/aur-repo/ 2>/dev/null || true
 
 # Delta-seed cargo's registry cache — the downloaded .crate archives (cache/) and
 # the registry index (index/) — from the host writebacks-since, then drop the
@@ -67,7 +52,7 @@ if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
 fi
 
 # Carry the build's cache policy (bin/build-image --caching) into the postinst so
-# its pacman/yay match the package-install phase. build_caching feeds the
+# its pacman matches the package-install phase. build_caching feeds the
 # pacman.conf template's cache-only XferCommand (force); for a full refresh we
 # resync the chroot's package DB here, since the image's /var/lib/pacman/sync is
 # seeded, not the DB mkosi refreshed for its own install. 'available' keeps the

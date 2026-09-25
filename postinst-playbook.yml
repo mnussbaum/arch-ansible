@@ -4,8 +4,6 @@
 # image. Services can't be enabled directly in this playbook, instead create
 # a preset file so that the service will be enabled at image boot
 - hosts: all
-  environment:
-    BUILDDIR: /tmp/makepkg
   roles:
     - mnussbaum.base16-builder-ansible
     - mnussbaum.firefox_ext_sideloader
@@ -40,28 +38,9 @@
       vars:
         disable_sandbox: false
       tags: [packaging, min-user-session]
-    # mkosi now INSTALLS the AUR packages itself (mkosi.conf PackageDirectories=
-    # points pacman at the same /var/cache/aur-repo, and they are listed in
-    # mkosi.conf.d/90-packages.conf), which is why no role has a `package:` task
-    # any more. yay is still what BUILDS them, though, so without this the repo
-    # would freeze at whatever versions it already holds and the image would
-    # never see an AUR update again. -Sua upgrades exactly the AUR packages that
-    # are installed — i.e. the set mkosi just installed — building any newer
-    # version into PKGDEST for the DB rebuild below and for the next build.
-    # MUST run before restore-build-overrides below: that puts the real
-    # systemd-run, makepkg and sudo back, and yay then dies with "System has
-    # not been booted with systemd as init system" inside the chroot.
-    - name: Rebuild AUR packages that have newer versions
-      shell: yay -Sua --noconfirm
-      args:
-        executable: /bin/bash
-      changed_when: true
-      when: build_caching | default('available') != 'force'
-      tags: [packaging, min-user-session]
-    - import_role:
-        name: packaging
-        tasks_from: restore-build-overrides
-      tags: [packaging, min-user-session]
+    # AUR packages are built and kept current by bin/sync-aur before mkosi runs,
+    # and installed by mkosi itself (PackageDirectories= in mkosi.conf), so no
+    # AUR tooling runs in here.
     - name: Apply user-unit presets (mkosi only presets system units)
       command: systemctl --global preset-all
       changed_when: false
@@ -98,10 +77,6 @@
     - import_role:
         name: reflector
       tags: [reflector]
-    - import_role:
-        name: packaging
-        tasks_from: setup-aur
-      tags: [packaging, min-user-session]
     - import_role:
         name: secrets
       tags: [secrets]

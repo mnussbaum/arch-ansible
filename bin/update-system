@@ -147,14 +147,13 @@ if [[ -z "$image" ]]; then
   fi
 fi
 
-# Select the build context by the in-image device sources themselves. The
-# mkosi.conf.d/10-sources-device set is bind-mounted from paths that exist only on a
-# device / the live medium — the yay package they carry at /usr/lib/arch-ansible/
-# yay-pkg. Present ⇒ device target (caches on /var/cache/arch-ansible, sources from
-# /usr/share|lib); absent ⇒ a dev-host checkout, host target (~/.cache, ~/.local).
-# --image runs on the live medium, so it lands here on device too. bin/build-image
-# (below) sources the same _cache_common.sh.
-if [[ -d /usr/lib/arch-ansible/yay-pkg ]]; then
+# Select the build context by what /usr is. Running from one of our images — a
+# device or the live medium, whose /usr is the dissected verity image — means the
+# device target (caches on /var/cache/arch-ansible, sources from /usr/share|lib);
+# anything else is a conventional Arch install, the host target (~/.cache,
+# ~/.local). --image runs on the live medium, so it lands here on device too.
+# bin/build-image (below) sources the same _cache_common.sh.
+if [[ "$(findmnt -no SOURCE /usr 2>/dev/null || true)" == /dev/mapper/usr ]]; then
   export ARCH_ANSIBLE_TARGET=device
 
   # A live medium's root is tmpfs (RAM), too small for a full rebuild — carve
@@ -178,7 +177,7 @@ if [[ -d /usr/lib/arch-ansible/yay-pkg ]]; then
 
   # Same for the local AUR repo baked into /usr (mkosi.conf ExtraTree): seed it into
   # the build's aur-repo cache, which is what mkosi installs the AUR packages from
-  # (PackageDirectories= in mkosi.conf) — no yay or network needed for them. cp -n
+  # (PackageDirectories= in mkosi.conf) — no rebuild or network needed for them. cp -n
   # leaves a primed cache (reused scratch) alone.
   aur_dst="$ARCH_ANSIBLE_CACHE/aur-repo"
   if [[ -d /usr/lib/arch-ansible/aur-repo ]]; then

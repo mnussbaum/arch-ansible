@@ -1,0 +1,297 @@
+#!/bin/bash
+# Make the local AUR repo ($ARCH_ANSIBLE_CACHE/aur-repo) hold the current AUR
+# version of every AUR package the image installs. Run by bin/build-image before
+# mkosi.
+#
+# Why before mkosi: mkosi installs the AUR packages listed in
+# mkosi.conf.d/90-packages.conf from the local aur-repo (PackageDirectories= in
+# mkosi.conf), so they must already be built, at the version the image should
+# ship, when its package phase runs.
+#
+# A mkosi build script cannot do this: build scripts run AFTER the image's own
+# Packages= are installed ($PACKAGEDIR feeds OTHER images in a multi-image
+# build). Measured, not assumed: hiding one package and building failed at the
+# package phase with mkosi.build never reached.
+#
+# THE LIST IS NOT PARSED BY HAND. `mkosi --json summary` resolves the real
+# merged config (mkosi.conf + every mkosi.conf.d fragment, ~0.14s), and one
+# `pacman -Sp` over those names reports each one the official repos do not have
+# (~0.19s) — which is exactly the set that must come from the local repo. An
+# earlier version keyed off a "# --- AUR" comment marker in the config, which
+# silently skipped any AUR package filed above the marker and would have tried
+# to build official packages listed below it.
+#
+# UPDATES: one AUR RPC request covers every package, and vercmp compares each
+# result with the newest version in the repo. None of the image's AUR packages
+# are VCS (-git) packages, so the RPC version is authoritative. --caching force
+# never touches the network, so it skips the check, and a package missing from
+# the repo is then an error rather than a build.
+#
+# BUILDS run in a clean devtools chroot (makechrootpkg) under
+# $ARCH_ANSIBLE_CACHE/aur-chroot, not on the running system and not in the
+# image's postinst. makedepends land in the chroot, so this works on a device
+# whose /usr is read-only and leaves nothing behind on the running system. And
+# makechrootpkg runs makepkg as an unprivileged user under a real
+# systemd-nspawn, which is what lets the postinst drop yay and the sudo,
+# systemctl, systemd-run, makepkg and bsdtar overrides yay needed to run as root
+# inside mkosi's chroot. mkarchroot, arch-nspawn and makechrootpkg re-exec
+# themselves under sudo, so a run that builds asks for sudo; a run where every
+# package is current does not.
+#
+# PRUNING keeps only the newest version of each package. The repo is baked into
+# /usr (mkosi.conf ExtraTrees) for offline rebuilds, so every superseded version
+# would otherwise ride along in every image.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+caching=available
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --help|-h)
+            echo "Build missing and outdated AUR packages into the local repo." >&2
+            echo "Usage: $0 [--caching force|off|available]" >&2
+            echo "  --caching force  Never use the network: skip the update check and" >&2
+            echo "                   fail if a package is missing from the repo." >&2
+            exit
+            ;;
+        --caching=*) caching="${1#*=}" ;;
+        --caching) caching="$2"; shift ;;
+        *) echo "sync-aur: unexpected argument: $1" >&2; exit 1 ;;
+    esac
+    shift
+done
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+
+# mkosi.conf expands ${ARCH_ANSIBLE_CACHE} and ${ARCH_ANSIBLE_SRCTREE} from the
+# environment, so `mkosi summary` fails config validation without them. Exported
+# already when bin/build-image calls this; sourced here so the script also works
+# standalone. (Suppressing mkosi's stderr hid exactly this failure once.)
+if [[ -z ${ARCH_ANSIBLE_CACHE:-} ]]; then
+    # shellcheck source=bin/_cache_common.sh
+    source "$root/bin/_cache_common.sh"
+fi
+
+repo=$ARCH_ANSIBLE_CACHE/aur-repo
+chroots=$ARCH_ANSIBLE_CACHE/aur-chroot
+# The same configs devtools' own extra-x86_64-build uses.
+pacman_conf=/usr/share/devtools/pacman.conf.d/extra.conf
+makepkg_conf=/usr/share/devtools/makepkg.conf.d/x86_64.conf
+mkdir -p "$repo"
+
+# Every package the main image will install, straight from mkosi's own resolved
+# configuration (the initrd image has its own, much shorter, list). Captured
+# first so a failing mkosi (e.g. a BuildSources path that does not exist yet)
+# stops here with its own error. ARCH_ANSIBLE_TARGET is passed the way
+# bin/build-image passes it: mkosi.conf defaults it to host, so without this a
+# device would resolve the host's mkosi.conf.d/10-sources-host.conf and fail on
+# its missing ~/.local/share/password-store.
+summary=$(mkosi --directory "$root" \
+    --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" --json summary)
+mapfile -t wanted < <(printf '%s' "$summary" | python3 -c '
+import json, sys
+images = json.load(sys.stdin)["Images"]
+main = [i for i in images if (i.get("Image") or i.get("Name")) == "main"]
+if not main:
+    sys.exit("sync-aur: mkosi summary has no main image")
+print("\n".join(main[0].get("Packages") or []))')
+[[ ${#wanted[@]} -gt 0 ]] || { echo "sync-aur: mkosi summary listed no packages" >&2; exit 1; }
+
+# A device has no system sync DB; bin/update-system keeps one for the build
+# under the cache. Without it every package would look like an AUR package.
+pacman_args=()
+if [[ ${ARCH_ANSIBLE_TARGET:-host} == device ]]; then
+    pacman_args=(--dbpath "$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-db")
+fi
+
+# Whatever the official repos cannot resolve must come from the local repo.
+# One pacman call reports them all; other failures it may print (an unsatisfiable
+# dependency on THIS host, say) are irrelevant here and deliberately ignored.
+mapfile -t aur < <(pacman "${pacman_args[@]}" -Sp "${wanted[@]}" 2>&1 >/dev/null \
+    | sed -n 's/^error: target not found: //p')
+[[ ${#aur[@]} -gt 0 ]] || exit 0
+declare -A is_aur=()
+for pkg in "${aur[@]}"; do is_aur[$pkg]=1; done
+
+# Every version of $1 in the repo, one per line. Built packages are
+# <name>-<ver>-<rel>-<arch>.pkg.tar.zst, where <ver> may carry an epoch (1:2.3).
+# Anchoring the glob on a digit keeps "kubectl-bin" from matching "kubectl".
+repo_versions() {
+    local f v
+    for f in "$repo/$1"-[0-9]*.pkg.tar.zst; do
+        [[ -e $f ]] || continue
+        v=${f##*/}
+        v=${v#"$1"-}
+        v=${v%-*.pkg.tar.zst}
+        printf '%s\n' "$v"
+    done
+}
+
+# The newest version of $1 in the repo, or nothing.
+newest_version() {
+    local v newest=
+    while read -r v; do
+        if [[ -z $newest ]] || (( $(vercmp "$v" "$newest") > 0 )); then
+            newest=$v
+        fi
+    done < <(repo_versions "$1")
+    printf '%s' "$newest"
+}
+
+# Delete every version of $1 but the newest.
+prune_superseded() {
+    local newest v
+    newest=$(newest_version "$1")
+    [[ -n $newest ]] || return 0
+    while read -r v; do
+        [[ $v != "$newest" ]] || continue
+        echo "==> pruning $1 $v" >&2
+        rm -f -- "$repo/$1-$v"-*.pkg.tar.zst
+    done < <(repo_versions "$1")
+}
+
+missing=()
+for pkg in "${aur[@]}"; do
+    [[ -n $(newest_version "$pkg") ]] || missing+=("$pkg")
+done
+
+declare -A aur_version=() aur_base=() stale=()
+if [[ $caching == force ]]; then
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "sync-aur: missing from $repo, and --caching force forbids building: ${missing[*]}" >&2
+        exit 1
+    fi
+else
+    rpc_args=()
+    for pkg in "${aur[@]}"; do rpc_args+=(--data-urlencode "arg[]=$pkg"); done
+    # Captured first, not read through a process substitution, so a failed
+    # request or an RPC error response stops the build under errexit.
+    rpc=$(curl -fsS --get "${rpc_args[@]}" https://aur.archlinux.org/rpc/v5/info)
+    rows=$(printf '%s' "$rpc" | python3 -c '
+import json, sys
+reply = json.load(sys.stdin)
+if reply.get("type") == "error":
+    sys.exit("sync-aur: AUR RPC error: " + reply.get("error", "unknown"))
+for r in reply["results"]:
+    print(r["Name"], r["Version"], r["PackageBase"], sep="\t")')
+    while IFS=$'\t' read -r name version base; do
+        [[ -n $name ]] || continue
+        aur_version[$name]=$version
+        aur_base[$name]=$base
+    done <<< "$rows"
+
+    for pkg in "${aur[@]}"; do
+        have=$(newest_version "$pkg")
+        latest=${aur_version[$pkg]:-}
+        if [[ -z $latest ]]; then
+            if [[ -z $have ]]; then
+                echo "sync-aur: $pkg is neither in the official repos nor on the AUR" >&2
+                exit 1
+            fi
+            echo "==> warning: $pkg is no longer on the AUR; keeping $have" >&2
+        elif [[ -z $have ]] || (( $(vercmp "$latest" "$have") > 0 )); then
+            echo "==> $pkg: ${have:-missing} -> $latest" >&2
+            stale[$pkg]=1
+        fi
+    done
+fi
+
+if [[ ${#stale[@]} -gt 0 ]]; then
+    echo "==> building ${#stale[@]} AUR package(s) in a clean chroot (asks for sudo)" >&2
+
+    # mkarchroot and arch-nspawn copy the host's pacman keyring into the chroot,
+    # from the fixed path /etc/pacman.d/gnupg. A device ships without one
+    # (mkosi.finalize.factory-seed drops pacman.d/gnupg), and there is nowhere
+    # to create one: factory-seed makes /etc/pacman.d itself a symlink into the
+    # read-only /usr/share/factory. So turn it into a real directory of per-file
+    # factory links — what factory-seed does for /etc/systemd — and create the
+    # keyring there, as roles/packaging/tasks/init-keyring.yml does for the
+    # image build. The boot-time `L /etc/pacman.d` tmpfiles line leaves an
+    # existing directory alone, so this persists wherever /etc does.
+    if [[ -L /etc/pacman.d ]]; then
+        factory=$(readlink -f /etc/pacman.d)
+        sudo rm /etc/pacman.d
+        sudo mkdir -m 0755 /etc/pacman.d
+        sudo ln -s "$factory"/* /etc/pacman.d/
+    fi
+    if [[ ! -e /etc/pacman.d/gnupg/trustdb.gpg ]]; then
+        sudo pacman-key --init
+        sudo pacman-key --populate archlinux
+    fi
+
+    # mkarchroot and arch-nspawn bind the host's pacman CacheDir into the chroot,
+    # and a device's fresh /var has none.
+    if [[ ! -d /var/cache/pacman/pkg ]]; then
+        sudo install -d -m 0755 /var/cache/pacman/pkg
+    fi
+
+    # The clean chroot every build starts from (makechrootpkg -c copies it).
+    # mkarchroot writes .arch-chroot last, so a root without it is a half-made
+    # chroot that mkarchroot will refuse to overwrite.
+    if [[ -f $chroots/root/.arch-chroot ]]; then
+        arch-nspawn -C "$pacman_conf" -M "$makepkg_conf" "$chroots/root" pacman -Syuu --noconfirm
+    elif [[ -e $chroots/root ]]; then
+        echo "sync-aur: $chroots/root is an incomplete chroot; remove it (sudo rm -rf) and rerun" >&2
+        exit 1
+    else
+        mkdir -p "$chroots"
+        mkarchroot -C "$pacman_conf" -M "$makepkg_conf" "$chroots/root" base-devel
+    fi
+
+    # Clones and downloaded sources (makechrootpkg defaults SRCDEST to the clone)
+    # live under the cache, not /tmp, which is RAM on a live medium.
+    work=$(mktemp -d "$ARCH_ANSIBLE_CACHE/aur-build.XXXXXX")
+    trap 'rm -rf "$work"' EXIT
+
+    declare -A state=()
+    # Build pkgbase $1, first building any stale AUR package its PKGBUILD needs
+    # and installing the repo's copy of every AUR dependency into the chroot (-I):
+    # the chroot only has the official repos.
+    build_base() {
+        local base=$1 dir=$work/$1 dep files
+        local -a deps install=()
+        case ${state[$base]:-} in
+            done) return ;;
+            building) echo "sync-aur: AUR dependency cycle through $base" >&2; exit 1 ;;
+        esac
+        state[$base]=building
+
+        git clone --quiet --depth=1 "https://aur.archlinux.org/$base.git" "$dir"
+        # Read into an array before recursing: a nested build must not consume
+        # the input of a loop that is still reading.
+        mapfile -t deps < <(sed -nE \
+            's/^\s*(make|check)?depends(_x86_64)? = ([^<>=]+).*/\3/p' "$dir/.SRCINFO" | sort -u)
+        for dep in "${deps[@]}"; do
+            [[ -n ${is_aur[$dep]:-} ]] || continue
+            if [[ -n ${stale[$dep]:-} ]]; then
+                build_base "${aur_base[$dep]}"
+            fi
+            files=("$repo/$dep-$(newest_version "$dep")"-*.pkg.tar.zst)
+            install+=(-I "${files[0]}")
+        done
+
+        echo "==> $base" >&2
+        # --skippgpcheck: fetching validpgpkeys needs a keyserver, and dirmngr's
+        # hkps transport is broken on current Arch. Integrity still comes from the
+        # PKGBUILD's pinned checksums. makechrootpkg passes it to makepkg for both
+        # the source download and the build.
+        ( cd "$dir" && PKGDEST="$repo" MAKEFLAGS="${MAKEFLAGS:--j$(nproc)}" \
+            makechrootpkg -c -r "$chroots" "${install[@]}" -- --skippgpcheck )
+        state[$base]=done
+    }
+
+    for pkg in "${aur[@]}"; do
+        if [[ -n ${stale[$pkg]:-} ]]; then
+            build_base "${aur_base[$pkg]}"
+        fi
+    done
+fi
+
+# Deliberately NO repo-add. mkosi's PackageDirectories= builds its own
+# repository from the directory contents, so the package files are all pacman
+# needs.
+for pkg in "${aur[@]}"; do
+    prune_superseded "$pkg"
+    prune_superseded "$pkg-debug"
+done
