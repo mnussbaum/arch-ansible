@@ -588,6 +588,8 @@ from that boot, authorized by the YubiKey (PIV PIN and a touch per volume):
 sudo /usr/share/arch-ansible/bin/luks-reseal-tpm
 ```
 
+Run it directly on a terminal, not piped: `pkcs11-tool` reads the PIN from it.
+
 `systemd-cryptenroll` can't authorize with a PKCS#11 token and Arch's
 libcryptsetup has no token plugins, so the script decrypts the slot's key with
 `pkcs11-tool` the way systemd-cryptsetup does and passes it as
