@@ -19,7 +19,7 @@
 - name: Install restic-backup script
   copy:
     src: restic-backup
-    dest: /usr/lib/arch-ansible/bin/restic-backup
+    dest: /usr/bin/restic-backup
     mode: a+x
 
 - name: Install restic-backup service

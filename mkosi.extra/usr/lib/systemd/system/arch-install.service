@@ -2,7 +2,7 @@
 # `install-system --guided` (enumerate target disks -> pick -> confirm ->
 # systemd-repart), producing a pure Boot Loader Spec Type #2 install. Replaces
 # the old `systemd.unit=systemd-sysinstall.service` wiring (Type #1 via `bootctl
-# link`). See mkosi.extra/usr/lib/arch-ansible/bin/install-system and
+# link`). See mkosi.extra/usr/bin/install-system and
 # mkosi.uki-profiles/25-install.conf.
 #
 # Gated on the `arch.install` kernel-cmdline marker that only the Installer
@@ -21,7 +21,7 @@ IgnoreOnIsolate=yes
 
 [Service]
 Type=idle
-ExecStart=/usr/lib/arch-ansible/bin/install-system --guided
+ExecStart=/usr/bin/install-system --guided
 Restart=always
 RestartSec=1
 UtmpIdentifier=tty1

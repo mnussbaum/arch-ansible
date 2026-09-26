@@ -8,10 +8,6 @@
     - mnussbaum.base16-builder-ansible
     - mnussbaum.firefox_ext_sideloader
   pre_tasks:
-    - name: Create arch-ansible bin directory
-      file:
-        path: /usr/lib/arch-ansible/bin
-        state: directory
     - import_role:
         name: packaging
         tasks_from: install-pacman-conf

@@ -1,1 +1,0 @@
-PATH="$PATH:/usr/lib/arch-ansible/bin"

@@ -3,7 +3,7 @@
 - name: Install day-or-night binary
   copy:
     src: day-or-night
-    dest: /usr/lib/arch-ansible/bin/day-or-night
+    dest: /usr/bin/day-or-night
     mode: a+x
 
 - name: Lengthen Dell keyboard backlight timeout
@@ -25,7 +25,7 @@
 - name: Install colorscheme-changer binary
   copy:
     src: colorscheme-changer
-    dest: /usr/lib/arch-ansible/bin/colorscheme-changer
+    dest: /usr/bin/colorscheme-changer
     mode: a+x
 
 - name: Install colorscheme-changer service

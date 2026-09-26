@@ -2,7 +2,7 @@
 ---
 - name: Install fzf helper scripts
   copy:
-    dest: "/usr/lib/arch-ansible/bin/{{ item | basename }}"
+    dest: "/usr/bin/{{ item | basename }}"
     src: "{{ item }}"
     mode: a+x
   with_fileglob:

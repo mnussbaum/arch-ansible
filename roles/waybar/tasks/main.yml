@@ -50,7 +50,7 @@
 - name: Install module scripts
   copy:
     src: "{{ item }}"
-    dest: "/usr/lib/arch-ansible/bin/{{ item }}"
+    dest: "/usr/bin/{{ item }}"
     mode: a+x
   with_items:
     - waybar-cpu-temp

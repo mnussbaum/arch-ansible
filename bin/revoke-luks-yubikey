@@ -48,4 +48,4 @@ if ! systemd-cryptenroll --unlock-tpm2-device=auto --wipe-slot="$SLOT" "$DEVICE"
 fi
 
 echo "==> Slot $SLOT wiped. With a YubiKey carrying the new PIV key plugged in, re-enroll:"
-echo "      sudo /usr/lib/arch-ansible/bin/luks-enroll-pkcs11"
+echo "      sudo /usr/bin/luks-enroll-pkcs11"

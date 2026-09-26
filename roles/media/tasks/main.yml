@@ -41,7 +41,7 @@
 - name: Install headphone profile toggle script
   copy:
     src: toggle-headphone-profile
-    dest: /usr/lib/arch-ansible/bin/toggle-headphone-profile
+    dest: /usr/bin/toggle-headphone-profile
     mode: a+x
 
 - name: Create mpv config dir

@@ -21,5 +21,5 @@ CARGO_HOME="$CARGO_HOME" \
     cargo install \
     --force \
     --no-track \
-    --root "$DESTDIR/usr/lib/arch-ansible" \
+    --root "$DESTDIR/usr" \
     --git https://github.com/mnussbaum/waybar-sway-workspace-output-manager

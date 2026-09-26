@@ -6,7 +6,7 @@
 - name: Install wpa-psk script
   copy:
     src: wpa-psk
-    dest: /usr/lib/arch-ansible/bin/wpa-psk
+    dest: /usr/bin/wpa-psk
     mode: a+x
 
 - name: Create network config dirs

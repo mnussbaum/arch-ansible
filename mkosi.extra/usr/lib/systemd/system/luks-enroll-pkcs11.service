@@ -15,7 +15,7 @@ Before=systemd-user-sessions.service first-boot-complete.target getty.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/lib/arch-ansible/bin/luks-enroll-pkcs11
+ExecStart=/usr/bin/luks-enroll-pkcs11
 TimeoutStartSec=infinity
 StandardInput=tty
 StandardOutput=tty

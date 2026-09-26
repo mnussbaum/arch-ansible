@@ -32,7 +32,7 @@ rc=0
 [[ $rc -eq 0 ]] || echo "warning: '$*' exited $rc; re-locking anyway" >&2
 
 "$pcrlock" lock-secureboot-policy
-/usr/lib/arch-ansible/bin/pcrlock-make-policy
+/usr/bin/pcrlock-make-policy
 echo "pcrlock policy now covers the old and new Secure Boot variables."
 echo "Reboot to apply; the next boot drops the old variant."
 exit "$rc"

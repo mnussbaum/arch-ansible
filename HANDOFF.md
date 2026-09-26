@@ -609,11 +609,11 @@ the initrd — no pcrlock policy can exist yet), then re-bound after first boot 
 * `81-pcrlock.preset` enables upstream's `systemd-pcrlock-secureboot-policy`,
   `-secureboot-authority`, `-make-policy` and our `pcrlock-enroll-luks`.
 * `systemd-pcrlock-make-policy.service.d/10-arch-ansible.conf` runs
-  `mkosi.extra/usr/lib/arch-ansible/bin/pcrlock-make-policy --boot`: `--pcr=7 --strict=yes`, our own recovery
+  `mkosi.extra/usr/bin/pcrlock-make-policy --boot`: `--pcr=7 --strict=yes`, our own recovery
   PIN (`--recovery-pin=query`, `$PIN` from
   `/var/lib/arch-ansible/pcrlock-recovery-pin`, 0600 on the encrypted root),
   `--entry-token=machine-id`, orders after `boot.automount`.
-* `mkosi.extra/usr/lib/arch-ansible/bin/pcrlock-enroll-luks` re-enrolls with `--tpm2-pcrlock=
+* `mkosi.extra/usr/bin/pcrlock-enroll-luks` re-enrolls with `--tpm2-pcrlock=
   --tpm2-public-key-pcrs=11 --tpm2-pcrs= --wipe-slot=tpm2` (new slot first,
   then wipe); refuses unless `pcrlock.json` covers PCR 7.
 * `bin/pcrlock-secureboot-change CMD…` for planned Secure Boot changes.
@@ -635,7 +635,7 @@ Validated on image `20260924162222` (VM, dbx appends signed with the KEK via
    Swap failed this one boot (no recovery slot) → `degraded`.
 5. Silent TPM unlock of root and swap, `running`.
 
-Traps found on the way, all fixed and explained in `mkosi.extra/usr/lib/arch-ansible/bin/pcrlock-make-policy` /
+Traps found on the way, all fixed and explained in `mkosi.extra/usr/bin/pcrlock-make-policy` /
 `bin/pcrlock-secureboot-change`:
 
 * pcrlock's DEFAULT recovery PIN is random and hidden, and its sealed copy is
@@ -829,7 +829,7 @@ files.
 
 ## Key files
 
-- `mkosi.extra/usr/lib/arch-ansible/bin/install-system` — the installer (`--guided` menu + one-shot `--yes DISK`).
+- `mkosi.extra/usr/bin/install-system` — the installer (`--guided` menu + one-shot `--yes DISK`).
 - `bin/vm` — the one VM command: `live`, `install`, `boot` (+ `--gui`).
 - `mkosi.uki-profiles/25-install.conf` — Installer UKI profile cmdline.
 - `mkosi.extra/usr/lib/systemd/system/arch-install.service` — auto-runs the guided

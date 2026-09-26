@@ -122,7 +122,7 @@ recovery:
 
 That second factor is the **YubiKey's shared PIV key**, enrolled on root and
 swap as a PKCS#11 slot at first boot, before login, by
-`luks-enroll-pkcs11.service` (`/usr/lib/arch-ansible/bin/luks-enroll-pkcs11`),
+`luks-enroll-pkcs11.service` (`/usr/bin/luks-enroll-pkcs11`),
 authorized by the TPM2 token. `bin/enroll-yubikeys` loads the same PIV key
 (kept in pass, encrypted to the GPG root) onto every YubiKey, so any of them —
 including ones provisioned later, or rebuilt from the root key on the offline
@@ -133,7 +133,7 @@ Secure Boot key, a cleared TPM or a replaced board. If it was skipped, run it
 again from any normal boot:
 
 ```
-sudo /usr/lib/arch-ansible/bin/luks-enroll-pkcs11
+sudo /usr/bin/luks-enroll-pkcs11
 ```
 
 The initrd carries pcscd and the PIV PKCS#11 module (`mkosi.initrd.conf/`), so
@@ -152,10 +152,10 @@ rewritten without touching the keyslot:
 
 * `systemd-pcrlock-secureboot-policy` / `-secureboot-authority` describe the
   current Secure Boot state; `systemd-pcrlock-make-policy` (via
-  `mkosi.extra/usr/lib/arch-ansible/bin/pcrlock-make-policy`) turns it into a policy on **PCR 7 only**, with
+  `mkosi.extra/usr/bin/pcrlock-make-policy`) turns it into a policy on **PCR 7 only**, with
   `--strict=yes` so it fails rather than silently dropping PCR 7. A copy goes to
   the ESP (`loader/credentials/pcrlock.<machine-id>.cred`) for the initrd.
-* `pcrlock-enroll-luks.service` (`mkosi.extra/usr/lib/arch-ansible/bin/pcrlock-enroll-luks`) then re-enrolls each
+* `pcrlock-enroll-luks.service` (`mkosi.extra/usr/bin/pcrlock-enroll-luks`) then re-enrolls each
   TPM2 slot as signed PCR 11 + pcrlock, wiping the old slot only after the new
   one exists. If the policy was not made, the volumes keep the literal binding.
 * The policy's recovery PIN is ours, kept root-only on the encrypted root
@@ -445,7 +445,7 @@ profile. Override with `hostnamectl hostname <name>`.
 ## Installation
 
 Boot a machine from the live USB and pick the **Installer** profile. It
-auto-launches a guided installer on the console (`mkosi.extra/usr/lib/arch-ansible/bin/install-system --guided`
+auto-launches a guided installer on the console (`mkosi.extra/usr/bin/install-system --guided`
 via `arch-install.service`): it lists the eligible target disks (every whole disk
 except the live medium), you pick one and confirm, and it installs. The menu also
 offers dropping to a shell — where you can run `install-system DISK` directly — as
@@ -603,7 +603,7 @@ revoked alone; its PIV PIN (limited attempts) is what protects it. To revoke,
 rotate the key: put a new PIV key in pass and re-provision the remaining
 YubiKeys (`bin/enroll-yubikeys`), then on each machine, while its TPM works,
 wipe the old PKCS#11 slot (`bin/revoke-luks-yubikey <slot>`) and re-enroll
-(`sudo /usr/lib/arch-ansible/bin/luks-enroll-pkcs11`).
+(`sudo /usr/bin/luks-enroll-pkcs11`).
 
 ### Secure Boot and the recovery USB
 

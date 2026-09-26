@@ -7,4 +7,4 @@ ConditionPathIsMountPoint=/home/%u
 [Service]
 Type=oneshot
 LoadCredential=restic_backup_password:%t/pass-credential-restic_backup_password.socket
-ExecStart=/usr/lib/arch-ansible/bin/restic-backup backup
+ExecStart=/usr/bin/restic-backup backup

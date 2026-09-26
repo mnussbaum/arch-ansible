@@ -1,6 +1,6 @@
 # Move root and swap's TPM2 keyslots from a literal PCR 7 binding onto the
 # systemd-pcrlock policy for PCR 7, keeping the signed PCR 11 policy. See
-# mkosi.extra/usr/lib/arch-ansible/bin/pcrlock-enroll-luks.
+# mkosi.extra/usr/bin/pcrlock-enroll-luks.
 #
 # repart enrolls both volumes in the initrd on first boot, before any pcrlock
 # policy can exist (it lives in /var and a TPM NV index), so they are born on
@@ -17,7 +17,7 @@ After=systemd-pcrlock-make-policy.service local-fs.target cryptsetup.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/lib/arch-ansible/bin/pcrlock-enroll-luks
+ExecStart=/usr/bin/pcrlock-enroll-luks
 
 [Install]
 WantedBy=multi-user.target

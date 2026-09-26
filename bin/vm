@@ -983,7 +983,7 @@ def cmd_install(args):
 
         log("\n===== install-system --yes /dev/vdb =====")
         rc, _ = sh.run(
-            "/usr/lib/arch-ansible/bin/install-system --yes /dev/vdb 2>&1",
+            "/usr/bin/install-system --yes /dev/vdb 2>&1",
             timeout=args.install_timeout,
         )
         if rc != 0:
