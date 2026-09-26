@@ -1,0 +1,65 @@
+#!/bin/bash
+# Enroll the shared YubiKey PIV key (slot 9d) on root and swap as a PKCS#11
+# unlock, authorized by their TPM2 slot. Every YubiKey bin/enroll-yubikeys
+# provisions carries the same key, so any of them, including future ones,
+# unlocks the disk. Enrolling asks for the PIV PIN (to read the certificate)
+# but no touch. Run at first boot by luks-enroll-pkcs11.service; safe to
+# re-run, since volumes that already have a PKCS#11 slot are skipped.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# Card-agnostic, like the homed enrollment in roles/user/tasks/first-login.yml:
+# no serial or token label, so the slot matches whichever YubiKey is plugged in.
+uri='pkcs11:model=PKCS%2315%20emulated;manufacturer=piv_II;id=%03'
+wait_secs=${ENROLL_PKCS11_WAIT:-120}
+
+say() { printf '\n==> %s\n' "$*"; }
+
+has_pkcs11() { systemd-cryptenroll "$1" 2>/dev/null | grep -qw pkcs11; }
+have_key() { systemd-cryptenroll --pkcs11-token-uri=list 2>/dev/null | grep -q '^pkcs11:'; }
+
+devices=()
+for d in /dev/disk/by-designator/root-luks /dev/disk/by-designator/swap-luks; do
+    [[ -e "$d" ]] && ! has_pkcs11 "$d" && devices+=("$d")
+done
+[[ ${#devices[@]} -gt 0 ]] || exit 0
+
+# A VM only has a YubiKey if one was passed through (bin/vm --yubikey); don't
+# hold its first boot waiting for one, beyond pcscd's first reader scan.
+if systemd-detect-virt --quiet --vm; then
+    for (( i = 0; i < 10; i++ )); do
+        have_key && break
+        sleep 1
+    done
+    have_key || exit 0
+fi
+
+if ! have_key; then
+    say "Plug in a YubiKey to enroll it for disk unlock (waiting ${wait_secs}s)."
+    for (( i = 0; i < wait_secs; i++ )); do
+        have_key && break
+        sleep 1
+    done
+fi
+if ! have_key; then
+    say "No YubiKey found; skipping. Enroll it later with: sudo $0"
+    exit 0
+fi
+
+rc=0
+for dev in "${devices[@]}"; do
+    name=${dev##*/}
+    while true; do
+        say "Enrolling the YubiKey for ${name%-luks}; enter its PIV PIN when asked."
+        if systemd-cryptenroll "$dev" --unlock-tpm2-device=auto --pkcs11-token-uri="$uri"; then
+            say "YubiKey PIV key enrolled for ${name%-luks}."
+            break
+        fi
+        # Ask rather than retry automatically: each wrong PIN uses up one of
+        # the PIV applet's few attempts.
+        read -rp "Enrollment failed. Press Enter to retry, or type s to skip: " reply
+        [[ "$reply" == s ]] && { say "Skipped ${name%-luks}."; rc=1; break; }
+    done
+done
+exit "$rc"

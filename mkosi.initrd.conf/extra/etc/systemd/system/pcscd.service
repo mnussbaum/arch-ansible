@@ -1,0 +1,14 @@
+# Replaces the package unit in the initrd: that one requires polkit.service and
+# orders after sysinit.target, which waits on cryptsetup.
+[Unit]
+Description=PC/SC Smart Card Daemon (initrd)
+DefaultDependencies=no
+Requires=pcscd.socket
+After=pcscd.socket
+Before=initrd-switch-root.target
+Conflicts=initrd-switch-root.target
+
+[Service]
+ExecStart=/usr/bin/pcscd --foreground --auto-exit --disable-polkit
+RuntimeDirectory=pcscd
+RuntimeDirectoryPreserve=yes

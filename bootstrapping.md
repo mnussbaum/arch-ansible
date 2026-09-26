@@ -120,22 +120,27 @@ recovery:
   a different OS cannot unseal the disk. It also means `bin/recovery-mount`
   cannot use the TPM token and needs a second factor.
 
-That second factor is the **YubiKey (FIDO2)**, enrolled on root and swap at
-first boot, before login, by `luks-enroll-fido2.service`
-(`/usr/lib/arch-ansible/bin/luks-enroll-fido2`), authorized by the TPM2 token.
-It waits up to two minutes for the key, then says when to enter the FIDO2 PIN
-and touch the key; a missed touch can be retried. Without a second factor a
-root is unrecoverable once its measured boot legitimately changes — a firmware
-update, a re-enrolled Secure Boot key, a cleared TPM or a replaced board. If it
-was skipped, run it again from any normal boot:
+That second factor is the **YubiKey's shared PIV key**, enrolled on root and
+swap as a PKCS#11 slot at first boot, before login, by
+`luks-enroll-pkcs11.service` (`/usr/lib/arch-ansible/bin/luks-enroll-pkcs11`),
+authorized by the TPM2 token. `bin/enroll-yubikeys` loads the same PIV key
+(kept in pass, encrypted to the GPG root) onto every YubiKey, so any of them —
+including ones provisioned later, or rebuilt from the root key on the offline
+USB — unlocks every disk. Enrolling asks for the PIV PIN, no touch; unlocking
+asks for the PIN and a touch. Without a second factor a root is unrecoverable
+once its measured boot legitimately changes — a firmware update, a re-enrolled
+Secure Boot key, a cleared TPM or a replaced board. If it was skipped, run it
+again from any normal boot:
 
 ```
-sudo /usr/lib/arch-ansible/bin/luks-enroll-fido2
+sudo /usr/lib/arch-ansible/bin/luks-enroll-pkcs11
 ```
 
-systemd 262's interactive `systemd-cryptenroll-firstboot.service` is masked on
-the kernel command line in favour of this. The unit is skipped in VMs, which
-have no FIDO2 passthrough.
+The initrd carries pcscd and the PIV PKCS#11 module (`mkosi.initrd.conf/`), so
+a machine whose TPM path broke still boots, asking for the YubiKey at the LUKS
+prompt. systemd 262's interactive `systemd-cryptenroll-firstboot.service` is
+masked on the kernel command line in favour of this. In a VM the unit does
+nothing unless a YubiKey is passed through (`bin/vm run --yubikey`).
 
 #### PCR 7 via pcrlock
 
@@ -428,7 +433,7 @@ per-machine input — whether it self-installs or is provisioned via the Install
 profile. Override with `hostnamectl hostname <name>`.
 
 > **Not yet implemented:** the `firstboot.service` flow the preset enables.
-> (LUKS second-factor enrollment is done: `luks-enroll-fido2.service`, above.)
+> (LUKS second-factor enrollment is done: `luks-enroll-pkcs11.service`, above.)
 > TPM2/PCR 7 sealing across the Secure Boot enrollment boot has also not
 > been verified against real firmware — see `bootstrapping-todo.md`. (`bin/vm run`
 > works around the PCR 7 instability in QEMU by persisting the OVMF varstore and
@@ -535,14 +540,14 @@ chrooting. Run it from the live/recovery system:
 bin/recovery-mount
 ```
 
-It unlocks with the YubiKey (FIDO2; prompts for its PIN and a touch). TPM2
+It unlocks with the YubiKey (PIV; prompts for its PIN and a touch). TPM2
 fails silently in this session, since the installed system's PCR 11 policy
 can't match a recovery boot.
 
 To perform these steps manually:
 
 ```bash
-# Unlock with enrolled tokens (FIDO2 prompts for YubiKey touch):
+# Unlock with enrolled tokens (the YubiKey asks for its PIV PIN and a touch):
 cryptsetup open --token-only /dev/<root-partition> cryptroot
 
 
@@ -567,26 +572,36 @@ TPM2 keyslot from `systemd-repart` (`Encrypt=tpm2` + `TPM2PCRs=7` in
 PCR 11 policy — so this is only needed when a Secure Boot change invalidates
 PCR 7:
 
+If the TPM still unseals, it authorizes the change itself:
+
 ```bash
-cryptsetup luksDump /dev/disk/by-designator/root-luks        # find the TPM2 slot
-systemd-cryptenroll --wipe-slot=<n> /dev/disk/by-designator/root-luks
-systemd-cryptenroll --tpm2-device=auto --tpm2-pcrs=7 \
-  --tpm2-public-key=/usr/lib/systemd/tpm2-pcr-public-key.pem \
-  /dev/disk/by-designator/root-luks
+systemd-cryptenroll /dev/disk/by-designator/root-luks --unlock-tpm2-device=auto \
+  --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7 \
+  --tpm2-public-key=/run/systemd/tpm2-pcr-public-key.pem
+```
+
+If it no longer does (untested): `systemd-cryptenroll` can't authorize with a
+PKCS#11 token, so add a temporary key with the YubiKey, use it, then wipe it:
+
+```bash
+dev=/dev/disk/by-designator/root-luks
+head -c 32 /dev/urandom > /run/tmpkey
+cryptsetup luksAddKey --token-only "$dev" /run/tmpkey      # YubiKey PIN + touch
+systemd-cryptenroll "$dev" --unlock-key-file=/run/tmpkey --wipe-slot=tpm2 \
+  --tpm2-device=auto --tpm2-pcrs=7 --tpm2-public-key=/run/systemd/tpm2-pcr-public-key.pem
+systemd-cryptenroll "$dev" --unlock-tpm2-device=auto --wipe-slot=<tmpkey slot>
+rm /run/tmpkey
 ```
 
 Without `--tpm2-public-key=` the new slot binds PCR 7 only and loses the signed
-PCR 11 policy repart adds by default, so kernel updates keep working but the
-seal no longer follows the measured boot. Authorize the wipe with the YubiKey's
-FIDO2 slot (`--unlock-fido2-device=auto`) if PCR 7 already fails to unseal.
+PCR 11 policy.
 
-**Revoke a lost YubiKey** (untested — see `bootstrapping-todo.md`):
-
-```bash
-cryptsetup luksDump /dev/<root-partition>                  # find FIDO2 slot number
-systemd-cryptenroll --wipe-slot=<n> /dev/<root-partition>  # auth via remaining YubiKey
-bin/enroll-yubikeys                                        # enroll replacement
-```
+**Lose a YubiKey:** every YubiKey carries the same PIV key, so one can't be
+revoked alone; its PIV PIN (limited attempts) is what protects it. To revoke,
+rotate the key: put a new PIV key in pass and re-provision the remaining
+YubiKeys (`bin/enroll-yubikeys`), then on each machine, while its TPM works,
+wipe the old PKCS#11 slot (`bin/revoke-luks-yubikey <slot>`) and re-enroll
+(`sudo /usr/lib/arch-ansible/bin/luks-enroll-pkcs11`).
 
 ### Secure Boot and the recovery USB
 

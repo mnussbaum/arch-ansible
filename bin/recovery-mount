@@ -91,9 +91,9 @@ done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL "/dev/$parent")
 # measures THIS UKI and its boot phases, so a recovery boot — a different UKI,
 # and the Live profile signs no expected PCRs at all — can never match it, no
 # matter that PCR 7 does. The token therefore cannot unlock from here. (On the
-# volume's OWN boot it can, which is how luks-enroll-fido2.service authorizes
-# enrollment; that is not this case.) Tokens are still tried first, because a
-# FIDO2 token has no such limit.
+# volume's OWN boot it can, which is how luks-enroll-pkcs11.service authorizes
+# enrollment; that is not this case.) Tokens are still tried first, because the
+# YubiKey's PKCS#11 (PIV) token has no such limit.
 #
 # Anything a human can type is a keyslot NOT bound to a hardware token (a
 # passphrase, or a systemd-cryptenroll --recovery-key slot). If there is none,
@@ -110,7 +110,7 @@ print(len([k for k in m["keyslots"] if k not in bound]))'
 if cryptsetup status cryptroot &>/dev/null; then
     echo "cryptroot already open"
 elif cryptsetup open --token-only "$root_luks" cryptroot 2>/dev/null; then
-    echo "Opened root via enrolled token (FIDO2, or a TPM2 policy usable post-boot)"
+    echo "Opened root via enrolled token (YubiKey PIV, or a TPM2 policy usable post-boot)"
 elif [[ $(typeable_slots "$root_luks") -gt 0 ]]; then
     echo "No token unlocked it (a signed-PCR-11 TPM2 token cannot, from a booted"
     echo "system); enter the recovery key or passphrase:"
@@ -120,7 +120,7 @@ else
         "bound to hardware tokens that did not unlock, and there is no recovery" \
         "key or passphrase to type. A signed-PCR-11 TPM2 token only unlocks in" \
         "the initrd of a normal signed boot. This root needs a recovery key or" \
-        "FIDO2 factor enrolled when it is created (see HANDOFF.md)."
+        "YubiKey (PKCS#11) factor enrolled when it is created (see bootstrapping.md)."
 fi
 
 # --- Mount, mirroring the running system's layout ---------------------------

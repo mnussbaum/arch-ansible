@@ -1,0 +1,27 @@
+# Enroll the shared YubiKey PIV key on root and swap at first boot, before
+# anyone logs in. Replaces the interactive systemd-cryptenroll-firstboot wizard,
+# which the kernel command line masks (mkosi.conf).
+[Unit]
+Description=Enroll YubiKey PIV key (PKCS#11) for disk unlock
+Documentation=man:systemd-cryptenroll(1)
+ConditionFirstBoot=yes
+ConditionPathExists=/dev/disk/by-designator/root-luks
+Wants=pcscd.socket
+# pcrlock-enroll-luks also rewrites these LUKS headers at first boot; two
+# concurrent writers make cryptsetup abort one of them.
+After=local-fs.target pcscd.socket systemd-firstboot.service pcrlock-enroll-luks.service
+Before=systemd-user-sessions.service first-boot-complete.target getty.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/arch-ansible/bin/luks-enroll-pkcs11
+TimeoutStartSec=infinity
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/console
+TTYReset=yes
+
+[Install]
+WantedBy=multi-user.target

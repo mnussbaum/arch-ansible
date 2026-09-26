@@ -1,6 +1,8 @@
 #!/bin/bash
-# Wipes a LUKS keyslot from the root partition — use after losing a YubiKey
-# whose FIDO2 slot was enrolled at first boot by luks-enroll-fido2.service.
+# Wipes a LUKS keyslot from the root partition. Every YubiKey carries the same
+# shared PIV key, so a lost one can't be revoked on its own: rotate the PIV key
+# (bin/enroll-yubikeys), then on each machine wipe its old PKCS#11 slot with this
+# and re-enroll with luks-enroll-pkcs11.
 #
 # The wipe needs an existing factor to authorize it. The TPM2 token works from
 # the running system (it binds PCR 7, via the pcrlock policy after first boot,
@@ -45,6 +47,5 @@ if ! systemd-cryptenroll --unlock-tpm2-device=auto --wipe-slot="$SLOT" "$DEVICE"
     systemd-cryptenroll --wipe-slot="$SLOT" "$DEVICE"
 fi
 
-echo "==> Slot $SLOT wiped. Enroll a replacement YubiKey with:"
-echo "      systemd-cryptenroll $DEVICE --unlock-tpm2-device=auto --fido2-device=auto"
-echo "    (bin/enroll-yubikeys is the GPG/PIV tool — it does NOT touch LUKS.)"
+echo "==> Slot $SLOT wiped. With a YubiKey carrying the new PIV key plugged in, re-enroll:"
+echo "      sudo /usr/lib/arch-ansible/bin/luks-enroll-pkcs11"
