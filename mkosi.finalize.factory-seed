@@ -43,6 +43,10 @@ DROPLIST=(
     # at first boot (a factory /etc/hostname would suppress it). Skipping the prompt
     # falls back to DEFAULT_HOSTNAME (os-release); typing one sets /etc/hostname.
     hostname
+    # Machine-local credentials (e.g. the wifi profiles). Must stay writable;
+    # systemd's tmpfiles credstore.conf creates both at boot.
+    credstore
+    credstore.encrypted
 )
 
 is_listed() {
