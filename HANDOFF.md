@@ -1,6 +1,78 @@
 # Handoff — Type #2 install validation (arch-ansible)
 
-Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-24
+Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-26
+
+## RESUME HERE (2026-09-26)
+
+**The XPS 13 9365 install is broken and must be reinstalled.** The latest
+image installed, but first boot did NOT enroll the YubiKey (no PIV PIN prompt),
+and the second boot hung at `/dev/disk/by-designator/root`: the TPM no longer
+unsealed root, and with no PKCS#11 slot there was no other factor. Root is
+unrecoverable; it held no data.
+
+Two unknowns to diagnose on the reinstall, keeping the YubiKey plugged in:
+
+1. **Why `luks-enroll-pkcs11.service` didn't enroll on real hardware.** It did
+   in the VM. Note what first boot shows ("Enrolling the YubiKey…", or "Plug
+   in a YubiKey… (waiting 120s)" / "No YubiKey found; skipping").
+2. **Why the TPM failed between the first and second boot.** The pre-PKCS#11
+   XPS install rebooted fine, and the VM never showed this.
+
+Before the first reboot, as root:
+
+```
+journalctl -b -u luks-enroll-pkcs11 --no-pager | tail -20
+systemd-cryptenroll /dev/disk/by-designator/root-luks   # must list pkcs11
+/usr/bin/luks-enroll-pkcs11                             # if it doesn't (PIV PIN)
+systemd-analyze pcrs 7 11 | tee /var/tmp/pcrs-boot1
+```
+
+Then reboot. If the TPM fails, the YubiKey now rescues it (PIN + touch); then
+read the TPM error (`journalctl -b -o cat -u systemd-cryptsetup@root.service`)
+and compare `systemd-analyze pcrs 7 11` with `/var/tmp/pcrs-boot1`.
+`sudo /usr/share/arch-ansible/bin/luks-reseal-tpm` restores unattended boot.
+
+Follow-ups:
+
+- **A skipped enrollment must not be silent.** It leaves a machine one TPM
+  hiccup from unrecoverable. Fail the unit (system `degraded`) at minimum;
+  better, hold first boot until a YubiKey is enrolled or explicitly skipped.
+- **`890639e` (commands moved to `/usr/bin`) was not VM-validated** before the
+  XPS install; if the reinstall shows missing commands or failing units, look
+  there first.
+- Remaining `plan-usr-hermetic.md` items (its status notes are stale): the
+  factory-reset profile test and a verity corruption test (A.5), `/etc` drift
+  detection and dropping the `docker` group (security mitigations 2 and 3).
+
+### What landed since 2026-09-24 (commits `c0b4eb1`..`890639e`)
+
+- **LUKS second factor = the shared PIV key (PKCS#11), not per-key FIDO2.**
+  Every YubiKey from `bin/enroll-yubikeys` carries it, so any of them unlocks
+  root in the initrd (PIV PIN + touch). Pieces: `luks-enroll-pkcs11.service`
+  (first boot), initrd pcscd + ccid + opensc (`mkosi.initrd.conf/`), an
+  initrd crypttab adding `pkcs11-uri=auto` for root, and a retry drop-in so a
+  missed touch asks again. Swap stays TPM-only at boot (pcscd can't run that
+  early after switch-root). Validated in a VM with the YubiKey passed through
+  (`bin/vm run --yubikey`), including a blank/replaced TPM.
+- **Replaced TPM:** `pcrlock-make-policy` drops a policy made on another TPM
+  (SRK fingerprint), and `bin/luks-reseal-tpm` re-seals root and swap using the
+  YubiKey (Arch's libcryptsetup has no token plugins, so it decrypts the token
+  key with `pkcs11-tool`). Run it on a terminal, not piped.
+- `pcrlock-make-policy` is skipped on TPMs without PolicyAuthorizeNV (the
+  XPS's PTT); those machines stay on literal PCR 7.
+- Wifi PSKs are credentials encrypted to the machine (stored at first login
+  from pass, decrypted into a tmpfs for iwd); gpg sockets are enabled in the
+  image; `install-system` wipes the target; `burn-image` wipes the stick.
+- All installed commands live in `/usr/bin` (shipped from `mkosi.extra/usr/bin/`).
+
+**Debugging the initrd in a VM:** there's no journal on serial. Pass
+`journal.forward_to_socket=vsock:2:<port>` as a credential with a
+`vhost-vsock-pci` device and capture it with
+`socat VSOCK-LISTEN:<port> OPEN:file`; `systemd.unit-dropin.*` credentials add
+debug drop-ins (e.g. `SYSTEMD_LOG_LEVEL=debug` for systemd-cryptsetup@root).
+The host compositor swallows Ctrl+Alt+Fn in the QEMU window; send VT switches
+through the QEMU monitor's `sendkey` instead. The one-off script that did this
+was not committed.
 
 ## Mission
 
