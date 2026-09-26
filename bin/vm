@@ -69,11 +69,13 @@ REPO = Path(__file__).resolve().parent.parent
 _ANSI = re.compile(
     rb"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC ... BEL/ST
     rb"|\x1b\[[0-9;?]*[ -/]*[@-~]"  # CSI
-    rb"|\x1b[@-Z\\-_]"  # two-byte escapes
+    rb"|\x1b[@-Z\\-_78=>]"  # two-byte escapes, incl. DECSC/DECRC
 )
 # A read can split an escape sequence; hold the tail back until it completes
 # rather than letting its bytes leak into the match text as literal garbage.
-_PARTIAL = re.compile(rb"\x1b(?:\[[0-9;?]*[ -/]*|\][^\x07\x1b]*)?$")
+# An OSC can be cut between the two bytes of its ESC-\ terminator, so allow a
+# trailing ESC after its body.
+_PARTIAL = re.compile(rb"\x1b(?:\[[0-9;?]*[ -/]*|\][^\x07\x1b]*\x1b?)?$")
 
 
 class Console:
@@ -434,8 +436,29 @@ def start_virtiofsd(share_dir, run_dir, name):
     return {"proc": proc, "sock": sock, "dir": share_dir}
 
 
+def yubikey_qemu_args():
+    """QEMU args passing the host's YubiKey through to the guest over USB.
+
+    The guest then sees the real card (PIV via pcscd, FIDO2), so smartcard
+    unlock and enrollment can be tested; the host can't use the key meanwhile.
+    Opening the device needs no root: the desktop session's uaccess ACL grants
+    the logged-in user read-write on it.
+    """
+    for dev in sorted(Path("/sys/bus/usb/devices").iterdir()):
+        vendor = dev / "idVendor"
+        if vendor.exists() and vendor.read_text().strip() == "1050":
+            bus = int((dev / "busnum").read_text())
+            addr = int((dev / "devnum").read_text())
+            return [
+                "-device", "qemu-xhci,id=ykxhci",
+                "-device", f"usb-host,bus=ykxhci.0,hostbus={bus},hostaddr={addr}",
+            ]
+    sys.exit("error: --yubikey: no YubiKey (USB vendor 1050) is plugged in")
+
+
 def build_qemu_args(drives, varstore, tpm_sock, memory, cpus, credentials,
-                    serial, monitor_sock=None, share_sock=None, gui=False):
+                    serial, monitor_sock=None, share_sock=None, gui=False,
+                    extra=()):
     """Assemble the QEMU command line shared by every subcommand.
 
     Split out of Vm so it can be inspected (and tested) without launching
@@ -515,6 +538,7 @@ def build_qemu_args(drives, varstore, tpm_sock, memory, cpus, credentials,
             "-device",
             f"vhost-user-fs-pci,queue-size=1024,chardev=vfs0,tag={SHARE_TAG}",
         ]
+    args += list(extra)
     return args
 
 
@@ -523,7 +547,7 @@ class Vm:
 
     def __init__(self, name, drives, varstore, tpm_state, run_dir, log,
                  memory="4G", cpus=4, credentials=(), echo=False, share=None,
-                 gui=False):
+                 gui=False, extra_args=()):
         self.name = name
         self.log = log
         self.run_dir = run_dir
@@ -551,6 +575,7 @@ class Vm:
             monitor_sock=self.monitor_sock,
             share_sock=self.virtiofsd["sock"] if self.virtiofsd else None,
             gui=gui,
+            extra=extra_args,
         )
 
         how = "in a window" if gui else "headless"
@@ -802,6 +827,11 @@ def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=Fal
     if args.gui:
         vmm += ["-display", "gtk,gl=on,zoom-to-fit=off,grab-on-hover=on",
                 "-device", "virtio-tablet"]
+    if args.yubikey:
+        vmm += yubikey_qemu_args()
+        # Run the guest's own pcscd for the passed-through key instead of the
+        # vsock relay (roles/qemu-guest/files/pcscd-novm-condition.conf).
+        vmm += ["-smbios", "type=11,value=io.systemd.credential:pcscd.local=1"]
     vmm += [
         "-chardev", f"socket,id=chrtpm,path={tpm_sock}",
         "-tpmdev", "emulator,id=tpm0,chardev=chrtpm",
@@ -1023,6 +1053,10 @@ def run_disk(args, log):
         # sitting at the console.
         f"passwd.plaintext-password.root={FIRSTBOOT_ROOT_PASSWORD}",
     ]
+    if args.yubikey:
+        # Run the guest's own pcscd for the passed-through key instead of the
+        # vsock relay (roles/qemu-guest/files/pcscd-novm-condition.conf).
+        creds.append("pcscd.local=1")
 
     with Vm(
         name=disk.stem,
@@ -1040,6 +1074,7 @@ def run_disk(args, log):
         echo=args.verbose,
         share=args.share,
         gui=args.gui,
+        extra_args=yubikey_qemu_args() if args.yubikey else (),
     ) as vm:
         if args.gui:
             # Nothing is scripted here: the window is the interface. Wait for
@@ -1152,6 +1187,10 @@ def main():
     r.add_argument("--entry", metavar="VERSION",
                    help="disk only: sd-boot entry to select (default: the "
                         "default entry)")
+    r.add_argument("--yubikey", action="store_true",
+                   help="pass the host's YubiKey through to the guest over USB "
+                        "(PIV/PKCS#11 and FIDO2), e.g. to test LUKS unlock with "
+                        "it. The host can't use it while the VM runs")
     r.add_argument("--run", action="append", metavar="CMD",
                    help="disk only: run CMD in the booted system after the health "
                         "checks (repeatable). Root's /etc is writable, so changes "
