@@ -580,18 +580,17 @@ systemd-cryptenroll /dev/disk/by-designator/root-luks --unlock-tpm2-device=auto 
   --tpm2-public-key=/run/systemd/tpm2-pcr-public-key.pem
 ```
 
-If it no longer does (untested): `systemd-cryptenroll` can't authorize with a
-PKCS#11 token, so add a temporary key with the YubiKey, use it, then wipe it:
+If it no longer does — the boot asked for the YubiKey — re-seal root and swap
+from that boot, authorized by the YubiKey (PIV PIN and a touch per volume):
 
 ```bash
-dev=/dev/disk/by-designator/root-luks
-head -c 32 /dev/urandom > /run/tmpkey
-cryptsetup luksAddKey --token-only "$dev" /run/tmpkey      # YubiKey PIN + touch
-systemd-cryptenroll "$dev" --unlock-key-file=/run/tmpkey --wipe-slot=tpm2 \
-  --tpm2-device=auto --tpm2-pcrs=7 --tpm2-public-key=/run/systemd/tpm2-pcr-public-key.pem
-systemd-cryptenroll "$dev" --unlock-tpm2-device=auto --wipe-slot=<tmpkey slot>
-rm /run/tmpkey
+sudo /usr/share/arch-ansible/bin/luks-reseal-tpm
 ```
+
+`systemd-cryptenroll` can't authorize with a PKCS#11 token and Arch's
+libcryptsetup has no token plugins, so the script decrypts the slot's key with
+`pkcs11-tool` the way systemd-cryptsetup does and passes it as
+`--unlock-key-file`.
 
 Without `--tpm2-public-key=` the new slot binds PCR 7 only and loses the signed
 PCR 11 policy.

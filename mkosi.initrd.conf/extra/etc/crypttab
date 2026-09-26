@@ -1,6 +1,7 @@
-# Replaces gpt-auto's unit for the root volume, adding pkcs11-uri=auto. gpt-auto
-# opens root with TPM2 measurement, which disables libcryptsetup token plugins,
-# so its PKCS#11 (YubiKey) slot would never be tried when the TPM fails.
+# Replaces gpt-auto's unit for the root volume, adding pkcs11-uri=auto: Arch's
+# libcryptsetup has no token plugins (and gpt-auto's TPM2 measurement would
+# disable them anyway), so systemd-cryptsetup only tries the PKCS#11 (YubiKey)
+# slot when asked to. Swap gets the same in the image's /etc/crypttab.
 # noauto: only used when gpt-auto pulls in systemd-cryptsetup@root.service for a
 # real root, so the Live/Installer profiles don't try to unlock attached disks.
 root /dev/disk/by-designator/root-luks - tpm2-device=auto,pkcs11-uri=auto,tpm2-measure-pcr=yes,tpm2-measure-keyslot-nvpcr=yes,noauto

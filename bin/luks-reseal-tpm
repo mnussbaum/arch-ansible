@@ -1,0 +1,50 @@
+#!/bin/bash
+# Re-seal root and swap's TPM2 slots to this machine's current TPM state,
+# authorized by the YubiKey (the shared PIV key's PKCS#11 slot). Use after the
+# TPM stopped unlocking (a cleared or replaced TPM, a firmware or Secure Boot
+# change) and you booted by typing the YubiKey PIN.
+#
+#   sudo bin/luks-reseal-tpm [DEVICE...]
+#
+# systemd-cryptenroll can't authorize with a PKCS#11 token, and Arch's
+# libcryptsetup has no token plugins, so do what systemd-cryptsetup does: decrypt
+# the token's key with the YubiKey (asks for the PIV PIN and a touch) and pass
+# its base64 encoding, the keyslot's passphrase, as --unlock-key-file.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+[[ $EUID -eq 0 ]] || { echo "error: run as root" >&2; exit 1; }
+(( $# )) || set -- /dev/disk/by-designator/root-luks /dev/disk/by-designator/swap-luks
+
+module=/usr/lib/pkcs11/opensc-pkcs11.so
+tmp=$(mktemp -d /run/luks-reseal.XXXXXX)
+trap 'rm -rf "$tmp"' EXIT
+
+for dev in "$@"; do
+    [[ -e "$dev" ]] || continue
+    echo "==> $dev"
+    cryptsetup luksDump --dump-json-metadata "$dev" | python3 -c '
+import base64, json, sys
+tokens = [t for t in json.load(sys.stdin)["tokens"].values() if t["type"] == "systemd-pkcs11"]
+if not tokens:
+    sys.exit("no PKCS#11 (YubiKey) slot on this volume")
+t = tokens[0]
+if t.get("pkcs11-padding", "oaep-sha256") != "oaep-sha256":
+    sys.exit("unsupported padding: %s" % t["pkcs11-padding"])
+sys.stdout.buffer.write(base64.b64decode(t["pkcs11-key"]))' > "$tmp/enc"
+
+    echo "Enter the PIV PIN, then touch the YubiKey."
+    pkcs11-tool --module "$module" --login --decrypt --id 03 \
+        --mechanism RSA-PKCS-OAEP --hash-algorithm SHA256 --mgf MGF1-SHA256 \
+        --input-file "$tmp/enc" --output-file "$tmp/dec"
+    base64 -w0 "$tmp/dec" > "$tmp/pass"
+
+    # Replace every TPM2 slot with one sealed to this TPM: literal PCR 7 plus
+    # the signed PCR 11 policy (its public key comes from the running UKI).
+    # pcrlock-enroll-luks moves PCR 7 onto the pcrlock policy on a later boot.
+    systemd-cryptenroll "$dev" --unlock-key-file="$tmp/pass" --wipe-slot=tpm2 \
+        --tpm2-device=auto --tpm2-pcrs=7 --tpm2-public-key-pcrs=11
+    rm -f "$tmp/enc" "$tmp/dec" "$tmp/pass"
+done
+echo "Done. The next boot should unlock from the TPM again."
