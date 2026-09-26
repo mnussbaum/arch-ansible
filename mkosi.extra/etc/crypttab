@@ -1,6 +1,0 @@
-# Replaces gpt-auto's unit for swap, adding pkcs11-uri=auto: Arch's
-# libcryptsetup has no token plugins, so systemd-cryptsetup only tries the
-# PKCS#11 (YubiKey) slot when asked to. Root gets the same in the initrd
-# (mkosi.initrd.conf/extra/etc/crypttab).
-# noauto: only used when gpt-auto pulls in systemd-cryptsetup@swap.service.
-swap /dev/disk/by-designator/swap-luks - tpm2-device=auto,pkcs11-uri=auto,noauto

@@ -13,11 +13,25 @@ set -o pipefail
 
 pin_file=/var/lib/arch-ansible/pcrlock-recovery-pin
 prior=/var/lib/pcrlock.d/240-secureboot-policy.pcrlock.d/prior.pcrlock
+policy=/var/lib/systemd/pcrlock.json
+# Which TPM the policy was made on: its storage root key, rewritten each boot by
+# systemd-tpm2-setup-early. A cleared or replaced TPM has a different one.
+srk=/run/systemd/tpm2-srk-public-key.pem
+srk_seen=/var/lib/arch-ansible/pcrlock-srk.sha256
 
 if [[ "${1:-}" == --boot ]]; then
     # Drop the pre-change variant bin/pcrlock-secureboot-change left behind;
     # the change has been applied by now.
     rm -f "$prior"
+fi
+
+# A policy made on another TPM names an NV index this one doesn't have, and
+# make-policy then fails every boot. Start over; the volumes' TPM2 slots are
+# stale too and get re-sealed with bin/luks-reseal-tpm.
+if [[ -s "$policy" && -s "$srk_seen" && -s "$srk" ]] \
+        && ! sha256sum --quiet --check "$srk_seen" >/dev/null 2>&1; then
+    echo "TPM changed since the pcrlock policy was made; creating a new one." >&2
+    rm -f "$policy"
 fi
 
 if [[ ! -s "$pin_file" ]]; then
@@ -29,7 +43,6 @@ fi
 # ESP. Keep exactly one current copy: pin its name, rewrite it when missing or
 # older than the policy (make-policy skips it when nothing changed), and
 # delete any other, since the initrd uses the first match.
-policy=/var/lib/systemd/pcrlock.json
 esp=$(bootctl --print-esp-path 2>/dev/null) || esp=
 token=$(</etc/machine-id)
 force=()
@@ -43,6 +56,7 @@ fi
 PIN=$(<"$pin_file") /usr/lib/systemd/systemd-pcrlock make-policy \
     --location=770 --pcr=7 --strict=yes --recovery-pin=query \
     --entry-token=machine-id "${force[@]}"
+[[ -s "$srk" ]] && sha256sum "$srk" > "$srk_seen"
 
 if [[ -n "$esp" && -s "$cred" ]]; then
     find "$esp/loader/credentials" -maxdepth 1 -iname 'pcrlock.*.cred' \

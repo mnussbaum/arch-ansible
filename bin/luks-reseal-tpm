@@ -15,6 +15,7 @@ set -o nounset
 set -o pipefail
 
 [[ $EUID -eq 0 ]] || { echo "error: run as root" >&2; exit 1; }
+umask 077
 (( $# )) || set -- /dev/disk/by-designator/root-luks /dev/disk/by-designator/swap-luks
 
 module=/usr/lib/pkcs11/opensc-pkcs11.so
@@ -42,9 +43,11 @@ sys.stdout.buffer.write(base64.b64decode(t["pkcs11-key"]))' > "$tmp/enc"
 
     # Replace every TPM2 slot with one sealed to this TPM: literal PCR 7 plus
     # the signed PCR 11 policy (its public key comes from the running UKI).
-    # pcrlock-enroll-luks moves PCR 7 onto the pcrlock policy on a later boot.
+    # --tpm2-pcrlock= (empty) stops cryptenroll from binding to a pcrlock.json
+    # it finds, which after a TPM change belongs to the old TPM;
+    # pcrlock-enroll-luks moves PCR 7 onto the current policy on a later boot.
     systemd-cryptenroll "$dev" --unlock-key-file="$tmp/pass" --wipe-slot=tpm2 \
-        --tpm2-device=auto --tpm2-pcrs=7 --tpm2-public-key-pcrs=11
+        --tpm2-device=auto --tpm2-pcrs=7 --tpm2-public-key-pcrs=11 --tpm2-pcrlock=
     rm -f "$tmp/enc" "$tmp/dec" "$tmp/pass"
 done
 echo "Done. The next boot should unlock from the TPM again."

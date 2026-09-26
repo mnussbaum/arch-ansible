@@ -173,9 +173,10 @@ ones, and rebuilds the policy covering both; the next boot drops the old one.
 The TPM keeps unlocking across the change.
 
 **After an unplanned change** (or a new db certificate, which cannot be
-predicted), the TPM refuses. Unlock root and swap with the YubiKey once: that
-boot re-predicts from the new state and rewrites the policy with the stored
-PIN, and the next boot unlocks from the TPM again.
+predicted), the TPM refuses. Unlock root with the YubiKey once (swap is
+skipped for that boot): that boot re-predicts from the new state and rewrites
+the policy with the stored PIN, and the next boot unlocks root and swap from
+the TPM again.
 
 *Validated in a VM (dbx appends signed with the KEK): the planned path unlocks
 silently across the change; the unplanned path needs the recovery key once and

@@ -109,7 +109,11 @@ print(len([k for k in m["keyslots"] if k not in bound]))'
 
 if cryptsetup status cryptroot &>/dev/null; then
     echo "cryptroot already open"
-elif cryptsetup open --token-only "$root_luks" cryptroot 2>/dev/null; then
+# Not `cryptsetup open --token-only`: Arch's libcryptsetup has no token plugins,
+# so only systemd-cryptsetup's own PKCS#11 path can use the YubiKey slot.
+elif echo "Unlocking root: enter the YubiKey PIV PIN, then touch it." &&
+     /usr/lib/systemd/systemd-cryptsetup attach cryptroot "$root_luks" - \
+        tpm2-device=auto,pkcs11-uri=auto; then
     echo "Opened root via enrolled token (YubiKey PIV, or a TPM2 policy usable post-boot)"
 elif [[ $(typeable_slots "$root_luks") -gt 0 ]]; then
     echo "No token unlocked it (a signed-PCR-11 TPM2 token cannot, from a booted"
