@@ -1,11 +1,7 @@
 # Run the user first-login playbook once, on the first interactive login.
 #
-# Skipped on a volatile root: the Live and Installer profiles boot root=tmpfs,
-# so nothing the playbook does survives the boot — and because the
-# user-first-login-done marker lives in $HOME, which is equally volatile, it
-# would re-run in full on EVERY login of an ephemeral session. (The installed
-# system has a real root, so it runs there exactly once, as intended.)
-if [[ ! -f "$HOME/.config/user-first-login-done" \
-      && "$(findmnt -no FSTYPE / 2>/dev/null)" != tmpfs ]]; then
+# On the Live profile's volatile root the home, and so this marker, last until
+# shutdown, so there it runs once per boot.
+if [[ ! -f "$HOME/.config/user-first-login-done" ]]; then
     (cd /usr/share/arch-ansible && ANSIBLE_PLAYBOOK=user-first-login-playbook.yml NO_ASK_BECOME_PASS=1 ./bin/ansible)
 fi

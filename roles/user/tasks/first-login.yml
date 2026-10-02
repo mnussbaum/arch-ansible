@@ -17,59 +17,69 @@
       remote set-url origin git@github.com:mnussbaum/arch-ansible.git
   changed_when: false
 
-- name: Inspect homed record
-  ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
-  register: homed_record
+- name: Check for a volatile root
+  ansible.builtin.command: findmnt -no FSTYPE /
+  register: root_fstype
   changed_when: false
 
-- name: Discover card-agnostic PIV URI
-  # Pin to id=%03 (PIV slot 9d, the homed key). PIV slot 9c (id=%02) is the
-  # SecureBoot signing key and must not be returned here.
-  ansible.builtin.shell: |
-    set -o pipefail
-    p11tool --list-all-certs 'pkcs11:' 2>/dev/null \
-      | sed -n 's/.*URL: //p' \
-      | grep type=cert | grep -v p11-kit-trust \
-      | grep 'id=%03' \
-      | head -1 \
-      | sed -E 's/;serial=[^;]*//; s/;token=[^;]*//; s/;object=[^;]*//; s/;type=[^;]*//'
-  register: piv_uri
-  changed_when: false
-  failed_when: piv_uri.stdout | length == 0
-  when: "'pkcs11TokenUri' not in homed_record.stdout"
+- name: Configure the homed account
+  # The Live profile's home is recreated every boot from the image's user record,
+  # so changing the account there is pointless; keep its password login.
+  when: root_fstype.stdout != 'tmpfs'
+  block:
+    - name: Inspect homed record
+      ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
+      register: homed_record
+      changed_when: false
 
-- name: Enroll YubiKey PIV
-  ansible.builtin.command: "sudo -n homectl update {{ user.name }} --pkcs11-token-uri={{ piv_uri.stdout }}"
-  when: "'pkcs11TokenUri' not in homed_record.stdout"
+    - name: Discover card-agnostic PIV URI
+      # Pin to id=%03 (PIV slot 9d, the homed key). PIV slot 9c (id=%02) is the
+      # SecureBoot signing key and must not be returned here.
+      ansible.builtin.shell: |
+        set -o pipefail
+        p11tool --list-all-certs 'pkcs11:' 2>/dev/null \
+          | sed -n 's/.*URL: //p' \
+          | grep type=cert | grep -v p11-kit-trust \
+          | grep 'id=%03' \
+          | head -1 \
+          | sed -E 's/;serial=[^;]*//; s/;token=[^;]*//; s/;object=[^;]*//; s/;type=[^;]*//'
+      register: piv_uri
+      changed_when: false
+      failed_when: piv_uri.stdout | length == 0
+      when: "'pkcs11TokenUri' not in homed_record.stdout"
 
-- name: Re-inspect homed record after enrollment
-  ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
-  register: homed_record_after
-  changed_when: false
+    - name: Enroll YubiKey PIV
+      ansible.builtin.command: "sudo -n homectl update {{ user.name }} --pkcs11-token-uri={{ piv_uri.stdout }}"
+      when: "'pkcs11TokenUri' not in homed_record.stdout"
 
-- name: Tune homed for the small /home slice
-  # luks-discard keeps the image sparse, auto-resize-mode=off avoids the
-  # grow-on-login that fails with "Not enough disk space for home", and
-  # disk-size=max lets the home use the whole /home partition. The first two are
-  # also pre-set in the home.create record (bin/_credstore_common.sh) so the very
-  # first login works; disk-size=max needs the active home, so it's applied here.
-  ansible.builtin.command: >-
-    sudo -n homectl update {{ user.name }}
-    --auto-resize-mode=off --disk-size=max --luks-discard=on
-  when: >-
-    '"autoResizeMode":"off"' not in homed_record_after.stdout or
-    '"luksDiscard":true' not in homed_record_after.stdout
+    - name: Re-inspect homed record after enrollment
+      ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
+      register: homed_record_after
+      changed_when: false
 
-- name: Drop password factor
-  ansible.builtin.shell: |
-    set -o pipefail
-    sudo -n homectl inspect {{ user.name }} --export-format=minimal --json=short \
-      | python3 -c '
-    import sys, json, time
-    r = json.load(sys.stdin)
-    r.get("privileged", {}).pop("hashedPassword", None)
-    r["lastChangeUSec"] = int(time.time() * 1_000_000)
-    json.dump(r, sys.stdout)
-    ' \
-      | sudo -n homectl update {{ user.name }} --identity=-
-  when: "'hashedPassword' in homed_record_after.stdout"
+    - name: Tune homed for the small /home slice
+      # luks-discard keeps the image sparse, auto-resize-mode=off avoids the
+      # grow-on-login that fails with "Not enough disk space for home", and
+      # disk-size=max lets the home use the whole /home partition. The first two are
+      # also pre-set in the home.create record (bin/_credstore_common.sh) so the very
+      # first login works; disk-size=max needs the active home, so it's applied here.
+      ansible.builtin.command: >-
+        sudo -n homectl update {{ user.name }}
+        --auto-resize-mode=off --disk-size=max --luks-discard=on
+      when: >-
+        '"autoResizeMode":"off"' not in homed_record_after.stdout or
+        '"luksDiscard":true' not in homed_record_after.stdout
+
+    - name: Drop password factor
+      ansible.builtin.shell: |
+        set -o pipefail
+        sudo -n homectl inspect {{ user.name }} --export-format=minimal --json=short \
+          | python3 -c '
+        import sys, json, time
+        r = json.load(sys.stdin)
+        r.get("privileged", {}).pop("hashedPassword", None)
+        r["lastChangeUSec"] = int(time.time() * 1_000_000)
+        json.dump(r, sys.stdout)
+        ' \
+          | sudo -n homectl update {{ user.name }} --identity=-
+      when: "'hashedPassword' in homed_record_after.stdout"
