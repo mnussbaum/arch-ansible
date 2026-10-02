@@ -173,6 +173,19 @@ target_esp_partnum() {
   return 1
 }
 
+# Delete "Arch Linux" entries whose ESP no longer exists, e.g. from earlier
+# installs onto a since-wiped disk. Firmware may try a dead entry and give up.
+remove_stale_boot_entries() {
+  local num uuid
+  local -A present=()
+  for uuid in $(lsblk -rno PARTUUID); do present[${uuid,,}]=1; done
+  while read -r num uuid; do
+    [[ -n "${present[${uuid,,}]:-}" ]] && continue
+    efibootmgr --bootnum "$num" --delete-bootnum >/dev/null 2>&1 || true
+  done < <(efibootmgr 2>/dev/null |
+    sed -nE 's/^Boot([0-9A-Fa-f]{4})[* ] Arch Linux\s+HD\([0-9]+,GPT,([0-9a-fA-F-]+),.*/\1 \2/p')
+}
+
 # Point the firmware at the target so a reboot lands on it: systemd-repart writes
 # no UEFI entry, so without this a reboot returns to the installer medium. A boot
 # variable is orthogonal to Boot Loader Spec Type #1/#2. Returns non-zero (caller
@@ -183,6 +196,7 @@ register_target_boot() {
   command -v efibootmgr >/dev/null || return 1
   udevadm settle 2>/dev/null || true
   partnum=$(target_esp_partnum "$disk") || return 1
+  remove_stale_boot_entries
   efibootmgr --create --disk "$disk" --part "$partnum" \
     --loader '\EFI\systemd\systemd-bootx64.efi' \
     --label "Arch Linux" --unicode >/dev/null 2>&1 || return 1
