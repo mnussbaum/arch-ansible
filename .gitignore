@@ -6,3 +6,4 @@
 /mkosi.key
 /mkosi.crt
 /mkosi.version
+/.ansible/
