@@ -13,8 +13,10 @@ unrecoverable; it held no data.
 Two unknowns to diagnose on the reinstall, keeping the YubiKey plugged in:
 
 1. **Why `luks-enroll-pkcs11.service` didn't enroll on real hardware.** It did
-   in the VM. Note what first boot shows ("Enrolling the YubiKey…", or "Plug
-   in a YubiKey… (waiting 120s)" / "No YubiKey found; skipping").
+   in the VM. Note what first boot shows. Since this was written the unit no
+   longer skips silently: it asks "Plug in a YubiKey and press Enter, or type
+   skip", logs to the journal (`journalctl -t luks-enroll-pkcs11`), and fails
+   (system `degraded`) if a volume is left without the slot.
 2. **Why the TPM failed between the first and second boot.** The pre-PKCS#11
    XPS install rebooted fine, and the VM never showed this.
 
@@ -34,9 +36,8 @@ and compare `systemd-analyze pcrs 7 11` with `/var/tmp/pcrs-boot1`.
 
 Follow-ups:
 
-- **A skipped enrollment must not be silent.** It leaves a machine one TPM
-  hiccup from unrecoverable. Fail the unit (system `degraded`) at minimum;
-  better, hold first boot until a YubiKey is enrolled or explicitly skipped.
+- ~~A skipped enrollment must not be silent.~~ Done: first boot waits until a
+  YubiKey is enrolled or `skip` is typed, and the unit fails if a volume has no slot.
 - **`890639e` (commands moved to `/usr/bin`) was not VM-validated** before the
   XPS install; if the reinstall shows missing commands or failing units, look
   there first.

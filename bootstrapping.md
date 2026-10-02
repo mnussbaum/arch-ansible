@@ -129,8 +129,10 @@ including ones provisioned later, or rebuilt from the root key on the offline
 USB — unlocks every disk. Enrolling asks for the PIV PIN, no touch; unlocking
 asks for the PIN and a touch. Without a second factor a root is unrecoverable
 once its measured boot legitimately changes — a firmware update, a re-enrolled
-Secure Boot key, a cleared TPM or a replaced board. If it was skipped, run it
-again from any normal boot:
+Secure Boot key, a cleared TPM or a replaced board. So first boot waits on the
+console until a YubiKey is enrolled or `skip` is typed; skipping, or any volume
+left without the slot, fails the unit (system `degraded`) and is logged to the
+journal (`journalctl -t luks-enroll-pkcs11`). Enroll later from any normal boot:
 
 ```
 sudo /usr/bin/luks-enroll-pkcs11

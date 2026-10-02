@@ -5,6 +5,11 @@
 # unlocks the disk. Enrolling asks for the PIV PIN (to read the certificate)
 # but no touch. Run at first boot by luks-enroll-pkcs11.service; safe to
 # re-run, since volumes that already have a PKCS#11 slot are skipped.
+#
+# Without this slot the TPM is a volume's only factor, and any TPM failure
+# makes it unrecoverable. So it never gives up on its own: it waits for a
+# YubiKey until one is enrolled or "skip" is typed, and exits non-zero (the
+# system shows degraded) while a volume is left without the slot.
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -12,9 +17,12 @@ set -o pipefail
 # Card-agnostic, like the homed enrollment in roles/user/tasks/first-login.yml:
 # no serial or token label, so the slot matches whichever YubiKey is plugged in.
 uri='pkcs11:model=PKCS%2315%20emulated;manufacturer=piv_II;id=%03'
-wait_secs=${ENROLL_PKCS11_WAIT:-120}
 
-say() { printf '\n==> %s\n' "$*"; }
+# To the console and the journal: the outcome has to be findable after the fact.
+say() {
+    printf '\n==> %s\n' "$*"
+    logger -t luks-enroll-pkcs11 -- "$*" 2>/dev/null || true
+}
 
 has_pkcs11() { systemd-cryptenroll "$1" 2>/dev/null | grep -qw pkcs11; }
 have_key() { systemd-cryptenroll --pkcs11-token-uri=list 2>/dev/null | grep -q '^pkcs11:'; }
@@ -32,22 +40,23 @@ if systemd-detect-virt --quiet --vm; then
         have_key && break
         sleep 1
     done
-    have_key || exit 0
+    have_key || { say "VM without a YubiKey; not enrolling."; exit 0; }
 fi
 
-if ! have_key; then
-    say "Plug in a YubiKey to enroll it for disk unlock (waiting ${wait_secs}s)."
-    for (( i = 0; i < wait_secs; i++ )); do
-        have_key && break
-        sleep 1
-    done
-fi
-if ! have_key; then
-    say "No YubiKey found; skipping. Enroll it later with: sudo $0"
-    exit 0
-fi
+# Give a key that's already plugged in a moment for pcscd's first reader scan.
+for (( i = 0; i < 10; i++ )); do
+    have_key && break
+    sleep 1
+done
+while ! have_key; do
+    say "No YubiKey found. Without one, a TPM failure makes this disk unrecoverable."
+    read -rp "Plug in a YubiKey and press Enter, or type skip to continue without: " reply
+    if [[ "$reply" == skip ]]; then
+        say "Skipped YubiKey enrollment. Enroll later with: sudo $0"
+        exit 1
+    fi
+done
 
-rc=0
 for dev in "${devices[@]}"; do
     name=${dev##*/}
     while true; do
@@ -58,8 +67,16 @@ for dev in "${devices[@]}"; do
         fi
         # Ask rather than retry automatically: each wrong PIN uses up one of
         # the PIV applet's few attempts.
-        read -rp "Enrollment failed. Press Enter to retry, or type s to skip: " reply
-        [[ "$reply" == s ]] && { say "Skipped ${name%-luks}."; rc=1; break; }
+        read -rp "Enrollment failed. Press Enter to retry, or type skip: " reply
+        [[ "$reply" == skip ]] && break
     done
+done
+
+rc=0
+for dev in "${devices[@]}"; do
+    if ! has_pkcs11 "$dev"; then
+        say "WARNING: ${dev##*/} has no YubiKey slot. Enroll later with: sudo $0"
+        rc=1
+    fi
 done
 exit "$rc"
