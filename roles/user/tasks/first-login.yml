@@ -7,13 +7,13 @@
   # update: false leaves any later local work untouched on re-runs.
   ansible.builtin.git:
     repo: /usr/share/arch-ansible
-    dest: "{{ ansible_env.HOME }}/Projects/arch-ansible"
+    dest: "{{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible"
     update: false
 
 - name: Point arch-ansible origin at GitHub
   ansible.builtin.command:
     cmd: >-
-      git -C {{ ansible_env.HOME }}/Projects/arch-ansible
+      git -C {{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible
       remote set-url origin git@github.com:mnussbaum/arch-ansible.git
   changed_when: false
 
