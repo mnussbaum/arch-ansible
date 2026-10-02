@@ -9,10 +9,7 @@ argument rather than a different program:
 
   run [DISK]  Boot a VM. With no DISK that is the built medium — the installer /
               live system, which also self-provisions into a normal system on
-              first boot. With a DISK it is that installed disk, attached ALONE:
-              first-boot systemd-repart provisions the wrong disk when a second
-              mkosi-layout disk (the medium) is present, so root never lands on
-              the target and the boot hangs on /dev/disk/by-designator/root.
+              first boot. With a DISK it is that installed disk, attached alone.
   install     Boot the medium's Installer profile with TARGET attached as
               /dev/vdb, run `install-system --yes /dev/vdb`, then inspect the
               layout it wrote. Recreates TARGET first: `truncate` on an existing
@@ -1060,9 +1057,6 @@ def run_disk(args, log):
 
     with Vm(
         name=disk.stem,
-        # The ONLY disk. With the medium also attached, first-boot repart sees
-        # two mkosi-layout disks and provisions the wrong one, so root is never
-        # created and the boot hangs on /dev/disk/by-designator/root.
         drives=[{"file": disk, "bootindex": 0}],
         varstore=varstore,
         tpm_state=Path(args.tpm_state) if args.tpm_state else Path(f"{disk}.tpm"),
@@ -1171,10 +1165,8 @@ def main():
     r = sub.add_parser("run", parents=[common],
                        help="boot the medium, or an installed disk")
     r.add_argument("disk", nargs="?",
-                   help="installed disk to boot ALONE (nothing else attached, "
-                        "because first-boot repart provisions the wrong disk "
-                        "when the medium is also present). Omit it to boot the "
-                        "built medium instead.")
+                   help="installed disk to boot. Omit it to boot the built "
+                        "medium instead.")
     r.add_argument("--gui", action="store_true",
                    help="open a window and hand the VM over, instead of running "
                         "headless with scripted health checks")

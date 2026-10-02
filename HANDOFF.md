@@ -1,46 +1,38 @@
 # Handoff — Type #2 install validation (arch-ansible)
 
-Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-09-26
+Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated: 2026-10-02
 
-## RESUME HERE (2026-09-26)
+## RESUME HERE (2026-10-02)
 
-**The XPS 13 9365 install is broken and must be reinstalled.** The latest
-image installed, but first boot did NOT enroll the YubiKey (no PIV PIN prompt),
-and the second boot hung at `/dev/disk/by-designator/root`: the TPM no longer
-unsealed root, and with no PKCS#11 slot there was no other factor. Root is
-unrecoverable; it held no data.
+**Root cause found and fixed (2026-10-02); the XPS just needs a reinstall.**
+The hang at `/dev/disk/by-designator/root` was on the *first* boot after
+install, with the USB stick still plugged in. Stick and disk carry identical
+`/usr` partitions (same verity-derived partition UUIDs), so the initrd's
+`by-partuuid` lookup could assemble `/usr` from either disk, even one partition
+from each. First-boot repart then couldn't resolve `/usr`'s disk and silently
+skipped, so root was never created. That's also why no YubiKey was enrolled:
+first boot never got that far. The TPM was never at fault.
 
-Two unknowns to diagnose on the reinstall, keeping the YubiKey plugged in:
+Fix: `mkosi.conf` points `systemd.verity_usr_data=`/`systemd.verity_usr_hash=`
+at `/dev/disk/by-designator/`, which udev creates only for the disk whose ESP
+the firmware booted. VM-validated with the medium attached as a second disk.
+The stick can now stay plugged in. The YubiKey enrollment no longer skips
+silently either: it waits for a key or an explicit `skip`, logs to the journal
+(`journalctl -t luks-enroll-pkcs11`), and fails the unit if a slot is missing.
 
-1. **Why `luks-enroll-pkcs11.service` didn't enroll on real hardware.** It did
-   in the VM. Note what first boot shows. Since this was written the unit no
-   longer skips silently: it asks "Plug in a YubiKey and press Enter, or type
-   skip", logs to the journal (`journalctl -t luks-enroll-pkcs11`), and fails
-   (system `degraded`) if a volume is left without the slot.
-2. **Why the TPM failed between the first and second boot.** The pre-PKCS#11
-   XPS install rebooted fine, and the VM never showed this.
-
-Before the first reboot, as root:
+On the reinstall, check after first boot, as root:
 
 ```
-journalctl -b -u luks-enroll-pkcs11 --no-pager | tail -20
+journalctl -b -t luks-enroll-pkcs11 --no-pager
 systemd-cryptenroll /dev/disk/by-designator/root-luks   # must list pkcs11
-/usr/bin/luks-enroll-pkcs11                             # if it doesn't (PIV PIN)
-systemd-analyze pcrs 7 11 | tee /var/tmp/pcrs-boot1
 ```
-
-Then reboot. If the TPM fails, the YubiKey now rescues it (PIN + touch); then
-read the TPM error (`journalctl -b -o cat -u systemd-cryptsetup@root.service`)
-and compare `systemd-analyze pcrs 7 11` with `/var/tmp/pcrs-boot1`.
-`sudo /usr/share/arch-ansible/bin/luks-reseal-tpm` restores unattended boot.
 
 Follow-ups:
 
 - ~~A skipped enrollment must not be silent.~~ Done: first boot waits until a
   YubiKey is enrolled or `skip` is typed, and the unit fails if a volume has no slot.
-- **`890639e` (commands moved to `/usr/bin`) was not VM-validated** before the
-  XPS install; if the reinstall shows missing commands or failing units, look
-  there first.
+- ~~`890639e` (commands moved to `/usr/bin`) was not VM-validated.~~ Validated
+  2026-10-02.
 - Remaining `plan-usr-hermetic.md` items (its status notes are stale): the
   factory-reset profile test and a verity corruption test (A.5), `/etc` drift
   detection and dropping the `docker` group (security mitigations 2 and 3).
@@ -186,7 +178,7 @@ Both exit non-zero if the run misses its checkpoint, so they script. Notes:
 * `install` **recreates the target file** (rm + truncate) by default — `truncate`
   alone on an existing same-size file is a no-op and the stale GPT auto-activates
   and breaks repart with EBUSY. `--no-fresh` opts out.
-* `boot` attaches the target **alone** (gotcha #1 below) and passes first boot's
+* `boot` attaches the target alone and passes first boot's
   answers as SMBIOS credentials: `agetty.autologin`, `firstboot.hostname`,
   `passwd.plaintext-password.root`.
 * On a stalled boot it **screendumps the VGA console** to a PNG. This is the only
@@ -782,10 +774,11 @@ dispatched through yay. There are no `package:` tasks left anywhere.
 
 ## CRITICAL test-harness gotchas (these cost hours — do not relearn)
 
-1. **First-boot testing needs the target attached ALONE** — `bin/vm run`
-   (headless or `--gui`), never `vm run DISK`. The medium is also a
-   mkosi-layout disk, so first-boot repart provisions the WRONG one and the boot
-   hangs on `/dev/disk/by-designator/root`.
+1. ~~First-boot testing needs the target attached ALONE.~~ Fixed 2026-10-02:
+   a second disk with the same image used to make `/usr` resolve to the wrong
+   disk; `/usr` now comes from the booted disk's `by-designator` links. A
+   vsock device in a test VM also forwards the host's YubiKey (pcscd relay), so
+   first-boot enrollment then waits for its PIN.
 2. **`truncate -s 60G` on an existing 60G file is a NO-OP.** `vm install`
    now does the `rm -f` for you.
 3. **The post-install auto-reboot into the target CANNOT be validated in QEMU.**
