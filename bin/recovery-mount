@@ -9,9 +9,9 @@
 # read-only erofs /usr (dm-verity in a normal boot — mounted plain ro here, since
 # recovery doesn't need integrity enforcement); a vfat ESP; an encrypted swap;
 # and a btrfs home partition. systemd-homed keeps each user's data in its own
-# LUKS volume *inside* /home, so individual users' files still need
-# `homectl`/login to decrypt — this mounts the home partition, not the per-user
-# homes. Swap is not a filesystem, so it is left alone.
+# LUKS image inside /home (<user>.home); for each, it offers to unlock it
+# read-only with the YubiKey or the user's password and mount it at
+# /mnt/home/<user>. Swap is not a filesystem, so it is left alone.
 #
 # Usage: recovery-mount [DISK]
 #   DISK  the disk to recover (e.g. /dev/vdb). Only needed when more than one
@@ -139,7 +139,78 @@ if [[ -n "$esp" ]]; then
 fi
 [[ -n "$home" ]] && mount -o "$btrfs_opts" "$home" "$TARGET/home"  # home partition (per-user homed LUKS lives here)
 
+# --- Unlock homed homes, read-only -----------------------------------------
+# homed encrypts a random key to the YubiKey's PIV key and stores it in the
+# user record (privileged.pkcs11EncryptedKey); the base64 of the decrypted key
+# is a LUKS passphrase of the home image. Fall back to the user's password.
+# The image's filesystem holds the home in a <user> subdirectory, as homed
+# mounts it.
+pkcs11_module=/usr/lib/pkcs11/opensc-pkcs11.so
+home_cleanup=()
+
+unlock_home() {
+    local img=$1 user loop part record dm stage tmp n id padding mech reply
+    user=$(basename "$img" .home)
+    read -rp "Unlock $user's home (read-only)? [y/N] " reply
+    [[ $reply == [yY]* ]] || return 0
+
+    loop=$(losetup --find --show --read-only --partscan "$img")
+    udevadm settle
+    part=$(lsblk -nrpo NAME,FSTYPE "$loop" | awk '$2 == "crypto_LUKS" {print $1; exit}')
+    [[ -n $part ]] || { echo "no LUKS volume in $img" >&2; losetup -d "$loop"; return 0; }
+    dm="home-$user"
+    record="$TARGET/var/lib/systemd/home/$user.identity"
+    tmp=$(mktemp -d /run/recovery-home.XXXXXX)
+
+    # One line per encrypted key: index, PIV object id (hex), padding.
+    if [[ -r $record ]]; then
+        python3 - "$record" "$tmp" > "$tmp/keys" <<'EOF'
+import base64, json, re, sys, urllib.parse
+record, out = sys.argv[1], sys.argv[2]
+keys = json.load(open(record)).get("privileged", {}).get("pkcs11EncryptedKey", [])
+for n, k in enumerate(keys):
+    m = re.search(r"[;:]id=([^;]*)", k["uri"])
+    if not m:
+        continue
+    open(f"{out}/enc{n}", "wb").write(base64.b64decode(k["data"]))
+    print(n, urllib.parse.unquote_to_bytes(m.group(1)).hex(), k.get("padding", "pkcs1"))
+EOF
+    fi
+    while read -r n id padding; do
+        case $padding in
+            pkcs1)       mech=(--mechanism RSA-PKCS) ;;
+            oaep-sha1)   mech=(--mechanism RSA-PKCS-OAEP --hash-algorithm SHA-1 --mgf MGF1-SHA1) ;;
+            oaep-sha256) mech=(--mechanism RSA-PKCS-OAEP --hash-algorithm SHA256 --mgf MGF1-SHA256) ;;
+            *) continue ;;
+        esac
+        echo "Unlocking $user's home: enter the YubiKey PIV PIN, then touch it when it blinks."
+        pkcs11-tool --module "$pkcs11_module" --login --decrypt --id "$id" "${mech[@]}" \
+            --input-file "$tmp/enc$n" --output-file "$tmp/dec" || continue
+        base64 -w0 "$tmp/dec" > "$tmp/pass"
+        cryptsetup open --readonly --key-file="$tmp/pass" "$part" "$dm" && break
+    done < <(cat "$tmp/keys" 2>/dev/null)
+    rm -rf "$tmp"
+
+    if [[ ! -e /dev/mapper/$dm ]]; then
+        echo "Enter $user's password instead (or press Ctrl+D to skip):"
+        cryptsetup open --readonly "$part" "$dm" || { losetup -d "$loop"; return 0; }
+    fi
+    stage=/run/recovery-home/$user
+    mkdir -p "$stage" "$TARGET/home/$user"
+    mount -o ro "/dev/mapper/$dm" "$stage"
+    mount --bind "$stage/$user" "$TARGET/home/$user"
+    mount -o remount,bind,ro "$TARGET/home/$user"
+    home_cleanup+=("umount $TARGET/home/$user $stage; cryptsetup close $dm; losetup -d $loop")
+    echo "$user's home is at $TARGET/home/$user (read-only)."
+}
+
+for img in "$TARGET"/home/*.home; do
+    [[ -e $img ]] && unlock_home "$img"
+done
+
 echo "Mounted under $TARGET:"
 findmnt -R "$TARGET" || true
+echo "When done, exit the chroot and run:"
+printf '  %s\n' "${home_cleanup[@]}" "umount -R $TARGET; cryptsetup close cryptroot"
 
 exec arch-chroot "$TARGET"
