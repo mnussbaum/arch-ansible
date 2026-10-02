@@ -124,6 +124,8 @@
       "format-ethernet": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{ifname} ', first_block=True, position='right') }}",
       "format-disconnected": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', 'Disconnected ⚠', first_block=True, position='right') }}",
       "on-click": "toggle-wifi",
+      // Re-read the SSID often; the one lookup on carrier-up can race association
+      "interval": 5,
       "tooltip": false
     },
 
