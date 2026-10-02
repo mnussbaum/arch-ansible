@@ -47,7 +47,7 @@ candidates=()
 while IFS= read -r line; do
     eval "$line"
     [[ "${PARTLABEL:-}" == "root" && "${FSTYPE:-}" == "crypto_LUKS" ]] || continue
-    disk=$(lsblk -no PKNAME "/dev/$NAME" | head -1)
+    disk=$(lsblk -ndo PKNAME "/dev/$NAME" | head -1)
     [[ $boot_disks == *" $disk "* ]] && continue          # the running system's own
     [[ -n $want_disk && $disk != "$want_disk" ]] && continue
     candidates+=("/dev/$NAME")
@@ -58,12 +58,12 @@ case ${#candidates[@]} in
            "(the running system's own disk(s):${boot_disks% } are excluded)" ;;
     1) root_luks=${candidates[0]} ;;
     *) die "several candidate roots: ${candidates[*]} — pass the disk to" \
-           "recover, e.g. recovery-mount /dev/$(lsblk -no PKNAME "${candidates[0]}" | head -1)" ;;
+           "recover, e.g. recovery-mount /dev/$(lsblk -ndo PKNAME "${candidates[0]}" | head -1)" ;;
 esac
 
 # Scope every other partition to the root's parent disk, so we never pick up the
 # recovery medium's own ESP/usr (its /usr carries the same label as the target's).
-parent=$(lsblk -no PKNAME "$root_luks" | head -1)
+parent=$(lsblk -ndo PKNAME "$root_luks" | head -1)
 [[ -n "$parent" ]] || die "could not determine the parent disk of $root_luks"
 echo "Persistent disk: /dev/$parent (root: $root_luks)"
 
@@ -130,6 +130,7 @@ fi
 
 # --- Mount, mirroring the running system's layout ---------------------------
 btrfs_opts="noatime,compress=zstd:1,discard=async,space_cache=v2"
+mkdir -p "$TARGET"   # a tmpfs root (the Live profile) has no /mnt
 mount -o "$btrfs_opts" /dev/mapper/cryptroot "$TARGET"   # root (+ nested /var subvolume)
 mount -o ro "$usr" "$TARGET/usr"                          # immutable /usr (erofs)
 if [[ -n "$esp" ]]; then
