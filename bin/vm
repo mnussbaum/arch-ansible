@@ -269,9 +269,9 @@ def output_dir():
 
 
 def mkosi_env():
-    """The environment `mkosi` needs to expand mkosi.conf.
+    """The environment `mkosi` needs to expand mkosi/mkosi.conf.
 
-    mkosi.conf refers to ${ARCH_ANSIBLE_CACHE} and ${ARCH_ANSIBLE_SRCTREE} and
+    mkosi/mkosi.conf refers to ${ARCH_ANSIBLE_CACHE} and ${ARCH_ANSIBLE_SRCTREE} and
     expands them from the process environment (bin/_cache_common.sh exports
     them for the build scripts). Without them mkosi fails config validation
     before it boots anything: "${ARCH_ANSIBLE_CACHE}/cargo/registry does not
@@ -827,7 +827,7 @@ def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=Fal
     if args.yubikey:
         vmm += yubikey_qemu_args()
         # Run the guest's own pcscd for the passed-through key instead of the
-        # vsock relay (roles/qemu-guest/files/pcscd-novm-condition.conf).
+        # vsock relay (ansible/roles/qemu-guest/files/pcscd-novm-condition.conf).
         vmm += ["-smbios", "type=11,value=io.systemd.credential:pcscd.local=1"]
     vmm += [
         "-chardev", f"socket,id=chrtpm,path={tpm_sock}",
@@ -846,6 +846,7 @@ def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=Fal
 
     cmd = [
         "mkosi",
+        "--directory=mkosi",
         f"--output-directory={output}",
         f"--cpus={args.cpus}",
         f"--ram={args.memory}",
@@ -1043,7 +1044,7 @@ def run_disk(args, log):
         # switching VTs. Never use this for a real install.
         "agetty.autologin=root",
         # First prompt: systemd-firstboot --prompt-hostname (added by
-        # mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf).
+        # mkosi/mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf).
         f"firstboot.hostname={FIRSTBOOT_HOSTNAME}",
         # Second prompt: --prompt-root-password, from the same ExecStart. Test
         # credential only — a real install is meant to be answered by the human
@@ -1052,7 +1053,7 @@ def run_disk(args, log):
     ]
     if args.yubikey:
         # Run the guest's own pcscd for the passed-through key instead of the
-        # vsock relay (roles/qemu-guest/files/pcscd-novm-condition.conf).
+        # vsock relay (ansible/roles/qemu-guest/files/pcscd-novm-condition.conf).
         creds.append("pcscd.local=1")
 
     with Vm(

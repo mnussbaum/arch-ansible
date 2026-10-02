@@ -4,13 +4,13 @@
 # mkosi.
 #
 # Why before mkosi: mkosi installs the AUR packages listed in
-# mkosi.conf.d/90-packages.conf from the local aur-repo (PackageDirectories= in
-# mkosi.conf), so they must already be built, at the version the image should
+# mkosi/mkosi.conf.d/90-packages.conf from the local aur-repo (PackageDirectories= in
+# mkosi/mkosi.conf), so they must already be built, at the version the image should
 # ship, when its package phase runs. A mkosi build script is too late: build
 # scripts run AFTER the image's own Packages= are installed.
 #
 # THE LIST comes from `mkosi --json summary`, which resolves the merged config
-# (mkosi.conf + every mkosi.conf.d fragment). One `pacman -Sp` over those names
+# (mkosi/mkosi.conf + every mkosi/mkosi.conf.d fragment). One `pacman -Sp` over those names
 # reports each one the official repos do not have, which is exactly the set
 # that must come from the local repo.
 #
@@ -27,7 +27,7 @@
 # sudo; a run where every package is current does not.
 #
 # PRUNING keeps only the newest version of each package (and its -debug
-# package). The repo is baked into /usr (mkosi.conf ExtraTrees) for offline
+# package). The repo is baked into /usr (mkosi/mkosi.conf ExtraTrees) for offline
 # rebuilds, so every superseded version would otherwise ride along in every
 # image.
 set -o errexit
@@ -53,7 +53,7 @@ done
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 
-# mkosi.conf expands ${ARCH_ANSIBLE_CACHE} and ${ARCH_ANSIBLE_SRCTREE} from the
+# mkosi/mkosi.conf expands ${ARCH_ANSIBLE_CACHE} and ${ARCH_ANSIBLE_SRCTREE} from the
 # environment, so `mkosi summary` fails config validation without them. Exported
 # already when bin/build-image calls this; sourced here so the script also works
 # standalone. (Suppressing mkosi's stderr hid exactly this failure once.)
@@ -73,10 +73,10 @@ mkdir -p "$repo"
 # configuration (the initrd image has its own, much shorter, list). Captured
 # first so a failing mkosi (e.g. a BuildSources path that does not exist yet)
 # stops here with its own error. ARCH_ANSIBLE_TARGET is passed the way
-# bin/build-image passes it: mkosi.conf defaults it to host, so without this a
-# device would resolve the host's mkosi.conf.d/10-sources-host.conf and fail on
+# bin/build-image passes it: mkosi/mkosi.conf defaults it to host, so without this a
+# device would resolve the host's mkosi/mkosi.conf.d/10-sources-host.conf and fail on
 # its missing ~/.local/share/password-store.
-summary=$(mkosi --directory "$root" \
+summary=$(mkosi --directory "$root/mkosi" \
     --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" --json summary)
 mapfile -t wanted < <(printf '%s' "$summary" | python3 -c '
 import json, sys
@@ -191,11 +191,11 @@ if [[ ${#stale[@]} -gt 0 ]]; then
 
     # mkarchroot and arch-nspawn copy the host's pacman keyring into the chroot,
     # from the fixed path /etc/pacman.d/gnupg. A device ships without one
-    # (mkosi.finalize.factory-seed drops pacman.d/gnupg), and there is nowhere
+    # (mkosi/mkosi.finalize.factory-seed drops pacman.d/gnupg), and there is nowhere
     # to create one: factory-seed makes /etc/pacman.d itself a symlink into the
     # read-only /usr/share/factory. So turn it into a real directory of per-file
     # factory links — what factory-seed does for /etc/systemd — and create the
-    # keyring there, as roles/packaging/tasks/init-keyring.yml does for the
+    # keyring there, as ansible/roles/packaging/tasks/init-keyring.yml does for the
     # image build. The boot-time `L /etc/pacman.d` tmpfiles line leaves an
     # existing directory alone, so this persists wherever /etc does.
     if [[ -L /etc/pacman.d ]]; then

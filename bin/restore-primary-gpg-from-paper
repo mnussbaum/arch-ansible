@@ -47,8 +47,8 @@ echo "==> Backing up primary key to USB..."
 echo "==> Generating revocation certificate..."
 printf 'y\n0\n\ny\n' | gpg --command-fd 0 --gen-revoke "$FINGERPRINT" > "$USB_MOUNT/revocation-cert.asc"
 
-echo "==> Exporting public key to roles/gpg/files/gpg-pubkey.asc..."
-gpg --armor --export "$FINGERPRINT" > roles/gpg/files/gpg-pubkey.asc
+echo "==> Exporting public key to ansible/roles/gpg/files/gpg-pubkey.asc..."
+gpg --armor --export "$FINGERPRINT" > ansible/roles/gpg/files/gpg-pubkey.asc
 
 echo "==> Creating subkey backup for YubiKey programming..."
 "${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
@@ -61,4 +61,4 @@ echo "  1. Store $DEVICE offline in a separate location from any other backup."
 echo "  2. Regenerate the paper recovery guide:"
 echo "       bin/print-gpg-recovery-guide $DEVICE"
 echo "  3. Commit the updated keygrips:"
-echo "       git add group_vars/all/gpg_auth_keygrips.yml && git commit"
+echo "       git add ansible/group_vars/all/gpg_auth_keygrips.yml && git commit"

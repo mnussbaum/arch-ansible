@@ -167,11 +167,11 @@ Other things can read `darkman get` / watch its D-Bus / read
 ## Teardown (old mechanism)
 
 Delete once the above lands:
-- `roles/set-appearance-facts/` (active-scheme facts no longer needed)
-- `roles/brightness/files/colorscheme-changer{,.service,.timer}` and its install
+- `ansible/roles/set-appearance-facts/` (active-scheme facts no longer needed)
+- `ansible/roles/brightness/files/colorscheme-changer{,.service,.timer}` and its install
   tasks (the Ansible-invoking runtime loop)
 - `day-or-night` clight logic (superseded by darkman)
-- the `vendor/roles/mnussbaum.base16-builder-ansible` *runtime* use — keep only
+- the `ansible/vendor/roles/mnussbaum.base16-builder-ansible` *runtime* use — keep only
   as a **build-time** renderer
 - inline color interpolation in main configs, once split into fragments
 

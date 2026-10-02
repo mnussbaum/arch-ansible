@@ -125,7 +125,7 @@ else
         "bound to hardware tokens that did not unlock, and there is no recovery" \
         "key or passphrase to type. A signed-PCR-11 TPM2 token only unlocks in" \
         "the initrd of a normal signed boot. This root needs a recovery key or" \
-        "YubiKey (PKCS#11) factor enrolled when it is created (see bootstrapping.md)."
+        "YubiKey (PKCS#11) factor enrolled when it is created (see docs/bootstrapping.md)."
 fi
 
 # --- Mount, mirroring the running system's layout ---------------------------

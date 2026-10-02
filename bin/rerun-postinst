@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Host dev tool: ARCH_ANSIBLE_TARGET is unset, so the base is ~/.cache (sudo -E
-# preserves HOME). Keeps the cache paths in sync with mkosi.conf/build-image.
+# preserves HOME). Keeps the cache paths in sync with mkosi/mkosi.conf/build-image.
 source "$(dirname "$0")/_cache_common.sh"
 cache_dir="$ARCH_ANSIBLE_CACHE/mkosi/arch~rolling~x86-64~main.cache"
 
@@ -64,7 +64,7 @@ export USER=root HOME=/root IMAGE_ID=$hostname
 exec bash
 INIT
 else
-  echo 'exec /work/src/mkosi.postinst.chroot' >> "$init_script"
+  echo 'exec /work/src/mkosi/mkosi.postinst.chroot' >> "$init_script"
 fi
 chmod +x "$init_script"
 

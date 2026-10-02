@@ -26,14 +26,14 @@ herring — the build never produced artifacts, so there was nothing to install.
 
 ## Root cause
 
-`mkosi.repart/12-usr.conf` builds the `usr` partition with `Format=erofs`,
+`mkosi/mkosi.repart/12-usr.conf` builds the `usr` partition with `Format=erofs`,
 `Minimize=yes`, `CopyFiles=/usr:/`. To compute the minimized size, repart first
 copies the **entire ~5.4G `/usr`** into a temp dir under `/var/tmp`. That copy
 ran out of space.
 
 Everything mkosi does is pinned to `~/.cache/mkosi`:
 
-- `mkosi.conf:30-32` — `CacheDirectory`, `PackageCacheDirectory`,
+- `mkosi/mkosi.conf:30-32` — `CacheDirectory`, `PackageCacheDirectory`,
   `BuildDirectory` all under `~/.cache/mkosi`
 - `bin/build-image:43,57` — output dir `~/.cache/mkosi/images/image`
 - mkosi's **workspace** is there too (see the path in the repart command:
@@ -89,7 +89,7 @@ duration of a build, or wiped? That determines whether option 1 is safe.
 
 ## Resolution (Option 1, implemented 2026-06-01)
 
-**Open question answered: root is persistent.** `mkosi.extra/usr/lib/repart.d/50-root.conf`
+**Open question answered: root is persistent.** `mkosi/mkosi.extra/usr/lib/repart.d/50-root.conf`
 declares root as btrfs with `Subvolumes=/var` and `FactoryReset=yes` —
 `FactoryReset` only wipes on an *explicit* factory reset (`systemd.factory_reset=1`
 / GPT reset flag), never on a normal boot. So root (with `/var`, ~21G free,
@@ -107,7 +107,7 @@ device that path is the 17G/563M-free homed `/home` → ENOSPC.
 
 **Fix:** all build caches + mkosi scratch now live under a single base,
 `${ARCH_ANSIBLE_CACHE}` (`bin/_cache_common.sh`), keyed off `ARCH_ANSIBLE_TARGET`
-(the same transitional switch as `mkosi.conf.d/10-sources-*.conf`):
+(the same transitional switch as `mkosi/mkosi.conf.d/10-sources-*.conf`):
 
 - host: `~/.cache` (unchanged behavior, except the build's cargo registry moved
   from `~/.cargo/registry` to `~/.cache/cargo/registry`)
@@ -117,11 +117,11 @@ Files changed:
 - `bin/_cache_common.sh` (new) — resolves + exports `ARCH_ANSIBLE_CACHE` and
   `ARCH_ANSIBLE_OUTPUT_DIR`; `arch_ansible_ensure_cache` creates the base
   (sudo-chown to the user on a device, where `/var/cache` is root-owned).
-- `mkosi.conf` — `CacheDirectory`/`PackageCacheDirectory`/`BuildDirectory` →
+- `mkosi/mkosi.conf` — `CacheDirectory`/`PackageCacheDirectory`/`BuildDirectory` →
   `${ARCH_ANSIBLE_CACHE}/mkosi*`; **added `WorkspaceDirectory=${ARCH_ANSIBLE_CACHE}/mkosi`**
   (the load-bearing line); `BuildSources`/`SkeletonTrees`/`ExtraTrees` cargo/
   sccache/yay/pacman-pkg/credstore paths → the base.
-- `mkosi.finalize` — write-back destinations → `$ARCH_ANSIBLE_CACHE/*`, passed in
+- `mkosi/mkosi.finalize` — write-back destinations → `$ARCH_ANSIBLE_CACHE/*`, passed in
   via `mkosi --environment=` (finalize scripts don't inherit the caller's env);
   guarded with `:?`.
 - `bin/build-image` — sources the helper, ensures the base, derives `output_dir`,
@@ -129,7 +129,7 @@ Files changed:
 - `bin/update-system`, `bin/vm run`, `bin/burn-image`, `bin/rerun-postinst`,
   `bin/_credstore_common.sh` — source the helper; output/cache/pacman-db/credstore
   paths derived from the base.
-- `mkosi.conf.d/10-sources-{device,host}.conf` — pacman-db-sync / yay-bin paths →
+- `mkosi/mkosi.conf.d/10-sources-{device,host}.conf` — pacman-db-sync / yay-bin paths →
   the base.
 
 **Validated (without a full build):** `mkosi summary` (host) resolves
@@ -138,7 +138,7 @@ Files changed:
 on device-only `/usr` + `/var` source paths fails on the host, as expected). All
 edited scripts pass `bash -n`.
 
-**Backups:** no change needed. `roles/backup/files/restic-backup.includes` is
+**Backups:** no change needed. `ansible/roles/backup/files/restic-backup.includes` is
 scoped to specific `$HOME` subdirs (Projects, Documents, …) and never touches
 `/var` or `~/.cache`, so relocating the cache to `/var/cache` doesn't affect
 backups (resolves plan Risk #6's concern for this case).
@@ -148,7 +148,7 @@ backups (resolves plan Risk #6's concern for this case).
    (the original ENOSPC) and completes the build.
 2. `/var/cache/arch-ansible` is created user-writable and the caches/output land
    there (not on `/home`); `df` shows `/home` no longer filling during a build.
-3. `mkosi.finalize` write-back succeeds to `/var/cache/arch-ansible/*` (confirms
+3. `mkosi/mkosi.finalize` write-back succeeds to `/var/cache/arch-ansible/*` (confirms
    `--environment=ARCH_ANSIBLE_CACHE` reaches finalize and its sandbox can write
    that path).
 4. A second build reuses the primed `/var` caches (fast/offline), then the
@@ -174,7 +174,7 @@ cleans its workspace on error, leaving the 6G cache.)
 **Why root is 22G — the actual misallocation.** `parted /dev/vda print` shows
 *four* 22.7G partitions: usr-a (p4), usr-b (p7), root (p9), home (p10). The two
 `usr` slots hold a fixed ~4.9G dm-verity erofs but each grabbed 22.7G, because
-`mkosi.extra/usr/lib/repart.d/{22-usr-a,32-usr-b,50-root,60-home}.conf` gave them
+`mkosi/mkosi.extra/usr/lib/repart.d/{22-usr-a,32-usr-b,50-root,60-home}.conf` gave them
 **no `SizeMaxBytes` and equal weight** → systemd-repart split the 90G disk four
 ways. ~45G is wasted on two verity slots that can never use space past their erofs,
 while root (which carries `/var/cache` build scratch) is starved at 22G.

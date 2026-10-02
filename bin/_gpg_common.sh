@@ -32,7 +32,7 @@ OLD_USB_MOUNT=""
 setup_gnupghome() {
   local gnupghome="$1"
   chmod 700 "$gnupghome"
-  cp roles/gpg/files/scdaemon.conf "$gnupghome/scdaemon.conf"
+  cp ansible/roles/gpg/files/scdaemon.conf "$gnupghome/scdaemon.conf"
 
   # Pinentry script that supplies the card admin PIN without prompting.
   # _write_card_admin_pin() must be called before any card operations.
@@ -233,7 +233,7 @@ load_homed_piv_keypair() {
 
   local user pass_key pass_cert
   user=$(python3 -c \
-    "import yaml;print(yaml.safe_load(open('group_vars/all/vars.yml'))['user']['name'])")
+    "import yaml;print(yaml.safe_load(open('ansible/group_vars/all/vars.yml'))['user']['name'])")
   pass_key="linux_users/$user/piv-key"
   pass_cert="linux_users/$user/piv-cert"
 

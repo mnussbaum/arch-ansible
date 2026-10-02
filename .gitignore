@@ -5,5 +5,5 @@
 .claude/
 /mkosi.key
 /mkosi.crt
-/mkosi.version
-/.ansible/
+/mkosi/mkosi.version
+.ansible/

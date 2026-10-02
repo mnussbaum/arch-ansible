@@ -49,7 +49,7 @@ Confirmed in-VM:
 | Root partition | **Single btrfs partition with `/var` as a subvolume.** Holds /etc + /var. | Particleos pattern: no separate /var partition. Root's TPM2 LUKS covers /var transparently. |
 | `/home` | **btrfs landing zone for systemd-homed LUKS images.** Not encrypted at partition level. | Per-user encryption keyed to YubiKey PIV + recovery secret. |
 | Image scope | **Single image with UKI profiles.** | Particleos pattern. The "rescue twin" becomes a UKI profile of the same /usr. |
-| Image structure | **mkosi.images/ collapsed to top-level.** Single mkosi.conf at the repo root; `ImageId=image`. | mkosi 26 disallows several settings (PassEnvironment, Distribution, etc.) in image-included configs. Going top-level only is cleaner anyway since there's only one image. |
+| Image structure | **mkosi.images/ collapsed to top-level.** Single mkosi/mkosi.conf at the repo root; `ImageId=image`. | mkosi 26 disallows several settings (PassEnvironment, Distribution, etc.) in image-included configs. Going top-level only is cleaner anyway since there's only one image. |
 | Factory reset | **`FactoryReset=yes` on root/swap/home + UKI profile cmdline `systemd.factory_reset=1`** | Particleos pattern. Declarative, no scripts. |
 | `/usr` conversion approach | **Build-time finalize hook**, not per-role rewrites | ~110 `/etc` files across 40+ roles — a single finalize step that walks `$BUILDROOT/etc`, moves contents to `$BUILDROOT/usr/share/factory/etc/`, and emits L-lines captures ~65% for free |
 | systemd-homed | **Keep as-is** — YubiKey PIV + recovery key (slot 9d) | Particleos ships only a hashed password; our richer enrollment is an addition. SecureBoot key originally went into slot 9c but is now removed from there. |
@@ -135,7 +135,7 @@ sysctl.d, udev rules, polkit rules moved from `/etc/...` to `/usr/lib/...`.
   firstboot/zlogin/colorscheme-changer embedded paths, mkosi `ExtraTrees=` /
   `postinst.chroot` chmod paths updated
 - `/etc/profile.d/arch-ansible-path.sh` extends PATH for short-name invocation
-- `postinst-playbook.yml` pre_task creates `/usr/lib/arch-ansible/bin`
+- `ansible/postinst-playbook.yml` pre_task creates `/usr/lib/arch-ansible/bin`
 
 ### A.4 — Partition layout + UKI profiles + SecureBoot via mkosi *(done)*
 
@@ -146,11 +146,11 @@ Done:
 - mkosi SecureBoot=yes replaces sbctl
 - Separate live image deleted; replaced by UKI profiles (`default`, `live`,
   `emergency`, `factory-reset`, `factory-reset-with-tpm-clear`) under
-  `mkosi.uki-profiles/`
+  `mkosi/mkosi.uki-profiles/`
 - Factory reset UKI profile with `systemd.factory_reset=1`
 - mkosi.images/ structure collapsed to top-level config
 
-Critical detail: `mkosi.repart/12-usr.conf` uses `CopyFiles=/usr:/` (the `:/`
+Critical detail: `mkosi/mkosi.repart/12-usr.conf` uses `CopyFiles=/usr:/` (the `:/`
 matters — without it, the partition contents end up at `/usr/usr/*` and
 nothing works at runtime).
 
@@ -214,7 +214,7 @@ instead). What each firstboot task became:
 - `packaging init-keyring` → **dropped.** Hermetic systems never run pacman at
   runtime; updates come via sysupdate of the whole /usr image.
 - `network_configuration` runtime (resolv.conf symlink) → **already shipped**
-  by `mkosi.extra/etc/resolv.conf` (symlink to the resolved stub). Runtime task
+  by `mkosi/mkosi.extra/etc/resolv.conf` (symlink to the resolved stub). Runtime task
   deleted.
 - `brightness` runtime (Dell kbd backlight timeout) → **udev rule**
   `99-dell-kbd-backlight-timeout.rules` shipped to `/usr/lib/udev/rules.d`,
@@ -232,7 +232,7 @@ instead). What each firstboot task became:
 - Deleted `firstboot.service`, the `firstboot` script, `firstboot-playbook.yml`,
   the two `runtime.yml` task files, and the sway qemu-firstboot bits.
 - `bin/ansible` default playbook changed from the deleted firstboot-playbook.yml
-  to postinst-playbook.yml.
+  to ansible/postinst-playbook.yml.
 
 **Known follow-up (not B):** runtime `./bin/ansible` (base16 theme regen via
 colorscheme-changer, manual maintenance) writes to `/etc/...` which now
@@ -309,24 +309,24 @@ switched to a direct `systemd-sysupdate` call so the same `PathRelativeTo=explic
 transfers serve both this path and the offline `--image` path — `updatectl` has no
 way to pass `--transfer-source`.)
 
-- **In-image** `mkosi.extra/usr/lib/sysupdate.d/*.transfer` — `[Source]
+- **In-image** `mkosi/mkosi.extra/usr/lib/sysupdate.d/*.transfer` — `[Source]
   Type=regular-file Path=/ PathRelativeTo=explicit`, so the source dir is whatever
   `--transfer-source=` names: the local staging dir on-device, or the build output
   for `--image`. ParticleOS's `obs-sysupdate` profile has the same *structure* but
   a `Type=url-file` OBS source; we use a local source because we self-build. (The
   OBS/url-file path with a signed remote is the only thing the in-image transfers
   would need a `SHA256SUMS`/keyring for — not applicable to a local source.)
-- **Host-side** `mkosi.sysupdate/*.transfer` — now **byte-identical** to the
+- **Host-side** `mkosi/mkosi.sysupdate/*.transfer` — now **byte-identical** to the
   in-image copy above (same explicit format), kept for offline `mkosi sysupdate`
   testing against a built disk image. Keep the two copies in sync.
 - Staging dir `/var/lib/arch-ansible/updates` is created by a tmpfiles.d entry;
   `bin/update-system` clears it and drops the new build's `*.usr-*.raw` + `.efi`
   there, then runs `systemd-sysupdate --transfer-source=<staging>`, so the source
   advertises exactly one (newer) version.
-- Versioning: `ImageVersion` is unset in `mkosi.conf`; mkosi reads the version
-  from the `mkosi.version` file. `build-image` writes it from the `mkosi.bump`
+- Versioning: `ImageVersion` is unset in `mkosi/mkosi.conf`; mkosi reads the version
+  from the `mkosi/mkosi.version` file. `build-image` writes it from the `mkosi/mkosi.bump`
   script (a `date +%Y%m%d%H%M%S` timestamp) before each build (the official path
-  is the `mkosi bump` verb / `-B`, which also runs `mkosi.bump`; we write the
+  is the `mkosi bump` verb / `-B`, which also runs `mkosi/mkosi.bump`; we write the
   file directly to keep build output clean). Monotonic timestamps mean every
   build is newer than the running slot, so sysupdate installs to the inactive
   slot; `InstancesMax=2` keeps the A/B pair and prunes older versions.
@@ -346,7 +346,7 @@ SecureBoot(user) + TPM2 all supported.
 ### Wired this session
 
 - **ESP now mounts:** added `esp=unprotected:xbootldr=unprotected+unused+absent:`
-  to the `mkosi.conf` `image_policy` (was dropped by the trailing `:=ignore`,
+  to the `mkosi/mkosi.conf` `image_policy` (was dropped by the trailing `:=ignore`,
   leaving `/efi` unmounted and `bootctl`/UKI-install dead).
 - **UKI naming:** `UnifiedKernelImageFormat=%i_%v_%a` (was the kernel-install
   default `image-<kver>-<usrhash>.efi`, matching nothing).
@@ -359,18 +359,18 @@ SecureBoot(user) + TPM2 all supported.
   reads `.transfer`). UKI target carries boot-count variants
   (`%M_@v_%a+@l-@d.efi`/…), `TriesLeft=3`, `InstancesMax=2`.
 - **In-image transfers + staging (the updatectl target):**
-  `mkosi.extra/usr/lib/sysupdate.d/{10,11,12,20}.transfer` with `[Source]
+  `mkosi/mkosi.extra/usr/lib/sysupdate.d/{10,11,12,20}.transfer` with `[Source]
   Type=regular-file Path=/var/lib/arch-ansible/updates`; tmpfiles.d creates the
   staging dir. These give `systemd-sysupdated`/`updatectl` a persistent local
   target. (`systemd-sysupdate`/`updatectl` ship with the base `systemd` package —
   the worker is `/usr/lib/systemd/systemd-sysupdate`, not in PATH; the earlier
   "command not found" was a PATH artifact, not a missing tool.)
-- **Versioning:** `mkosi.bump` (timestamp), `ImageVersion` removed,
-  `mkosi.version` gitignored, `build-image` writes `mkosi.version` from
-  `mkosi.bump` before building.
+- **Versioning:** `mkosi/mkosi.bump` (timestamp), `ImageVersion` removed,
+  `mkosi/mkosi.version` gitignored, `build-image` writes `mkosi/mkosi.version` from
+  `mkosi/mkosi.bump` before building.
 - **`bin/update-system`** (replaces `build-new-root-partition`): guards it's on a
   hermetic device (`/usr` == `/dev/mapper/usr`), runs `build-image` (keys from
-  pass, fresh `mkosi.version`), clears+stages the new `*.usr-*.raw`+`.efi` into the staging
+  pass, fresh `mkosi/mkosi.version`), clears+stages the new `*.usr-*.raw`+`.efi` into the staging
   dir, then `updatectl check` / `updatectl update` (+ `systemctl reboot` on
   `--reboot`).
 
@@ -405,7 +405,7 @@ VM (proves the device can self-build and sign with the pass/YubiKey key). The
 ordered VM test plan, priority `1 → 2 → 4` as the core. **All six scenarios
 verified in the VM (2026-06-15) across four update cycles
 (`113025 → 185655 → 232355 → 000547`). Scenario 4 caught a real bug — a
-`default @saved` line in `mkosi.extra/efi/loader/loader.conf` that defeated
+`default @saved` line in `mkosi/mkosi.extra/efi/loader/loader.conf` that defeated
 auto-rollback; now removed (see scenario 4).**
 
 1. ✅ **Apply (inspect before reboot).** `update-system` (no `--reboot`) →
@@ -429,7 +429,7 @@ auto-rollback; now removed (see scenario 4).**
    has no QMP socket for real power-cycles), then rebooted. The counter walked
    `+3-0 → +2-1 → +1-2 → +0-3` perfectly, but the zero-tries slot **kept
    booting** instead of falling back. Root cause: `default @saved` in
-   `mkosi.extra/efi/loader/loader.conf` pinned sd-boot to the last-booted entry,
+   `mkosi/mkosi.extra/efi/loader/loader.conf` pinned sd-boot to the last-booted entry,
    overriding boot-counting's bad-entry exclusion. Removing that line fixed it:
    sd-boot then auto-selected the newest entry with tries left, skipped the bad
    `000547` (`+0-4`), and booted the prior good `232355`. Note: after rollback
@@ -480,7 +480,7 @@ auto-rollback; now removed (see scenario 4).**
 7. **Image filter strings.** `systemd.image_filter=usr=image_*:usr-verity=image_*:usr-verity-sig=image_*`
    requires the partition labels to match. Confirmed labels of the form
    `image_<version>`, `image_<version>_verity`, `image_<version>_verity_sig`
-   (version is a `mkosi.bump` timestamp, e.g. `image_20260530003441`) in the
+   (version is a `mkosi/mkosi.bump` timestamp, e.g. `image_20260530003441`) in the
    dissect output.
 8. **pacman keyring runtime service.** When we remove firstboot Ansible (B),
    the pacman-key init has to move to a stock systemd service.

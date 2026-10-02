@@ -23,9 +23,9 @@
 # Both modes drive systemd-sysupdate directly (not updatectl/systemd-sysupdated):
 # the transfers use PathRelativeTo=explicit, so the source must be supplied with
 # --transfer-source, which updatectl can't pass. Both also use the host-side
-# definitions in mkosi.sysupdate/ (via --definitions), not the in-image
+# definitions in mkosi/mkosi.sysupdate/ (via --definitions), not the in-image
 # /usr/lib/sysupdate.d copy. Boot counting / auto-rollback is unaffected — it
-# lives in the UKI's TriesLeft= (see mkosi.sysupdate/20-uki), not in the update
+# lives in the UKI's TriesLeft= (see mkosi/mkosi.sysupdate/20-uki), not in the update
 # daemon. Both modes need a writable checkout of this repo and `pass`/GPG for the
 # build's signing keys.
 #
@@ -166,7 +166,7 @@ if [[ "$(findmnt -no SOURCE /usr 2>/dev/null || true)" == /dev/mapper/usr ]]; th
   source bin/_cache_common.sh
   arch_ansible_ensure_cache
 
-  # Seed the package cache baked into /usr (mkosi.conf ExtraTree) so the rebuild
+  # Seed the package cache baked into /usr (mkosi/mkosi.conf ExtraTree) so the rebuild
   # installs offline instead of re-downloading ~1G. cp -n leaves a primed cache
   # (reused scratch) alone.
   pkg_dst="$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg"
@@ -175,9 +175,9 @@ if [[ "$(findmnt -no SOURCE /usr 2>/dev/null || true)" == /dev/mapper/usr ]]; th
     cp -rn /usr/lib/arch-ansible/pkg-cache/. "$pkg_dst/" 2>/dev/null || true
   fi
 
-  # Same for the local AUR repo baked into /usr (mkosi.conf ExtraTree): seed it into
+  # Same for the local AUR repo baked into /usr (mkosi/mkosi.conf ExtraTree): seed it into
   # the build's aur-repo cache, which is what mkosi installs the AUR packages from
-  # (PackageDirectories= in mkosi.conf) — no rebuild or network needed for them. cp -n
+  # (PackageDirectories= in mkosi/mkosi.conf) — no rebuild or network needed for them. cp -n
   # leaves a primed cache (reused scratch) alone.
   aur_dst="$ARCH_ANSIBLE_CACHE/aur-repo"
   if [[ -d /usr/lib/arch-ansible/aur-repo ]]; then
@@ -203,12 +203,12 @@ fi
 bin/build-image "${build_args[@]}"
 
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
-# The version build-image just bumped to (./mkosi.bump > mkosi.version). We pass it
+# The version build-image just bumped to (mkosi/mkosi.bump > mkosi/mkosi.version). We pass it
 # explicitly to `systemd-sysupdate update` below so a no-op can't pass silently: if
 # sysupdate can't discover this exact version in the source it exits non-zero (vs.
 # bare `update`, which prints "No update needed" and exits 0), and errexit aborts
 # before any reboot.
-new_version=$(cat mkosi.version)
+new_version=$(cat mkosi/mkosi.version)
 
 if [[ -n "$image" ]]; then
   # Offline path: apply the freshly built artifacts to the target disk's inactive
@@ -276,7 +276,7 @@ if [[ -n "$image" ]]; then
         --definitions="$4" \
         --transfer-source="$5" \
         update "$6"
-    ' bash "$runtmp" "$esp_part" "$esp_mnt" "$PWD/mkosi.sysupdate" "$output_dir" "$new_version"
+    ' bash "$runtmp" "$esp_part" "$esp_mnt" "$PWD/mkosi/mkosi.sysupdate" "$output_dir" "$new_version"
 else
   staging=/var/lib/arch-ansible/updates
 

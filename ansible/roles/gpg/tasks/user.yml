@@ -76,4 +76,4 @@
   loop: "{{ gpg_auth_ssh_keygrips }}"
 
 # gpg-agent and dirmngr sockets are enabled in the image
-# (mkosi.extra/usr/lib/systemd/user/sockets.target.wants/).
+# (mkosi/mkosi.extra/usr/lib/systemd/user/sockets.target.wants/).

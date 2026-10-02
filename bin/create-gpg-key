@@ -14,7 +14,7 @@
 #
 # The key UID is read from the Ansible variable user.gpg_key_uid.
 # After completion:
-#   - roles/gpg/files/gpg-pubkey.asc is written (commit it)
+#   - ansible/roles/gpg/files/gpg-pubkey.asc is written (commit it)
 #   - <device> holds primary-key.asc, revocation-cert.asc, and oath-accounts.txt
 #
 # Run bin/enroll-yubikeys annually to extend subkey expiry.
@@ -28,9 +28,9 @@ source bin/_gpg_common.sh
 DEVICE="${1:?Usage: $0 <device> (<existing-key-device> | <totp-file>)}"
 SOURCE="${2:?Usage: $0 <device> (<existing-key-device> | <totp-file>)}"
 
-KEY_UID=$(yq -r '.user.gpg_key_uid' group_vars/all/vars.yml)
+KEY_UID=$(yq -r '.user.gpg_key_uid' ansible/group_vars/all/vars.yml)
 if [[ -z "$KEY_UID" || "$KEY_UID" == "null" ]]; then
-  echo "Error: could not read user.gpg_key_uid from group_vars/all/vars.yml" >&2
+  echo "Error: could not read user.gpg_key_uid from ansible/group_vars/all/vars.yml" >&2
   exit 1
 fi
 
@@ -74,14 +74,14 @@ echo "    Store $DEVICE's revocation-cert.asc separately from the primary key."
 echo "==> Backing up primary key to USB..."
 "${GPG_BATCH[@]}" --armor --export-secret-keys "$FINGERPRINT" > "$USB_MOUNT/primary-key.asc"
 
-echo "==> Exporting public key to roles/gpg/files/gpg-pubkey.asc..."
-gpg --armor --export "$FINGERPRINT" > roles/gpg/files/gpg-pubkey.asc
+echo "==> Exporting public key to ansible/roles/gpg/files/gpg-pubkey.asc..."
+gpg --armor --export "$FINGERPRINT" > ansible/roles/gpg/files/gpg-pubkey.asc
 
 echo "==> Migrating pass store to new key..."
 PASS_DIR="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
 if [[ -d "$PASS_DIR" ]]; then
   echo "    Found store at $PASS_DIR."
-  GNUPGHOME="$REAL_GNUPGHOME" gpg --import roles/gpg/files/gpg-pubkey.asc
+  GNUPGHOME="$REAL_GNUPGHOME" gpg --import ansible/roles/gpg/files/gpg-pubkey.asc
   echo "$FINGERPRINT:6:" | GNUPGHOME="$REAL_GNUPGHOME" gpg --import-ownertrust
   if [[ -b "$SOURCE" ]]; then
     echo "    Decrypting with old primary key from USB (no YubiKey required)..."
@@ -89,7 +89,7 @@ if [[ -d "$PASS_DIR" ]]; then
     chmod 700 "$MIGRATION_HOME"
     GNUPGHOME="$MIGRATION_HOME" gpg --batch --pinentry-mode loopback --passphrase "" \
       --import "$OLD_USB_MOUNT/primary-key.asc"
-    GNUPGHOME="$MIGRATION_HOME" gpg --batch --import roles/gpg/files/gpg-pubkey.asc
+    GNUPGHOME="$MIGRATION_HOME" gpg --batch --import ansible/roles/gpg/files/gpg-pubkey.asc
     OLD_FINGERPRINT=$(GNUPGHOME="$MIGRATION_HOME" gpg --list-secret-keys --with-colons \
       | awk -F: '/^fpr/{print $10; exit}')
     printf '%s:6:\n%s:6:\n' "$OLD_FINGERPRINT" "$FINGERPRINT" \
@@ -123,13 +123,13 @@ echo "==> Creating subkey backup for YubiKey programming..."
 
 program_all_yubikeys
 
-echo "==> Enrolling auth subkey keygrip in group_vars/all/gpg_auth_keygrips.yml..."
+echo "==> Enrolling auth subkey keygrip in ansible/group_vars/all/gpg_auth_keygrips.yml..."
 KEYGRIP=$(gpg --with-keygrip --list-keys "$FINGERPRINT" | \
   awk '/\[A\]/{found=1} found && /Keygrip/{print $NF; exit}')
 python3 - "$KEYGRIP" <<'PYEOF'
 import sys, yaml
 keygrip = sys.argv[1]
-filepath = 'group_vars/all/gpg_auth_keygrips.yml'
+filepath = 'ansible/group_vars/all/gpg_auth_keygrips.yml'
 with open(filepath) as f:
     data = yaml.safe_load(f) or {}
 keygrips = data.setdefault('gpg_auth_ssh_keygrips', [])
@@ -145,10 +145,10 @@ echo "Next steps:"
 echo "  1. Add the SSH public key to GitHub/GitLab:"
 echo "       gpg --export-ssh-key $FINGERPRINT"
 echo "  2. Commit the public key and keygrips:"
-echo "       git add roles/gpg/files/gpg-pubkey.asc group_vars/all/gpg_auth_keygrips.yml"
+echo "       git add ansible/roles/gpg/files/gpg-pubkey.asc ansible/group_vars/all/gpg_auth_keygrips.yml"
 echo "       git commit -m 'Add GPG public key'"
 echo "  3. Android (Password Store + OpenKeychain + NFC YubiKey):"
-echo "       a. Transfer roles/gpg/files/gpg-pubkey.asc to phone and import in OpenKeychain"
+echo "       a. Transfer ansible/roles/gpg/files/gpg-pubkey.asc to phone and import in OpenKeychain"
 echo "       b. Tap YubiKey to phone — OpenKeychain links the card to the imported key"
 echo "       c. In Password Store, sync the repo — it reads .gpg-id and picks up the new key"
 echo "       d. For SSH git auth: enable OpenKeychain SSH agent in Password Store settings;"

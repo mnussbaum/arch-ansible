@@ -45,7 +45,7 @@ done
 
 # Map --caching to mkosi's package-manager network policy for the package-install
 # phase. The same mode rides into the postinst chroot via CACHING (below) so its
-# pacman follows suit — see mkosi.postinst.chroot and the pacman.conf template —
+# pacman follows suit — see mkosi/mkosi.postinst.chroot and the pacman.conf template —
 # and bin/sync-aur gets it for the AUR builds.
 #   force     cache-only, never touch the network (CacheOnly=always).
 #   off       always resync metadata and download; also bust the incremental
@@ -99,7 +99,7 @@ output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 # across builds. This keeps the build fast/offline with no system caches to draw
 # on (e.g. an image-based device). cargo/sccache back their build steps.
 # pacman-pkg/cache/pacman/pkg is mkosi's own PackageCacheDirectory layout; the
-# .chroot postinst reads it as a BuildSource (mkosi.conf), which fails if the
+# .chroot postinst reads it as a BuildSource (mkosi/mkosi.conf), which fails if the
 # path is absent on a cold cache, so create the nested dir up front. Paths track
 # ${ARCH_ANSIBLE_CACHE} (bin/_cache_common.sh).
 mkdir -p "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg" "$output_dir" \
@@ -110,14 +110,14 @@ mkdir -p "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg" "$output_dir" \
 # Prime an empty nvim plugin/parser cache from the invoking user's personal nvim,
 # so the very first build (or one after a cache wipe) skips re-fetching ~130M of
 # plugins and recompiling tree-sitter parsers. Only when the cache is empty —
-# once it self-primes via mkosi.finalize writebacks we leave it alone, so the
+# once it self-primes via mkosi/mkosi.finalize writebacks we leave it alone, so the
 # image's plugin set tracks plugins.lua rather than drifting toward the host's.
 if [[ -z "$(ls -A "$ARCH_ANSIBLE_CACHE/nvim/site" 2>/dev/null)" \
       && -d "$HOME/.local/share/nvim/site" ]]; then
   rsync -a "$HOME/.local/share/nvim/site/" "$ARCH_ANSIBLE_CACHE/nvim/site/"
 fi
 
-# mkosi installs the AUR packages listed in mkosi.conf.d/90-packages.conf from
+# mkosi installs the AUR packages listed in mkosi/mkosi.conf.d/90-packages.conf from
 # the local aur-repo, so they must exist, at their current AUR version, before
 # its package phase runs. One AUR RPC request when they are all current (none
 # under --caching force); only a new AUR release, a newly listed package or a
@@ -127,11 +127,12 @@ fi
 bin/sync-aur --caching "$caching"
 
 # Fresh, monotonic image version so each build supersedes the running slot for
-# systemd-sysupdate. mkosi reads mkosi.version for ImageVersion (unset in
-# mkosi.conf); partitions and the UKI are labeled image_<version>_<arch>.
-./mkosi.bump > mkosi.version
+# systemd-sysupdate. mkosi reads mkosi/mkosi.version for ImageVersion (unset in
+# mkosi/mkosi.conf); partitions and the UKI are labeled image_<version>_<arch>.
+mkosi/mkosi.bump > mkosi/mkosi.version
 
 mkosi \
+  --directory=mkosi \
   --output-directory="$output_dir" \
   --tools-tree=/ \
   --secure-boot-certificate="$SECUREBOOT_CERT" \
@@ -143,7 +144,7 @@ mkosi \
   --profile=build \
   --force \
   --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
-  `# TRANSITIONAL: selects mkosi.conf.d/10-sources-*.conf; remove after cutover` \
+  `# TRANSITIONAL: selects mkosi/mkosi.conf.d/10-sources-*.conf; remove after cutover` \
   "${caching_args[@]}" \
   --environment="CACHING=$caching" \
   ${skip_postinst:+"$skip_postinst"} \
@@ -152,10 +153,10 @@ mkosi \
   build
 
 # Fold the postinst-generated cargo/sccache/nvim caches into the reusable caches
-# so the next build's SkeletonTrees/BuildSources seed them. mkosi.finalize can't
+# so the next build's SkeletonTrees/BuildSources seed them. mkosi/mkosi.finalize can't
 # write the host ~/.cache from its sandbox, so it stages the new files into the
 # output dir; here (on the host, post-mkosi) we merge them and clear the staging.
-# (pacman is handled inside mkosi.finalize via the package-cache mount.)
+# (pacman is handled inside mkosi/mkosi.finalize via the package-cache mount.)
 cwb="$output_dir/cache-writeback"
 if [[ -d "$cwb" ]]; then
   [[ -d "$cwb/nvim-site" ]]      && rsync -a "$cwb/nvim-site/"      "$ARCH_ANSIBLE_CACHE/nvim/site/"
@@ -171,13 +172,13 @@ fi
 # is all that fits. Old versions are not reproducible (their Arch package sets have
 # moved on), hence a conservative default of 3 and a --keep all escape hatch.
 #
-# Versions are the zero-padded UTC timestamps ./mkosi.bump emits, so a reverse
+# Versions are the zero-padded UTC timestamps mkosi/mkosi.bump emits, so a reverse
 # sort is newest-first. Each version is deleted by its own explicit -name pattern:
 # never an `rm` against a glob built from a variable. An empty variable in exactly
 # that shape once expanded to `rm -f -- *` and took out every build in this
 # directory, including the ones it was told to keep.
 if [[ "$keep" != all ]]; then
-  current=$(cat mkosi.version)
+  current=$(cat mkosi/mkosi.version)
   kept=0
   while read -r version; do
     # Ignores the unversioned leftovers mkosi drops alongside (initrd*, tpm/).

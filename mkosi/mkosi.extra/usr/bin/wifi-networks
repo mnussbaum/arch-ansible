@@ -5,7 +5,7 @@ Each pass entry under wifi/ is one network's iwd profile, verbatim (see
 iwd.network(5)), named <SSID>.<psk|8021x|open> like iwd's own profile files.
 The first-login playbook runs this on the machine itself and stores each
 profile as an encrypted systemd credential
-(roles/network_configuration/tasks/wifi-credentials.yml); nothing is baked into
+(ansible/roles/network_configuration/tasks/wifi-credentials.yml); nothing is baked into
 the image. Run it directly to inspect what would be stored.
 
 Output: [{"file": <iwd profile file name>, "profile": <entry body>}, ...]

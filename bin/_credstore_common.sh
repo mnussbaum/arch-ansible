@@ -14,7 +14,7 @@
 # supported pattern for token-backed homed users.
 #
 # WHERE THIS ENDS UP, and it is not what an earlier version of this comment
-# claimed: mkosi.conf ships the credstore to /usr/lib/credstore, and /usr is the
+# claimed: mkosi/mkosi.conf ships the credstore to /usr/lib/credstore, and /usr is the
 # plain (signed, dm-verity, but UNENCRYPTED) erofs partition — not the LUKS root.
 # Mode 0600 protects it only on a running system; anyone holding the image or a
 # burned USB stick can read this secret straight out of the erofs. It also can't
@@ -23,14 +23,14 @@
 # It is built outside the repo (under ${ARCH_ANSIBLE_CACHE}, see
 # bin/_cache_common.sh): the repo is ExtraTrees'd to /usr/share/arch-ansible and
 # remounted in the mkosi sandbox, so a secret written inside the repo would leak
-# into the image. mkosi.conf references this same path.
+# into the image. mkosi/mkosi.conf references this same path.
 : "${PASSWORD_STORE_DIR:=$HOME/.local/share/password-store}"
 export PASSWORD_STORE_DIR
 
 credstore_user=$(python3 -c \
-  "import yaml;print(yaml.safe_load(open('group_vars/all/vars.yml'))['user']['name'])")
+  "import yaml;print(yaml.safe_load(open('ansible/group_vars/all/vars.yml'))['user']['name'])")
 credstore_shell=$(python3 -c \
-  "import yaml;print(yaml.safe_load(open('group_vars/all/vars.yml'))['user']['shell'])")
+  "import yaml;print(yaml.safe_load(open('ansible/group_vars/all/vars.yml'))['user']['shell'])")
 credstore_recovery="linux_users/$credstore_user/recovery-key"
 
 # Generate the recovery secret once and keep it in pass, so it is stable across
@@ -68,7 +68,7 @@ record = {
     # Keep the LUKS image sparse and skip resize-on-login: on our small /home
     # slice (repart 60-home.conf) the full-allocation grow fails with "Not enough
     # disk space for home" and locks the user out. disk-size=max is set post-login
-    # in roles/user first-login.yml.
+    # in ansible/roles/user first-login.yml.
     "luksDiscard": True,
     "autoResizeMode": "off",
 }

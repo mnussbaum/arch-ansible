@@ -5,7 +5,7 @@
 # credstore).
 #
 # Keyed off ARCH_ANSIBLE_TARGET, the same transitional switch that selects
-# mkosi.conf.d/10-sources-{host,device}.conf:
+# mkosi/mkosi.conf.d/10-sources-{host,device}.conf:
 #
 #   host   (transitional builder): ~/.cache — the interactive user's cache,
 #          optionally a dedicated 60G btrfs volume (bin/setup-mkosi-cache-volume).
@@ -14,12 +14,12 @@
 #          build's transient footprint — e.g. systemd-repart's ~5G /usr copy to
 #          size the erofs slot — overflows it) and makes the whole local-rebuild
 #          pipeline root-resident, alongside the update staging dir
-#          /var/lib/arch-ansible/updates. See plan-usr-hermetic.md "Target
+#          /var/lib/arch-ansible/updates. See docs/plan-usr-hermetic.md "Target
 #          partition layout" + Stage D.
 #
-# mkosi expands ${ARCH_ANSIBLE_CACHE} in mkosi.conf from the process environment,
+# mkosi expands ${ARCH_ANSIBLE_CACHE} in mkosi/mkosi.conf from the process environment,
 # so every script that invokes mkosi sources this and the export carries through.
-# Finalize scripts don't inherit the process env, so build paths that mkosi.finalize
+# Finalize scripts don't inherit the process env, so build paths that mkosi/mkosi.finalize
 # writes back to are passed in explicitly via `mkosi --environment=`.
 #
 # Override by exporting ARCH_ANSIBLE_CACHE before invoking.
@@ -57,7 +57,7 @@ arch_ansible_ensure_cache() {
 
 # Rebuild ARCH_ANSIBLE_SRCTREE from the current git-tracked files (working-tree
 # content, ignored/untracked files excluded), then bolt on a shallow .git so the
-# shipped /usr/share/arch-ansible is a cloneable repo. roles/user/tasks/
+# shipped /usr/share/arch-ansible is a cloneable repo. ansible/roles/user/tasks/
 # first-login.yml clones it offline into the VM home and repoints origin at
 # GitHub. Only committed objects land in .git — gitignored secrets (secrets/,
 # the signing key, .qemu-host-shared/) are never committed, so they stay out of

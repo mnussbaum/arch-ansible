@@ -14,7 +14,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# Card-agnostic, like the homed enrollment in roles/user/tasks/first-login.yml:
+# Card-agnostic, like the homed enrollment in ansible/roles/user/tasks/first-login.yml:
 # no serial or token label, so the slot matches whichever YubiKey is plugged in.
 uri='pkcs11:model=PKCS%2315%20emulated;manufacturer=piv_II;id=%03'
 

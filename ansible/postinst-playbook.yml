@@ -18,7 +18,7 @@
         # re-render omits it, so the shipped image keeps a network pacman.conf.
         pacman_caching: "{{ build_caching | default('available') }}"
         # Reuse repo packages mkosi already downloaded: its package cache is
-        # mounted at /work/src/pacman-cache (BuildSources in mkosi.conf). Listed
+        # mounted at /work/src/pacman-cache (BuildSources in mkosi/mkosi.conf). Listed
         # after the in-image cache so new downloads still go to the latter.
         # Build-only like the vars above — dropped by the post_tasks re-render.
         pacman_cache_dirs: "/var/cache/pacman/pkg /work/src/pacman-cache"
@@ -35,7 +35,7 @@
         disable_sandbox: false
       tags: [packaging, min-user-session]
     # AUR packages are built and kept current by bin/sync-aur before mkosi runs,
-    # and installed by mkosi itself (PackageDirectories= in mkosi.conf), so no
+    # and installed by mkosi itself (PackageDirectories= in mkosi/mkosi.conf), so no
     # AUR tooling runs in here.
     - name: Apply user-unit presets (mkosi only presets system units)
       command: systemctl --global preset-all

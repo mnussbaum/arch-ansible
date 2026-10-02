@@ -13,7 +13,7 @@ from each. First-boot repart then couldn't resolve `/usr`'s disk and silently
 skipped, so root was never created. That's also why no YubiKey was enrolled:
 first boot never got that far. The TPM was never at fault.
 
-Fix: `mkosi.conf` points `systemd.verity_usr_data=`/`systemd.verity_usr_hash=`
+Fix: `mkosi/mkosi.conf` points `systemd.verity_usr_data=`/`systemd.verity_usr_hash=`
 at `/dev/disk/by-designator/`, which udev creates only for the disk whose ESP
 the firmware booted. VM-validated with the medium attached as a second disk.
 The stick can now stay plugged in. The YubiKey enrollment no longer skips
@@ -42,7 +42,7 @@ Follow-ups:
 - **LUKS second factor = the shared PIV key (PKCS#11), not per-key FIDO2.**
   Every YubiKey from `bin/enroll-yubikeys` carries it, so any of them unlocks
   root in the initrd (PIV PIN + touch). Pieces: `luks-enroll-pkcs11.service`
-  (first boot), initrd pcscd + ccid + opensc (`mkosi.initrd.conf/`), an
+  (first boot), initrd pcscd + ccid + opensc (`mkosi/mkosi.initrd.conf/`), an
   initrd crypttab adding `pkcs11-uri=auto` for root, and a retry drop-in so a
   missed touch asks again. Swap stays TPM-only at boot (pcscd can't run that
   early after switch-root). Validated in a VM with the YubiKey passed through
@@ -56,7 +56,7 @@ Follow-ups:
 - Wifi PSKs are credentials encrypted to the machine (stored at first login
   from pass, decrypted into a tmpfs for iwd); gpg sockets are enabled in the
   image; `install-system` wipes the target; `burn-image` wipes the stick.
-- All installed commands live in `/usr/bin` (shipped from `mkosi.extra/usr/bin/`).
+- All installed commands live in `/usr/bin` (shipped from `mkosi/mkosi.extra/usr/bin/`).
 
 **Debugging the initrd in a VM:** there's no journal on serial. Pass
 `journal.forward_to_socket=vsock:2:<port>` as a credential with a
@@ -133,7 +133,7 @@ rate the 16 GiB slot is maybe a year out, and changing it needs a reinstall.
   unconditionally (**its `pgpfetch` setting is parsed but never read**, so
   turning it off does nothing; tried and reverted). Fix: `"gpgflags":
   "--keyserver hkp://keyserver.ubuntu.com:80"` in the yay config written by
-  `roles/packaging/tasks/setup-aur.yml`. Safe because makepkg pins the full
+  `ansible/roles/packaging/tasks/setup-aur.yml`. Safe because makepkg pins the full
   fingerprint. Worth revisiting (and maybe reverting to the default keyserver)
   once gnupg/gnutls fix hkps.
 * **Build-time analysis** (answering "would a sysext speed this up?" — no; a
@@ -193,7 +193,7 @@ Both exit non-zero if the run misses its checkpoint, so they script. Notes:
   The tag is deliberately NOT mkosi's `/run/host/shared`, so `mnt-shared.mount`
   stays inert and the two mechanisms don't interfere.
 
-### Fixed: `mkosi.extra/usr/lib/systemd/system/mnt-shared.mount`
+### Fixed: `mkosi/mkosi.extra/usr/lib/systemd/system/mnt-shared.mount`
 
 Added `ConditionCredential=fstab.extra`. `ConditionVirtualization=vm` alone is
 true in *every* VM, but the virtiofs tag only exists when the VM was launched by
@@ -253,7 +253,7 @@ Measured, from `sfdisk -J` on the target and `stat` on the artifacts:
 
 It overshoots **usr-B by 67.9 MiB and usr-A by 500 KiB** — it fits in *neither*.
 
-Cause (`mkosi.extra/usr/lib/repart.d/{22-usr-a,32-usr-b}.conf`, both
+Cause (`mkosi/mkosi.extra/usr/lib/repart.d/{22-usr-a,32-usr-b}.conf`, both
 `SizeMinBytes=8G` / `SizeMaxBytes=10G`):
 
 * usr-A has `CopyBlocks=auto`, so repart sizes it to the source `/usr` **exactly** —
@@ -301,7 +301,7 @@ at any disk size.
 | `bin/vm` | target default 60G | 100G (fixed parts total ~49G) |
 
 `CopyBlocks=auto` stays on usr-a for *content*; it just no longer decides size.
-`mkosi.repart/` is untouched — the medium is sized by mkosi with `Minimize=yes`,
+`mkosi/mkosi.repart/` is untouched — the medium is sized by mkosi with `Minimize=yes`,
 so it has no free space to over-claim.
 
 ### Validated end to end (image `20260819015333`)
@@ -374,8 +374,8 @@ variable — and refusing to prune the version it just built.
 ## What's left
 
 1. ~~Validate the `mnt-shared.mount` fix from a rebuilt image.~~ **DONE** — see
-   Q2 above. (That rebuild also pulled in the uncommitted `mkosi.finalize` /
-   `mkosi.postinst.chroot` cargo/sccache work and ~3 weeks of Arch updates; the
+   Q2 above. (That rebuild also pulled in the uncommitted `mkosi/mkosi.finalize` /
+   `mkosi/mkosi.postinst.chroot` cargo/sccache work and ~3 weeks of Arch updates; the
    build succeeded and the resulting image installs and boots clean.)
 2. ~~Q3: fix the slot sizing, then re-run the A/B update.~~ **DONE** — see the
    A/B slot sizing section above.
@@ -430,7 +430,7 @@ Timed out waiting for device /dev/disk/by-designator/root.  →  Emergency Mode
 Can't fit requested partitions into available free space (71.9G), refusing.
 ```
 
-Cause: `6a36902` gave `mkosi.extra/usr/lib/repart.d/21-usr-a-verity.conf` a
+Cause: `6a36902` gave `mkosi/mkosi.extra/usr/lib/repart.d/21-usr-a-verity.conf` a
 `SizeMinBytes=512M` (it previously had no size constraints at all). Those baked
 definitions are what the medium runs against ITS OWN layout on first boot, and
 the medium's verity partition was ~86M, packed between `verity_sig` and `usr`
@@ -443,29 +443,29 @@ the threshold is exactly the existing size — 86M floor plans fine, 87M and abo
 fail. `usr-a`'s 16G floor is harmless because it is the LAST partition and all
 the free space follows it.
 
-Fix: `mkosi.repart/11-usr-verity.conf` now carries `SizeMinBytes=512M` so the
+Fix: `mkosi/mkosi.repart/11-usr-verity.conf` now carries `SizeMinBytes=512M` so the
 medium ships the same verity slot size the installed system demands
 (`Minimize=yes` stays; the floor wins). Medium grew 12.7G → 13.3G. Verified on
 image `20260922004002`: repart is `active (exited)`, `is-system-running` =
 `running`, zero failed units, and the layout comes up esp 2G / verity 512M /
 usr 16G / empty B slots / swap 4G / root 41G.
 
-**The rule this leaves behind:** any floor added to `mkosi.extra/usr/lib/repart.d/`
-must be matched in `mkosi.repart/` (or be satisfiable by growing into free space
+**The rule this leaves behind:** any floor added to `mkosi/mkosi.extra/usr/lib/repart.d/`
+must be matched in `mkosi/mkosi.repart/` (or be satisfiable by growing into free space
 at the END of the medium), or the medium's own default-profile boot breaks. Only
 that path is affected — installed targets create partitions fresh, and the Live
 and Installer profiles mask repart, which is why every test since `6a36902`
 passed.
 
 Debugging shortcut worth keeping: `systemd-repart --dry-run=yes
---definitions=mkosi.extra/usr/lib/repart.d IMAGE.raw` reproduces the failure on
+--definitions=mkosi/mkosi.extra/usr/lib/repart.d IMAGE.raw` reproduces the failure on
 the host in seconds. On a medium copy, `truncate -s 90G` then `sgdisk -e` first,
 so the GPT describes the grown disk the way the guest sees it.
 
 ## First login: YubiKey PIV enrollment needs a TOUCH (2026-09-22)
 
-`user-first-login-playbook.yml` failed on a fresh medium boot at
-`roles/user/tasks/first-login.yml` → **Enroll YubiKey PIV**:
+`ansible/user-first-login-playbook.yml` failed on a fresh medium boot at
+`ansible/roles/user/tasks/first-login.yml` → **Enroll YubiKey PIV**:
 
 ```
 sudo -n homectl update mnussbaum --pkcs11-token-uri=pkcs11:…;id=%03
@@ -652,7 +652,7 @@ mask those units plus `systemd-tpm2-setup.service` on their cmdline. Do NOT
 * **pcrlock**: ADOPTED for PCR 7 — see the next section.
 * **`systemd-sysupdate cleanup`**: not adopted. No transfer pattern has changed,
   so it has nothing to collect, and `bin/update-system` drives sysupdate with
-  `--definitions=mkosi.sysupdate` — a cleanup run against a different
+  `--definitions=mkosi/mkosi.sysupdate` — a cleanup run against a different
   definition set could delete UKIs. Revisit if a `MatchPattern=` ever changes.
 * **The trap, still**: do not enroll with a policyref
   (`--tpm2-public-key-policyref=`) without deciding — that is the stronger
@@ -674,11 +674,11 @@ the initrd — no pcrlock policy can exist yet), then re-bound after first boot 
 * `81-pcrlock.preset` enables upstream's `systemd-pcrlock-secureboot-policy`,
   `-secureboot-authority`, `-make-policy` and our `pcrlock-enroll-luks`.
 * `systemd-pcrlock-make-policy.service.d/10-arch-ansible.conf` runs
-  `mkosi.extra/usr/bin/pcrlock-make-policy --boot`: `--pcr=7 --strict=yes`, our own recovery
+  `mkosi/mkosi.extra/usr/bin/pcrlock-make-policy --boot`: `--pcr=7 --strict=yes`, our own recovery
   PIN (`--recovery-pin=query`, `$PIN` from
   `/var/lib/arch-ansible/pcrlock-recovery-pin`, 0600 on the encrypted root),
   `--entry-token=machine-id`, orders after `boot.automount`.
-* `mkosi.extra/usr/bin/pcrlock-enroll-luks` re-enrolls with `--tpm2-pcrlock=
+* `mkosi/mkosi.extra/usr/bin/pcrlock-enroll-luks` re-enrolls with `--tpm2-pcrlock=
   --tpm2-public-key-pcrs=11 --tpm2-pcrs= --wipe-slot=tpm2` (new slot first,
   then wipe); refuses unless `pcrlock.json` covers PCR 7.
 * `bin/pcrlock-secureboot-change CMD…` for planned Secure Boot changes.
@@ -700,7 +700,7 @@ Validated on image `20260924162222` (VM, dbx appends signed with the KEK via
    Swap failed this one boot (no recovery slot) → `degraded`.
 5. Silent TPM unlock of root and swap, `running`.
 
-Traps found on the way, all fixed and explained in `mkosi.extra/usr/bin/pcrlock-make-policy` /
+Traps found on the way, all fixed and explained in `mkosi/mkosi.extra/usr/bin/pcrlock-make-policy` /
 `bin/pcrlock-secureboot-change`:
 
 * pcrlock's DEFAULT recovery PIN is random and hidden, and its sealed copy is
@@ -743,12 +743,12 @@ Open:
 
 ## TODO: the offline (`--caching force`) AUR path was removed (2026-09-23)
 
-Packages moved out of Ansible and into mkosi (`mkosi.conf.d/90-packages.conf`
+Packages moved out of Ansible and into mkosi (`mkosi/mkosi.conf.d/90-packages.conf`
 plus `PackageDirectories=` pointing at the local aur-repo), so nothing inside
 the image installs AUR packages any more. The in-image machinery that used to
 make that work offline was therefore dead, and has been deleted:
 
-* the `[aur-local]` repo section in `roles/packaging/templates/pacman.conf.j2`
+* the `[aur-local]` repo section in `ansible/roles/packaging/templates/pacman.conf.j2`
   and its `pacman_aur_local_repo` gate;
 * the pre_tasks that seeded `/var/lib/pacman/sync/aur-local.db` by file copy so
   pacman saw AUR targets without `-Sy` (which would hit the network);
@@ -768,7 +768,7 @@ directory, the pieces above are the shape of what to put back, and
 loudly instead of cloning from the AUR.
 
 Also gone with it, and worth knowing if the offline path is revisited: the
-vendored `mnussbaum.ansible_yay` collection, `roles/packaging/tasks/use-yay.yml`
+vendored `mnussbaum.ansible_yay` collection, `ansible/roles/packaging/tasks/use-yay.yml`
 and the `pkg_mgr` fact, all of which existed so Ansible's `package:` action
 dispatched through yay. There are no `package:` tasks left anywhere.
 
@@ -791,7 +791,7 @@ dispatched through yay. There are no `package:` tasks left anywhere.
    just goes silent. `bin/vm`'s screendump is how you see it.
 5. **First boot asks TWO questions on tty0**, not one: `systemd-firstboot`
    `--prompt-hostname` *and* `--prompt-root-password` (see
-   `mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf`). Both need
+   `mkosi/mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf`). Both need
    credentials in an unattended boot; `vm run DISK` supplies both.
 6. **Host kernel/module mismatch breaks mkosi.** After a host `pacman -Syu` that
    upgrades `linux`, the running kernel's modules are gone until you reboot.
@@ -822,7 +822,7 @@ dispatched through yay. There are no `package:` tasks left anywhere.
 12. **Anything new under `bin/` must be `git add`ed before it ships.**
     `arch_ansible_stage_srctree()` copies `git ls-files`, so an untracked script
     never reaches `/usr/share/arch-ansible` — while a new unit under
-    `mkosi.extra/` DOES ship, straight from the working tree. That asymmetry
+    `mkosi/mkosi.extra/` DOES ship, straight from the working tree. That asymmetry
     once produced an image whose service was installed and enabled but skipped
     itself on `ConditionPathExists`.
 13. **`cryptsetup open --test-passphrase --key-file=X` LIES on the volume's own
@@ -895,12 +895,12 @@ files.
 
 ## Key files
 
-- `mkosi.extra/usr/bin/install-system` — the installer (`--guided` menu + one-shot `--yes DISK`).
+- `mkosi/mkosi.extra/usr/bin/install-system` — the installer (`--guided` menu + one-shot `--yes DISK`).
 - `bin/vm` — the one VM command: `live`, `install`, `boot` (+ `--gui`).
-- `mkosi.uki-profiles/25-install.conf` — Installer UKI profile cmdline.
-- `mkosi.extra/usr/lib/systemd/system/arch-install.service` — auto-runs the guided
+- `mkosi/mkosi.uki-profiles/25-install.conf` — Installer UKI profile cmdline.
+- `mkosi/mkosi.extra/usr/lib/systemd/system/arch-install.service` — auto-runs the guided
   installer on tty1, gated on `arch.install`.
-- `mkosi.extra/usr/lib/repart.d/*` — baked device layout; `10-esp.conf` has
+- `mkosi/mkosi.extra/usr/lib/repart.d/*` — baked device layout; `10-esp.conf` has
   `CopyFiles=/boot:/`; root/swap `Encrypt=tpm2`; root/home/swap created at the
   target's FIRST BOOT, not at install.
 - `bin/build-image` — builds the image; `bin/vm` — the single VM entry point

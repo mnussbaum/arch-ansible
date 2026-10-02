@@ -17,7 +17,7 @@ Together](https://0pointer.net/blog/fitting-everything-together.html), the same
 signed image is the installer, the live/recovery environment, and the installed
 system. It ships only the immutable verity `/usr` plus an ESP; the encrypted
 root/home are provisioned on first boot by `systemd-repart`. Which role it plays
-is just a boot-menu choice (a UKI profile under `mkosi.uki-profiles/`), not a
+is just a boot-menu choice (a UKI profile under `mkosi/mkosi.uki-profiles/`), not a
 separate build:
 
 - **Installed system** — written to a machine's internal disk; the default
@@ -28,7 +28,7 @@ separate build:
 - **Installer / live USB** — the same image written to a USB drive, used to
   bootstrap a new machine.
 - **Recovery** — booted from that USB into the **Live System (Recovery)** profile
-  (`mkosi.uki-profiles/15-live.conf`): a volatile root that masks the first-boot
+  (`mkosi/mkosi.uki-profiles/15-live.conf`): a volatile root that masks the first-boot
   self-install, so it can mount and repair an unbootable machine's encrypted disk
   without provisioning itself.
 
@@ -66,7 +66,7 @@ the repo so the `ExtraTrees` sweep can't carry it into the plaintext `/usr`.
 mkosi (`SecureBoot=yes`) installs systemd-boot and writes the `PK`/`KEK`/`db`
 auto-enroll files to the ESP. A single key is enrolled at all three levels — no
 separate platform or exchange keys. On first boot, `secure-boot-enroll force` in
-`mkosi.extra/efi/loader/loader.conf` causes systemd-boot to pull these into
+`mkosi/mkosi.extra/efi/loader/loader.conf` causes systemd-boot to pull these into
 firmware automatically without a UEFI Setup Mode visit. Microsoft certificates
 are **not** enrolled; the hardware used here does not require them for option-ROM
 validation.
@@ -82,7 +82,7 @@ All bootable content is packaged as UKIs: EFI binaries embedding the kernel,
 initrd, and kernel command line in a single signed artifact. There is no separate
 kernel or initrd on the ESP. This means the kernel command line — including the
 verity root hash — cannot be tampered with, and signatures cover the whole boot
-artifact. A single UKI carries multiple **profiles** (`mkosi.uki-profiles/`):
+artifact. A single UKI carries multiple **profiles** (`mkosi/mkosi.uki-profiles/`):
 `default`, `live` (recovery), `emergency`, `factory-reset`, and
 `factory-reset-with-tpm-clear`, each a boot-menu entry with its own cmdline.
 
@@ -93,7 +93,7 @@ dm-verity. The verity root hash is embedded in the signed UKI cmdline
 (`root=dissect`, `mount.usr=dissect`), so the kernel only mounts a `/usr` whose
 contents match the signed hash. `/usr` is laid out as A/B slots for atomic
 updates (see [Updates](#updates)). `/etc` is seeded from
-`/usr/share/factory/etc` (via `mkosi.finalize.factory-seed`) so it tracks `/usr`
+`/usr/share/factory/etc` (via `mkosi/mkosi.finalize.factory-seed`) so it tracks `/usr`
 across updates instead of freezing at first boot; per-host state (machine-id, ssh
 host keys, shadow) is written into the writable `/etc` on first boot.
 
@@ -101,7 +101,7 @@ host keys, shadow) is written into the writable `/etc` on first boot.
 
 The root and swap partitions are LUKS2, created and TPM2-enrolled by
 `systemd-repart` when it provisions them on first boot
-(`mkosi.extra/usr/lib/repart.d/{40-swap,50-root}.conf`, `Encrypt=tpm2`). The
+(`mkosi/mkosi.extra/usr/lib/repart.d/{40-swap,50-root}.conf`, `Encrypt=tpm2`). The
 keyslot is bound to **PCR 7 and a signed PCR 11 policy**: `TPM2PCRs=7` pins the
 Secure Boot state, and repart adds the signed policy by default from mkosi's
 `SignExpectedPcr=` key. A normal boot unlocks with no interaction.
@@ -138,7 +138,7 @@ journal (`journalctl -t luks-enroll-pkcs11`). Enroll later from any normal boot:
 sudo /usr/bin/luks-enroll-pkcs11
 ```
 
-The initrd carries pcscd and the PIV PKCS#11 module (`mkosi.initrd.conf/`), so
+The initrd carries pcscd and the PIV PKCS#11 module (`mkosi/mkosi.initrd.conf/`), so
 a machine whose TPM path broke still boots, asking for the YubiKey at the LUKS
 prompt. systemd 262's interactive `systemd-cryptenroll-firstboot.service` is
 masked on the kernel command line in favour of this. In a VM the unit does
@@ -154,10 +154,10 @@ rewritten without touching the keyslot:
 
 * `systemd-pcrlock-secureboot-policy` / `-secureboot-authority` describe the
   current Secure Boot state; `systemd-pcrlock-make-policy` (via
-  `mkosi.extra/usr/bin/pcrlock-make-policy`) turns it into a policy on **PCR 7 only**, with
+  `mkosi/mkosi.extra/usr/bin/pcrlock-make-policy`) turns it into a policy on **PCR 7 only**, with
   `--strict=yes` so it fails rather than silently dropping PCR 7. A copy goes to
   the ESP (`loader/credentials/pcrlock.<machine-id>.cred`) for the initrd.
-* `pcrlock-enroll-luks.service` (`mkosi.extra/usr/bin/pcrlock-enroll-luks`) then re-enrolls each
+* `pcrlock-enroll-luks.service` (`mkosi/mkosi.extra/usr/bin/pcrlock-enroll-luks`) then re-enrolls each
   TPM2 slot as signed PCR 11 + pcrlock, wiping the old slot only after the new
   one exists. If the policy was not made, the volumes keep the literal binding.
 * The policy's recovery PIN is ours, kept root-only on the encrypted root
@@ -203,7 +203,7 @@ hence the split:
    and `home.new-password` (a recovery secret kept in `pass` under
    `linux_users/<user>/recovery-key`) — and creates the encrypted home with no
    prompting.
-2. **First login.** `roles/user/tasks/first-login.yml` discovers the YubiKey's
+2. **First login.** `ansible/roles/user/tasks/first-login.yml` discovers the YubiKey's
    PIV URI and runs `homectl update --pkcs11-token-uri=…`, then **drops the
    password factor**, leaving the token as the login factor and the recovery
    secret as the fallback.
@@ -318,8 +318,8 @@ changing any of it:
    was taken, not today.
 2. **`BuildSources=`** mounts the same host directory live at `/work/src/…`, so
    the postinst sees whatever previous builds have written since the snapshot.
-   `mkosi.postinst.chroot` delta-seeds from there (`rsync --ignore-existing`).
-3. **`mkosi.finalize`** writes new files back out. It cannot touch the host
+   `mkosi/mkosi.postinst.chroot` delta-seeds from there (`rsync --ignore-existing`).
+3. **`mkosi/mkosi.finalize`** writes new files back out. It cannot touch the host
    cache from its sandbox, so it stages into the output directory
    (`cache-writeback/`) and `bin/build-image` rsyncs that into the real cache
    after mkosi exits.
@@ -335,7 +335,7 @@ round-trip and `src/` is re-extracted.
 Caching is what makes a warm build ~10 minutes instead of an hour, but it is not
 free. In a measured 574s build, **"Copying cached trees" was 88s (15%)** — and
 that is a straight byte-for-byte copy because `~/.cache` is on **ext4**, which
-has no reflink support. `mkosi.conf` sets `UseSubvolumes=auto`, which can do
+has no reflink support. `mkosi/mkosi.conf` sets `UseSubvolumes=auto`, which can do
 nothing there. Moving the mkosi cache onto btrfs (or XFS with reflinks) would
 turn that phase into a near-instant snapshot; `bin/setup-mkosi-cache-volume`
 exists for making such a volume.
@@ -366,10 +366,10 @@ bin/build-image
 ```
 
 `bin/build-image` materializes the Secure Boot keypair from `pass`, bumps
-`mkosi.version` (a fresh monotonic version so each build supersedes the running
+`mkosi/mkosi.version` (a fresh monotonic version so each build supersedes the running
 slot for sysupdate), and runs `mkosi build`, which:
 
-1. Installs the Arch packages declared in `mkosi.conf` into the rootfs.
+1. Installs the Arch packages declared in `mkosi/mkosi.conf` into the rootfs.
 2. Copies the arch-ansible repository in via `BuildSources`/`ExtraTrees` (a
    tracked-files-only staging copy, so gitignored secrets don't reach `/usr`).
 3. Runs the post-install (Ansible against the `build` identity) inside
@@ -447,7 +447,7 @@ profile. Override with `hostnamectl hostname <name>`.
 ## Installation
 
 Boot a machine from the live USB and pick the **Installer** profile. It
-auto-launches a guided installer on the console (`mkosi.extra/usr/bin/install-system --guided`
+auto-launches a guided installer on the console (`mkosi/mkosi.extra/usr/bin/install-system --guided`
 via `arch-install.service`): it lists the eligible target disks (every whole disk
 except the live medium), you pick one and confirm, and it installs. The menu also
 offers dropping to a shell — where you can run `install-system DISK` directly — as
@@ -503,7 +503,7 @@ disk with `--image`. This rebuilds as above, then applies to the target's inacti
 --image`, which fails to parse our `Type=regular-file` transfers through systemd
 v261. It symlinks `/run/systemd/volatile-root` at a target *partition* in a
 private mount namespace (so systemd treats the target as the system disk) and runs
-`systemd-sysupdate --definitions=mkosi.sysupdate --transfer-source=<build output>
+`systemd-sysupdate --definitions=mkosi/mkosi.sysupdate --transfer-source=<build output>
 --offline update`, with `SYSTEMD_ESP_PATH` pointing the new UKI at the target's
 own ESP. Nothing is dissected, so the TPM2-sealed LUKS root/home/swap are never
 unlocked or touched (user data survives) — only the inactive `usr` slot and the
@@ -571,7 +571,7 @@ bootctl install --no-variables --esp-path=/efi --secure-boot-auto-enroll=yes \
 
 **Re-enroll TPM2** (after a Secure Boot key change). A fresh install gets its
 TPM2 keyslot from `systemd-repart` (`Encrypt=tpm2` + `TPM2PCRs=7` in
-`mkosi.extra/usr/lib/repart.d/50-root.conf`), bound to PCR 7 AND the signed
+`mkosi/mkosi.extra/usr/lib/repart.d/50-root.conf`), bound to PCR 7 AND the signed
 PCR 11 policy — so this is only needed when a Secure Boot change invalidates
 PCR 7:
 

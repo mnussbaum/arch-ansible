@@ -16,14 +16,14 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 
 ## Install from the live medium
 
-- **`mkosi.extra/usr/lib/arch-ansible/bin/install-system` (`mkosi.uki-profiles/25-install.conf`)** — VALIDATED
+- **`mkosi/mkosi.extra/usr/lib/arch-ansible/bin/install-system` (`mkosi/mkosi.uki-profiles/25-install.conf`)** — VALIDATED
   2026-08-19. `systemd-sysinstall` is RETIRED (it was hardwired to Boot Loader Spec
   Type #1; see the Type #2 follow-up below). The `install` UKI profile now boots to
-  `multi-user.target` and auto-runs `arch-install.service` → `mkosi.extra/usr/lib/arch-ansible/bin/install-system
+  `multi-user.target` and auto-runs `arch-install.service` → `mkosi/mkosi.extra/usr/lib/arch-ansible/bin/install-system
 --guided` on tty1. The whole install is one `systemd-repart` run:
   `systemd-repart --dry-run=no --empty=force --defer-partitions=swap,root,home DISK`
   — the ESP is populated by `CopyFiles=/boot:/` in the shipped
-  `mkosi.extra/usr/lib/repart.d/10-esp.conf`, usr-A is cloned by `CopyBlocks=auto`,
+  `mkosi/mkosi.extra/usr/lib/repart.d/10-esp.conf`, usr-A is cloned by `CopyBlocks=auto`,
   and root/home/swap are deferred to the target's own first boot. No `bootctl`, no
   Type #1 entries. A one-shot mode (`install-system --yes DISK`) exists for scripted
   runs and is what `bin/vm install` drives.
@@ -32,9 +32,9 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
   can run. Verified: `arch-install.service` active, `greetd.service` inactive.
 - **Hostname and root password are PROMPTED at the target's first boot.** The
   earlier "self-assigned from machine-id, no install-time input" design is only the
-  _fallback_: `mkosi.conf` still sets `Hostname=arch-????-????` (baked into
+  _fallback_: `mkosi/mkosi.conf` still sets `Hostname=arch-????-????` (baked into
   os-release as `DEFAULT_HOSTNAME`, `?` → hex hashed from the machine-id), but
-  `mkosi.extra/usr/lib/systemd/system/systemd-firstboot.service.d/10-prompt-hostname.conf`
+  `mkosi/mkosi.extra/usr/lib/systemd/system/systemd-firstboot.service.d/10-prompt-hostname.conf`
   adds `--prompt-hostname` to the upstream ExecStart, which already carries
   `--prompt-root-password`. So a fresh install asks TWO questions on first boot.
   Both prompts go to `/dev/console`, which the cmdline pins to tty0
@@ -152,7 +152,7 @@ reachable YubiKey, or the in-guest build falls back to the network.
 
 1. [x] **Build an image** — `bin/build-image` (add `--caching force` to stay offline
        on a primed cache). Pass: signed UKI + split usr/verity/verity-sig artifacts
-       land in `~/.cache/mkosi/images/image`, version bumped (`mkosi.version`).
+       land in `~/.cache/mkosi/images/image`, version bumped (`mkosi/mkosi.version`).
        VERIFIED 2026-06-29 for `image_20260629164917_x86-64`: `sbverify --cert
 ~/.cache/mkosi-secureboot/mkosi.crt <uki>.efi` → "Signature verification OK";
        verity-sig `certificateFingerprint` == the `CN=arch-ansible SecureBoot` cert
@@ -214,7 +214,7 @@ list` confirms it discovers NO available instance from the staged source even
    actually changed before `--reboot`.
    FIX APPLIED 2026-06-30 (`bin/update-system`, uncommitted): dropped `--offline`
    from both `systemd-sysupdate … update` calls and now pass the explicit
-   just-built version (`new_version=$(cat mkosi.version)`) → `update "$new_version"`.
+   just-built version (`new_version=$(cat mkosi/mkosi.version)`) → `update "$new_version"`.
    An undiscoverable version exits 1 (vs. bare `update`'s no-op exit 0), so
    `errexit` aborts before the reboot — covers both (a) and (b). Pending: host
    rebuild + reboot of the live image (in-guest `/usr/share/arch-ansible` is
@@ -233,7 +233,7 @@ list` confirms it discovers NO available instance from the staged source even
    bin/vm run --gui \
      --device="$HOME/.cache/mkosi/test-target.raw"
    ```
-   At the boot menu pick **Installer** (`mkosi.uki-profiles/25-install.conf` →
+   At the boot menu pick **Installer** (`mkosi/mkosi.uki-profiles/25-install.conf` →
    `systemd-sysinstall.service`), or pick **Live System** and run
    `systemd-sysinstall` by hand. Pass: `/dev/vdb` partitioned (A/B `usr` +
    root/home/swap, usr-b empty), `/usr` copied, ESP populated via `bootctl
@@ -242,7 +242,7 @@ install`/`link`, and the target's first boot provisions + TPM2-seals and
    the hostname-credential and PCR-7 caveats.)
    FINDING 2026-06-30 (benign): during install `systemd-sysinstall` logs "Failed
    to read timezone, skipping timezone propagation: Invalid argument" and
-   continues. Cause: `mkosi.conf` sets `Timezone=US/Pacific`, which mkosi
+   continues. Cause: `mkosi/mkosi.conf` sets `Timezone=US/Pacific`, which mkosi
    materializes as a RELATIVE symlink `/etc/localtime -> ../usr/share/zoneinfo/
 US/Pacific`; systemd's timezone read (`get_timezone`) only accepts an ABSOLUTE
    `/usr/share/zoneinfo/...` target, so the relative form returns -EINVAL and
@@ -260,8 +260,8 @@ US/Pacific`; systemd's timezone read (`get_timezone`) only accepts an ABSOLUTE
    Evidence on `test-target.raw`: a malformed/incomplete GPT — 4 partitions only
    (ESP **11.5G**, usr-verity-sig 16K, usr-verity **11.5G**, usr 10G), with NO
    root/home/swap and NO usr-B (A/B second slot). That 4-partition shape matches
-   the `mkosi.repart/` BUILD layout, NOT the correct installed-system layout the
-   image ships at `/usr/lib/repart.d/` (`mkosi.extra/usr/lib/repart.d/`: 10-esp +
+   the `mkosi/mkosi.repart/` BUILD layout, NOT the correct installed-system layout the
+   image ships at `/usr/lib/repart.d/` (`mkosi/mkosi.extra/usr/lib/repart.d/`: 10-esp +
    usr-A {20/21/22} + usr-B {30/31/32} + 40-swap + 50-root + 60-home). LEADING
    HYPOTHESIS: `systemd-sysinstall` used the wrong repart definitions (the build
    set / its own defaults) instead of the shipped device layout, producing a bad
@@ -284,7 +284,7 @@ US/Pacific`; systemd's timezone read (`get_timezone`) only accepts an ABSOLUTE
    verity `/usr` activates fine ("Verity activation via kernel signature logic
    worked"); the EINVAL is from mounting the **ESP (vfat)** — `blkid /dev/vdb1`
    has only `PARTLABEL=esp`, NO `TYPE=vfat`: the ESP was never formatted. The
-   device `mkosi.extra/usr/lib/repart.d/10-esp.conf` had no `Format=`, so a
+   device `mkosi/mkosi.extra/usr/lib/repart.d/10-esp.conf` had no `Format=`, so a
    freshly-created ESP (blank-disk install) has no filesystem. Normal first boot
    works because it adopts the build image's already-vfat ESP and repart only
    grows it. PROVEN: `mkfs.vfat /dev/vdb1` then the same default-policy
@@ -292,7 +292,7 @@ US/Pacific`; systemd's timezone read (`get_timezone`) only accepts an ABSOLUTE
    "ship the verity cert / verity.d" theory was WRONG — the cert IS already in
    `/usr/lib/verity.d/mkosi.crt` (verified) and verity validates via the kernel
    signature path; verity.d was never the issue. FIX APPLIED (uncommitted): added
-   `Format=vfat` to `mkosi.extra/usr/lib/repart.d/10-esp.conf` (repart only formats
+   `Format=vfat` to `mkosi/mkosi.extra/usr/lib/repart.d/10-esp.conf` (repart only formats
    partitions it newly creates, so the first-boot grow of the existing ESP is
    untouched). Secondary: sysinstall lays down only esp + usr-A (root/home/swap/
    usr-B come from the target's first-boot repart, by design) but esp/usr-verity
@@ -341,7 +341,7 @@ $output_dir/tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error)
    the medium before step 5 for a clean Live boot.)
    HOSTNAME APPROACH CHANGED 2026-06-30 — dropped the whole firstboot.hostname
    credential mechanism (per ParticleOS). The TPM-sealing fragility is now moot:
-   there is no credential to seal. Instead `mkosi.conf` sets
+   there is no credential to seal. Instead `mkosi/mkosi.conf` sets
    `Hostname=arch-????-????`, baked into os-release as `DEFAULT_HOSTNAME`; systemd
    replaces each `?` with a hex char hashed deterministically from the machine-id,
    so every install gets a unique, stable name (e.g. `arch-92a9-061c`) with no
@@ -351,7 +351,7 @@ $output_dir/tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error)
    (`bin/vm run --gui` a fresh install → `hostnamectl` shows `arch-…`, stable across
    reboots). NOTE: the step-4 commands below/above still say `--hostname=…`; that
    flag is gone now — drop it (the disk names itself).
-   RE-RUN AND PASSED 2026-08-19 on the **Type #2** installer (`mkosi.extra/usr/lib/arch-ansible/bin/install-system`,
+   RE-RUN AND PASSED 2026-08-19 on the **Type #2** installer (`mkosi/mkosi.extra/usr/lib/arch-ansible/bin/install-system`,
    no sysinstall), headless via `bin/vm install`. Verified by reading the
    target back from inside the installer: partitions `esp` + usr-A
    {verity_sig,verity,erofs} + three `_empty` usr-B slots, with root/home/swap
@@ -365,7 +365,7 @@ $output_dir/tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error)
    ("Automatically discovered security TPM2 token unlocks volume";
    `systemd-tty-ask-password-agent --list` empty), so the TPM2 path works
    across reboots. TWO FIXES were needed to get a genuinely clean boot:
-   (a) `mkosi.uki-profiles/25-install.conf` gained
+   (a) `mkosi/mkosi.uki-profiles/25-install.conf` gained
    `systemd.unit=multi-user.target` — otherwise greetd grabs the console before
    the guided installer; (b) `mnt-shared.mount` gained
    `ConditionCredential=fstab.extra` — `ConditionVirtualization=vm` is true in
@@ -415,7 +415,7 @@ $output_dir/tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error)
    builds → cache miss), and QEMU's default SLIRP user-net collapses to <1 B/s under
    pacman's `ParallelDownloads=5` (a single stream is 239 KB/s). Fix: `bin/vm run`
    now uses **passt** (`--runtime-network=none` + a passt netdev) when installed —
-   multi-threaded user-mode net that survives parallel HTTPS; `roles/qemu-host`
+   multi-threaded user-mode net that survives parallel HTTPS; `ansible/roles/qemu-host`
    installs `passt`. (Falls back to SLIRP if absent.)
    CAVEATS / FOLLOW-UPS: (1) NOT network-free — the rebuild still fetched the drift
    delta over passt (as designed: "works with wifi up"). True no-network
@@ -448,7 +448,7 @@ Argument list too long`. The A/B slots had NO headroom — usr-B was exactly
    no `SizeMaxBytes` at all, so at the default `Weight=1000` repart handed each a
    ~1/6 share of ALL free space — 5.9 GiB apiece on a 60G disk, and it scales
    with the disk (a ~160 GB ESP on a 1 TB NVMe). FIXED in
-   `mkosi.extra/usr/lib/repart.d/`: usr-a and usr-b are now both
+   `mkosi/mkosi.extra/usr/lib/repart.d/`: usr-a and usr-b are now both
    `SizeMin=SizeMax=16G` (identical, so the pair is interchangeable), the verity
    slots both `512M`, the ESP `SizeMin=SizeMax=2G`; root and home are the only
    growable partitions left, in their deliberate 3:1 split, which makes the
@@ -496,7 +496,7 @@ Follow-ups (software; discovered during E2E, not yet done):
       — no Type #2 mode): it copies the UKI under the entry-token dir (`/image/`, token
       `image` = `ImageId`) and writes one `loader/entries/image-commit_N.<ver>[@profile]
 .conf` per UKI profile (the `@1..@6` seen on the target = profiles, not tries),
-      each with `extra /image/firstboot.{hostname,locale,keymap}.cred` sidecars. - mkosi (the medium) and `mkosi.sysupdate/20-uki.transfer` use **Type #2**: the
+      each with `extra /image/firstboot.{hostname,locale,keymap}.cred` sidecars. - mkosi (the medium) and `mkosi/mkosi.sysupdate/20-uki.transfer` use **Type #2**: the
       multi-profile UKI lives in `EFI/Linux/` and sd-boot auto-expands the profiles
       (`man sysupdate.d`: `Path=/EFI/Linux`, `EFI/Linux/foobarOS_@v.efi`). Boot
       counting via the `+tries-done` filename.
@@ -543,22 +543,22 @@ Follow-ups (software; discovered during E2E, not yet done):
 
             IMPLEMENTATION (mirrors particleos#166): the whole install is one command,
               `systemd-repart --dry-run=no --empty=force --defer-partitions=swap,root,home DISK`
-            - `mkosi.extra/usr/lib/repart.d/10-esp.conf`: added `CopyFiles=/boot:/`. When
+            - `mkosi/mkosi.extra/usr/lib/repart.d/10-esp.conf`: added `CopyFiles=/boot:/`. When
               repart CREATES the target ESP it copies the running medium's `/boot` (sd-boot +
               the bare Type #2 UKI in `EFI/Linux/` + `loader/`) straight onto it — no
               `bootctl` at all. Only fires on creation, so the installed system's first-boot
               ESP grow is untouched.
             - `usr-A` is cloned from the running `/usr` by the existing `CopyBlocks=auto`
               (22-usr-a.conf); `--defer-partitions` leaves root/home/swap for first boot.
-            - `mkosi.extra/usr/lib/arch-ansible/bin/install-system`: thin wrapper — one-shot `install-system DISK` (block dev
+            - `mkosi/mkosi.extra/usr/lib/arch-ansible/bin/install-system`: thin wrapper — one-shot `install-system DISK` (block dev
               or raw file; medium-disk guard; `--yes`/`--reboot`) or `install-system
               --guided` (enumerate eligible disks → pick → confirm → install), with a
               "drop to a shell" escape hatch.
-            - `mkosi.extra/usr/lib/systemd/system/arch-install.service` (+ multi-user.target
+            - `mkosi/mkosi.extra/usr/lib/systemd/system/arch-install.service` (+ multi-user.target
               .wants symlink): auto-runs the guided installer on tty1, gated on the
               `arch.install` kernel-cmdline marker so it is inert outside the Installer
               profile (Conflicts=getty@tty1 only there).
-            - `mkosi.uki-profiles/25-install.conf`: dropped `systemd.unit=systemd-sysinstall
+            - `mkosi/mkosi.uki-profiles/25-install.conf`: dropped `systemd.unit=systemd-sysinstall
               .service`; added the `arch.install` marker + autologin (second escape hatch);
               kept `systemd-repart.service` masked (the medium must not provision itself).
             - Docs: `bootstrapping.md` gained an Installation section; `bin/vm run`

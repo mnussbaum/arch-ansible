@@ -26,18 +26,23 @@ auth subkey.
 ## Repo layout
 
 ```
-bin/              Bootstrap and key ceremony scripts
-roles/            Ansible roles (one per subsystem, each with tasks/, files/, templates/)
-host_vars/        Per-machine configuration (disk UUID, monitors, WiFi)
-group_vars/       Shared variables (user, fonts, theming, packages)
-secrets/          Ansible Vault password (secrets themselves are encrypted in group_vars/)
-vendor/roles/     External Ansible roles
-assets/           Wallpapers and fonts
-playbook.yml      Main configuration playbook
-mkosi.conf        Base mkosi image build config
-mkosi.build       Build script (runs Ansible inside the image)
-mkosi.repart/     Shared partition layout (EFI)
-mkosi.images/     Per-machine partition layout and image config
+bin/                        Human-run scripts: build, VM, burn, update, key ceremonies
+ansible/                    Everything Ansible (bin/ansible runs from here)
+  postinst-playbook.yml     Image build playbook (run by mkosi's postinst)
+  user-first-login-playbook.yml  Per-user setup on first login
+  hosts.yml                 Inventory (the `build` identity)
+  roles/                    One role per subsystem (tasks/, files/, templates/)
+  group_vars/               Shared variables (user, fonts, theming)
+  filter_plugins/           Custom Jinja filters
+  vendor/roles/             External roles (requirements.yml)
+  assets/                   Wallpapers
+mkosi/                      Image build (bin/* run `mkosi --directory=mkosi`)
+  mkosi.conf, mkosi.conf.d/ Base config and package lists
+  mkosi.extra/              Files copied verbatim into the image
+  mkosi.postinst.chroot     Runs the Ansible postinst inside the image
+  mkosi.repart/, mkosi.sysupdate/, mkosi.uki-profiles/, mkosi.initrd.conf/
+docs/                       Plans, bootstrapping notes and todos
+secrets/                    Ansible Vault password (gitignored)
 ```
 
 ## Auth
@@ -61,13 +66,13 @@ This will:
 5. Back up the primary key to the USB
 6. Export the public key to `files/gpg-pubkey.asc`
 7. Program all connected YubiKeys with the subkeys
-8. Enroll the auth subkey keygrip in `group_vars/all/gpg_auth_keygrips.yml` (the keygrip
+8. Enroll the auth subkey keygrip in `ansible/group_vars/all/gpg_auth_keygrips.yml` (the keygrip
    is a stable identifier used to tell the GPG agent which key to expose over SSH)
 
 After running, commit the public key and keygrips:
 
 ```
-git add files/gpg-pubkey.asc group_vars/all/gpg_auth_keygrips.yml
+git add files/gpg-pubkey.asc ansible/group_vars/all/gpg_auth_keygrips.yml
 git commit -m 'Add GPG public key'
 ```
 
@@ -212,7 +217,7 @@ environment, and the installed system — it ships only the immutable verity `/u
 plus an ESP, and provisions its encrypted root/home on first boot via
 `systemd-repart` (the model from [Fitting Everything
 Together](https://0pointer.net/blog/fitting-everything-together.html)). The
-different roles are just boot-menu entries (UKI profiles in `mkosi.uki-profiles/`),
+different roles are just boot-menu entries (UKI profiles in `mkosi/mkosi.uki-profiles/`),
 not separate builds. `bin/build-image` builds it; `bin/vm run` and
 `bin/burn-image` then act on the built image and set its hostname at boot (no
 rebuild per machine).
@@ -273,7 +278,7 @@ Attach a second disk with `--device=<disk.raw>` and pick the role at the boot
 menu. **Live System (Recovery)** boots a volatile root that skips the first-boot
 self-install — `bin/recovery-mount` then discovers the disk's LUKS partition,
 unlocks it, mounts root/usr/efi/home, and chroots in. **Installer** replicates the
-image onto the disk with `mkosi.extra/usr/bin/install-system` — one `systemd-repart` run that
+image onto the disk with `mkosi/mkosi.extra/usr/bin/install-system` — one `systemd-repart` run that
 reproduces the medium's own Type #2 layout (the install profile boots straight
 into `arch-install.service`).
 
@@ -343,7 +348,7 @@ Example:
 When developing new configuration:
 
 1. Make changes directly on the machine to verify they work.
-2. Encode the changes in the relevant role under `roles/`.
+2. Encode the changes in the relevant role under `ansible/roles/`.
 3. Revert the direct changes (or use a fresh QEMU instance).
 4. Run Ansible and confirm the configuration applies correctly.
 5. Run Ansible a second time and confirm it is idempotent (no changes reported).
