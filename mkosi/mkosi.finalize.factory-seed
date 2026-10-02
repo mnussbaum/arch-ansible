@@ -128,6 +128,10 @@ for entry in "$ETC"/*; do
     printf 'L /etc/%s - - - - -\n' "$name" >> "$TMPFILES"
 done
 
+# Every file in the erofs /usr is root-owned, so polkit's rules.d loses its
+# polkitd group and polkitd can't open it. It's empty and read-only here; open it.
+[[ -d "$FACTORY/polkit-1/rules.d" ]] && chmod 0755 "$FACTORY/polkit-1/rules.d"
+
 # Sanity: assert /etc is empty modulo skipped entries.
 remaining=()
 while IFS= read -r -d '' path; do

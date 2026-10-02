@@ -28,6 +28,17 @@
     src: wireplumber-bluez-config.conf
     dest: /etc/wireplumber/wireplumber.conf.d/51-bluez-config.conf
 
+- name: Create wireplumber user unit drop-in dir
+  file:
+    path: /usr/lib/systemd/user/wireplumber.service.d
+    state: directory
+
+- name: Skip wireplumber for system users
+  copy:
+    src: skip-system-users.conf
+    dest: /usr/lib/systemd/user/wireplumber.service.d/skip-system-users.conf
+    mode: "0644"
+
 - name: Install IPu6 ov01a10 front-facing camera config file
   copy:
     src: ov01a10.yaml

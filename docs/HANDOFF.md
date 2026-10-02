@@ -33,6 +33,15 @@ Follow-ups:
   YubiKey is enrolled or `skip` is typed, and the unit fails if a volume has no slot.
 - ~~`890639e` (commands moved to `/usr/bin`) was not VM-validated.~~ Validated
   2026-10-02.
+- ~~User services write to `/.local` at boot.~~ Fixed (not yet verified on a
+  built image): greetd's `greeter` account ran syncthing and wireplumber; both now
+  carry `ConditionUser=!@system`.
+- ~~polkitd can't read `/etc/polkit-1/rules.d`.~~ Fixed (not yet verified on a
+  built image): factory-seed makes the empty factory `rules.d` readable. Every file
+  in the erofs `/usr` is root-owned, so non-root groups under
+  `/usr/share/factory/etc` are lost; a scan of package metadata, tmpfiles and our
+  roles found only one other such path, `/etc/named.conf` (unused: `named` isn't
+  enabled).
 - Remaining `plan-usr-hermetic.md` items (its status notes are stale): the
   factory-reset profile test and a verity corruption test (A.5), `/etc` drift
   detection and dropping the `docker` group (security mitigations 2 and 3).

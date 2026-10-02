@@ -20,6 +20,12 @@
     dest: /usr/lib/systemd/user/syncthing.service.d/condition.conf
     mode: "0644"
 
+- name: Skip syncthing for system users
+  copy:
+    src: skip-system-users.conf
+    dest: /usr/lib/systemd/user/syncthing.service.d/skip-system-users.conf
+    mode: "0644"
+
 - name: Install systemd user preset
   copy:
     src: 80-syncthing.preset
