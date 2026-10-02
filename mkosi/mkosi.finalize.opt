@@ -1,0 +1,16 @@
+#!/bin/bash
+# Only /usr ships in the image, so packages installing into /opt (claude-code,
+# calibre-bin, ...) would be missing at runtime. Move /opt into /usr/lib/opt;
+# tmpfiles.d/opt.conf links /opt back to it at boot.
+
+set -euo pipefail
+
+OPT="$BUILDROOT/opt"
+DEST="$BUILDROOT/usr/lib/opt"
+
+# An incremental build may restore an already-converted tree.
+if [[ -d "$OPT" && ! -L "$OPT" ]]; then
+    rm -rf -- "$DEST"
+    mv "$OPT" "$DEST"
+fi
+ln -sfn usr/lib/opt "$OPT"
