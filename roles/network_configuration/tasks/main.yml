@@ -2,13 +2,7 @@
 ---
 # Wifi profiles are NOT built here: their PSKs would ship in the unencrypted
 # /usr. tasks/wifi-credentials.yml stores them, at first login, as systemd
-# credentials encrypted to the machine. wpa-psk is still installed for it.
-- name: Install wpa-psk script
-  copy:
-    src: wpa-psk
-    dest: /usr/bin/wpa-psk
-    mode: a+x
-
+# credentials encrypted to the machine.
 - name: Create network config dirs
   file:
     path: "{{ item }}"
