@@ -247,7 +247,7 @@ ESP and adds:
 
 ```
 usr (B slot)               inactive A/B update slot (NoAuto)
-swap           LUKS2/tpm2  4 GiB
+swap           LUKS2/tpm2  4–16 GiB (weight 0.5, for hibernation)
 root           btrfs/tpm2  encrypted root, /var subvolume    weight 3
 home           btrfs       homed mounts per-user LUKS here    weight 1
 ```

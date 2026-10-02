@@ -4,13 +4,17 @@ Documentation=man:swayidle(1) man:swaylock(1)
 PartOf=graphical-session.target
 
 [Service]
-# -w blocks swayidle on every command, so swaylock must daemonize (-f) once
-# locked; a foreground swaylock stalls swayidle until unlock, then it replays
-# the queued idle/sleep events and relocks. pgrep avoids stacking lockers.
+# -w blocks swayidle on every command, so swaylock must daemonize (-f) or
+# swayidle stalls until unlock and then replays queued events.
+# before-sleep locks directly: logind's Lock signal is async and would race the
+# sleep inhibitor. after-resume runs once per sleep: rebuilding outputs unsticks
+# i915 after hibernate, and libinput-gestures picks up the rebound touchpad.
 ExecStart=swayidle -w \
-    timeout {{ idle_thresholds["lock_screen_delay_minutes"] * 60 }} "pgrep -x swaylock || (chayang && swaylock -f)" \
-    timeout {{ idle_thresholds["suspend_delay_minutes"] * 60 }} "systemctl suspend-then-hibernate" \
-    before-sleep "pgrep -x swaylock || swaylock -f"
+    timeout {{ idle_thresholds["lock_screen_delay_minutes"] * 60 }} "chayang && loginctl lock-session" \
+    timeout {{ idle_thresholds["suspend_delay_minutes"] * 60 }} "systemctl sleep" \
+    lock "pgrep -x swaylock || swaylock -f" \
+    before-sleep "pgrep -x swaylock || swaylock -f" \
+    after-resume "swaymsg 'output * disable'; sleep 2; swaymsg 'output * enable'; systemctl --user try-restart libinput-gestures.service"
 Restart=on-failure
 RestartSec=1
 TimeoutStopSec=10

@@ -1,3 +1,2 @@
 enable tlp.service
-enable disable-xhc-wakeup.service
 enable thermald.service

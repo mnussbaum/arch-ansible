@@ -1,9 +1,0 @@
-[Unit]
-Description=Disable XHC (aka USB3) spurious wakeups
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/echo XHC > /proc/acpi/wakeup
-
-[Install]
-WantedBy=multi-user.target

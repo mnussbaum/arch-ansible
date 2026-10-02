@@ -1,0 +1,2 @@
+# Keep xHCI (USB3) controllers from waking the system on spurious USB signals
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x0c0330", ATTR{power/wakeup}="disabled"

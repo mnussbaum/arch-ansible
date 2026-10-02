@@ -22,12 +22,6 @@
     dest: /usr/lib/systemd/system-preset/80-power.preset
 
 
-- name: Install service to disable wake-up from spurious USB3 signals
-  copy:
-    src: disable-xhc-wakeup.service
-    dest: /usr/lib/systemd/system/disable-xhc-wakeup.service
-
-
 - name: Create logind drop-in directory
   file:
     path: /usr/lib/systemd/logind.conf.d
@@ -58,35 +52,10 @@
     src: systemd-sleep.conf.j2
     dest: /usr/lib/systemd/sleep.conf.d/power.conf
 
-- name: Create systemd-suspend.service drop-in directory
-  file:
-    path: /usr/lib/systemd/system/systemd-suspend.service.d
-    state: directory
-
-- name: Replace systemctl suspend with suspend-then-hibernate
-  copy:
-    src: systemd-suspend-override.conf
-    dest: /usr/lib/systemd/system/systemd-suspend.service.d/override.conf
-
 - name: Create system-sleep script directory
   file:
     path: /usr/lib/systemd/system-sleep
     state: directory
-
-# Avoid the system attempting to hibernate while resuming from an erroneously long suspend
-- name: Install reset-hibernate-timer script
-  copy:
-    src: reset-hibernate-timer
-    dest: /usr/lib/systemd/system-sleep/reset-hibernate-timer
-    mode: a+x
-
-# After resume from hibernate, i915 takes time to reinitialize, causing wlroots
-# atomic commits to return EBUSY. Toggle DPMS to force a clean re-modeset.
-- name: Install sway-resume-dpms script
-  copy:
-    src: sway-resume-dpms
-    dest: /usr/lib/systemd/system-sleep/sway-resume-dpms
-    mode: a+x
 
 # Elan i2c touchpad click reporting is delayed ~1-2 minutes after resume without this rebind
 - name: Install reset-elan-touchpad script
@@ -95,16 +64,16 @@
     dest: /usr/lib/systemd/system-sleep/reset-elan-touchpad
     mode: a+x
 
+- name: Create tmpfiles.d directory
+  file:
+    path: /usr/lib/tmpfiles.d
+    state: directory
+
 # Async power management appears to be causing lock ups during suspend and resume
 - name: Disable async suspend and resume
   copy:
-    src: disable-pm-async.service
-    dest: /usr/lib/systemd/system/disable-pm-async.service
-
-- name: Enable service that disables async suspend and resume
-  service:
-    name: disable-pm-async.service
-    enabled: true
+    src: tmpfiles.d/pm-async.conf
+    dest: /usr/lib/tmpfiles.d/pm-async.conf
 
 - name: Create sysctl param directory
   file:

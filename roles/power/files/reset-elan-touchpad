@@ -21,11 +21,6 @@ case "$vendor::$product" in
     *) exit 0 ;;
 esac
 
-graphical_user() {
-    loginctl list-sessions --no-legend \
-        | awk '$3 != "" {print $3; exit}'
-}
-
 case "$1" in
     post)
         driver=/sys/bus/i2c/drivers/i2c_hid_acpi
@@ -40,21 +35,6 @@ case "$1" in
             rebound=$((rebound + 1))
         done
         log "post: rebound $rebound device(s)"
-        # Kill libinput-gestures so systemd restarts it fresh via
-        # Restart=on-failure, picking up the newly rebound device.
-        # D-Bus is unreliable in the post-resume system hook context so we
-        # avoid systemctl and let systemd handle the restart automatically.
-        user=$(graphical_user) || true
-        if [ -n "$user" ]; then
-            pid=$(pgrep -f -u "$user" libinput-gestures 2>/dev/null) || true
-            if [ -n "$pid" ]; then
-                log "post: killing libinput-gestures pid=$pid (user=$user)"
-                kill -9 $pid && log "post: killed, systemd will restart fresh"
-            else
-                log "post: libinput-gestures not running as $user (stopped or failed — check 'systemctl --user status libinput-gestures')"
-            fi
-        else
-            log "post: no graphical user session found"
-        fi
+        # swayidle's after-resume restarts libinput-gestures onto the new device
         ;;
 esac
