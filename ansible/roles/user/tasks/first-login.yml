@@ -17,6 +17,45 @@
       remote set-url origin git@github.com:mnussbaum/arch-ansible.git
   changed_when: false
 
+- name: Remove read-only password-store symlinks
+  # Older images linked these at the read-only /usr/share/password-store through
+  # /etc/skel, which breaks pass insert/edit.
+  ansible.builtin.shell: |
+    for p in ~/.local/share/password-store ~/.password-store; do
+      if [[ -L $p && $(readlink "$p") == /usr/share/password-store ]]; then
+        rm "$p"
+        echo removed
+      fi
+    done
+  args:
+    executable: /bin/bash
+  register: password_store_links
+  changed_when: "'removed' in password_store_links.stdout"
+
+- name: Clone password-store into home
+  # The image ships /usr/share/password-store as a git repo. The ansible git
+  # module can't pass safe.directory, which the root-owned repo needs.
+  ansible.builtin.command:
+    cmd: >-
+      git -c safe.directory=/usr/share/password-store/.git
+      clone /usr/share/password-store
+      {{ ansible_facts['env']['HOME'] }}/.local/share/password-store
+    creates: "{{ ansible_facts['env']['HOME'] }}/.local/share/password-store"
+
+- name: Point password-store origin at GitLab
+  ansible.builtin.command:
+    cmd: >-
+      git -C {{ ansible_facts['env']['HOME'] }}/.local/share/password-store
+      remote set-url origin git@gitlab.com:mnussbaum/password-store.git
+  changed_when: false
+
+- name: Link ~/.password-store to the clone
+  # For tools that ignore PASSWORD_STORE_DIR, e.g. Firefox's firejail profile.
+  ansible.builtin.file:
+    path: "{{ ansible_facts['env']['HOME'] }}/.password-store"
+    src: .local/share/password-store
+    state: link
+
 - name: Check for a volatile root
   ansible.builtin.command: findmnt -no FSTYPE /
   register: root_fstype

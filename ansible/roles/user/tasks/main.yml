@@ -18,17 +18,3 @@
   file:
     path: /etc/skel/.local/share
     state: directory
-
-- name: Symlink password-store into skel .local/share
-  file:
-    path: /etc/skel/.local/share/password-store
-    src: /usr/share/password-store
-    state: link
-    force: true
-
-- name: Symlink password-store into skel .password-store
-  file:
-    path: /etc/skel/.password-store
-    src: /usr/share/password-store
-    state: link
-    force: true

@@ -667,7 +667,7 @@ back up or restore:
    write access to the `mnussbaum-machine-backups` bucket. Don't limit it to a
    file prefix: every host shares one restic repo, and a restore needs to read
    other hosts' snapshots.
-3. Add it to a writable clone of the password-store repo, then commit and push:
+3. Add it to the password store, then `pass git push`:
    ```bash
    pass insert host_secrets/<name>/restic_backblaze_key_id
    pass insert host_secrets/<name>/restic_backblaze_key
