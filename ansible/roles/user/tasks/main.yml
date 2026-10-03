@@ -3,6 +3,15 @@
 - name: Create wheel group
   group: name=wheel state=present
 
+- name: Give the user a subordinate ID range
+  # For rootless podman; homed doesn't add one. Same range useradd assigns.
+  lineinfile:
+    path: "/etc/{{ item }}"
+    line: "{{ user.name }}:100000:65536"
+    create: true
+    mode: "0644"
+  loop: [subuid, subgid]
+
 - name: Create skel .zshrc to suppress zsh-newuser-install
   copy:
     content: ""

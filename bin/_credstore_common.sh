@@ -62,7 +62,7 @@ user = os.environ["CREDSTORE_USER"]
 d = os.environ["CREDSTORE_DIR"]
 record = {
     "userName": user,
-    "memberOf": ["wheel", "input", "pcscd", "docker"],
+    "memberOf": ["wheel", "input", "pcscd"],
     "shell": os.environ["CREDSTORE_SHELL"],
     "storage": "luks",
     # Keep the LUKS image sparse and skip resize-on-login: on our small /home
