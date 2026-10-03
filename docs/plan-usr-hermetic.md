@@ -12,29 +12,20 @@ symlinks back into /usr/share/factory/etc/) plus /var as a btrfs subvolume.
 keyfile ships in the image — LUKS volumes are created TPM2-bound by repart on
 first boot.
 
-## Current state
+## Current state (2026-10-02)
 
-**Stage A architecturally validated.** The image boots end-to-end in QEMU:
-SecureBoot keys enrolled, UKI verified, `/usr` mounted `ro` via dm-verity on
-erofs, runtime systemd-repart created the writable partitions on first boot,
-LUKS volumes born TPM2-bound (no shipped passphrase), system reaches login.
-Confirmed in-VM:
+**Stages A, B, C and D are done; one security mitigation remains.** Validated in
+VMs and on real hardware (a Dell XPS 13 9365): installs from the USB medium,
+first-boot provisioning with TPM2-sealed root and swap plus the YubiKey PIV
+recovery factor, on-device A/B self-update, factory reset and dm-verity
+corruption detection. See `HANDOFF.md` for the hardware details.
 
-- `/dev/mapper/usr` mounted at `/usr` as `erofs`, `ro`, verity-mapped
-- `touch /usr/foo` returns EROFS; `touch /etc/foo` succeeds
-- `/dev/mapper/root` mounted at `/`, btrfs, TPM2-unlocked
+Remaining:
 
-**What's still pending for A.5 to be fully done:**
+- Security mitigation 2: boot-time `/etc` drift detection (deferred).
 
-- Full postinst build (the validated boot used `--skip-postinst` — no Ansible
-  ran, so factory-seed L-lines weren't generated, no homed user, no sway, no
-  role tree). The complete Ansible run is the honest test of A.0–A.3.
-- A/B sysupdate dry-run (trigger sysupdate, verify usr-b populates, reboot
-  into B, verify boot, verify cleanup of A)
-- Factory-reset UKI profile (boot the profile, verify root/swap/home wipe,
-  verify /usr A/B preserved)
-- erofs+verity corruption test (flip a byte in the usr partition, verify the
-  kernel refuses to mount / reads return I/O error)
+The sections below keep their original planning notes; the status in each
+heading and its "Result" paragraph are current.
 
 ## Decisions (with revisions from what we learned)
 
@@ -174,7 +165,18 @@ Revisit when:
   (e.g. using `ykman piv keys sign` and feeding pre-signed artifacts to
   mkosi via `--secure-boot-sign-tool`)
 
-### A.5 — Validate Stage A end-to-end *(partial)*
+### A.5 — Validate Stage A end-to-end *(done)*
+
+**Result (2026-10-02):** every pending item below is done. Full postinst builds
+(factory-seeded `/etc`, all roles, homed user) install and boot in VMs and on
+the XPS; A/B updates work (Stage D). Factory reset, VM-tested on an installed
+disk: booting the `factory-reset` profile recreated exactly swap, root and home
+(new partition and LUKS UUIDs, old keyslots and homes gone), left the ESP and
+all `/usr` A/B partitions untouched, and the next normal boot unlocked the new
+root from the TPM. dm-verity, VM-tested: one byte flipped in the `/usr`
+partition made reads of that block fail with EIO (`device-mapper: verity: data
+block … is corrupted`). `/usr` verity has no `*_on_corruption` option, so only
+reads of a corrupted block fail and the system keeps running.
 
 **Validated:**
 - Build succeeds (with `--skip-postinst`)
@@ -242,7 +244,15 @@ re-theming works again.
 
 ---
 
-## C — LUKS recovery factor *(pending)*
+## C — LUKS recovery factor *(done)*
+
+**Result:** neither a recovery key nor a per-key FIDO2 slot. Root and swap get a
+PKCS#11 slot for the YubiKey PIV key (slot 9d) that `bin/enroll-yubikeys`
+provisions on every YubiKey from the GPG root, so any of them, including future
+ones, unlocks the disk. `luks-enroll-pkcs11.service` enrolls it at first boot
+(waiting for a key or an explicit skip); the initrd unlocks root with PIN +
+touch when the TPM won't; `bin/luks-reseal-tpm` re-seals the TPM slot afterwards;
+`bin/recovery-mount` unlocks from the Live profile. All validated on the XPS.
 
 `Encrypt=tpm2` enrolls **only** a TPM2 keyslot on root (and swap), with no
 passphrase fallback. Any change to the TPM or its PCR state locks the user out
@@ -298,7 +308,15 @@ Open questions:
 
 ---
 
-## D — On-device A/B self-update (sysupdate) *(in progress)*
+## D — On-device A/B self-update (sysupdate) *(done — fully validated)*
+
+**Result (2026-10-02):** fully validated and done, on real hardware. On the XPS
+13, `bin/update-system` built a new image on the device, `systemd-sysupdate`
+installed it into the inactive slot and the ESP, and the reboot into it unlocked
+root from the TPM unattended, came up with no failed units, and was blessed by
+`systemd-bless-boot`. Devices must not run `systemd-nsresourced` (disabled by
+`80-nsresourced.preset`): mkosi takes its user namespace from it, and overlay
+mounts in its sandboxes then fail with EPERM.
 
 **Decided model (ParticleOS *default*, driven via direct `systemd-sysupdate`):**
 on-device self-update by **local rebuild**, **no timer**, **no update server**.
@@ -581,6 +599,14 @@ for runtime persistence. It is not a whole-system runtime-integrity guarantee.
    `/etc`/exec content, but heavy to operate on Arch. Likely overkill here.
 6. **Bootloader rollback protection.** Prevent booting an older validly-signed
    UKI with a known-vuln `/usr`. Matters once A/B updates have history.
+
+**Status (2026-10-02):** 1 is done (literal PCR 7, via pcrlock where the TPM
+supports it, plus the signed PCR 11 policy); 3 is done: Docker is replaced by
+rootless podman (`podman-docker` for the `docker` command, `docker-compose`
+over the user's podman socket, ECR credential helper kept), the `docker` group
+is gone, and rootless storage lives under `/var/lib/containers/rootless/<uid>`
+because the homed home's idmapped mount can't hold layers owned by subordinate
+IDs (VM-tested). 2 is deferred; 4–6 are not planned.
 
 **Recommendation:** land **1 + 2 + 3** — they convert "one root exploit = forever"
 into tamper-evident + fail-safe at low cost and stay consistent with ParticleOS.

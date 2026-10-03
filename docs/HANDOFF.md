@@ -60,9 +60,11 @@ Follow-ups:
 - Every file in the erofs `/usr` is root-owned, so non-root groups under
   `/usr/share/factory/etc` are lost. A scan of package metadata, tmpfiles and our
   roles found only polkit's `rules.d` (fixed) and `/etc/named.conf` (unused).
-- Remaining `plan-usr-hermetic.md` items (its status notes are stale): the
-  factory-reset profile test and a verity corruption test (A.5), `/etc` drift
-  detection and dropping the `docker` group (security mitigations 2 and 3).
+- Remaining `plan-usr-hermetic.md` item: `/etc` drift detection (security
+  mitigation 2, deferred). The factory-reset and dm-verity corruption tests
+  passed in a VM on 2026-10-02; Docker was replaced by rootless podman.
+- Existing installs (the XPS) still list `docker` in the homed user record;
+  harmless, since the group no longer exists. A reinstall drops it.
 
 ### What landed since 2026-09-24 (commits `c0b4eb1`..`890639e`)
 
