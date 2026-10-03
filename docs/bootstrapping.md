@@ -317,21 +317,19 @@ postinst runs and stages only files newer than it.
 This is the full sequence for setting up a new machine when no existing
 provisioned system is available.
 
-### Step 1 — Build environment
+### Step 1 — Build the image
 
-mkosi runs on the host directly (`ToolsTree=/`). A `Containerfile` is provided to
-run the build in Podman.
-
-```bash
-# optional, untested:
-podman build -t arch-ansible-builder .
-```
-
-### Step 2 — Build the image
+On an Arch host with the builder packages (`mkosi/mkosi.conf.d/20-builder.conf`),
+mkosi runs on the host directly (`ToolsTree=/`):
 
 ```bash
 bin/build-image
 ```
+
+Anywhere else (any Linux or macOS with podman or docker), `bin/dr-build` builds
+`container/Containerfile` and runs `bin/build-image` inside it instead; its output
+lands in `dr-out/` and is written with `bin/dr-burn` rather than `bin/burn-image`.
+See `disaster-recovery.md`.
 
 `bin/build-image` materializes the Secure Boot keypair from `pass`, bumps
 `mkosi/mkosi.version` (a fresh monotonic version so each build supersedes the running
@@ -351,27 +349,44 @@ slot for sysupdate), and runs `mkosi build`, which:
 Output is under `~/.cache/mkosi/images/image/` (the split `.usr-*.raw`, `.efi`,
 and the full `.raw`).
 
-### Step 3 — Write the image to a USB
+### Step 2 — Write the image to a USB
 
 ```bash
 bin/burn-image /dev/sdX
 ```
 
 `mkosi burn` writes the built image and expands partitions to fill the device. The
-image is generic; each machine names itself on first boot (see _Per-machine runtime
-config_ below).
+image is generic; the hostname is chosen at install time.
 
-### Step 4 — Boot the USB and install to the target disk
+### Step 3 — Boot the USB and install to the target disk
 
-Boot the target machine from the USB. It connects to Wi-Fi automatically and the
-arch-ansible repository is already present at `/usr/share/arch-ansible`. Write the
-same image to the target's internal disk:
+Boot the target machine from the USB and pick the **Installer** profile. It
+auto-launches a guided installer on the console (`mkosi/mkosi.extra/usr/bin/install-system --guided`
+via `arch-install.service`): it lists the eligible target disks (every whole disk
+except the live medium), you pick one and confirm, and it installs. The menu also
+offers dropping to a shell — where you can run `install-system DISK` directly — as
+an escape hatch, and the other VTs autologin root as a second one.
 
 ```bash
-bin/burn-image /dev/nvme0n1
+install-system /dev/sda            # non-interactive: ERASES /dev/sda, installs onto it
+install-system --reboot /dev/sda   # ...and reboot into it when done
 ```
 
-On first boot the default profile self-provisions the encrypted root/home.
+The whole install is a single `systemd-repart` run against the target, driven by
+the image's baked `/usr/lib/repart.d/`. It lays down only the ESP and the active
+`usr` slot: the ESP def carries `CopyFiles=/boot:/`, so repart populates the
+freshly-created target ESP with systemd-boot + the bare UKI + `loader/` copied
+straight from the running medium's `/boot`, and `usr-A` (`CopyBlocks=auto`) is
+cloned from the running `/usr`. `root`/`home`/`swap` and the inactive `usr-B`
+slot are deferred to the target's own first boot (see _First boot sequence_).
+
+This produces a pure **Boot Loader Spec Type #2** ESP — a bare UKI under
+`EFI/Linux/`, no `loader/entries/*.conf` — the same convention
+`systemd-sysupdate` uses for A/B updates, so install and update share one layout
+and nothing accumulates stale boot entries. It replaces `systemd-sysinstall`,
+whose `bootctl link` step is hardwired to Type #1 (a UKI under `/image/` plus
+per-profile loader entries) that the Type #2 update path can never garbage
+collect (mirrors [systemd/particleos#166](https://github.com/systemd/particleos/pull/166)).
 
 ---
 
@@ -396,52 +411,8 @@ are LUKS2 with a TPM2 keyslot sealed to PCR 7, enrolled at creation time.
 ### 3. Per-machine runtime config
 
 Per-machine traits (VM guest/host role from facts, network runtime, etc.) are
-applied at firstboot from hardware/facts. The hostname is self-assigned: mkosi's
-`Hostname=arch-????-????` is baked into os-release as `DEFAULT_HOSTNAME`, and systemd
-replaces each `?` with a hex character hashed deterministically from the machine-id,
-so every machine gets a unique, stable name (e.g. `arch-92a9-061c`) with no
-per-machine input — whether it self-installs or is provisioned via the Installer
-profile. Override with `hostnamectl hostname <name>`.
-
-> **Not yet implemented:** the `firstboot.service` flow the preset enables.
-> (LUKS second-factor enrollment is done: `luks-enroll-pkcs11.service`, above.)
-> TPM2/PCR 7 sealing across the Secure Boot enrollment boot has also not
-> been verified against real firmware — see `bootstrapping-todo.md`. (`bin/vm run`
-> works around the PCR 7 instability in QEMU by persisting the OVMF varstore and
-> the emulated TPM across runs.)
-
----
-
-## Installation
-
-Boot a machine from the live USB and pick the **Installer** profile. It
-auto-launches a guided installer on the console (`mkosi/mkosi.extra/usr/bin/install-system --guided`
-via `arch-install.service`): it lists the eligible target disks (every whole disk
-except the live medium), you pick one and confirm, and it installs. The menu also
-offers dropping to a shell — where you can run `install-system DISK` directly — as
-an escape hatch, and the other VTs autologin root as a second one.
-
-```bash
-install-system /dev/sda            # non-interactive: ERASES /dev/sda, installs onto it
-install-system --reboot /dev/sda   # ...and reboot into it when done
-```
-
-The whole install is a single `systemd-repart` run against the target, driven by
-the image's baked `/usr/lib/repart.d/`. It lays down only the ESP and the active
-`usr` slot: the ESP def carries `CopyFiles=/boot:/`, so repart populates the
-freshly-created target ESP with systemd-boot + the bare UKI + `loader/` copied
-straight from the running medium's `/boot`, and `usr-A` (`CopyBlocks=auto`) is
-cloned from the running `/usr`. `root`/`home`/`swap` are _deferred_ to the
-target's own first boot, where its `systemd-repart` creates them and TPM2-seals
-the LUKS `root`/`swap`; the inactive `usr-B` slot is created there too.
-
-This produces a pure **Boot Loader Spec Type #2** ESP — a bare UKI under
-`EFI/Linux/`, no `loader/entries/*.conf` — the same convention
-`systemd-sysupdate` uses for A/B updates, so install and update share one layout
-and nothing accumulates stale boot entries. It replaces `systemd-sysinstall`,
-whose `bootctl link` step is hardwired to Type #1 (a UKI under `/image/` plus
-per-profile loader entries) that the Type #2 update path can never garbage
-collect (mirrors [systemd/particleos#166](https://github.com/systemd/particleos/pull/166)).
+applied at firstboot from hardware/facts. The hostname is provided from user
+input at install time.
 
 ---
 
@@ -477,7 +448,6 @@ own ESP. Nothing is dissected, so the TPM2-sealed LUKS root/home/swap are never
 unlocked or touched (user data survives) — only the inactive `usr` slot and the
 ESP are written. The target disk is the second disk in the guest under
 `bin/vm run --device=` (`/dev/vdb`), or the physical disk node otherwise.
-(Mechanism validated read-only; end-to-end write-test pending.)
 
 ```bash
 bin/update-system --image=/dev/vdb   # offline-update an attached target disk
@@ -496,9 +466,7 @@ Boot the target machine from the USB and select **Live System (Recovery)** at th
 boot menu. This boots a volatile root (`root=tmpfs`) that masks the first-boot
 self-install, so it behaves like a rescue medium rather than provisioning itself.
 The TPM2 keyslot will not open the target machine's disk (its signed PCR 11
-policy only matches the installed UKI's own boot), so use the YubiKey. Root and
-swap have no recovery key or passphrase: TPM2 and the YubiKey are the only
-factors.
+policy only matches the installed UKI's own boot), so use the YubiKey.
 
 In QEMU, `bin/vm run --device=<disk.raw>` emulates this: it boots the image as
 the medium and attaches the disk as `/dev/vdb`; pick **Live System (Recovery)** at
@@ -513,11 +481,8 @@ chrooting. Run it from the live/recovery system:
 bin/recovery-mount
 ```
 
-It unlocks with the YubiKey (PIV; prompts for its PIN and a touch). TPM2
-fails silently in this session, since the installed system's PCR 11 policy
-can't match a recovery boot.
-
-To perform these steps manually:
+It unlocks with the YubiKey (PIV; prompts for its PIN and a touch). To perform
+these steps manually:
 
 ```bash
 # Unlock with the YubiKey (PIV PIN and a touch). Not `cryptsetup open
@@ -560,8 +525,7 @@ asks for the YubiKey once and then heals ("PCR 7 via pcrlock").
   sudo /usr/share/arch-ansible/bin/luks-reseal-tpm
   ```
 
-  Run it directly on a terminal, not piped: `pkcs11-tool` reads the PIN from
-  it. It binds literal PCR 7 + signed PCR 11, and `pcrlock-enroll-luks.service`
+  It binds literal PCR 7 + signed PCR 11, and `pcrlock-enroll-luks.service`
   moves PCR 7 onto the pcrlock policy on a later boot. Don't re-enroll by hand
   with `systemd-cryptenroll --tpm2-pcrs=7`: without `--tpm2-public-key-pcrs=11`
   the slot loses the signed PCR 11 policy.
@@ -609,10 +573,10 @@ Every image, the medium included, is signed with the one Secure Boot key from
 by `bin/build-image` or `bin/dr-build` boots under any of our machines' Secure
 Boot with no firmware changes.
 
-The exception is a stick built with `bin/dr-build --ephemeral-key`: its
-throwaway key is in no firmware. Boot it with Secure Boot disabled, or in setup
-mode to enroll that key (`disaster-recovery.md`). Not every machine allows the
-first: the XPS 13 boots the image only through its custom-mode keys.
+The exception is a stopgap stick built after losing every YubiKey, when the
+Secure Boot key in `pass` can't be decrypted: it's signed with a throwaway key
+that is in no firmware. Boot it with Secure Boot disabled, or in setup mode to enroll that key
+(`disaster-recovery.md`). Not every machine allows the first.
 
 ---
 
@@ -653,8 +617,7 @@ hostname: `host_secrets/$(hostname)/restic_backblaze_key{,_id}`. The repo passwo
 (`restic_backup_password`) is shared. A new host needs its own key before it can
 back up or restore:
 
-1. Give the machine its permanent name (`hostnamectl hostname <name>`), since the
-   self-assigned `arch-????-????` name is what the lookup would otherwise use.
+1. Give the machine its permanent name
 2. In Backblaze, create an application key for that host with read, list and
    write access to the `mnussbaum-machine-backups` bucket. Don't limit it to a
    file prefix: every host shares one restic repo, and a restore needs to read

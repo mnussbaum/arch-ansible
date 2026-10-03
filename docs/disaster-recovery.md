@@ -11,6 +11,8 @@ in one (see `bootstrapping.md`).
 - A YubiKey and its PIN. It decrypts the Secure Boot key and the homed recovery
   secret from `pass`, and authenticates the clone of the password-store from
   GitLab. Without one, see [No YubiKey](#no-yubikey).
+- If every YubiKey and the primary-key USB are gone: the printed GPG recovery
+  guide and blank YubiKeys. See [No YubiKey](#no-yubikey).
 - A USB stick of 32G or more.
 - About 150G of free disk and 8G+ of memory for the container runtime, and a
   few hours. A cold build downloads every package and compiles the AUR
@@ -42,17 +44,16 @@ Desktop: Settings → General). podman machine uses Rosetta automatically.
 ```sh
 git clone https://github.com/mnussbaum/arch-ansible.git
 cd arch-ansible
-git checkout mkosi              # until mkosi is merged to master
 bin/dr-build
 ```
 
 Insert the YubiKey when asked and enter its PIN: it authenticates the
-password-store clone over SSH and then decrypts the secrets. On macOS gnupg does this before the
-container starts and the decrypted secrets sit in `~/.dr-secrets.*` until the
-build ends; on Linux they're decrypted into the container's `/dev/shm`. Either
-way the build copies the Secure Boot key into the cache volume while it runs,
-and deletes it when the build ends, even a failed one. If the container is
-killed instead, remove the volume.
+password-store clone over SSH and then decrypts the secrets. On macOS gnupg
+does this before the container starts and the decrypted secrets sit in
+`~/.dr-secrets.*` until the build ends; on Linux they're decrypted into the
+container's `/dev/shm`. Either way the build copies the Secure Boot key into
+the cache volume while it runs, and deletes it when the build ends, even a
+failed one. If the container is killed instead, remove the volume.
 
 The medium lands in `dr-out/`. Build caches persist in the `arch-ansible-dr-cache`
 volume, so a rerun is much faster; `podman volume rm arch-ansible-dr-cache`
@@ -106,7 +107,14 @@ so it boots under their Secure Boot as-is.
 
 ## No YubiKey
 
-`bin/dr-build --ephemeral-key` needs nothing but the container runtime. It
+Prefer making a new one. With the primary-key USB, run `bin/enroll-yubikeys
+<device>` on any Linux machine. Without it, use the printed GPG recovery guide
+(made by `bin/generate-gpg-recovery-guide`, see README.md): it holds the private
+key on paper, and its procedure rebuilds the key from an Arch live USB, then
+writes a new primary-key USB and programs YubiKeys with
+`bin/restore-primary-gpg-from-paper`. Then build normally as above.
+
+Otherwise `bin/dr-build --ephemeral-key` needs nothing but the container runtime. It
 signs with a throwaway Secure Boot key (minted once and kept in the cache volume)
 and asks for a password for the new home directory in place of the recovery
 secret in `pass`. It ships no password-store unless given `--password-store` or
