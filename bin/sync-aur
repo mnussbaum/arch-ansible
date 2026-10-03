@@ -25,6 +25,9 @@
 # system, whose /usr may be read-only. mkarchroot, arch-nspawn and
 # makechrootpkg re-exec themselves under sudo, so a run that builds asks for
 # sudo; a run where every package is current does not.
+# ARCH_ANSIBLE_AUR_CHROOT=no builds with plain makepkg instead, for a throwaway
+# container that is itself the clean environment (container/dr-entrypoint):
+# nspawn nested in a container, in a VM on macOS, is not reliable.
 #
 # PRUNING keeps only the newest version of each package (and its -debug
 # package). The repo is baked into /usr (mkosi/mkosi.conf ExtraTrees) for offline
@@ -186,8 +189,9 @@ for r in reply["results"]:
     done
 fi
 
+chroot=${ARCH_ANSIBLE_AUR_CHROOT:-yes}
 if [[ ${#stale[@]} -gt 0 ]]; then
-    echo "==> building ${#stale[@]} AUR package(s) in a clean chroot (asks for sudo)" >&2
+    echo "==> building ${#stale[@]} AUR package(s) (asks for sudo)" >&2
 
     # mkarchroot and arch-nspawn copy the host's pacman keyring into the chroot,
     # from the fixed path /etc/pacman.d/gnupg. A device ships without one
@@ -198,27 +202,29 @@ if [[ ${#stale[@]} -gt 0 ]]; then
     # keyring there, as ansible/roles/packaging/tasks/init-keyring.yml does for the
     # image build. The boot-time `L /etc/pacman.d` tmpfiles line leaves an
     # existing directory alone, so this persists wherever /etc does.
-    if [[ -L /etc/pacman.d ]]; then
+    if [[ $chroot != no && -L /etc/pacman.d ]]; then
         factory=$(readlink -f /etc/pacman.d)
         sudo rm /etc/pacman.d
         sudo mkdir -m 0755 /etc/pacman.d
         sudo ln -s "$factory"/* /etc/pacman.d/
     fi
-    if [[ ! -e /etc/pacman.d/gnupg/trustdb.gpg ]]; then
+    if [[ $chroot != no && ! -e /etc/pacman.d/gnupg/trustdb.gpg ]]; then
         sudo pacman-key --init
         sudo pacman-key --populate archlinux
     fi
 
     # mkarchroot and arch-nspawn bind the host's pacman CacheDir into the chroot,
     # and a device's fresh /var has none.
-    if [[ ! -d /var/cache/pacman/pkg ]]; then
+    if [[ $chroot != no && ! -d /var/cache/pacman/pkg ]]; then
         sudo install -d -m 0755 /var/cache/pacman/pkg
     fi
 
     # The clean chroot every build starts from (makechrootpkg -c copies it).
     # mkarchroot writes .arch-chroot last, so a root without it is a half-made
     # chroot that mkarchroot will refuse to overwrite.
-    if [[ -f $chroots/root/.arch-chroot ]]; then
+    if [[ $chroot == no ]]; then
+        :
+    elif [[ -f $chroots/root/.arch-chroot ]]; then
         arch-nspawn -C "$pacman_conf" -M "$makepkg_conf" "$chroots/root" pacman -Syuu --noconfirm
     elif [[ -e $chroots/root ]]; then
         echo "sync-aur: $chroots/root is an incomplete chroot; remove it (sudo rm -rf) and rerun" >&2
@@ -239,7 +245,7 @@ if [[ ${#stale[@]} -gt 0 ]]; then
     # the chroot only has the official repos.
     build_base() {
         local base=$1 dir=$work/$1 dep files
-        local -a deps install=()
+        local -a deps install=() install_files=()
         case ${state[$base]:-} in
             done) return ;;
             building) echo "sync-aur: AUR dependency cycle through $base" >&2; exit 1 ;;
@@ -258,6 +264,7 @@ if [[ ${#stale[@]} -gt 0 ]]; then
             fi
             files=("$repo/$dep-$(newest_version "$dep")"-*.pkg.tar.zst)
             install+=(-I "${files[0]}")
+            install_files+=("${files[0]}")
         done
 
         echo "==> $base" >&2
@@ -265,8 +272,16 @@ if [[ ${#stale[@]} -gt 0 ]]; then
         # hkps transport is broken on current Arch. Integrity still comes from the
         # PKGBUILD's pinned checksums. makechrootpkg passes it to makepkg for both
         # the source download and the build.
-        ( cd "$dir" && PKGDEST="$repo" MAKEFLAGS="${MAKEFLAGS:--j$(nproc)}" \
-            makechrootpkg -c -r "$chroots" "${install[@]}" -- --skippgpcheck )
+        if [[ $chroot == no ]]; then
+            if [[ ${#install_files[@]} -gt 0 ]]; then
+                sudo pacman -U --needed --noconfirm --asdeps "${install_files[@]}"
+            fi
+            ( cd "$dir" && PKGDEST="$repo" MAKEFLAGS="${MAKEFLAGS:--j$(nproc)}" \
+                makepkg --config "$makepkg_conf" --syncdeps --clean --noconfirm --skippgpcheck )
+        else
+            ( cd "$dir" && PKGDEST="$repo" MAKEFLAGS="${MAKEFLAGS:--j$(nproc)}" \
+                makechrootpkg -c -r "$chroots" "${install[@]}" -- --skippgpcheck )
+        fi
         state[$base]=done
     }
 

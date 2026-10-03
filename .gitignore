@@ -7,3 +7,4 @@
 /mkosi.crt
 /mkosi/mkosi.version
 .ansible/
+/dr-out/

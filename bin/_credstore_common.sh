@@ -33,9 +33,17 @@ credstore_shell=$(python3 -c \
   "import yaml;print(yaml.safe_load(open('ansible/group_vars/all/vars.yml'))['user']['shell'])")
 credstore_recovery="linux_users/$credstore_user/recovery-key"
 
+# Already decrypted elsewhere (the disaster-recovery container, container/dr-entrypoint).
+if [[ -n "${ARCH_ANSIBLE_SECRETS_DIR:-}" ]]; then
+  credstore_recovery_secret() { cat "$ARCH_ANSIBLE_SECRETS_DIR/home-recovery-key"; }
+else
+  credstore_recovery_secret() { pass show "$credstore_recovery"; }
+fi
+
 # Generate the recovery secret once and keep it in pass, so it is stable across
 # rebuilds and usable as the user's fallback credential.
-if ! pass show "$credstore_recovery" >/dev/null 2>&1; then
+if [[ -z "${ARCH_ANSIBLE_SECRETS_DIR:-}" ]] \
+    && ! pass show "$credstore_recovery" >/dev/null 2>&1; then
   echo "==> Generating home recovery secret in pass ($credstore_recovery)..."
   openssl rand -base64 24 | pass insert -m -f "$credstore_recovery" >/dev/null
 fi
@@ -53,7 +61,7 @@ echo "==> Building home.create.$credstore_user + home.new-password credentials..
 # ask-password .credential = "home.new-password" path in homectl's
 # acquire_new_password()). systemd-homed-firstboot.service ImportCredential=home.*
 # imports both.
-(umask 077; pass show "$credstore_recovery" \
+(umask 077; credstore_recovery_secret \
   | CREDSTORE_USER="$credstore_user" CREDSTORE_SHELL="$credstore_shell" \
     CREDSTORE_DIR="$credstore_dir" python3 -c '
 import json, os, sys

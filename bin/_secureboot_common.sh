@@ -47,6 +47,14 @@ materialize_secureboot_keypair() {
   # be swept into the image. Regenerable from pass.
   rm -f mkosi.key mkosi.crt
 
+  # Already decrypted elsewhere (the disaster-recovery container, container/dr-entrypoint).
+  if [[ -n "${ARCH_ANSIBLE_SECRETS_DIR:-}" ]]; then
+    (umask 077; cp "$ARCH_ANSIBLE_SECRETS_DIR/secureboot.key" "$SECUREBOOT_KEY")
+    chmod 600 "$SECUREBOOT_KEY"
+    cp "$ARCH_ANSIBLE_SECRETS_DIR/secureboot.crt" "$SECUREBOOT_CERT"
+    return
+  fi
+
   if [[ -f "$PASSWORD_STORE_DIR/$SECUREBOOT_PASS_KEY.gpg" ]]; then
     if ! (umask 077; pass show "$SECUREBOOT_PASS_KEY" > "$SECUREBOOT_KEY"); then
       rm -f "$SECUREBOOT_KEY"

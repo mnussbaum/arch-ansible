@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Fetch the password-store and decrypt what an image build needs from it with a
+# YubiKey, into a directory bin/build-image reads via ARCH_ANSIBLE_SECRETS_DIR:
+# secureboot.key, secureboot.crt and home-recovery-key.
+#
+# Runs inside the disaster-recovery container on Linux, and on the host on macOS,
+# where containers can't reach USB devices: so bash 3.2 and BSD tools, and gpg,
+# git and ssh are all it needs. Uses a throwaway GNUPGHOME holding only the
+# public key; the secret keys stay on the YubiKey.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+usage() {
+  echo "Usage: $0 --repo DIR --out DIR [--store-dest DIR]" >&2
+  echo "          [--password-store DIR | --password-store-url URL]" >&2
+  echo "  --repo                The arch-ansible checkout (for the GPG public key)." >&2
+  echo "  --out                 Where to write the decrypted secrets." >&2
+  echo "  --store-dest          Where to put the password-store (default: OUT/password-store)." >&2
+  echo "  --password-store      Copy an existing password-store instead of cloning one." >&2
+  echo "  --password-store-url  Clone from here (default: $store_url)." >&2
+}
+
+repo=
+out=
+store_dir=
+store_url=git@gitlab.com:mnussbaum/password-store.git
+store_dest=
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --repo) repo=$2; shift ;;
+    --out) out=$2; shift ;;
+    --store-dest) store_dest=$2; shift ;;
+    --password-store) store_dir=$2; shift ;;
+    --password-store-url) store_url=$2; shift ;;
+    -h|--help) usage; exit ;;
+    *) echo "dr-unlock: unexpected argument: $1" >&2; usage; exit 1 ;;
+  esac
+  shift
+done
+if [ -z "$repo" ] || [ -z "$out" ]; then usage; exit 1; fi
+: "${store_dest:=$out/password-store}"
+
+for tool in gpg gpgconf gpg-connect-agent git ssh; do
+  if ! command -v "$tool" >/dev/null; then
+    echo "dr-unlock: $tool not found (macOS: brew install gnupg; xcode-select --install)" >&2
+    exit 1
+  fi
+done
+
+# Under /tmp, not $TMPDIR: macOS's is long enough to overflow the agent's socket path.
+GNUPGHOME=$(mktemp -d /tmp/dr-gnupg.XXXXXX)
+export GNUPGHOME
+cleanup() {
+  gpgconf --kill all >/dev/null 2>&1 || true
+  rm -rf "$GNUPGHOME"
+}
+trap cleanup EXIT
+cp "$repo/ansible/roles/gpg/files/scdaemon.conf" "$GNUPGHOME/"
+echo enable-ssh-support > "$GNUPGHOME/gpg-agent.conf"
+GPG_TTY=$(tty)
+export GPG_TTY
+
+gpg --quiet --import "$repo/ansible/roles/gpg/files/gpg-pubkey.asc"
+# Card status links the imported public key to the card's secret keys.
+until gpg --card-status >/dev/null 2>&1; do
+  echo "dr-unlock: no YubiKey found. Insert it and press Enter (Ctrl-C to abort)." >&2
+  read -r _
+done
+gpg-connect-agent updatestartuptty /bye >/dev/null
+
+if [ -n "$store_dir" ]; then
+  mkdir -p "$store_dest"
+  cp -R "$store_dir/." "$store_dest/"
+else
+  # SSH auth comes from the YubiKey's authentication key, through gpg-agent.
+  # GitLab's key is pinned; any other host is trusted on first use.
+  known_hosts=$GNUPGHOME/known_hosts
+  echo 'gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf' \
+    > "$known_hosts"
+  echo "==> Cloning $store_url (asks for the YubiKey PIN)" >&2
+  SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket) \
+    GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=$known_hosts -o StrictHostKeyChecking=accept-new" \
+    git clone --quiet "$store_url" "$store_dest"
+fi
+
+user=$(awk '/^user:/ { u = 1; next } u && /^[^ ]/ { u = 0 } u && $1 == "name:" { print $2; exit }' \
+  "$repo/ansible/group_vars/all/vars.yml")
+mkdir -p "$out"
+chmod 700 "$out"
+decrypt() {
+  (umask 077; gpg --quiet --decrypt "$store_dest/$1.gpg" > "$out/$2")
+}
+echo "==> Decrypting the build secrets (asks for the YubiKey PIN)" >&2
+decrypt arch_ansible/secureboot-key secureboot.key
+decrypt arch_ansible/secureboot-cert secureboot.crt
+decrypt "linux_users/$user/recovery-key" home-recovery-key
