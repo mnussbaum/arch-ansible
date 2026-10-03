@@ -17,7 +17,7 @@
     dest: /usr/lib/systemd/user/wl-gammarelay.service
 
 - name: Enable wl-gammarelay service
-  service:
+  systemd_service:
     name: wl-gammarelay.service
     enabled: yes
     scope: global
@@ -39,7 +39,7 @@
     dest: /usr/lib/systemd/user/colorscheme-changer.timer
 
 - name: Enable colorscheme-changer timer
-  service:
+  systemd_service:
     name: colorscheme-changer.timer
     enabled: yes
     scope: global

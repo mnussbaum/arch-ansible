@@ -2,6 +2,9 @@
 # or macOS machine with podman or docker. Run it through bin/dr-build, not
 # directly; see docs/disaster-recovery.md.
 #
+# mkosi.build and mkosi.finalize run with this as their /usr (ToolsTree=/), so
+# it carries their tools too (rust, sccache, rsync).
+#
 # x86_64 only, like the image. On an arm64 host it runs under Rosetta/qemu.
 FROM docker.io/library/archlinux:latest
 
@@ -37,6 +40,8 @@ RUN sed -i 's/^Architecture = auto/Architecture = x86_64/' /etc/pacman.conf \
       python-pystache \
       python-yaml \
       rsync \
+      rust \
+      sccache \
       sudo \
       systemd \
       systemd-ukify \

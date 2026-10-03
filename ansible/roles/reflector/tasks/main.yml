@@ -12,6 +12,6 @@
     dest: /usr/lib/systemd/system/reflector.timer
 
 - name: Enable reflector timer
-  service:
+  systemd_service:
     name: reflector.timer
     enabled: yes
