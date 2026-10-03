@@ -295,5 +295,5 @@ else
   # inactive usr slot; the guard above (we're on a real device) keeps that
   # discovery off a build host's disk.
   sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" update "$new_version"
-  [[ -n "$reboot" ]] && sudo systemctl reboot
+  if [[ -n "$reboot" ]]; then sudo systemctl reboot; fi
 fi
