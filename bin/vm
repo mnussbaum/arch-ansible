@@ -441,6 +441,13 @@ def yubikey_qemu_args():
     Opening the device needs no root: the desktop session's uaccess ACL grants
     the logged-in user read-write on it.
     """
+    # A socket-activated host pcscd, woken by any host smartcard client (e.g.
+    # gpg's scdaemon), takes the key back from QEMU mid-boot.
+    active = subprocess.run(["systemctl", "is-active", "--quiet", "pcscd.socket", "pcscd.service"])
+    if active.returncode == 0:
+        sys.exit("error: --yubikey: the host's pcscd would take the YubiKey back from "
+                 "the guest; stop it first: sudo systemctl stop pcscd.socket pcscd.service "
+                 "(start pcscd.socket again afterwards)")
     for dev in sorted(Path("/sys/bus/usb/devices").iterdir()):
         vendor = dev / "idVendor"
         if vendor.exists() and vendor.read_text().strip() == "1050":
