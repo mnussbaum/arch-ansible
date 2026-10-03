@@ -1,0 +1,4 @@
+# systemd's preset enables it, but mkosi then takes its build user namespaces
+# from it, and those may not mount overlays, so bin/update-system fails on a
+# device. Nothing here needs unprivileged user namespace delegation.
+disable systemd-nsresourced.socket
