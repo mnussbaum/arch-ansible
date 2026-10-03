@@ -314,8 +314,8 @@ postinst runs and stages only files newer than it.
 
 ## Build chain from scratch
 
-This is the full sequence for setting up a new machine when no existing
-provisioned system is available.
+This is the full sequence for setting up a new machine, from building the image
+to restoring its home from backup.
 
 ### Step 1 — Build the image
 
@@ -356,7 +356,7 @@ bin/burn-image /dev/sdX
 ```
 
 `mkosi burn` writes the built image and expands partitions to fill the device. The
-image is generic; the hostname is chosen at install time.
+image is generic; each machine is named on its first boot (Step 4).
 
 ### Step 3 — Boot the USB and install to the target disk
 
@@ -378,7 +378,7 @@ the image's baked `/usr/lib/repart.d/`. It lays down only the ESP and the active
 freshly-created target ESP with systemd-boot + the bare UKI + `loader/` copied
 straight from the running medium's `/boot`, and `usr-A` (`CopyBlocks=auto`) is
 cloned from the running `/usr`. `root`/`home`/`swap` and the inactive `usr-B`
-slot are deferred to the target's own first boot (see _First boot sequence_).
+slot are deferred to the target's own first boot (Step 4).
 
 This produces a pure **Boot Loader Spec Type #2** ESP — a bare UKI under
 `EFI/Linux/`, no `loader/entries/*.conf` — the same convention
@@ -388,38 +388,81 @@ whose `bootctl link` step is hardwired to Type #1 (a UKI under `/image/` plus
 per-profile loader entries) that the Type #2 update path can never garbage
 collect (mirrors [systemd/particleos#166](https://github.com/systemd/particleos/pull/166)).
 
----
+### Step 4 — First boot
 
-## First boot sequence
+Reboot into the installed disk. Its first boot:
 
-On first boot of a freshly installed image:
+1. **Enrolls the Secure Boot key** from the ESP (see "Secure Boot").
+2. **Provisions the disk**: `systemd-repart` creates the inactive `usr` slot,
+   swap, root and home, with root and swap TPM2-sealed (see "Partition layout"
+   and "Disk encryption").
+3. **Asks for locale, timezone, hostname and root password** (`systemd-firstboot`).
+   The hostname prompt preselects the default that mkosi's `Hostname=arch-????-????`
+   bakes into os-release, where systemd fills each `?` from the machine-id (e.g.
+   `arch-92a9-061c`). Accept it or type a name; rename later with
+   `hostnamectl hostname <name>`.
+4. **Waits for a YubiKey** to enroll on root and swap (`luks-enroll-pkcs11`, see
+   "Disk encryption").
+5. **Creates the encrypted home** unattended (see "YubiKey enrollment for homed").
 
-### 1. Secure Boot key enrollment
+Per-machine traits (VM guest/host role, network runtime, etc.) are detected from
+hardware/facts at firstboot, so there are no per-host repo files. Build-time
+configuration that can't be detected at runtime goes in `group_vars` or behind a
+runtime condition in the roles.
 
-systemd-boot reads `loader.conf`, finds `secure-boot-enroll force`, reads the
-`PK`/`KEK`/`db` auto-enroll files from the ESP, and writes them into the UEFI key
-databases before loading any OS. On subsequent boots, Secure Boot is enforced with
-the custom key.
+### Step 5 — First login
 
-### 2. Self-provisioning (systemd-repart)
+Log in with the home recovery secret (`pass linux_users/<user>/recovery-key`, or
+the password given to `bin/dr-build --ephemeral-key`). First login runs
+`user-first-login-playbook.yml`, which enrolls the YubiKey on the home and drops
+the password (see "YubiKey enrollment for homed"), sets up Wi-Fi from `pass`, and
+clones this repo to `~/Projects/arch-ansible` and the password store into the home.
 
-The initrd runs `systemd-repart` against `/usr/lib/repart.d/`. It creates the
-inactive `/usr` B slot, the encrypted swap, the encrypted btrfs root (with the
-`/var` subvolume), and the home partition, sizing them to the disk. Root and swap
-are LUKS2 with a TPM2 keyslot sealed to PCR 7, enrolled at creation time.
+### Step 6 — Back up and restore the home
 
-### 3. Per-machine runtime config
+`restic-backup` (the `backup` role) looks up its Backblaze key in `pass` by
+hostname: `host_secrets/$(hostname)/restic_backblaze_key{,_id}`. The repo password
+(`restic_backup_password`) is shared. A new host needs its own key before it can
+back up or restore.
 
-Per-machine traits (VM guest/host role from facts, network runtime, etc.) are
-applied at firstboot from hardware/facts. The hostname is provided from user
-input at install time.
+1. Make sure the machine has its permanent name (Step 4).
+2. In Backblaze, create an application key for that host with read, list and
+   write access to the `mnussbaum-machine-backups` bucket. Don't limit it to a
+   file prefix: every host shares one restic repo, and a restore needs to read
+   other hosts' snapshots.
+3. Add it to the password store, then `pass git push`:
+   ```bash
+   pass insert host_secrets/<name>/restic_backblaze_key_id
+   pass insert host_secrets/<name>/restic_backblaze_key
+   ```
+4. The password store ships read-only in the image (`/usr/share/password-store`),
+   so roll a new image with `bin/update-system` and reboot into it.
+5. Check with `restic-backup snapshots`.
+
+Once the host's credentials are in place, seed its home from the latest snapshot:
+
+```bash
+restic-backup restore                    # every path in /etc/restic-backup/includes
+restic-backup restore -d ~/Documents     # or specific paths
+```
+
+By default the restore only adds files that are missing. It never deletes or
+overwrites anything, so it's safe to run on a home that already has work in it,
+such as a repo you cloned during setup. Pass `--exact` to make each path match
+the snapshot exactly, deleting files not in it and overwriting changed ones.
+
+Restore before adding any Syncthing folders. If a folder is already being synced,
+files deleted on other devices after the snapshot will come back and sync out to
+them.
 
 ---
 
 ## Updates
 
 The OS updates by swapping the read-only `/usr` A/B slots, not by mutating a
-running system — there are no in-place `pacman -Syu` kernel/`/usr` updates.
+running system — there are no in-place `pacman -Syu` kernel/`/usr` updates. OS-level
+changes are made by editing this repo and rolling a new image; writable state
+(`/etc`, `/home`) can still be changed live.
 
 `bin/update-system` is the on-device path (there is no update server): it rebuilds
 a fresh image version from this repo, drops the split artifacts into the staging
@@ -593,68 +636,3 @@ modprobe vhost_vsock
 
 This also allows testing YubiKey LUKS enrollment flows inside the VM before
 deploying to physical hardware.
-
----
-
-## Adding a new host
-
-All machines share the same generic image; each names itself at firstboot
-(machine-id-derived) and per-machine traits are detected at firstboot. To provision
-a new machine, build the image and burn it:
-
-```bash
-bin/build-image
-bin/burn-image /dev/sdX
-```
-
-Build-time configuration that can't be detected at runtime goes in `group_vars`
-or behind a runtime condition in the roles.
-
-### Backup credentials
-
-`restic-backup` (the `backup` role) looks up its Backblaze key in `pass` by
-hostname: `host_secrets/$(hostname)/restic_backblaze_key{,_id}`. The repo password
-(`restic_backup_password`) is shared. A new host needs its own key before it can
-back up or restore:
-
-1. Give the machine its permanent name
-2. In Backblaze, create an application key for that host with read, list and
-   write access to the `mnussbaum-machine-backups` bucket. Don't limit it to a
-   file prefix: every host shares one restic repo, and a restore needs to read
-   other hosts' snapshots.
-3. Add it to the password store, then `pass git push`:
-   ```bash
-   pass insert host_secrets/<name>/restic_backblaze_key_id
-   pass insert host_secrets/<name>/restic_backblaze_key
-   ```
-4. The password store ships read-only in the image (`/usr/share/password-store`),
-   so roll a new image with `bin/update-system` and reboot into it.
-5. Check with `restic-backup snapshots`.
-
-### Restoring data from backup
-
-Once the host's credentials are in place, seed its home from the latest snapshot:
-
-```bash
-restic-backup restore                    # every path in /etc/restic-backup/includes
-restic-backup restore -d ~/Documents     # or specific paths
-```
-
-By default the restore only adds files that are missing. It never deletes or
-overwrites anything, so it's safe to run on a home that already has work in it,
-such as a repo you cloned during setup. Pass `--exact` to make each path match
-the snapshot exactly, deleting files not in it and overwriting changed ones.
-
-Restore before adding any Syncthing folders. If a folder is already being synced,
-files deleted on other devices after the snapshot will come back and sync out to
-them.
-
----
-
-## Day-to-day configuration changes
-
-Because `/usr` is read-only, OS-level changes are made by editing this repo and
-rolling a new image with `bin/update-system` (which rebuilds and swaps the
-inactive `/usr` slot), then rebooting into it. Writable state — `/etc`, `/home`,
-and user-level configuration applied by `playbook.yml` — can still be changed live
-on the running machine.
