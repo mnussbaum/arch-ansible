@@ -1,0 +1,5 @@
+# Keep the intel-vbtn virtual button device (INT33D6, Dell XPS) from waking the
+# system. Firmware notifies it while entering S4, which aborts hibernation after
+# the image is written. Lid and power button wake still go through PNP0C0D/PNP0C0C.
+# Match bind too since intel-vbtn re-enables wakeup when it probes.
+ACTION=="add|bind", SUBSYSTEM=="platform", KERNEL=="INT33D6:*", ATTR{power/wakeup}="disabled"
