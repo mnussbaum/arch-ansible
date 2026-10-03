@@ -4,44 +4,62 @@ Repo: `/home/mnussbaum/Projects/arch-ansible`  ·  Branch: `mkosi`  ·  Updated:
 
 ## RESUME HERE (2026-10-02)
 
-**Root cause found and fixed (2026-10-02); the XPS just needs a reinstall.**
-The hang at `/dev/disk/by-designator/root` was on the *first* boot after
-install, with the USB stick still plugged in. Stick and disk carry identical
-`/usr` partitions (same verity-derived partition UUIDs), so the initrd's
-`by-partuuid` lookup could assemble `/usr` from either disk, even one partition
-from each. First-boot repart then couldn't resolve `/usr`'s disk and silently
-skipped, so root was never created. That's also why no YubiKey was enrolled:
-first boot never got that far. The TPM was never at fault.
+**The XPS 13 9365 is installed, working, and has taken its first A/B update**
+(`20261002131149` -> `20261002164446`, built on the device with
+`bin/update-system`, rebooted into successfully).
 
-Fix: `mkosi/mkosi.conf` points `systemd.verity_usr_data=`/`systemd.verity_usr_hash=`
-at `/dev/disk/by-designator/`, which udev creates only for the disk whose ESP
-the firmware booted. VM-validated with the medium attached as a second disk.
-The stick can now stay plugged in. The YubiKey enrollment no longer skips
-silently either: it waits for a key or an explicit `skip`, logs to the journal
-(`journalctl -t luks-enroll-pkcs11`), and fails the unit if a slot is missing.
+`bin/update-system` on a device first failed at mkosi's "Installing build
+packages" step (`PermissionError: Operation not permitted: 'newroot/buildroot'`).
+Cause: systemd's preset enables `systemd-nsresourced`, mkosi then takes its user
+namespace from it (helper + `setns`), and overlay mounts in the sandbox nested
+inside it get EPERM. The build workstation has nsresourced off, so it never
+hit this. `MKOSI_FORCE_USERNS_FALLBACK=1` alone did not help; the build passed
+with nsresourced stopped. Fix: `80-nsresourced.preset` disables it for new
+installs; on the XPS, run once `sudo systemctl disable --now
+systemd-nsresourced.socket systemd-nsresourced.service`. Same symptom as
+mkosi issue #3775 (installed ParticleOS).
 
-On the reinstall, check after first boot, as root:
+After the update, sysupdate's notification to pcrlock failed ("returned error,
+ignoring"); expected on the XPS, whose PTT lacks PolicyAuthorizeNV so pcrlock is
+skipped. TPM unlock is literal PCR 7 + signed PCR 11 there.
 
-```
-journalctl -b -t luks-enroll-pkcs11 --no-pager
-systemd-cryptenroll /dev/disk/by-designator/root-luks   # must list pkcs11
-```
+The previous slot (`20261002131149`, still bootable from the boot menu) is a
+test build whose initrd has an unauthenticated root shell on tty9 (never
+committed). The next update overwrites it.
+
+After the reboot (confirmed): TPM unlock without a prompt, `IMAGE_VERSION`
+`20261002164446`, no failed units, and `systemd-bless-boot` marked the new UKI
+good (its `+3-0` boot-count suffix is gone).
+
+Validated on the XPS 13 (2026-10-02):
+
+- **Install and first boot,** with the USB stick left in: `/usr` now comes from
+  the booted disk (`systemd.verity_usr_*` on `by-designator`), so first-boot
+  repart provisions the right disk. The YubiKey was enrolled on root and swap.
+- **YubiKey fallback:** with root's TPM slot wiped, the initrd asked for the PIV
+  PIN and a touch and unlocked root; `luks-reseal-tpm` restored unattended boots.
+- **`recovery-mount` from the Live profile:** unlocks root and, read-only, the
+  user's homed home with the YubiKey.
+
+Hardware quirks of this XPS:
+
+- The right USB-C port's USB 2 path is dead (USB 3 devices work there), so a
+  YubiKey never enumerates in it. Use the left port.
+- It won't boot the image with Secure Boot off; it boots only through the
+  Custom Mode keys. Don't use a Secure Boot toggle to break TPM unlock for tests;
+  wipe the TPM slot instead.
+
+Committed but not yet seen on a built image: the Live profile runs the
+first-login playbook minus homed account changes (repo checkout, gpg/`pass`,
+wifi); `install-system` deletes "Arch Linux" boot entries whose ESP is gone;
+syncthing and wireplumber skip system users (greetd's greeter ran them, writing
+to `/.local`); factory-seed makes polkit's empty factory `rules.d` readable.
 
 Follow-ups:
 
-- ~~A skipped enrollment must not be silent.~~ Done: first boot waits until a
-  YubiKey is enrolled or `skip` is typed, and the unit fails if a volume has no slot.
-- ~~`890639e` (commands moved to `/usr/bin`) was not VM-validated.~~ Validated
-  2026-10-02.
-- ~~User services write to `/.local` at boot.~~ Fixed (not yet verified on a
-  built image): greetd's `greeter` account ran syncthing and wireplumber; both now
-  carry `ConditionUser=!@system`.
-- ~~polkitd can't read `/etc/polkit-1/rules.d`.~~ Fixed (not yet verified on a
-  built image): factory-seed makes the empty factory `rules.d` readable. Every file
-  in the erofs `/usr` is root-owned, so non-root groups under
-  `/usr/share/factory/etc` are lost; a scan of package metadata, tmpfiles and our
-  roles found only one other such path, `/etc/named.conf` (unused: `named` isn't
-  enabled).
+- Every file in the erofs `/usr` is root-owned, so non-root groups under
+  `/usr/share/factory/etc` are lost. A scan of package metadata, tmpfiles and our
+  roles found only polkit's `rules.d` (fixed) and `/etc/named.conf` (unused).
 - Remaining `plan-usr-hermetic.md` items (its status notes are stale): the
   factory-reset profile test and a verity corruption test (A.5), `/etc` drift
   detection and dropping the `docker` group (security mitigations 2 and 3).
