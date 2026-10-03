@@ -181,8 +181,9 @@ the policy with the stored PIN, and the next boot unlocks root and swap from
 the TPM again.
 
 *Validated in a VM (dbx appends signed with the KEK): the planned path unlocks
-silently across the change; the unplanned path needs the recovery key once and
-then heals.*
+silently across the change; the unplanned path needs a second factor once and
+then heals.* (The VM test unlocked with a test-only recovery key; real machines
+have no recovery key, so the YubiKey is that factor.)
 
 pcrlock needs a TPM 2.0 rev ≥ 1.38 (PolicyAuthorizeNV). On older TPMs — the
 XPS 13 9365's Intel PTT is one — `systemd-pcrlock-make-policy` is skipped and
@@ -205,11 +206,19 @@ hence the split:
    prompting.
 2. **First login.** `ansible/roles/user/tasks/first-login.yml` discovers the YubiKey's
    PIV URI and runs `homectl update --pkcs11-token-uri=…`, then **drops the
-   password factor**, leaving the token as the login factor and the recovery
-   secret as the fallback.
+   password factor**, leaving the token as the login factor.
+3. **Recovery secret rotation.** The baked secret is readable from any image's
+   unencrypted `/usr`, so `ansible/roles/user/tasks/home-recovery-key.yml`
+   replaces its LUKS keyslot with a fresh per-machine secret, stored in `pass`
+   as `linux_users/<user>/home-recovery-key/<hostname>` (and pushed, if it
+   can). That secret no longer logs in, but it opens the home's LUKS image.
+   Machines installed before this existed rotate when the first-login playbook
+   is re-run:
+   `cd ~/Projects/arch-ansible && ANSIBLE_PLAYBOOK=user-first-login-playbook.yml NO_ASK_BECOME_PASS=1 ./bin/ansible`.
 
-It pins PIV **slot 9D** (`id=%03`, "Key Management"). Slot 9C is the Secure Boot
-signing key and must never be selected.
+It pins PIV **slot 9D** (`id=%03`, "Key Management"), the only key on the PIV
+applet: provisioning resets PIV first. The Secure Boot key is a software key in
+`pass`, not on the YubiKey.
 
 Things that will bite you:
 
@@ -527,8 +536,10 @@ prior slot automatically.
 Boot the target machine from the USB and select **Live System (Recovery)** at the
 boot menu. This boots a volatile root (`root=tmpfs`) that masks the first-boot
 self-install, so it behaves like a rescue medium rather than provisioning itself.
-The TPM2 keyslot will not open the target machine's disk (different boot session →
-different PCR 7 value), so use the YubiKey.
+The TPM2 keyslot will not open the target machine's disk (its signed PCR 11
+policy only matches the installed UKI's own boot), so use the YubiKey. Root and
+swap have no recovery key or passphrase: TPM2 and the YubiKey are the only
+factors.
 
 In QEMU, `bin/vm run --device=<disk.raw>` emulates this: it boots the image as
 the medium and attaches the disk as `/dev/vdb`; pick **Live System (Recovery)** at
@@ -550,55 +561,56 @@ can't match a recovery boot.
 To perform these steps manually:
 
 ```bash
-# Unlock with enrolled tokens (the YubiKey asks for its PIV PIN and a touch):
-cryptsetup open --token-only /dev/<root-partition> cryptroot
-
+# Unlock with the YubiKey (PIV PIN and a touch). Not `cryptsetup open
+# --token-only`: Arch's libcryptsetup has no token plugins.
+/usr/lib/systemd/systemd-cryptsetup attach cryptroot /dev/<root-partition> - pkcs11-uri=auto
 
 mount /dev/mapper/cryptroot /mnt
+mount -o ro /dev/<usr-partition> /mnt/usr   # the target's erofs /usr; root has none
 mount /dev/<esp-partition> /mnt/efi
 arch-chroot /mnt
 ```
 
+Pick the target's partitions, not the medium's: both disks carry the same
+labels. `recovery-mount` also offers to open homed homes read-only.
+
 ### Common recovery tasks
 
-**Reinstall the bootloader and re-enroll Secure Boot keys** (materialize the key
-from `pass` first, then):
+**Repair the ESP** (lost or corrupted bootloader). The medium's ESP holds the same
+signed systemd-boot and `loader/`, including the Secure Boot auto-enroll keys.
+With the target's ESP at `/mnt/efi` and the medium's mounted elsewhere, copy
+`EFI/systemd/`, `EFI/BOOT/` and `loader/` across. Don't copy the medium's UKI:
+each UKI pins its own `/usr`'s verity hash. If the target's `EFI/Linux/` is
+empty, `bin/update-system --image=<disk>` installs a fresh `/usr` and a matching
+UKI (see "Updates"). *Untested.*
 
-```bash
-bootctl install --no-variables --esp-path=/efi --secure-boot-auto-enroll=yes \
-  --certificate="$SECUREBOOT_CERT" --private-key="$SECUREBOOT_KEY"
-```
+**Firmware lost its Secure Boot keys** (a reset, a board swap). Put the firmware
+in setup mode and boot the installed system: `secure-boot-enroll force`
+re-enrolls the keys from the ESP's `loader/keys/`. PCR 7 changes, so that boot
+asks for the YubiKey once and then heals ("PCR 7 via pcrlock").
 
-**Re-enroll TPM2** (after a Secure Boot key change). A fresh install gets its
-TPM2 keyslot from `systemd-repart` (`Encrypt=tpm2` + `TPM2PCRs=7` in
-`mkosi/mkosi.extra/usr/lib/repart.d/50-root.conf`), bound to PCR 7 AND the signed
-PCR 11 policy — so this is only needed when a Secure Boot change invalidates
-PCR 7:
+**TPM stopped unlocking.** What to do depends on why:
 
-If the TPM still unseals, it authorizes the change itself:
+- A Secure Boot variable change: planned, wrap it in `pcrlock-secureboot-change`;
+  unplanned, unlock with the YubiKey once and the policy heals ("PCR 7 via
+  pcrlock").
+- A cleared or replaced TPM, or a binding that didn't heal: boot by typing the
+  YubiKey PIN, then re-seal root and swap (PIV PIN and a touch per volume):
 
-```bash
-systemd-cryptenroll /dev/disk/by-designator/root-luks --unlock-tpm2-device=auto \
-  --wipe-slot=tpm2 --tpm2-device=auto --tpm2-pcrs=7 \
-  --tpm2-public-key=/run/systemd/tpm2-pcr-public-key.pem
-```
+  ```bash
+  sudo /usr/share/arch-ansible/bin/luks-reseal-tpm
+  ```
 
-If it no longer does — the boot asked for the YubiKey — re-seal root and swap
-from that boot, authorized by the YubiKey (PIV PIN and a touch per volume):
+  Run it directly on a terminal, not piped: `pkcs11-tool` reads the PIN from
+  it. It binds literal PCR 7 + signed PCR 11, and `pcrlock-enroll-luks.service`
+  moves PCR 7 onto the pcrlock policy on a later boot. Don't re-enroll by hand
+  with `systemd-cryptenroll --tpm2-pcrs=7`: without `--tpm2-public-key-pcrs=11`
+  the slot loses the signed PCR 11 policy.
 
-```bash
-sudo /usr/share/arch-ansible/bin/luks-reseal-tpm
-```
-
-Run it directly on a terminal, not piped: `pkcs11-tool` reads the PIN from it.
-
-`systemd-cryptenroll` can't authorize with a PKCS#11 token and Arch's
-libcryptsetup has no token plugins, so the script decrypts the slot's key with
-`pkcs11-tool` the way systemd-cryptsetup does and passes it as
-`--unlock-key-file`.
-
-Without `--tpm2-public-key=` the new slot binds PCR 7 only and loses the signed
-PCR 11 policy.
+  `systemd-cryptenroll` can't authorize with a PKCS#11 token and Arch's
+  libcryptsetup has no token plugins, so the script decrypts the slot's key with
+  `pkcs11-tool` the way systemd-cryptsetup does and passes it as
+  `--unlock-key-file`.
 
 **Lose a YubiKey:** every YubiKey carries the same PIV key, so one can't be
 revoked alone; its PIV PIN (limited attempts) is what protects it. To revoke,
@@ -607,20 +619,45 @@ YubiKeys (`bin/enroll-yubikeys`), then on each machine, while its TPM works,
 wipe the old PKCS#11 slot (`bin/revoke-luks-yubikey <slot>`) and re-enroll
 (`sudo /usr/bin/luks-enroll-pkcs11`).
 
+**Lose every YubiKey.** Machines whose TPM still unlocks keep booting, but you
+can't log in: homes take only the token. Rebuild YubiKeys from the offline
+primary-key USB with `bin/enroll-yubikeys <device>`. It loads the same PIV key
+from pass, so the new keys unlock every disk and home with no re-enrollment. If
+the USB is gone too, rebuild the key from the paper recovery guide and run
+`bin/restore-primary-gpg-from-paper <device>` (README.md), which writes a new
+USB and programs the YubiKeys the same way. Either way the password-store has to
+be reachable first: with the primary key imported, gpg-agent's SSH support can
+clone it.
+
+**PIV PIN blocked** (too many wrong tries): unblock it with the PUK,
+
+```bash
+ykman piv access unblock-pin --puk <PUK> --new-pin <PIN>
+```
+
+If the PUK is blocked too, the PIV applet is lost; re-provision that YubiKey
+with `bin/enroll-yubikeys`, which resets PIV and reloads the shared key. It also
+resets the OpenPGP and OATH applets, as with any provisioning.
+
+**Reach a home without a YubiKey.** Its LUKS image keeps the machine's recovery
+secret (`pass linux_users/<user>/home-recovery-key/<hostname>`) as a keyslot,
+though homed doesn't accept it for login. `recovery-mount` offers it to open the home read-only, but
+from the live system root itself needs the YubiKey, so in practice this is a
+way to read a home when the TPM still unlocks root (log in as root on the
+installed system and open the image with `cryptsetup`). Re-provisioning a
+YubiKey, above, is the real fix.
+
 ### Secure Boot and the recovery USB
 
-A recovery USB carries its own Secure Boot key, distinct from the one enrolled in a
-target machine's firmware. To boot it on a machine with custom Secure Boot keys
-active, either:
+Every image, the medium included, is signed with the one Secure Boot key from
+`pass`, the key every installed machine enrolled at first boot. So a stick built
+by `bin/build-image` or `bin/dr-build` boots under any of our machines' Secure
+Boot with no firmware changes.
 
-- **Sign the recovery USB with the machine's db key** (planned, not implemented):
-  import the key into a YubiKey PIV slot and have the build sign the EFI binaries
-  via `systemd-sbsign --private-key pkcs11:`, so it boots under the machine's keys
-  with no firmware changes. See `bootstrapping-todo.md`.
-- **Temporarily disable Secure Boot** in firmware, perform recovery, then
-  re-enable it before rebooting into the installed system. The TPM2 slot survives
-  as long as the enrolled keys are unchanged and Secure Boot is re-enabled before
-  the next normal boot.
+The exception is a stick built with `bin/dr-build --ephemeral-key`: its
+throwaway key is in no firmware. Boot it with Secure Boot disabled, or in setup
+mode to enroll that key (`disaster-recovery.md`). Not every machine allows the
+first: the XPS 13 boots the image only through its custom-mode keys.
 
 ---
 

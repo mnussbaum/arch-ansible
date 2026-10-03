@@ -18,6 +18,10 @@
     - import_role:
         name: network_configuration
         tasks_from: wifi-credentials
+    # After gpg (to encrypt to the key) and wifi (to push the new entry).
+    - import_role:
+        name: user
+        tasks_from: home-recovery-key
     - import_role:
         name: ssh
     - import_role:

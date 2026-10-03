@@ -1,0 +1,58 @@
+# vim:ft=yaml.ansible:
+---
+# The home is created with the recovery secret baked into the image, which sits
+# readable in every image's unencrypted /usr (bin/_credstore_common.sh). Replace
+# its LUKS keyslot with a per-machine secret kept only in pass. Needs the GPG
+# public key imported (gpg role) to encrypt it.
+- name: Check for a volatile root
+  ansible.builtin.command: findmnt -no FSTYPE /
+  register: home_recovery_root_fstype
+  changed_when: false
+
+- name: Rotate the home recovery secret
+  # The Live profile's home is recreated from the image every boot.
+  when: home_recovery_root_fstype.stdout != 'tmpfs'
+  # The secret only passes through a root-only file and pipes, never output.
+  ansible.builtin.shell: |
+    set -o errexit -o nounset -o pipefail
+    baked=/usr/lib/credstore/home.new-password
+    entry="linux_users/{{ user.name }}/home-recovery-key/{{ ansible_facts['hostname'] }}"
+    # An --ephemeral-key medium may ship no password-store to keep it in.
+    [[ -f ~/.local/share/password-store/.gpg-id ]] || { echo "no password-store"; exit 0; }
+
+    # The LUKS partition inside the active home's image.
+    loop=$(losetup -nO NAME -j "/home/{{ user.name }}.home" | head -1)
+    [[ -n $loop ]] || { echo "home of {{ user.name }} is not active" >&2; exit 1; }
+    part=$(lsblk -nrpo NAME,FSTYPE "$loop" | awk '$2 == "crypto_LUKS" {print $1; exit}')
+    [[ -n $part ]] || { echo "no LUKS volume in $loop" >&2; exit 1; }
+
+    old_slot=$(sudo -n cryptsetup open --test-passphrase --verbose --key-file="$baked" "$part" 2>/dev/null \
+      | sed -n 's/^Key slot \([0-9]*\) unlocked.*/\1/p') || true
+    [[ -n $old_slot ]] || { echo unchanged; exit 0; }
+
+    new=$(sudo -n mktemp /run/home-recovery-key.XXXXXX)
+    trap 'sudo -n rm -f "$new"' EXIT
+    openssl rand -base64 24 | tr -d '\n' | sudo -n tee "$new" >/dev/null
+    # Stored before it's enrolled, and the old slot goes only once the new one opens.
+    sudo -n cat "$new" | pass insert --multiline --force "$entry" >/dev/null
+    sudo -n cryptsetup luksAddKey --key-file="$baked" "$part" "$new"
+    sudo -n cryptsetup open --test-passphrase --key-file="$new" "$part"
+    sudo -n cryptsetup luksKillSlot --batch-mode "$part" "$old_slot"
+    echo rotated
+  args:
+    executable: /bin/bash
+  register: home_recovery_rotation
+  changed_when: "'rotated' in home_recovery_rotation.stdout"
+
+- name: Push the new home recovery secret
+  ansible.builtin.command: pass git push
+  when: home_recovery_rotation is changed
+  register: home_recovery_push
+  failed_when: false
+
+- name: Warn that the new home recovery secret isn't pushed
+  ansible.builtin.debug:
+    msg: >-
+      The home recovery secret is committed in ~/.local/share/password-store but
+      not pushed. Run `pass git push` before relying on it elsewhere.
+  when: home_recovery_push.rc | default(0) != 0

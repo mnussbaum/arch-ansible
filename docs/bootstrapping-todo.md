@@ -11,8 +11,11 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 
 ## Recovery
 
-- **`bin/recovery-mount`** — implemented; automates LUKS discovery, token/recovery-key
-  unlock, root + /usr + ESP + home mount, and arch-chroot. Untested.
+- **`bin/recovery-mount`** — VALIDATED 2026-10-02 on the XPS 13 from the Live
+  profile: discovers the target disk, unlocks root with the YubiKey (PKCS#11),
+  mounts root + /usr + ESP + home, opens homed homes read-only, and chroots.
+- **ESP repair** from the live medium (`bootstrapping.md`, "Common recovery
+  tasks") — documented, untested.
 
 ## Install from the live medium
 

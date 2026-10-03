@@ -6,8 +6,9 @@
 # the user's per-user LUKS home UNATTENDED on first boot. The home is
 # bootstrapped with a recovery secret kept in pass (encrypted to the GPG key, not
 # the vault). The YubiKey PKCS#11 token is enrolled later, at first login, by the
-# user-firstboot playbook; the recovery secret then remains the fallback factor
-# for a lost/broken token, which homed best practice recommends having anyway.
+# user-firstboot playbook, which then replaces this secret's keyslot with a
+# per-machine one (ansible/roles/user/tasks/home-recovery-key.yml): this one is
+# readable from the image, see below.
 #
 # A hardware token cannot be enrolled unattended (it requires user presence), so
 # this two-phase split - recovery secret at boot, token at first login - is the
@@ -41,7 +42,7 @@ else
 fi
 
 # Generate the recovery secret once and keep it in pass, so it is stable across
-# rebuilds and usable as the user's fallback credential.
+# rebuilds.
 if [[ -z "${ARCH_ANSIBLE_SECRETS_DIR:-}" ]] \
     && ! pass show "$credstore_recovery" >/dev/null 2>&1; then
   echo "==> Generating home recovery secret in pass ($credstore_recovery)..."

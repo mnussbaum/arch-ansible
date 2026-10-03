@@ -107,6 +107,8 @@ case $DR_MODE in
     ;;
 esac
 
+# build-image copies the signing key into the cache, which is the persistent volume.
+trap 'rm -rf "$HOME/.cache/mkosi-secureboot"' EXIT
 export ARCH_ANSIBLE_SECRETS_DIR=$secrets ARCH_ANSIBLE_AUR_CHROOT=no
 # One version: the volume only needs the newest, and each costs ~18G.
 bin/build-image --keep 1 "$@"

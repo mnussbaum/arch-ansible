@@ -49,11 +49,19 @@ bin/dr-build
 Insert the YubiKey when asked and enter its PIN: it authenticates the
 password-store clone over SSH and then decrypts the secrets. On macOS gnupg does this before the
 container starts and the decrypted secrets sit in `~/.dr-secrets.*` until the
-build ends; on Linux they never leave the container's RAM.
+build ends; on Linux they're decrypted into the container's `/dev/shm`. Either
+way the build copies the Secure Boot key into the cache volume while it runs,
+and deletes it when the build ends, even a failed one. If the container is
+killed instead, remove the volume.
 
 The medium lands in `dr-out/`. Build caches persist in the `arch-ansible-dr-cache`
 volume, so a rerun is much faster; `podman volume rm arch-ansible-dr-cache`
 (or `docker volume rm`) reclaims the space afterwards.
+
+The medium itself is not secret-free: like every build, it carries the
+initial home secret readable in its `/usr` (see `bin/_credstore_common.sh`).
+Installed machines stop accepting it at first login, but a home that hasn't
+had one yet opens with it. Delete `dr-out/` after burning.
 
 Options worth knowing:
 
@@ -78,6 +86,23 @@ asks you to type the device path before erasing it.
 
 Then boot from the stick and carry on as in `bootstrapping.md`: install, or
 **Live System (Recovery)** to reach an existing disk with `recovery-mount`.
+The stick is signed with the same Secure Boot key as every installed machine,
+so it boots under their Secure Boot as-is.
+
+## Replacing a lost or dead machine
+
+1. Build and burn a medium as above (or use an existing stick).
+2. Boot it on the new machine, pick **Installer**, and install. The first boot
+   enrolls Secure Boot, provisions the disk, asks for a hostname and root
+   password, and waits for the YubiKey to enroll on root and swap
+   (`bootstrapping.md`, "Disk encryption").
+3. Log in with the home recovery secret (`pass linux_users/<user>/recovery-key`,
+   or the password given to `--ephemeral-key`). First login enrolls the YubiKey
+   on the home, drops the password, replaces the recovery secret with a
+   per-machine one in `pass`, and runs the user playbook.
+4. Give the machine Backblaze credentials and restore its home from restic
+   (`bootstrapping.md`, "Backup credentials" and "Restoring data from backup").
+   Restore before adding Syncthing folders.
 
 ## No YubiKey
 
