@@ -122,3 +122,36 @@
         ' \
           | sudo -n homectl update {{ user.name }} --identity=-
       when: "'hashedPassword' in homed_record_after.stdout"
+
+    - name: Remove the baked home secret
+      # It sits readable in every image's unencrypted /usr
+      # (bin/_credstore_common.sh), so once the YubiKey is enrolled the home
+      # keeps only the token's keyslot.
+      ansible.builtin.shell: |
+        set -o errexit -o nounset -o pipefail
+        baked=/usr/lib/credstore/home.new-password
+
+        # The LUKS partition inside the active home's image.
+        loop=$(losetup -nO NAME -j "/home/{{ user.name }}.home" | head -1)
+        [[ -n $loop ]] || { echo "home of {{ user.name }} is not active" >&2; exit 1; }
+        part=$(lsblk -nrpo NAME,FSTYPE "$loop" | awk '$2 == "crypto_LUKS" {print $1; exit}')
+        [[ -n $part ]] || { echo "no LUKS volume in $loop" >&2; exit 1; }
+
+        slot=$(sudo -n cryptsetup open --test-passphrase --verbose --key-file="$baked" "$part" 2>/dev/null \
+          | sed -n 's/^Key slot \([0-9]*\) unlocked.*/\1/p') || true
+        [[ -n $slot ]] || { echo unchanged; exit 0; }
+
+        # Never the last keyslot: the token's must exist besides it.
+        sudo -n homectl inspect {{ user.name }} --json=short | grep -q '"pkcs11EncryptedKey"' \
+          || { echo "no YubiKey enrolled on the home; keeping the baked secret" >&2; exit 1; }
+        slots=$(sudo -n cryptsetup luksDump --dump-json-metadata "$part" \
+          | python3 -c 'import json, sys; print(len(json.load(sys.stdin)["keyslots"]))')
+        (( slots > 1 )) || { echo "the baked secret holds the only keyslot" >&2; exit 1; }
+
+        # Without a passphrase on stdin, --batch-mode wipes without asking for one.
+        sudo -n cryptsetup luksKillSlot --batch-mode "$part" "$slot" </dev/null
+        echo removed
+      args:
+        executable: /bin/bash
+      register: baked_secret_removal
+      changed_when: "'removed' in baked_secret_removal.stdout"

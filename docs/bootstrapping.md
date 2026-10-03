@@ -73,8 +73,7 @@ validation.
 
 > The key currently lives on disk because pkcs11-provider's CMS/PE signing paths
 > (needed by `systemd-sbsign` and `systemd-repart`) don't yet work; once they do
-> it can move to a YubiKey PIV slot. Per-machine signing / db-key import is not
-> implemented — see `bootstrapping-todo.md`.
+> it can move to a YubiKey PIV slot.
 
 ### Unified Kernel Images
 
@@ -89,13 +88,13 @@ artifact. A single UKI carries multiple **profiles** (`mkosi/mkosi.uki-profiles/
 ### Immutable /usr (dm-verity)
 
 The OS lives in a read-only `/usr` (erofs, zstd-compressed) protected by
-dm-verity. The verity root hash is embedded in the signed UKI cmdline
-(`root=dissect`, `mount.usr=dissect`), so the kernel only mounts a `/usr` whose
-contents match the signed hash. `/usr` is laid out as A/B slots for atomic
-updates (see [Updates](#updates)). `/etc` is seeded from
-`/usr/share/factory/etc` (via `mkosi/mkosi.finalize.factory-seed`) so it tracks `/usr`
-across updates instead of freezing at first boot; per-host state (machine-id, ssh
-host keys, shadow) is written into the writable `/etc` on first boot.
+dm-verity. The verity root hash is embedded in the signed UKI cmdline, so the
+kernel only mounts a `/usr` whose contents match the signed hash. `/usr` is
+laid out as A/B slots for atomic updates (see [Updates](#updates)). `/etc` is
+seeded from `/usr/share/factory/etc` (via `mkosi/mkosi.finalize.factory-seed`)
+so it tracks `/usr` across updates instead of freezing at first boot; per-host
+state (machine-id, ssh host keys, shadow) is written into the writable `/etc`
+on first boot.
 
 ### Disk encryption
 
@@ -113,9 +112,9 @@ the signed PCR 11 half never changes.
 Those two bindings behave very differently, and the difference matters for
 recovery:
 
-* **PCR 7** is stable within a boot, so the token can also authorize changes
+- **PCR 7** is stable within a boot, so the token can also authorize changes
   from the running system (`systemd-cryptenroll --unlock-tpm2-device=auto`).
-* **Signed PCR 11** measures *this* UKI and its boot phases, so no other
+- **Signed PCR 11** measures _this_ UKI and its boot phases, so no other
   image — including a recovery medium — can ever satisfy it. That is the point:
   a different OS cannot unseal the disk. It also means `bin/recovery-mount`
   cannot use the TPM token and needs a second factor.
@@ -152,15 +151,15 @@ factor opens the disk. So after first boot, root and swap are re-bound to a
 `systemd-pcrlock` policy for PCR 7, which lives in a TPM NV index and can be
 rewritten without touching the keyslot:
 
-* `systemd-pcrlock-secureboot-policy` / `-secureboot-authority` describe the
+- `systemd-pcrlock-secureboot-policy` / `-secureboot-authority` describe the
   current Secure Boot state; `systemd-pcrlock-make-policy` (via
   `mkosi/mkosi.extra/usr/bin/pcrlock-make-policy`) turns it into a policy on **PCR 7 only**, with
   `--strict=yes` so it fails rather than silently dropping PCR 7. A copy goes to
   the ESP (`loader/credentials/pcrlock.<machine-id>.cred`) for the initrd.
-* `pcrlock-enroll-luks.service` (`mkosi/mkosi.extra/usr/bin/pcrlock-enroll-luks`) then re-enrolls each
+- `pcrlock-enroll-luks.service` (`mkosi/mkosi.extra/usr/bin/pcrlock-enroll-luks`) then re-enrolls each
   TPM2 slot as signed PCR 11 + pcrlock, wiping the old slot only after the new
   one exists. If the policy was not made, the volumes keep the literal binding.
-* The policy's recovery PIN is ours, kept root-only on the encrypted root
+- The policy's recovery PIN is ours, kept root-only on the encrypted root
   (`/var/lib/arch-ansible/pcrlock-recovery-pin`), so the policy can always be
   rewritten once root is open.
 
@@ -179,11 +178,6 @@ predicted), the TPM refuses. Unlock root with the YubiKey once (swap is
 skipped for that boot): that boot re-predicts from the new state and rewrites
 the policy with the stored PIN, and the next boot unlocks root and swap from
 the TPM again.
-
-*Validated in a VM (dbx appends signed with the KEK): the planned path unlocks
-silently across the change; the unplanned path needs a second factor once and
-then heals.* (The VM test unlocked with a test-only recovery key; real machines
-have no recovery key, so the YubiKey is that factor.)
 
 pcrlock needs a TPM 2.0 rev ≥ 1.38 (PolicyAuthorizeNV). On older TPMs — the
 XPS 13 9365's Intel PTT is one — `systemd-pcrlock-make-policy` is skipped and
@@ -207,36 +201,18 @@ hence the split:
 2. **First login.** `ansible/roles/user/tasks/first-login.yml` discovers the YubiKey's
    PIV URI and runs `homectl update --pkcs11-token-uri=…`, then **drops the
    password factor**, leaving the token as the login factor.
-3. **Recovery secret rotation.** The baked secret is readable from any image's
-   unencrypted `/usr`, so `ansible/roles/user/tasks/home-recovery-key.yml`
-   replaces its LUKS keyslot with a fresh per-machine secret, stored in `pass`
-   as `linux_users/<user>/home-recovery-key/<hostname>` (and pushed, if it
-   can). That secret no longer logs in, but it opens the home's LUKS image.
-   Machines installed before this existed rotate when the first-login playbook
-   is re-run:
+3. **Baked secret removal.** The baked secret is readable from any image's
+   unencrypted `/usr`, so first login then wipes its LUKS keyslot, leaving the
+   YubiKey's as the home's only one. It refuses if no YubiKey slot exists
+   beside it. There is no password fallback: a broken or lost YubiKey is
+   fixed by re-provisioning one, which reloads the same PIV key ("Common
+   recovery tasks"). Machines installed before this existed drop the secret
+   when the first-login playbook is re-run:
    `cd ~/Projects/arch-ansible && ANSIBLE_PLAYBOOK=user-first-login-playbook.yml NO_ASK_BECOME_PASS=1 ./bin/ansible`.
 
 It pins PIV **slot 9D** (`id=%03`, "Key Management"), the only key on the PIV
 applet: provisioning resets PIV first. The Secure Boot key is a software key in
 `pass`, not on the YubiKey.
-
-Things that will bite you:
-
-* **It needs a physical touch.** Slot 9D is `PIN required: ONCE`,
-  `Touch required: CACHED` (`ykman piv keys info 9d`). The decrypt blocks on a
-  tap and, untouched, fails after ~37s as an opaque
-  `Failed to execute operation: Input/output error`. The real reason is only in
-  `journalctl -u systemd-homed`: `Failed to decrypt key on security token: No
-  user has logged in`.
-* **The password and the touch must land in the same attempt.** homed also wants
-  the plaintext password to authorize the change; missing either makes it fail
-  fast and re-prompt, which looks like an endless password loop.
-* **`homectl authenticate <user>` tests the password alone** — no token, no
-  touch. Use it to tell "wrong password" from "enrollment is failing".
-* **Never run `homectl` under `SYSTEMD_LOG_LEVEL=debug`.** It dumps the record it
-  sends, including `secret.tokenPin` in plaintext.
-* In a VM the YubiKey arrives over the pcscd vsock relay (see *YubiKey relay in
-  QEMU* below); `bin/vm run` with no disk wires it up.
 
 ---
 
@@ -273,20 +249,18 @@ UUID, following the [Discoverable Partitions
 Specification](https://uapi-group.org/specifications/specs/discoverable_partitions_specification/),
 and the system finds its own storage from those types:
 
-| `Type=` in `repart.d` | what finds it at boot |
-|---|---|
-| `esp` | `systemd-gpt-auto-generator` mounts it at `/efi` |
+| `Type=` in `repart.d`                 | what finds it at boot                                                                    |
+| ------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `esp`                                 | `systemd-gpt-auto-generator` mounts it at `/efi`                                         |
 | `usr`, `usr-verity`, `usr-verity-sig` | `mount.usr=dissect` — the verity triple is matched and `/usr` comes up integrity-checked |
-| `root` | `root=dissect`, unlocked via its LUKS2 TPM2 token |
-| `home`, `swap` | auto-mounted / auto-enabled by type |
+| `root`                                | `root=dissect`, unlocked via its LUKS2 TPM2 token                                        |
+| `home`, `swap`                        | auto-mounted / auto-enabled by type                                                      |
 
 Two consequences worth knowing:
 
-* **Paths are by role, not by device.** `/dev/disk/by-designator/root-luks` and
-  `/dev/mapper/usr` are what scripts use (`bin/recovery-mount`,
-  `bin/revoke-luks-yubikey`); nothing references
-  `/dev/sda2` or a UUID.
-* **The same image boots any machine.** Since discovery is by type, there are no
+- **Paths are by role, not by device.** `/dev/disk/by-designator/root-luks` and
+  `/dev/mapper/usr` are what scripts use; nothing references `/dev/sda2` or a UUID.
+- **The same image boots any machine.** Since discovery is by type, there are no
   per-host partition definitions to generate — which is what makes one image
   serve every machine, and what makes the A/B slots interchangeable.
 
@@ -301,14 +275,14 @@ carry `Type=usr`, so the inactive one is labelled `_empty` and the UKI's
 A build reuses six caches under `${ARCH_ANSIBLE_CACHE}` (`~/.cache` on a host,
 `/var/cache/arch-ansible` on a device — `bin/_cache_common.sh`):
 
-| cache | what it saves |
-|---|---|
-| `mkosi/pacman-pkg` | downloaded packages (mkosi's own `PackageCacheDirectory`) |
-| `aur-repo` | **built** AUR packages; mkosi installs from it via `PackageDirectories=` |
-| `aur-chroot` | the devtools clean chroot AUR packages are built in |
-| `nvim/site` | ~130 MiB of plugins and compiled tree-sitter parsers |
-| `cargo/registry` | downloaded crates |
-| `sccache` | compiled Rust objects |
+| cache              | what it saves                                                            |
+| ------------------ | ------------------------------------------------------------------------ |
+| `mkosi/pacman-pkg` | downloaded packages (mkosi's own `PackageCacheDirectory`)                |
+| `aur-repo`         | **built** AUR packages; mkosi installs from it via `PackageDirectories=` |
+| `aur-chroot`       | the devtools clean chroot AUR packages are built in                      |
+| `nvim/site`        | ~130 MiB of plugins and compiled tree-sitter parsers                     |
+| `cargo/registry`   | downloaded crates                                                        |
+| `sccache`          | compiled Rust objects                                                    |
 
 `aur-repo` and `aur-chroot` are maintained outside mkosi: before every build,
 `bin/sync-aur` checks the AUR for newer versions of the image's AUR packages and
@@ -322,8 +296,8 @@ The postinst caches (`nvim/site`, `cargo/registry`, `sccache`) are each wired
 into the build three times, and the reason is worth understanding before
 changing any of it:
 
-1. **`SkeletonTrees=`** seeds the cache into the image. This is *frozen into
-   mkosi's incremental snapshot*, so it reflects the state when that snapshot
+1. **`SkeletonTrees=`** seeds the cache into the image. This is _frozen into
+   mkosi's incremental snapshot_, so it reflects the state when that snapshot
    was taken, not today.
 2. **`BuildSources=`** mounts the same host directory live at `/work/src/…`, so
    the postinst sees whatever previous builds have written since the snapshot.
@@ -334,20 +308,7 @@ changing any of it:
    after mkosi exits.
 
 The write-back is a **delta**, not a copy: finalize touches a marker before the
-postinst runs and stages only files newer than it. One wrinkle is recorded in
-that script — cargo extracts crates into `registry/src/` preserving the
-archive's *old* mtimes, so the delta misses them; only `cache/` and `index/`
-round-trip and `src/` is re-extracted.
-
-### What this costs
-
-Caching is what makes a warm build ~10 minutes instead of an hour, but it is not
-free. In a measured 574s build, **"Copying cached trees" was 88s (15%)** — and
-that is a straight byte-for-byte copy because `~/.cache` is on **ext4**, which
-has no reflink support. `mkosi/mkosi.conf` sets `UseSubvolumes=auto`, which can do
-nothing there. Moving the mkosi cache onto btrfs (or XFS with reflinks) would
-turn that phase into a near-instant snapshot; `bin/setup-mkosi-cache-volume`
-exists for making such a volume.
+postinst runs and stages only files newer than it.
 
 ---
 
@@ -359,9 +320,7 @@ provisioned system is available.
 ### Step 1 — Build environment
 
 mkosi runs on the host directly (`ToolsTree=/`). A `Containerfile` is provided to
-run the build in Podman, but it is not yet verified end-to-end
-(`bootstrapping-todo.md`); it would need `--privileged` because mkosi uses loop
-devices and `systemd-nspawn`.
+run the build in Podman.
 
 ```bash
 # optional, untested:
@@ -399,8 +358,8 @@ bin/burn-image /dev/sdX
 ```
 
 `mkosi burn` writes the built image and expands partitions to fill the device. The
-image is generic; each machine names itself on first boot (see *Per-machine runtime
-config* below).
+image is generic; each machine names itself on first boot (see _Per-machine runtime
+config_ below).
 
 ### Step 4 — Boot the USB and install to the target disk
 
@@ -472,7 +431,7 @@ the image's baked `/usr/lib/repart.d/`. It lays down only the ESP and the active
 `usr` slot: the ESP def carries `CopyFiles=/boot:/`, so repart populates the
 freshly-created target ESP with systemd-boot + the bare UKI + `loader/` copied
 straight from the running medium's `/boot`, and `usr-A` (`CopyBlocks=auto`) is
-cloned from the running `/usr`. `root`/`home`/`swap` are *deferred* to the
+cloned from the running `/usr`. `root`/`home`/`swap` are _deferred_ to the
 target's own first boot, where its `systemd-repart` creates them and TPM2-seals
 the LUKS `root`/`swap`; the inactive `usr-B` slot is created there too.
 
@@ -508,9 +467,9 @@ bin/update-system --reboot   # ...and reboot into it
 To update a machine that is installed but can't boot far enough to update itself
 (e.g. a broken laptop), boot it from the live USB and point `update-system` at its
 disk with `--image`. This rebuilds as above, then applies to the target's inactive
-`usr` slot via the **volatile-root** mechanism — *not* `systemd-sysupdate
+`usr` slot via the **volatile-root** mechanism — _not_ `systemd-sysupdate
 --image`, which fails to parse our `Type=regular-file` transfers through systemd
-v261. It symlinks `/run/systemd/volatile-root` at a target *partition* in a
+v261. It symlinks `/run/systemd/volatile-root` at a target _partition_ in a
 private mount namespace (so systemd treats the target as the system disk) and runs
 `systemd-sysupdate --definitions=mkosi/mkosi.sysupdate --transfer-source=<build output>
 --offline update`, with `SYSTEMD_ESP_PATH` pointing the new UKI at the target's
@@ -582,7 +541,7 @@ With the target's ESP at `/mnt/efi` and the medium's mounted elsewhere, copy
 `EFI/systemd/`, `EFI/BOOT/` and `loader/` across. Don't copy the medium's UKI:
 each UKI pins its own `/usr`'s verity hash. If the target's `EFI/Linux/` is
 empty, `bin/update-system --image=<disk>` installs a fresh `/usr` and a matching
-UKI (see "Updates"). *Untested.*
+UKI (see "Updates"). _Untested._
 
 **Firmware lost its Secure Boot keys** (a reset, a board swap). Put the firmware
 in setup mode and boot the installed system: `secure-boot-enroll force`
@@ -639,13 +598,9 @@ If the PUK is blocked too, the PIV applet is lost; re-provision that YubiKey
 with `bin/enroll-yubikeys`, which resets PIV and reloads the shared key. It also
 resets the OpenPGP and OATH applets, as with any provisioning.
 
-**Reach a home without a YubiKey.** Its LUKS image keeps the machine's recovery
-secret (`pass linux_users/<user>/home-recovery-key/<hostname>`) as a keyslot,
-though homed doesn't accept it for login. `recovery-mount` offers it to open the home read-only, but
-from the live system root itself needs the YubiKey, so in practice this is a
-way to read a home when the TPM still unlocks root (log in as root on the
-installed system and open the image with `cryptsetup`). Re-provisioning a
-YubiKey, above, is the real fix.
+**Reach a home without a YubiKey.** You can't: after first login a home opens
+only with the shared PIV key. Re-provision a YubiKey ("Lose every YubiKey",
+above), or restore its data from restic.
 
 ### Secure Boot and the recovery USB
 

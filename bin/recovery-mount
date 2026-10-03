@@ -192,8 +192,8 @@ EOF
     rm -rf "$tmp"
 
     if [[ ! -e /dev/mapper/$dm ]]; then
-        echo "Enter $user's home recovery secret instead (pass"
-        echo "linux_users/$user/home-recovery-key/<hostname>; Ctrl+D skips):"
+        echo "Enter $user's password instead; only a home that hasn't had its"
+        echo "first login has one (Ctrl+D skips):"
         cryptsetup open --readonly "$part" "$dm" || { losetup -d "$loop"; return 0; }
     fi
     stage=/run/recovery-home/$user

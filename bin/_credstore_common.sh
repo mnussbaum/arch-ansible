@@ -4,14 +4,14 @@
 # Delivers home.create.<user>, the JSON user record that
 # systemd-homed-firstboot.service consumes (ImportCredential=home.*) to create
 # the user's per-user LUKS home UNATTENDED on first boot. The home is
-# bootstrapped with a recovery secret kept in pass (encrypted to the GPG key, not
-# the vault). The YubiKey PKCS#11 token is enrolled later, at first login, by the
-# user-firstboot playbook, which then replaces this secret's keyslot with a
-# per-machine one (ansible/roles/user/tasks/home-recovery-key.yml): this one is
-# readable from the image, see below.
+# bootstrapped with a secret kept in pass (encrypted to the GPG key, not the
+# vault). The YubiKey PKCS#11 token is enrolled later, at first login, by the
+# user-firstboot playbook, which then wipes this secret's keyslot
+# (ansible/roles/user/tasks/first-login.yml): it is readable from the image, see
+# below.
 #
 # A hardware token cannot be enrolled unattended (it requires user presence), so
-# this two-phase split - recovery secret at boot, token at first login - is the
+# this two-phase split - secret at boot, token at first login - is the
 # supported pattern for token-backed homed users.
 #
 # WHERE THIS ENDS UP, and it is not what an earlier version of this comment

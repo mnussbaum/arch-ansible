@@ -60,8 +60,8 @@ volume, so a rerun is much faster; `podman volume rm arch-ansible-dr-cache`
 
 The medium itself is not secret-free: like every build, it carries the
 initial home secret readable in its `/usr` (see `bin/_credstore_common.sh`).
-Installed machines stop accepting it at first login, but a home that hasn't
-had one yet opens with it. Delete `dr-out/` after burning.
+Installed homes drop it at first login, but a home that hasn't had one yet
+opens with it. Delete `dr-out/` after burning.
 
 Options worth knowing:
 
@@ -98,8 +98,8 @@ so it boots under their Secure Boot as-is.
    (`bootstrapping.md`, "Disk encryption").
 3. Log in with the home recovery secret (`pass linux_users/<user>/recovery-key`,
    or the password given to `--ephemeral-key`). First login enrolls the YubiKey
-   on the home, drops the password, replaces the recovery secret with a
-   per-machine one in `pass`, and runs the user playbook.
+   on the home, drops the password and its keyslot, and runs the user
+   playbook.
 4. Give the machine Backblaze credentials and restore its home from restic
    (`bootstrapping.md`, "Backup credentials" and "Restoring data from backup").
    Restore before adding Syncthing folders.
