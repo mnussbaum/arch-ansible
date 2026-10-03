@@ -1,27 +1,31 @@
 # arch-ansible
 
-Ansible-based provisioning for personal Arch Linux workstations. Manages the full
-machine lifecycle: live USB creation, bootstrapping (partitioning, encryption, OS
-install), and ongoing configuration. Also supports a QEMU VM for testing changes before
-applying them to physical hardware.
+Image-based provisioning for personal Arch Linux workstations. mkosi builds one
+signed image, configured by Ansible at build time, that is the installer, the
+live/recovery system and the installed system. Machines update by swapping A/B
+`/usr` slots with images built from this repo. A QEMU wrapper tests images before
+they reach hardware. See `docs/bootstrapping.md` for the full design.
 
 ## Stack
 
-**OS & boot:** Arch Linux, UEFI, systemd-boot, Unified Kernel Images (UKIs), Secure Boot
-via sbctl, LUKS2-encrypted root (no LVM), single EFI partition, ext4 filesystem.
+**OS & boot:** Arch Linux built with mkosi, UEFI, systemd-boot, Unified Kernel Images
+(UKIs) with boot-menu profiles, Secure Boot with our own key (auto-enrolled on first
+boot), read-only erofs `/usr` with dm-verity and A/B slots via systemd-sysupdate,
+LUKS2 btrfs root and swap sealed to the TPM2, systemd-homed home unlocked by YubiKey.
 
-**Desktop:** Sway (Wayland compositor), Waybar, Mako notifications, Greetd greeter,
-Swaylock, WezTerm, Thunar.
+**Desktop:** Sway (Wayland compositor), Waybar, Mako notifications, greetd with
+gtkgreet, Swaylock, Ghostty, Thunar.
 
-**Theming:** Base16 color schemes with day and night variants, regenerated across all
-apps when switching.
+**Theming:** Base16 color schemes with day and night variants.
 
-**Networking:** iwd for WiFi, systemd-networkd, systemd-resolved with Cloudflare/Quad9
+**Networking:** iwd for WiFi, systemd-networkd, systemd-resolved with Cloudflare/Google
 DNS.
 
 **Auth:** GPG primary key stored offline on a LUKS-encrypted USB, Ed25519 subkeys
 (sign/encrypt/authenticate) programmed onto YubiKeys. GPG agent provides SSH via the
-auth subkey.
+auth subkey. A shared PIV key on every YubiKey unlocks LUKS and homed.
+
+**Backups:** restic to Backblaze B2.
 
 ## Repo layout
 
@@ -38,11 +42,14 @@ ansible/                    Everything Ansible (bin/ansible runs from here)
   assets/                   Wallpapers
 mkosi/                      Image build (bin/* run `mkosi --directory=mkosi`)
   mkosi.conf, mkosi.conf.d/ Base config and package lists
-  mkosi.extra/              Files copied verbatim into the image
+  mkosi.extra/              Files copied verbatim into the image (installed
+                            commands live in mkosi.extra/usr/bin/)
   mkosi.postinst.chroot     Runs the Ansible postinst inside the image
   mkosi.repart/, mkosi.sysupdate/, mkosi.uki-profiles/, mkosi.initrd.conf/
-docs/                       Plans, bootstrapping notes and todos
-secrets/                    Ansible Vault password (gitignored)
+container/                  Disaster-recovery build container (run by bin/dr-build)
+docs/                       Design (bootstrapping.md), disaster recovery, plans, todos
+secrets/                    Generated recovery guide (gitignored)
+dr-out/                     bin/dr-build output (gitignored)
 ```
 
 ## Auth
@@ -54,8 +61,13 @@ and revocation certificate. It is only plugged in during key ceremonies and must
 offline otherwise.
 
 ```
-./bin/create-gpg-key <device>   # e.g. /dev/sda1
+./bin/create-gpg-key <device> <existing-key-device>   # replacing a primary key
+./bin/create-gpg-key <device> <totp-file>             # starting fresh
 ```
+
+`<device>` is wiped. The second argument supplies the TOTP seeds: a previous primary
+GPG USB (whose key also re-encrypts the password store) or a file of `otpauth://`
+URIs.
 
 This will:
 
@@ -64,15 +76,15 @@ This will:
 3. Add three subkeys (sign, encrypt, auth), each expiring in 1 year
 4. Generate a revocation certificate and store it on the USB
 5. Back up the primary key to the USB
-6. Export the public key to `files/gpg-pubkey.asc`
-7. Program all connected YubiKeys with the subkeys
-8. Enroll the auth subkey keygrip in `ansible/group_vars/all/gpg_auth_keygrips.yml` (the keygrip
-   is a stable identifier used to tell the GPG agent which key to expose over SSH)
+6. Export the public key to `ansible/roles/gpg/files/gpg-pubkey.asc`
+7. Re-encrypt the password store to the new key and copy the TOTP seeds to the USB
+8. Program all connected YubiKeys with the subkeys, the TOTP seeds and the shared
+   homed PIV key (minted into pass on first run)
 
-After running, commit the public key and keygrips:
+After running, commit the public key:
 
 ```
-git add files/gpg-pubkey.asc ansible/group_vars/all/gpg_auth_keygrips.yml
+git add ansible/roles/gpg/files/gpg-pubkey.asc
 git commit -m 'Add GPG public key'
 ```
 
@@ -86,7 +98,9 @@ gpg --export-ssh-key <fingerprint>
 
 YubiKeys are programmed as part of `create-gpg-key` or `enroll-yubikeys`. The scripts
 loop interactively, prompting to insert each YubiKey in turn. Each YubiKey receives the
-same three subkeys (sign, encrypt, auth).
+same three subkeys (sign, encrypt, auth), its TOTP seeds, and the shared PIV key from
+`pass` that unlocks LUKS and homed, so a replacement YubiKey works on every machine
+with no per-machine re-enrollment.
 
 To program additional YubiKeys against an existing primary GPG USB:
 
@@ -124,10 +138,10 @@ Subkeys expire annually. Run the renewal ceremony with the primary GPG USB plugg
 ```
 
 This extends all subkey expiry by one year, exports the updated public key to
-`files/gpg-pubkey.asc`, and reprograms all YubiKeys. After running:
+`ansible/roles/gpg/files/gpg-pubkey.asc`, and reprograms all YubiKeys. After running:
 
 ```
-git add files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys'
+git add ansible/roles/gpg/files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys'
 ```
 
 ### 2FA codes
@@ -139,8 +153,8 @@ password is set during YubiKey provisioning.
 
 Seeds are backed up as `otpauth://` URIs in `oath-accounts.txt` on the primary
 GPG USB. They are automatically loaded onto each YubiKey during
-`create-gpg-key` and `enroll-yubikeys` The recovery guide PDF includes QR codes
-and base32 secrets for a curated set of critical accounts (defined in
+`create-gpg-key` and `enroll-yubikeys`. The recovery guide PDF includes QR codes
+and `otpauth://` URIs for a curated set of critical accounts (defined in
 `CRITICAL_TOTPS` in `bin/generate-gpg-recovery-guide`), so those accounts can
 be restored from paper alone without the USB.
 
@@ -186,7 +200,7 @@ The destination device is formatted and LUKS-encrypted, then the key files are c
 
 The recovery guide is a printable PDF containing everything needed to reconstruct the
 GPG key from scratch: the public key (as a QR code and ASCII armor), the private key
-encoded via paperkey, the Ansible vault password, and step-by-step instructions for
+encoded via paperkey, and step-by-step instructions for
 restoring SSH access, cloning the password store and Ansible repo, programming new
 YubiKeys, and bootstrapping a new machine.
 
@@ -197,60 +211,54 @@ YubiKeys, and bootstrapping a new machine.
 Output defaults to `secrets/gpg-recovery-guide.pdf`. Store a printed copy in a
 physically separate location from the USB drives and YubiKeys.
 
-Regenerate the guide whenever the primary GPG key is replaced or the vault password
+Regenerate the guide whenever the primary GPG key is replaced or `CRITICAL_TOTPS`
 changes.
+
+### Restore from the recovery guide
+
+If every YubiKey and both primary GPG USBs are lost, follow
+`docs/gpg-paper-recovery.md`, which the guide also prints. From the Live System
+of a provisioned recovery USB, it rebuilds the key from paper, then runs
+
+```
+./bin/restore-primary-gpg-from-paper <device> [<totp-file>]
+```
+
+which renews the subkeys' expiry, writes a new primary GPG USB (with the TOTP seeds
+typed from the guide) and programs new YubiKeys. Then build a medium with
+`bin/dr-build` (`docs/disaster-recovery.md`).
 
 ## Password store
 
-Passwords are managed with `pass` and stored in a GPG-encrypted git repo cloned by
-Ansible during provisioning. The store is encrypted with the GPG key, so the YubiKey
+Passwords are managed with `pass` in a GPG-encrypted git repo, cloned into the home
+directory at first login. The store is encrypted with the GPG key, so the YubiKey
 (or primary GPG USB) is required to decrypt entries.
 
-Some Ansible tasks read credentials directly from the password store at run time. Those
-tasks require the GPG agent to be running and the YubiKey to be present before
-`./bin/ansible` is invoked.
+`bin/build-image` reads the Secure Boot key and other build secrets from the password
+store, so the YubiKey must be present for a build.
 
 ## Provisioning
 
-There is a single image. The same signed image is the installer, the live/rescue
-environment, and the installed system — it ships only the immutable verity `/usr`
-plus an ESP, and provisions its encrypted root/home on first boot via
-`systemd-repart` (the model from [Fitting Everything
-Together](https://0pointer.net/blog/fitting-everything-together.html)). The
-different roles are just boot-menu entries (UKI profiles in `mkosi/mkosi.uki-profiles/`),
-not separate builds. `bin/build-image` builds it; `bin/vm run` and
-`bin/burn-image` then act on the built image and set its hostname at boot (no
-rebuild per machine).
+One signed image is the installer, the live/recovery system and the installed
+system, picked from the boot menu. `docs/bootstrapping.md` ("One image, three
+roles") explains the design.
 
 ### Build a new install/recovery USB
-
-The image bootstraps new machines and repairs broken ones. Plug in a USB drive and
-run:
 
 ```
 bin/build-image
 bin/burn-image /dev/sda
 ```
 
+With no working Arch machine, `bin/dr-build` runs the same build in a container on
+any Linux or macOS machine, and `bin/dr-burn` writes it (`docs/disaster-recovery.md`).
+
 ### Provision a new physical machine
 
-Every machine is built from the same image and names itself on first boot — a
-unique, stable hostname derived from its machine-id (e.g. `arch-92a9-061c`) — so
-there are no per-machine inputs or per-host repo files.
-
-1. Boot the target machine from the install USB. The repo is already installed at
-   `~/src/arch-ansible`. Run:
-
-   ```
-   cd ~/src/arch-ansible
-   bin/build-image
-   bin/burn-image <device>
-   ```
-
-2. Reboot into the installed system. On first boot it self-provisions the
-   encrypted root/home and picks its hostname; per-machine traits (monitors, etc.)
-   are detected from hardware/facts at firstboot. Rename later with
-   `hostnamectl hostname <name>` if you want a chosen name.
+Boot the target machine from the USB, pick the **Installer** profile, and follow
+the prompts. `docs/bootstrapping.md` ("Build chain from scratch") walks through
+the install, first boot, first login and restoring the home from backup; "System
+recovery" covers the **Live System (Recovery)** profile.
 
 ### QEMU workflows
 
@@ -274,13 +282,8 @@ bin/vm run
 Add `--ephemeral` to boot a throwaway snapshot, leaving the built image
 untouched.
 
-Attach a second disk with `--device=<disk.raw>` and pick the role at the boot
-menu. **Live System (Recovery)** boots a volatile root that skips the first-boot
-self-install — `bin/recovery-mount` then discovers the disk's LUKS partition,
-unlocks it, mounts root/usr/efi/home, and chroots in. **Installer** replicates the
-image onto the disk with `mkosi/mkosi.extra/usr/bin/install-system` — one `systemd-repart` run that
-reproduces the medium's own Type #2 layout (the install profile boots straight
-into `arch-install.service`).
+Attach a second disk with `--device=<disk.raw>` and pick **Live System (Recovery)**
+at the boot menu to repair it, or **Installer** to install onto it.
 
 ```
 bin/vm run --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
@@ -304,51 +307,42 @@ bin/vm run DISK --gui                           # a window instead of the checks
 
 ## Maintenance
 
-### Run a normal Ansible run
+### Update a machine
+
+`/usr` is read-only, so OS-level changes are made in this repo and rolled out as a
+new image. On the machine itself:
 
 ```
-./bin/ansible
+bin/update-system            # build a new image, install it to the inactive /usr slot
+bin/update-system --reboot   # ...and reboot into it
 ```
 
-Runs `playbook.yml` against the current `$HOSTNAME`, auto-detects day or night for the
-appearance variable, and prompts for the sudo password.
+Failed boots fall back to the previous slot automatically. `--image=DISK` updates
+another machine's disk from the live USB instead.
 
-To skip the sudo password prompt:
+### Iterate on Ansible
 
-```
-NO_ASK_BECOME_PASS=1 ./bin/ansible
-```
-
-To override the appearance:
+Ansible runs inside the image build (`mkosi/mkosi.postinst.chroot` calls
+`bin/ansible` with `postinst-playbook.yml`) and once per user at first login
+(`user-first-login-playbook.yml`). To iterate on part of it:
 
 ```
-./bin/ansible -e appearance=daytime
-./bin/ansible -e appearance=nighttime
+bin/build-image --ansible-tags sway,waybar   # rebuild running only these roles
+bin/build-image --skip-postinst              # rebuild without Ansible at all
+bin/rerun-postinst                           # re-run the postinst on the cached image
 ```
 
-### Ansible tags
-
-Tags limit which tasks run, useful for faster iteration on a specific subsystem.
-
-| Tag          | Tasks run                                               |
-| ------------ | ------------------------------------------------------- |
-| `base16`     | Regenerate all color-scheme files across every app      |
-| `nvim`       | Neovim configuration and plugins                        |
-| `networking` | Network configuration (iwd, systemd-networkd, resolved) |
-
-Example:
-
-```
-./bin/ansible --tags base16
-./bin/ansible --tags nvim,base16
-```
+`bin/update-system` forwards the same options to `bin/build-image`. Tags are the
+role names in `ansible/postinst-playbook.yml`; `min-user-session` covers the roles
+a usable desktop needs.
 
 ### Iteration cycle
 
 When developing new configuration:
 
-1. Make changes directly on the machine to verify they work.
+1. Make changes directly on a machine (or in `bin/vm run --ephemeral`) to verify
+   they work.
 2. Encode the changes in the relevant role under `ansible/roles/`.
-3. Revert the direct changes (or use a fresh QEMU instance).
-4. Run Ansible and confirm the configuration applies correctly.
-5. Run Ansible a second time and confirm it is idempotent (no changes reported).
+3. Build the image and boot it with `bin/vm run` to confirm the configuration
+   applies.
+4. Roll it out with `bin/update-system`.

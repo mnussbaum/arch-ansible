@@ -78,7 +78,7 @@ echo "==> Exporting public key to ansible/roles/gpg/files/gpg-pubkey.asc..."
 gpg --armor --export "$FINGERPRINT" > ansible/roles/gpg/files/gpg-pubkey.asc
 
 echo "==> Migrating pass store to new key..."
-PASS_DIR="${PASSWORD_STORE_DIR:-$HOME/.password-store}"
+PASS_DIR="${PASSWORD_STORE_DIR:-$HOME/.local/share/password-store}"
 if [[ -d "$PASS_DIR" ]]; then
   echo "    Found store at $PASS_DIR."
   GNUPGHOME="$REAL_GNUPGHOME" gpg --import ansible/roles/gpg/files/gpg-pubkey.asc
@@ -121,31 +121,15 @@ fi
 echo "==> Creating subkey backup for YubiKey programming..."
 "${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
 
-program_all_yubikeys
-
-echo "==> Enrolling auth subkey keygrip in ansible/group_vars/all/gpg_auth_keygrips.yml..."
-KEYGRIP=$(gpg --with-keygrip --list-keys "$FINGERPRINT" | \
-  awk '/\[A\]/{found=1} found && /Keygrip/{print $NF; exit}')
-python3 - "$KEYGRIP" <<'PYEOF'
-import sys, yaml
-keygrip = sys.argv[1]
-filepath = 'ansible/group_vars/all/gpg_auth_keygrips.yml'
-with open(filepath) as f:
-    data = yaml.safe_load(f) or {}
-keygrips = data.setdefault('gpg_auth_ssh_keygrips', [])
-if keygrip not in keygrips:
-    keygrips.append(keygrip)
-    with open(filepath, 'w') as f:
-        yaml.dump(data, f, default_flow_style=False)
-PYEOF
+HOMED_PIV_ALLOW_NEW=1 program_all_yubikeys
 
 echo "    Fingerprint: $FINGERPRINT"
 echo ""
 echo "Next steps:"
 echo "  1. Add the SSH public key to GitHub/GitLab:"
 echo "       gpg --export-ssh-key $FINGERPRINT"
-echo "  2. Commit the public key and keygrips:"
-echo "       git add ansible/roles/gpg/files/gpg-pubkey.asc ansible/group_vars/all/gpg_auth_keygrips.yml"
+echo "  2. Commit the public key:"
+echo "       git add ansible/roles/gpg/files/gpg-pubkey.asc"
 echo "       git commit -m 'Add GPG public key'"
 echo "  3. Android (Password Store + OpenKeychain + NFC YubiKey):"
 echo "       a. Transfer ansible/roles/gpg/files/gpg-pubkey.asc to phone and import in OpenKeychain"

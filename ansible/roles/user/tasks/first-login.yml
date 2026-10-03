@@ -32,29 +32,38 @@
   register: password_store_links
   changed_when: "'removed' in password_store_links.stdout"
 
-- name: Clone password-store into home
-  # The image ships /usr/share/password-store as a git repo. The ansible git
-  # module can't pass safe.directory, which the root-owned repo needs.
-  ansible.builtin.command:
-    cmd: >-
-      git -c safe.directory=/usr/share/password-store/.git
-      clone /usr/share/password-store
-      {{ ansible_facts['env']['HOME'] }}/.local/share/password-store
-    creates: "{{ ansible_facts['env']['HOME'] }}/.local/share/password-store"
+- name: Check for a shipped password-store
+  # Images built with dr-build --ephemeral-key ship an empty directory instead.
+  ansible.builtin.stat:
+    path: /usr/share/password-store/.git
+  register: shipped_password_store
 
-- name: Point password-store origin at GitLab
-  ansible.builtin.command:
-    cmd: >-
-      git -C {{ ansible_facts['env']['HOME'] }}/.local/share/password-store
-      remote set-url origin git@gitlab.com:mnussbaum/password-store.git
-  changed_when: false
+- name: Set up the password-store
+  when: shipped_password_store.stat.exists
+  block:
+    - name: Clone password-store into home
+      # The image ships /usr/share/password-store as a git repo. The ansible git
+      # module can't pass safe.directory, which the root-owned repo needs.
+      ansible.builtin.command:
+        cmd: >-
+          git -c safe.directory=/usr/share/password-store/.git
+          clone /usr/share/password-store
+          {{ ansible_facts['env']['HOME'] }}/.local/share/password-store
+        creates: "{{ ansible_facts['env']['HOME'] }}/.local/share/password-store"
 
-- name: Link ~/.password-store to the clone
-  # For tools that ignore PASSWORD_STORE_DIR, e.g. Firefox's firejail profile.
-  ansible.builtin.file:
-    path: "{{ ansible_facts['env']['HOME'] }}/.password-store"
-    src: .local/share/password-store
-    state: link
+    - name: Point password-store origin at GitLab
+      ansible.builtin.command:
+        cmd: >-
+          git -C {{ ansible_facts['env']['HOME'] }}/.local/share/password-store
+          remote set-url origin git@gitlab.com:mnussbaum/password-store.git
+      changed_when: false
+
+    - name: Link ~/.password-store to the clone
+      # For tools that ignore PASSWORD_STORE_DIR, e.g. Firefox's firejail profile.
+      ansible.builtin.file:
+        path: "{{ ansible_facts['env']['HOME'] }}/.password-store"
+        src: .local/share/password-store
+        state: link
 
 - name: Check for a volatile root
   ansible.builtin.command: findmnt -no FSTYPE /

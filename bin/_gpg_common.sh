@@ -240,11 +240,23 @@ load_homed_piv_keypair() {
   HOMED_PIV_KEY="$GNUPGHOME/homed-piv-key.pem"
   HOMED_PIV_CERT="$GNUPGHOME/homed-piv-cert.pem"
 
-  if pass show "$pass_key" >/dev/null 2>&1; then
+  if [[ ! -f "$PASSWORD_STORE_DIR/.gpg-id" ]]; then
+    echo "Error: no password-store at PASSWORD_STORE_DIR=$PASSWORD_STORE_DIR" >&2
+    exit 1
+  fi
+
+  if [[ -f "$PASSWORD_STORE_DIR/$pass_key.gpg" ]]; then
     echo "==> Loading homed PIV key + cert from pass ($pass_key)..."
     (umask 077; pass show "$pass_key"  >"$HOMED_PIV_KEY")
     (umask 077; pass show "$pass_cert" >"$HOMED_PIV_CERT")
     return
+  fi
+
+  # A new key locks out every home enrolled with the old one, so only
+  # create-gpg-key may mint it.
+  if [[ -z "${HOMED_PIV_ALLOW_NEW:-}" ]]; then
+    echo "Error: $pass_key is missing from $PASSWORD_STORE_DIR" >&2
+    exit 1
   fi
 
   echo "==> Generating shared homed PIV RSA2048 key + cert, storing in pass..."
