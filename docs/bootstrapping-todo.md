@@ -16,10 +16,10 @@ Sections of `bootstrapping.md` that are aspirational and not yet implemented.
 
 ## Install from the live medium
 
-- **`mkosi/mkosi.extra/usr/lib/arch-ansible/bin/install-system` (`mkosi/mkosi.uki-profiles/25-install.conf`)** — VALIDATED
+- **`mkosi/mkosi.extra/usr/bin/install-system` (`mkosi/mkosi.uki-profiles/25-install.conf`)** — VALIDATED
   2026-08-19. `systemd-sysinstall` is RETIRED (it was hardwired to Boot Loader Spec
   Type #1; see the Type #2 follow-up below). The `install` UKI profile now boots to
-  `multi-user.target` and auto-runs `arch-install.service` → `mkosi/mkosi.extra/usr/lib/arch-ansible/bin/install-system
+  `multi-user.target` and auto-runs `arch-install.service` → `mkosi/mkosi.extra/usr/bin/install-system
 --guided` on tty1. The whole install is one `systemd-repart` run:
   `systemd-repart --dry-run=no --empty=force --defer-partitions=swap,root,home DISK`
   — the ESP is populated by `CopyFiles=/boot:/` in the shipped
@@ -351,7 +351,7 @@ $output_dir/tpm`). `systemd-firstboot` decrypted the cred cleanly (no TPM error)
    (`bin/vm run --gui` a fresh install → `hostnamectl` shows `arch-…`, stable across
    reboots). NOTE: the step-4 commands below/above still say `--hostname=…`; that
    flag is gone now — drop it (the disk names itself).
-   RE-RUN AND PASSED 2026-08-19 on the **Type #2** installer (`mkosi/mkosi.extra/usr/lib/arch-ansible/bin/install-system`,
+   RE-RUN AND PASSED 2026-08-19 on the **Type #2** installer (`mkosi/mkosi.extra/usr/bin/install-system`,
    no sysinstall), headless via `bin/vm install`. Verified by reading the
    target back from inside the installer: partitions `esp` + usr-A
    {verity_sig,verity,erofs} + three `_empty` usr-B slots, with root/home/swap
@@ -513,72 +513,72 @@ Follow-ups (software; discovered during E2E, not yet done):
       particleOS's 1G). The `extra /image/firstboot.*.cred` are vestigial too (the
       TPM-sealed firstboot-credential path was removed; hostname self-assigns).
 
-            DECISION: standardize on **Type #2 end-to-end** rather than install-Type-1-then-GC.
-            The mkosi-built medium is *already* pure Type #2 (`EFI/Linux/<uki>.efi` + sd-boot,
-            no `/image/`, no `loader/entries/`); a pure-Type-2 install just reproduces that
-            layout onto the target, UKI-named the way sysupdate names it so A/B rotation
-            continues seamlessly. Install and update then share one convention and one code
-            path, and the whole seam (plus any `bootctl unlink` GC) ceases to exist.
+                                          DECISION: standardize on **Type #2 end-to-end** rather than install-Type-1-then-GC.
+                                          The mkosi-built medium is *already* pure Type #2 (`EFI/Linux/<uki>.efi` + sd-boot,
+                                          no `/image/`, no `loader/entries/`); a pure-Type-2 install just reproduces that
+                                          layout onto the target, UKI-named the way sysupdate names it so A/B rotation
+                                          continues seamlessly. Install and update then share one convention and one code
+                                          path, and the whole seam (plus any `bootctl unlink` GC) ceases to exist.
 
-            Why not the alternatives: (a) *first-boot `bootctl unlink` GC* — keeps `sysinstall`
-            and papers over the seam; still emits Type #1, still has the rotate-away window,
-            needs careful "only after a Type #2 UKI is booted" sequencing. Demoted to a
-            one-time migration tool (below), not the strategy. (b) *make the installer emit
-            Type #2* — not possible: `bootctl link` has no Type #2 mode and `systemd-sysinstall`
-            hardcodes it, and there's no upstream issue/RFE to add it (tracker + PR #41877 +
-            systemd `TODO.md` checked 2026-07-24).
-            REFERENCE: ParticleOS itself reverted OFF `systemd-sysinstall` for exactly this
-            reason ([systemd/particleos#166](https://github.com/systemd/particleos/pull/166),
-            daandemeyer: "the boot entries installed by systemd-sysinstall are not removed
-            when the system is updated by systemd-sysupdate … the boot menu becomes a total
-            mess"). Its replacement is a single repart run — which we adopted.
+                                          Why not the alternatives: (a) *first-boot `bootctl unlink` GC* — keeps `sysinstall`
+                                          and papers over the seam; still emits Type #1, still has the rotate-away window,
+                                          needs careful "only after a Type #2 UKI is booted" sequencing. Demoted to a
+                                          one-time migration tool (below), not the strategy. (b) *make the installer emit
+                                          Type #2* — not possible: `bootctl link` has no Type #2 mode and `systemd-sysinstall`
+                                          hardcodes it, and there's no upstream issue/RFE to add it (tracker + PR #41877 +
+                                          systemd `TODO.md` checked 2026-07-24).
+                                          REFERENCE: ParticleOS itself reverted OFF `systemd-sysinstall` for exactly this
+                                          reason ([systemd/particleos#166](https://github.com/systemd/particleos/pull/166),
+                                          daandemeyer: "the boot entries installed by systemd-sysinstall are not removed
+                                          when the system is updated by systemd-sysupdate … the boot menu becomes a total
+                                          mess"). Its replacement is a single repart run — which we adopted.
 
-            KEY CORRECTION to the earlier plan: install does NOT need to reimplement LUKS/TPM
-            enrollment. `systemd-sysinstall` only ever laid down `esp + usr-A`;
-            root/home/swap (+ their `Encrypt=tpm2` LUKS sealing) and the inactive `usr-B`
-            slot are created by the INSTALLED system's own first-boot `systemd-repart`, from
-            the baked `/usr/lib/repart.d/` — unchanged by any of this. No `bootctl install`,
-            no `systemd-sysupdate`, no cred migration needed either (the firstboot
-            hostname/locale/keymap creds were already dropped; hostname self-assigns).
+                                          KEY CORRECTION to the earlier plan: install does NOT need to reimplement LUKS/TPM
+                                          enrollment. `systemd-sysinstall` only ever laid down `esp + usr-A`;
+                                          root/home/swap (+ their `Encrypt=tpm2` LUKS sealing) and the inactive `usr-B`
+                                          slot are created by the INSTALLED system's own first-boot `systemd-repart`, from
+                                          the baked `/usr/lib/repart.d/` — unchanged by any of this. No `bootctl install`,
+                                          no `systemd-sysupdate`, no cred migration needed either (the firstboot
+                                          hostname/locale/keymap creds were already dropped; hostname self-assigns).
 
-            IMPLEMENTATION (mirrors particleos#166): the whole install is one command,
-              `systemd-repart --dry-run=no --empty=force --defer-partitions=swap,root,home DISK`
-            - `mkosi/mkosi.extra/usr/lib/repart.d/10-esp.conf`: added `CopyFiles=/boot:/`. When
-              repart CREATES the target ESP it copies the running medium's `/boot` (sd-boot +
-              the bare Type #2 UKI in `EFI/Linux/` + `loader/`) straight onto it — no
-              `bootctl` at all. Only fires on creation, so the installed system's first-boot
-              ESP grow is untouched.
-            - `usr-A` is cloned from the running `/usr` by the existing `CopyBlocks=auto`
-              (22-usr-a.conf); `--defer-partitions` leaves root/home/swap for first boot.
-            - `mkosi/mkosi.extra/usr/lib/arch-ansible/bin/install-system`: thin wrapper — one-shot `install-system DISK` (block dev
-              or raw file; medium-disk guard; `--yes`/`--reboot`) or `install-system
-              --guided` (enumerate eligible disks → pick → confirm → install), with a
-              "drop to a shell" escape hatch.
-            - `mkosi/mkosi.extra/usr/lib/systemd/system/arch-install.service` (+ multi-user.target
-              .wants symlink): auto-runs the guided installer on tty1, gated on the
-              `arch.install` kernel-cmdline marker so it is inert outside the Installer
-              profile (Conflicts=getty@tty1 only there).
-            - `mkosi/mkosi.uki-profiles/25-install.conf`: dropped `systemd.unit=systemd-sysinstall
-              .service`; added the `arch.install` marker + autologin (second escape hatch);
-              kept `systemd-repart.service` masked (the medium must not provision itself).
-            - Docs: `bootstrapping.md` gained an Installation section; `bin/vm run`
-              comment updated.
+                                          IMPLEMENTATION (mirrors particleos#166): the whole install is one command,
+                                            `systemd-repart --dry-run=no --empty=force --defer-partitions=swap,root,home DISK`
+                                          - `mkosi/mkosi.extra/usr/lib/repart.d/10-esp.conf`: added `CopyFiles=/boot:/`. When
+                                            repart CREATES the target ESP it copies the running medium's `/boot` (sd-boot +
+                                            the bare Type #2 UKI in `EFI/Linux/` + `loader/`) straight onto it — no
+                                            `bootctl` at all. Only fires on creation, so the installed system's first-boot
+                                            ESP grow is untouched.
+                                          - `usr-A` is cloned from the running `/usr` by the existing `CopyBlocks=auto`
+                                            (22-usr-a.conf); `--defer-partitions` leaves root/home/swap for first boot.
+                                          - `mkosi/mkosi.extra/usr/bin/install-system`: thin wrapper — one-shot `install-system DISK` (block dev
+                                            or raw file; medium-disk guard; `--yes`/`--reboot`) or `install-system
+                                            --guided` (enumerate eligible disks → pick → confirm → install), with a
+                                            "drop to a shell" escape hatch.
+                                          - `mkosi/mkosi.extra/usr/lib/systemd/system/arch-install.service` (+ multi-user.target
+                                            .wants symlink): auto-runs the guided installer on tty1, gated on the
+                                            `arch.install` kernel-cmdline marker so it is inert outside the Installer
+                                            profile (Conflicts=getty@tty1 only there).
+                                          - `mkosi/mkosi.uki-profiles/25-install.conf`: dropped `systemd.unit=systemd-sysinstall
+                                            .service`; added the `arch.install` marker + autologin (second escape hatch);
+                                            kept `systemd-repart.service` masked (the medium must not provision itself).
+                                          - Docs: `bootstrapping.md` gained an Installation section; `bin/vm run`
+                                            comment updated.
 
-            Caveat still to carry: first-install rollback cliff — the copied base UKI is a
-            single instance with no `+tries` suffix, so it's a permanent (non-boot-counted)
-            entry; the first `update-system` adds the boot-counted Type #2 pair. Pre-existing
-            posture, not new. (The old "reimplement LUKS/TPM enrollment" caveat was WRONG —
-            see the correction above.)
+                                          Caveat still to carry: first-install rollback cliff — the copied base UKI is a
+                                          single instance with no `+tries` suffix, so it's a permanent (non-boot-counted)
+                                          entry; the first `update-system` adds the boot-counted Type #2 pair. Pre-existing
+                                          posture, not new. (The old "reimplement LUKS/TPM enrollment" caveat was WRONG —
+                                          see the correction above.)
 
-            Migration for already-installed Type #1 targets: a one-time `bootctl unlink` of the
-            `image-commit_*` entries (removes the entry + its now-unreferenced `/image/` UKI +
-            `.cred` sidecars per `man bootctl`), run only once the target is already booted on
-            a Type #2 UKI (it won't unlink the booted entry). `update-system --image` is a
-            natural place to do this opportunistically after applying.
+                                          Migration for already-installed Type #1 targets: a one-time `bootctl unlink` of the
+                                          `image-commit_*` entries (removes the entry + its now-unreferenced `/image/` UKI +
+                                          `.cred` sidecars per `man bootctl`), run only once the target is already booted on
+                                          a Type #2 UKI (it won't unlink the booted entry). `update-system --image` is a
+                                          natural place to do this opportunistically after applying.
 
-            Verify after: fresh install (no sysinstall) → `bootctl list` shows only Type #2
-            entries, ESP has `EFI/Linux/` + sd-boot and **no** `/image/` or `loader/entries/`;
-            then one update → A/B pair rotates, still zero Type #1 leftovers.
+                                          Verify after: fresh install (no sysinstall) → `bootctl list` shows only Type #2
+                                          entries, ESP has `EFI/Linux/` + sd-boot and **no** `/image/` or `loader/entries/`;
+                                          then one update → A/B pair rotates, still zero Type #1 leftovers.
 
 Orthogonal checks (fold into the steps above as real hardware becomes available):
 
@@ -590,9 +590,6 @@ Orthogonal checks (fold into the steps above as real hardware becomes available)
 
 ## Running todo notes
 
-- Code reorgs
-  - Can we move ansible into the build step? Might allow better caching
-    - Organize project top level better. Playbooks in one dir, mkosi stuff in another
 - Recovery mode boot strapping
   - Stuff copied from the host that needs to be in containerfile, handle missing files gracefully
     - password-store repo
@@ -601,22 +598,16 @@ Orthogonal checks (fold into the steps above as real hardware becomes available)
     - mirrorlist - ideally reflectored
     - Cargo registry
     - Sccache
+- Update recovery document
 - Test offline builds
   - Base16 configs reach internet still
   - delta theme file download
   - Others?
   - `WithNetwork=false`?
+- Test suspend and hibernate on new device
+- Test restoring data from snapshot backup on real device
 - Consider automating restic restore in a new workstation
-- Recovery media
-  - Test live image and recovery in qemu
-  - Test live image and recovery on real device
 - Fix colorscheme changer for the new world. Needs a whole new strategy
 - Remove old host directory setup once fully cut over to image based hosts
-- Confirm hermetic plan is finished
+- Get firefox setup portable
 - Remove ARCH_ANSIBLE_SRCTREE copying used to avoid copying secrets dir with repo into image
-- I wonder if we can run the user ansible in a seperate user home image build
-  process. And then mount it in instead of running it on user first log in
-- Do I still need the bsdtar wrapping for nspawn building?
-- Clock is wrong on booted image
-- Need to automated recovery key enrollment
-- Caps lock isn't mapped to escape
