@@ -3,7 +3,8 @@
 
 Subcommands:
     backup     Snapshot home (btrfs ro snapshot), back up included paths.
-    restore    Restore included paths in place to match a snapshot.
+    restore    Restore included paths in place from a snapshot, adding only
+               missing files (or, with --exact, matching it exactly).
     snapshots  List snapshots in the repository.
     mount      FUSE-mount the repository for browsing.
 
@@ -261,24 +262,27 @@ def cmd_restore(args: argparse.Namespace) -> None:
             print(f"Restoring {rel} -> {dst} ...", file=sys.stderr)
             if kind == "dir":
                 # "<snapshot>:<subpath>" makes the subpath the root of
-                # --target, and --delete prunes anything not in the snapshot,
-                # so dst ends up matching the snapshot's state exactly.
+                # --target. With --exact, --delete prunes anything not in the
+                # snapshot, so dst ends up matching the snapshot exactly.
                 dst.mkdir(parents=True, exist_ok=True)
                 cmd = [
                     "restic", "restore", f"{args.snapshot}:{src}",
                     "--target", str(dst),
-                    "--delete",
                 ]
+                if args.exact:
+                    cmd.append("--delete")
             else:
                 # A single file: restore it into its parent directory. We
-                # can't use --delete here (it would prune the file's siblings),
-                # so this just overwrites the one file in place.
+                # can't use --delete here (it would prune the file's siblings).
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 cmd = [
                     "restic", "restore", f"{args.snapshot}:{src.parent}",
                     "--target", str(dst.parent),
                     "--include", f"/{src.name}",
                 ]
+            # By default only fill in missing files, leaving anything already
+            # on disk (newer work, files added since the snapshot) untouched.
+            cmd += ["--overwrite", "always" if args.exact else "never"]
             subprocess.run(cmd, check=True, env=env)
 
 
@@ -327,8 +331,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser(
         "restore",
-        help="Restore paths in place to match a snapshot "
-             "(replaces current contents).",
+        help="Restore paths in place from a snapshot. By default only "
+             "missing files are restored; nothing is deleted or overwritten.",
     )
     sp.add_argument("user", nargs="?", default=default_user,
                     help=f"User whose home to restore (default: {default_user})")
@@ -337,10 +341,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--directory", "-d", action="append", default=[],
                     help="Path to restore in place (repeatable). May be "
                          "absolute or relative to the current directory, but "
-                         "must resolve to a location under the user's home. A "
-                         "directory is restored to exactly its snapshot state, "
-                         "deleting files not in the snapshot. Default: contents "
-                         f"of {INCLUDES_FILE} (home-relative).")
+                         "must resolve to a location under the user's home. "
+                         f"Default: contents of {INCLUDES_FILE} "
+                         "(home-relative).")
+    sp.add_argument("--exact", action="store_true",
+                    help="Make each path match the snapshot exactly: overwrite "
+                         "changed files and delete files not in the snapshot.")
     add_device(sp)
     sp.set_defaults(func=cmd_restore)
 

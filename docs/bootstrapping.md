@@ -654,6 +654,46 @@ bin/burn-image /dev/sdX
 Build-time configuration that can't be detected at runtime goes in `group_vars`
 or behind a runtime condition in the roles.
 
+### Backup credentials
+
+`restic-backup` (the `backup` role) looks up its Backblaze key in `pass` by
+hostname: `host_secrets/$(hostname)/restic_backblaze_key{,_id}`. The repo password
+(`restic_backup_password`) is shared. A new host needs its own key before it can
+back up or restore:
+
+1. Give the machine its permanent name (`hostnamectl hostname <name>`), since the
+   self-assigned `arch-????-????` name is what the lookup would otherwise use.
+2. In Backblaze, create an application key for that host with read, list and
+   write access to the `mnussbaum-machine-backups` bucket. Don't limit it to a
+   file prefix: every host shares one restic repo, and a restore needs to read
+   other hosts' snapshots.
+3. Add it to a writable clone of the password-store repo, then commit and push:
+   ```bash
+   pass insert host_secrets/<name>/restic_backblaze_key_id
+   pass insert host_secrets/<name>/restic_backblaze_key
+   ```
+4. The password store ships read-only in the image (`/usr/share/password-store`),
+   so roll a new image with `bin/update-system` and reboot into it.
+5. Check with `restic-backup snapshots`.
+
+### Restoring data from backup
+
+Once the host's credentials are in place, seed its home from the latest snapshot:
+
+```bash
+restic-backup restore                    # every path in /etc/restic-backup/includes
+restic-backup restore -d ~/Documents     # or specific paths
+```
+
+By default the restore only adds files that are missing. It never deletes or
+overwrites anything, so it's safe to run on a home that already has work in it,
+such as a repo you cloned during setup. Pass `--exact` to make each path match
+the snapshot exactly, deleting files not in it and overwriting changed ones.
+
+Restore before adding any Syncthing folders. If a folder is already being synced,
+files deleted on other devices after the snapshot will come back and sync out to
+them.
+
 ---
 
 ## Day-to-day configuration changes
