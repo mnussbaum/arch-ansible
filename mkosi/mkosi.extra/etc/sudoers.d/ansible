@@ -5,3 +5,5 @@ Defaults timestamp_timeout=30
 %wheel ALL=(ALL) NOPASSWD: /usr/bin/homectl
 # Encrypt-and-store only (never decrypts); see the script.
 %wheel ALL=(ALL) NOPASSWD: /usr/bin/store-wifi-credential
+# Only wipes the baked initial home secret's keyslot; see the script.
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/home-drop-baked-secret
