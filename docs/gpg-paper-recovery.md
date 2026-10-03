@@ -1,40 +1,24 @@
-# Restore the GPG key from the paper recovery guide
+# Restore the GPG key from paper
 
-Use this when every YubiKey and both primary GPG USBs are lost. The printed
-recovery guide (`bin/generate-gpg-recovery-guide`, see README.md) holds the
-primary key on paper and embeds these steps, so it can be followed without the
-repo.
+Use this when every YubiKey and both primary-key USBs are lost. It rebuilds the
+primary GPG key from the printed [recovery guide](recovery-guide.md), then
+writes a new primary-key USB and programs new YubiKeys.
 
-<!-- The recovery guide embeds everything below this line. -->
+You need: the printed recovery guide, a recovery USB to boot
+([build-recovery-usb.md](build-recovery-usb.md)), a blank USB drive for the new
+primary-key backup, and blank YubiKeys.
 
-You need: the printed guide, a computer with internet, a USB drive of 32G or
-more for this repo's image, a blank USB for the primary key backup, and blank
-YubiKeys: building the image, unlocking disks and logging in all use one.
+## Step 1 — Boot the Live System
 
-## Step 1 — Boot a Live System
+Steps 2–5 run in the Live System of a recovery USB, which has every tool they
+need. A recovery USB built with a throwaway key boots only with Secure Boot
+disabled, so disable it in the firmware unless the machine already trusts the
+recovery USB's key. Boot the recovery USB and pick **Live System (Recovery)**.
 
-Steps 2–5 run in the Live System of a provisioned recovery USB: a USB drive with
-this repo's image written to it, called a recovery USB below. It has every tool
-they need.
-
-Use any existing recovery USB. Otherwise build one with a throwaway Secure Boot
-key on any Linux or macOS machine with podman or docker. It takes a few hours,
-and asks for a password for the Live System's user (`docs/disaster-recovery.md`,
-"No YubiKey"):
-
-```
-git clone https://github.com/mnussbaum/arch-ansible.git && cd arch-ansible
-bin/dr-build --ephemeral-key
-bin/dr-burn dr-out/image_*_x86-64.raw /dev/sdX
-```
-
-Disable Secure Boot in the firmware, unless the machine already trusts the
-recovery USB's key. Boot it and pick **Live System (Recovery)**.
-
-Log in as your user. On a recovery USB built with `--ephemeral-key`, the
-password is the one given to `dr-build`. On any other recovery USB it is the
-image's baked home secret: switch to a console (Ctrl+Alt+F2), which logs in as
-root, and read it with
+Log in as `mnussbaum` (`user.name` in `ansible/group_vars/all/vars.yml`). On a
+recovery USB built with `--ephemeral-key`, the password is the one given to
+`dr-build`. On any other recovery USB it is the image's baked home secret:
+switch to a console (Ctrl+Alt+F2), which logs in as root, and read it with
 
 ```
 cat /usr/lib/credstore/home.new-password
@@ -49,28 +33,30 @@ iwctl station wlan0 connect <SSID>
 ## Step 2 — Reconstruct the GPG private key
 
 The public key is already imported from the repo; check with `gpg --list-keys`.
-If it is missing, type in the ASCII armor from the guide's "GPG Root Public Key"
-section and import it:
+If it is missing, type in the ASCII armor from [Public key](recovery-guide.md#public-key)
+in the guide's appendix and import it:
 
 ```
-cat > pubkey.asc        # paste, then Ctrl-D
+cat > pubkey.asc        # type, then Ctrl-D
 gpg --import pubkey.asc
 ```
 
-Type in the base64 from the guide's "GPG Root Private Key (paperkey format)"
-section and decode it to raw bytes:
+Type the numbered lines from [Private key](recovery-guide.md#private-key) in the
+guide's appendix into a file, and nothing else: a blank or comment line breaks
+the checksum.
 
 ```
-cat > secrets.b64       # paste, then Ctrl-D
-base64 -d secrets.b64 > secrets.raw
+cat > secrets.txt       # type, then Ctrl-D
 ```
 
 Paperkey holds only the secret bytes. Join them with the public key to rebuild
-the full private key, then check that the key and all subkeys are present:
+the full private key, then check that the key and all subkeys are present. Each
+line ends in a checksum, so on a typo paperkey names the line to fix
+(`CRC on line 5 does not match`):
 
 ```
 gpg --export > pubkey.gpg
-paperkey --pubring pubkey.gpg --secrets secrets.raw --input-type raw | gpg --import
+paperkey --pubring pubkey.gpg --secrets secrets.txt | gpg --import
 gpg --list-secret-keys
 ```
 
@@ -86,7 +72,7 @@ ssh -T git@github.com
 ssh -T git@gitlab.com
 ```
 
-## Step 4 — Update the password store and Ansible repo
+## Step 4 — Update the password store and the repo
 
 A recovery USB built with the real key carries both in your home; bring them up
 to date:
@@ -104,16 +90,16 @@ git clone git@gitlab.com:mnussbaum/password-store.git ~/.local/share/password-st
 
 Check that pass decrypts: `pass ls`, then `pass show` any entry.
 
-## Step 5 — Create a new primary key USB and program new YubiKeys
+## Step 5 — Create a new primary-key USB and program new YubiKeys
 
-Type the `otpauth://` URIs from the guide's "Critical 2FA / TOTP Accounts"
-section into a file, one per line:
+Type the `otpauth://` URIs from [Critical TOTP accounts](recovery-guide.md#critical-totp-accounts)
+in the guide's appendix into a file, one per line:
 
 ```
 cat > ~/totp.txt        # type, then Ctrl-D
 ```
 
-Find the blank USB for the primary key backup (not the recovery USB) with
+Find the blank USB drive for the primary-key backup (not the recovery USB) with
 `lsblk`, and run the restore script with it:
 
 ```
@@ -131,20 +117,3 @@ Commit and push the renewed public key, which the image build uses:
 ```
 git commit -am 'Renew GPG subkeys' && git push
 ```
-
-## Step 6 — Build the install medium and replace the machine
-
-The build needs about 150G of disk, more than the Live System has. Run it on any
-Linux or macOS machine with podman or docker, following
-`docs/disaster-recovery.md`. With a YubiKey from Step 5 plugged in, build and
-write the medium to the 32G USB drive, overwriting the Step 1 recovery USB if
-you like (find it with `lsblk` or `diskutil list`):
-
-```
-git clone https://github.com/mnussbaum/arch-ansible.git && cd arch-ansible
-bin/dr-build
-bin/dr-burn dr-out/image_*_x86-64.raw /dev/sdX
-```
-
-Boot the target machine from it, pick **Installer**, and follow "Replacing a
-lost or dead machine" in `docs/disaster-recovery.md`.

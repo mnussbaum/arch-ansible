@@ -1,127 +1,23 @@
-# Disaster recovery: build a medium on someone else's machine
+# Disaster recovery
 
-When no machine of ours can build the image, any Linux or macOS machine with
-podman or docker can: `bin/dr-build` runs the whole build in an Arch container,
-and `bin/dr-burn` writes the result to a USB drive, making a provisioned
-recovery USB ("recovery USB" below). The medium is the same image
-`bin/build-image` makes — installer, live/recovery system and installed system
-in one (see `bootstrapping.md`).
+Where to start, by what was lost:
 
-## What to bring
+- **A machine** (lost, dead or wiped): add the replacement's backup credentials
+  ([backup-credentials.md](backup-credentials.md)), build a recovery USB
+  (`bin/build-image`, or [build-recovery-usb.md](build-recovery-usb.md) when no
+  machine of ours can build one), install
+  ([install-machine.md](install-machine.md)) and restore the home
+  ([restore-home.md](restore-home.md)). A machine that won't boot can often be
+  repaired from the recovery USB's Live System instead
+  ([bootstrapping.md](bootstrapping.md), "System recovery").
+- **A YubiKey, or every YubiKey**: [gpg-and-yubikeys.md](gpg-and-yubikeys.md),
+  "Lost or blocked YubiKeys".
+- **Every YubiKey and the primary-key USBs**: rebuild the key from the printed
+  recovery guide ([gpg-paper-recovery.md](gpg-paper-recovery.md)).
+- **Everything**: the printed recovery guide ([recovery-guide.md](recovery-guide.md))
+  runs from nothing to a working laptop with its home restored.
 
-- A YubiKey and its PIN. It decrypts the Secure Boot key and the homed recovery
-  secret from `pass`, and authenticates the clone of the password-store from
-  GitLab. Without one, see [No YubiKey](#no-yubikey).
-- If every YubiKey and the primary-key USB are gone: the printed GPG recovery
-  guide and blank YubiKeys. See [No YubiKey](#no-yubikey).
-- A USB drive of 32G or more.
-- About 150G of free disk and 8G+ of memory for the container runtime, and a
-  few hours. A cold build downloads every package and compiles the AUR
-  packages; on Apple Silicon everything runs under x86 emulation, which is
-  several times slower.
-
-## 1. Set up the container runtime
-
-**Linux.** Rootful podman or docker: `dr-build` uses `sudo` when needed. The
-YubiKey is passed into the container, which runs its own pcscd, so stop the
-host's first if it has one: `sudo systemctl stop pcscd.socket pcscd.service`.
-
-**macOS.** Containers run in a Linux VM that can't reach USB devices, so the
-YubiKey is used from macOS instead, and the recovery USB is written from macOS too.
-
-```sh
-xcode-select --install          # git
-brew install gnupg podman
-podman machine init --rootful --cpus 8 --memory 16384 --disk-size 150
-podman machine start
-```
-
-Docker Desktop or OrbStack work in place of podman: give them the same memory
-and disk, and on Apple Silicon enable Rosetta for x86/amd64 emulation (Docker
-Desktop: Settings → General). podman machine uses Rosetta automatically.
-
-## 2. Build
-
-```sh
-git clone https://github.com/mnussbaum/arch-ansible.git
-cd arch-ansible
-bin/dr-build
-```
-
-Insert the YubiKey when asked and enter its PIN: it authenticates the
-password-store clone over SSH and then decrypts the secrets. On macOS gnupg
-does this before the container starts and the decrypted secrets sit in
-`~/.dr-secrets.*` until the build ends; on Linux they're decrypted into the
-container's `/dev/shm`. Either way the build copies the Secure Boot key into
-the cache volume while it runs, and deletes it when the build ends, even a
-failed one. If the container is killed instead, remove the volume.
-
-The medium lands in `dr-out/`. Build caches persist in the `arch-ansible-dr-cache`
-volume, so a rerun is much faster; `podman volume rm arch-ansible-dr-cache`
-(or `docker volume rm`) reclaims the space afterwards.
-
-The medium itself is not secret-free: like every build, it carries the
-initial home secret readable in its `/usr` (see `bin/_credstore_common.sh`).
-Installed homes drop it at first login, but a home that hasn't had one yet
-opens with it. Delete `dr-out/` after burning.
-
-Options worth knowing:
-
-- `--password-store DIR` uses an existing copy of the store (e.g. from a backup)
-  instead of cloning it.
-- `--password-store-url URL` clones from elsewhere, e.g. over HTTPS with a GitLab
-  access token when SSH is unavailable.
-- Anything after `--` goes to `bin/build-image`, e.g. `-- --skip-postinst`.
-
-Only committed changes are built: the container clones the checkout.
-
-## 3. Write the recovery USB
-
-```sh
-lsblk                                   # Linux: find the USB drive, e.g. /dev/sdb
-diskutil list external physical         # macOS: e.g. /dev/disk4
-bin/dr-burn dr-out/image_*_x86-64.raw /dev/sdb
-```
-
-It refuses partitions, mounted devices (Linux) and internal disks (macOS), and
-asks you to type the device path before erasing it.
-
-Then boot from the recovery USB and carry on as in `bootstrapping.md`: install,
-or **Live System (Recovery)** to reach an existing disk with `recovery-mount`.
-The recovery USB is signed with the same Secure Boot key as every installed
-machine, so it boots under their Secure Boot as-is.
-
-## Replacing a lost or dead machine
-
-Build and burn a medium as above (or use an existing recovery USB), then follow
-`bootstrapping.md`, "Build chain from scratch", from Step 3: install, first boot,
-first login, and restoring the home from restic.
-
-## No YubiKey
-
-Prefer making a new one. With the primary-key USB, run `bin/enroll-yubikeys
-<device>` on any Linux machine. Without it, use the printed GPG recovery guide
-(made by `bin/generate-gpg-recovery-guide`, see README.md): it holds the private
-key on paper, and its procedure (`gpg-paper-recovery.md`) rebuilds the key in
-the **Live System (Recovery)** of an existing provisioned recovery USB, or of
-one built with `--ephemeral-key` below, then writes a new primary-key USB and
-programs YubiKeys with `bin/restore-primary-gpg-from-paper`. Then build normally as above.
-
-`bin/dr-build --ephemeral-key` needs nothing but the container runtime. It
-signs with a throwaway Secure Boot key (minted once and kept in the cache volume)
-and asks for a password for the new home directory in place of the recovery
-secret in `pass`. It ships no password-store unless given `--password-store` or
-`--password-store-url`.
-
-The result is a stopgap:
-
-- Its key is in no machine's firmware. Boot it with Secure Boot disabled, or
-  in setup mode so it enrolls its throwaway key.
-- It can't update a machine installed from a real-key image.
-- Once the YubiKey or the GPG key is back (`restore-primary-gpg-from-paper`),
-  rebuild with the real key and re-enroll Secure Boot from setup mode.
-
-## How it works
+## How `dr-build` works
 
 - `container/Containerfile` is an Arch container holding the packages listed in
   `mkosi/mkosi.conf.d/20-builder.conf`, the same ones the image carries to

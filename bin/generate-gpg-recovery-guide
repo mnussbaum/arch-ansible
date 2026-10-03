@@ -1,9 +1,12 @@
 #!/bin/bash
-# Generates a printable GPG key recovery guide as a PDF.
-#
-# Requires the LUKS-encrypted primary key USB. Run from the repo root.
+# Generates the printable recovery guide as a PDF: docs/recovery-guide.md with
+# the docs it embeds, plus the key material from the primary key USB.
 #
 # Usage: bin/generate-gpg-recovery-guide <primary-key-usb-device> [output.pdf]
+#        bin/generate-gpg-recovery-guide --preview [output.pdf]
+#
+# --preview prints placeholders in place of key material, so the layout can be
+# checked without the USB. Run from the repo root.
 #
 # Store the PDF (or a printed copy) separately from the USB drives and YubiKeys.
 
@@ -13,185 +16,63 @@ set -o pipefail
 
 source bin/_gpg_common.sh
 
-DEVICE="${1:?Usage: $0 <primary-key-usb-device> [output.pdf]}"
-OUTPUT="${2:-secrets/gpg-recovery-guide.pdf}"
-HTML_TMP=$(mktemp --suffix=.html)
+GUIDE="docs/recovery-guide.md"
 PUBKEY_FILE="ansible/roles/gpg/files/gpg-pubkey.asc"
-PROCEDURE_FILE="docs/gpg-paper-recovery.md"
 
-for f in "$PUBKEY_FILE" "$PROCEDURE_FILE"; do
+DEVICE=""
+if [[ "${1:-}" == "--preview" ]]; then
+  OUTPUT="${2:-secrets/recovery-guide-preview.pdf}"
+  RENDER_ARGS=(--preview)
+else
+  DEVICE="${1:?Usage: $0 (<primary-key-usb-device> | --preview) [output.pdf]}"
+  OUTPUT="${2:-secrets/gpg-recovery-guide.pdf}"
+fi
+
+for f in "$GUIDE" "$PUBKEY_FILE"; do
   if [[ ! -f "$f" ]]; then
     echo "Error: $f not found — run from repo root." >&2
     exit 1
   fi
 done
 
-RECOVERY_HOME=$(mktemp -d)
-SECRET_RAW_FILE=$(mktemp)
+WORK=$(mktemp -d)
 cleanup() {
-  close_usb
-  rm -rf "$RECOVERY_HOME"
-  rm -f "$HTML_TMP" "$SECRET_RAW_FILE"
+  if [[ -n "$DEVICE" ]]; then close_usb; fi
+  rm -rf "$WORK"
 }
 trap cleanup EXIT
 
-setup_gnupghome "$RECOVERY_HOME"
-export GNUPGHOME="$RECOVERY_HOME"
+if [[ -n "$DEVICE" ]]; then
+  mkdir "$WORK/gnupg"
+  setup_gnupghome "$WORK/gnupg"
+  export GNUPGHOME="$WORK/gnupg"
 
-open_usb "$DEVICE"
+  open_usb "$DEVICE"
 
-echo "==> Importing primary key..."
-gpg --batch --import "$USB_MOUNT/primary-key.asc"
+  echo "==> Importing primary key..."
+  gpg --batch --import "$USB_MOUNT/primary-key.asc"
+  FINGERPRINT=$(gpg --list-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')
+  UID_STRING=$(gpg --list-keys --with-colons | awk -F: '/^uid/{print $10; exit}')
 
-FINGERPRINT=$(gpg --list-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')
-FINGERPRINT_DISPLAY=$(echo "$FINGERPRINT" | sed 's/.\{4\}/& /g;s/ $//' | \
-  awk '{print substr($0,1,24)"\n"substr($0,25)}')
-UID_STRING=$(gpg --with-colons --list-keys | awk -F: '/^uid/{print $10; exit}')
+  # base16 carries a CRC per line, so paperkey names the line with a typo.
+  echo "==> Encoding the private key with paperkey..."
+  gpg --batch --export-secret-keys "$FINGERPRINT" \
+    | paperkey --output-type base16 > "$WORK/paperkey.txt"
 
-echo "==> Generating public key QR code..."
-PUBKEY_QR_B64=$(qrencode -t PNG -l L -s 5 -o - < "$PUBKEY_FILE" | base64 -w 0)
-PUBKEY_TEXT=$(cat "$PUBKEY_FILE")
-
-echo "==> Generating 2FA OATH section..."
-OATH_SECTION=""
-OATH_FILE="$USB_MOUNT/oath-accounts.txt"
-if [[ -f "$OATH_FILE" ]]; then
-  OATH_SECTION=$(python3 - "$OATH_FILE" <<'PYEOF'
-import sys, urllib.parse, base64, subprocess, html
-
-CRITICAL_TOTPS = {
-    "Backblaze:michaelnussbaum08@gmail.com",
-    "GitHub:mnussbaum",
-    "GitLab:gitlab.com:gitlab.com_michaelnussbaum08@gmail.com",
-    "Google:michaelnussbaum08@gmail.com",
-    "Yahoo:michaelnussbaum08@yahoo.com",
-    "Ubiquiti SSO:michael.nussbaum",
-}
-
-entries = []
-with open(sys.argv[1]) as f:
-    for line in f:
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
-        p = urllib.parse.urlparse(line)
-        params = dict(urllib.parse.parse_qsl(p.query))
-        label = urllib.parse.unquote(p.path.lstrip('/'))
-        if label not in CRITICAL_TOTPS:
-            continue
-        qr = subprocess.run(
-            ['qrencode', '-t', 'PNG', '-s', '3', '-l', 'M', '-o', '-', line],
-            capture_output=True)
-        entries.append({
-            'label':  label,
-            'uri':    html.escape(line),
-            'qr_b64': base64.b64encode(qr.stdout).decode(),
-        })
-
-grid_items = ''.join(
-    f'<div style="text-align:center;width:130px">'
-    f'<img src="data:image/png;base64,{e["qr_b64"]}" width="120" style="border:1px solid #ccc;display:block">'
-    f'<div style="font-size:0.68em;margin-top:3px;word-break:break-all">{e["label"]}</div>'
-    f'<div style="font-family:monospace;font-size:0.62em;margin-top:2px;word-break:break-all;color:#333">{e["uri"]}</div>'
-    f'</div>'
-    for e in entries
-)
-print(f'''
-<h2>Critical 2FA / TOTP Accounts</h2>
-<p>The accounts below are a curated subset of critical services — not a full backup of all
-2FA accounts. Each QR code holds the <code>otpauth://</code> URI printed beneath it.
-Step 5 of the procedure loads them onto the new YubiKeys; any authenticator app can
-also scan them.</p>
-<div style="display:flex;flex-wrap:wrap;gap:14px;margin:12px 0">{grid_items}</div>
-''')
-PYEOF
-  )
+  RENDER_ARGS=(--uid "$UID_STRING" --fingerprint "$FINGERPRINT"
+    --pubkey "$PUBKEY_FILE" --paperkey "$WORK/paperkey.txt")
+  if [[ -f "$USB_MOUNT/oath-accounts.txt" ]]; then
+    RENDER_ARGS+=(--oath "$USB_MOUNT/oath-accounts.txt")
+  fi
 fi
 
-echo "==> Generating private key paperkey encoding..."
-gpg --batch --export-secret-keys "$FINGERPRINT" | paperkey --output-type raw > "$SECRET_RAW_FILE"
-PAPERKEY_B64=$(base64 -w 64 < "$SECRET_RAW_FILE")
-
-echo "==> Rendering recovery procedure from $PROCEDURE_FILE..."
-PROCEDURE_HTML=$(python3 - "$PROCEDURE_FILE" <<'PYEOF'
-import re, sys, markdown
-text = open(sys.argv[1]).read().split('<!-- The recovery guide embeds everything below this line. -->', 1)[1]
-# Steps sit under the guide's own "Recovery Procedure" heading.
-text = re.sub(r'^## ', '### ', text, flags=re.M)
-print(markdown.markdown(text, extensions=['fenced_code']))
-PYEOF
-)
-GENERATED=$(date)
-
-cat > "$HTML_TMP" << HTML
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>GPG Key Recovery Guide</title>
-<style>
-  body { font-family: Georgia, serif; max-width: 740px; margin: 40px auto; padding: 0 24px; color: #000; font-size: 13px; line-height: 1.6; }
-  h1 { font-size: 1.4em; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 4px; }
-  h2 { font-size: 1.1em; margin-top: 2em; border-bottom: 1px solid #999; padding-bottom: 3px; }
-  h3 { font-size: 1em; margin-top: 1.5em; margin-bottom: 6px; }
-  .generated { color: #555; font-size: 0.85em; margin-bottom: 1.5em; font-family: monospace; }
-  .uid { font-family: monospace; font-size: 1.05em; background: #f5f5f5; padding: 8px 12px; border: 1px solid #ccc; }
-  .fingerprint { font-family: monospace; font-size: 1.05em; letter-spacing: 0.12em; background: #f5f5f5; padding: 12px; border: 1px solid #ccc; white-space: pre; }
-  .two-col { display: flex; gap: 24px; align-items: flex-start; margin: 12px 0; }
-  .qr-block { flex-shrink: 0; text-align: center; }
-  .qr-block img { display: block; image-rendering: pixelated; border: 1px solid #ccc; }
-  .qr-block .caption { font-size: 0.8em; color: #555; margin-top: 5px; }
-  .mono { font-family: monospace; white-space: pre-wrap; font-size: 0.72em; background: #f5f5f5; padding: 10px; border: 1px solid #ccc; word-break: break-all; flex: 1; page-break-inside: avoid; }
-  ol li, ul li { margin-bottom: 9px; }
-  code { font-family: monospace; background: #f0f0f0; padding: 1px 5px; border: 1px solid #ddd; font-size: 0.95em; }
-  pre { background: #f0f0f0; border: 1px solid #ddd; padding: 8px 10px; white-space: pre-wrap; word-break: break-all; page-break-inside: avoid; }
-  pre code { background: none; border: none; padding: 0; }
-  .pagebreak { page-break-before: always; }
-  @media print { body { margin: 16px; } }
-</style>
-</head>
-<body>
-
-<h1>GPG Key Recovery Guide</h1>
-<div class="generated">Generated: $GENERATED &nbsp;|&nbsp; $UID_STRING</div>
-
-<p>This document guides you through recoverying your root GPG private key, building subkeys from it,
-and using those subkeys to access your passwords and machine provisioning repos.
-Keep this document in a physically separate location from the USB drives and YubiKeys.</p>
-
-<h2>Identity</h2>
-<div class="uid">$UID_STRING</div>
-
-<h2>Primary Key Fingerprint</h2>
-<div class="fingerprint">$FINGERPRINT_DISPLAY</div>
-
-<h2>GPG Root Public Key</h2>
-<div class="qr-block" style="margin: 12px 0;">
-  <img src="data:image/png;base64,$PUBKEY_QR_B64" width="230" height="230" alt="Public key QR">
-  <div class="caption">ASCII-armored public key</div>
-</div>
-<div class="mono">$PUBKEY_TEXT</div>
-
-<h2>GPG Root Private Key (paperkey format)</h2>
-<p>Paperkey encodes only the secret bytes of the private key. Reconstructing the
-full private key also requires the public key above.</p>
-<div class="mono">$PAPERKEY_B64</div>
-
-$OATH_SECTION
-
-<h2>Recovery Procedure</h2>
-
-$PROCEDURE_HTML
-
-<p>Regenerate this document if the primary GPG key is replaced or the critical
-TOTP accounts change:
-<code>./bin/generate-gpg-recovery-guide /dev/sdX</code></p>
-
-</body>
-</html>
-HTML
+echo "==> Rendering $GUIDE..."
+python3 bin/_recovery_guide.py "${RENDER_ARGS[@]}" --generated "$(date)" "$GUIDE" \
+  > "$WORK/guide.html"
 
 echo "==> Rendering PDF..."
-chromium --headless --disable-gpu --no-pdf-header-footer --print-to-pdf="$OUTPUT" "$HTML_TMP" 2>/dev/null
+mkdir -p "$(dirname "$OUTPUT")"
+chromium --headless --disable-gpu --no-pdf-header-footer \
+  --print-to-pdf="$OUTPUT" "$WORK/guide.html" 2>/dev/null
 
 echo "==> Written to $OUTPUT"

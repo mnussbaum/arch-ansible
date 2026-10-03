@@ -15,10 +15,7 @@
 #              section. Saved to the USB as oath-accounts.txt and loaded onto
 #              each YubiKey.
 #
-# Before running (docs/gpg-paper-recovery.md, Step 2):
-#   gpg --import pubkey.asc
-#   gpg --export > pubkey.gpg
-#   paperkey --pubring pubkey.gpg --secrets secrets.raw --input-type raw | gpg --import
+# Rebuild the key from paper first: docs/gpg-paper-recovery.md, Step 2.
 
 set -o errexit
 set -o nounset

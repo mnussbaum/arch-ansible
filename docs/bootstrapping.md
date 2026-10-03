@@ -4,9 +4,6 @@ This document describes the complete lifecycle of the image in this repository:
 how it is built, signed, installed, what it does on first boot, how it is
 updated, and how to boot it as a recovery medium.
 
-Parts of the intended design are not yet implemented; those are called out inline
-and tracked in `bootstrapping-todo.md`.
-
 ---
 
 ## One image, three roles
@@ -67,7 +64,8 @@ mkosi (`SecureBoot=yes`) installs systemd-boot and writes the `PK`/`KEK`/`db`
 auto-enroll files to the ESP. A single key is enrolled at all three levels — no
 separate platform or exchange keys. On first boot, `secure-boot-enroll force` in
 `mkosi/mkosi.extra/efi/loader/loader.conf` causes systemd-boot to pull these into
-firmware automatically without a UEFI Setup Mode visit. Microsoft certificates
+firmware automatically, which it does only when the firmware is in Secure Boot
+setup mode (`man loader.conf`). Microsoft certificates
 are **not** enrolled; the hardware used here does not require them for option-ROM
 validation.
 
@@ -314,22 +312,24 @@ postinst runs and stages only files newer than it.
 
 ## Build chain from scratch
 
-This is the full sequence for setting up a new machine, from building the image
-to restoring its home from backup.
+Setting up a new machine runs: build the image, write it to a USB drive, install,
+first boot, first login, and restore the home. The procedures have their own
+docs, which the printed recovery guide also embeds
+([recovery-guide.md](recovery-guide.md)); this section covers how the steps work.
 
-### Step 1 — Build the image
+### Building the image
 
 On an Arch host with the builder packages (`mkosi/mkosi.conf.d/20-builder.conf`),
-mkosi runs on the host directly (`ToolsTree=/`):
+mkosi runs on the host directly (`ToolsTree=/`), and `bin/burn-image` writes the
+result to a USB drive:
 
 ```bash
 bin/build-image
+bin/burn-image /dev/sdX
 ```
 
-Anywhere else (any Linux or macOS with podman or docker), `bin/dr-build` builds
-`container/Containerfile` and runs `bin/build-image` inside it instead; its output
-lands in `dr-out/` and is written with `bin/dr-burn` rather than `bin/burn-image`.
-See `disaster-recovery.md`.
+Anywhere else, `bin/dr-build` runs `bin/build-image` in a container and
+`bin/dr-burn` writes the result ([build-recovery-usb.md](build-recovery-usb.md)).
 
 `bin/build-image` materializes the Secure Boot keypair from `pass`, bumps
 `mkosi/mkosi.version` (a fresh monotonic version so each build supersedes the running
@@ -347,30 +347,14 @@ slot for sysupdate), and runs `mkosi build`, which:
    plus split artifacts (`SplitArtifacts=partitions,uki`).
 
 Output is under `~/.cache/mkosi/images/image/` (the split `.usr-*.raw`, `.efi`,
-and the full `.raw`).
+and the full `.raw`). `mkosi burn` writes the full image and expands its
+partitions to fill the device.
 
-### Step 2 — Write the image to a USB
+### Installing
 
-```bash
-bin/burn-image /dev/sdX
-```
-
-`mkosi burn` writes the built image and expands partitions to fill the device. The
-image is generic; each machine is named on its first boot (Step 4).
-
-### Step 3 — Boot the USB and install to the target disk
-
-Boot the target machine from the USB and pick the **Installer** profile. It
-auto-launches a guided installer on the console (`mkosi/mkosi.extra/usr/bin/install-system --guided`
-via `arch-install.service`): it lists the eligible target disks (every whole disk
-except the live medium), you pick one and confirm, and it installs. The menu also
-offers dropping to a shell — where you can run `install-system DISK` directly — as
-an escape hatch, and the other VTs autologin root as a second one.
-
-```bash
-install-system /dev/sda            # non-interactive: ERASES /dev/sda, installs onto it
-install-system --reboot /dev/sda   # ...and reboot into it when done
-```
+The procedure is in [install-machine.md](install-machine.md). The Installer
+profile runs `mkosi/mkosi.extra/usr/bin/install-system --guided` via
+`arch-install.service`.
 
 The whole install is a single `systemd-repart` run against the target, driven by
 the image's baked `/usr/lib/repart.d/`. It lays down only the ESP and the active
@@ -378,7 +362,7 @@ the image's baked `/usr/lib/repart.d/`. It lays down only the ESP and the active
 freshly-created target ESP with systemd-boot + the bare UKI + `loader/` copied
 straight from the running medium's `/boot`, and `usr-A` (`CopyBlocks=auto`) is
 cloned from the running `/usr`. `root`/`home`/`swap` and the inactive `usr-B`
-slot are deferred to the target's own first boot (Step 4).
+slot are deferred to the target's own first boot.
 
 This produces a pure **Boot Loader Spec Type #2** ESP — a bare UKI under
 `EFI/Linux/`, no `loader/entries/*.conf` — the same convention
@@ -388,72 +372,30 @@ whose `bootctl link` step is hardwired to Type #1 (a UKI under `/image/` plus
 per-profile loader entries) that the Type #2 update path can never garbage
 collect (mirrors [systemd/particleos#166](https://github.com/systemd/particleos/pull/166)).
 
-### Step 4 — First boot
+### First boot and first login
 
-Reboot into the installed disk. Its first boot:
+What the user sees is in [install-machine.md](install-machine.md). Underneath:
 
-1. **Enrolls the Secure Boot key** from the ESP (see "Secure Boot").
-2. **Provisions the disk**: `systemd-repart` creates the inactive `usr` slot,
-   swap, root and home, with root and swap TPM2-sealed (see "Partition layout"
-   and "Disk encryption").
-3. **Asks for locale, timezone, hostname and root password** (`systemd-firstboot`).
-   The hostname prompt preselects the default that mkosi's `Hostname=arch-????-????`
-   bakes into os-release, where systemd fills each `?` from the machine-id (e.g.
-   `arch-92a9-061c`). Accept it or type a name; rename later with
-   `hostnamectl hostname <name>`.
-4. **Waits for a YubiKey** to enroll on root and swap (`luks-enroll-pkcs11`, see
-   "Disk encryption").
-5. **Creates the encrypted home** unattended (see "YubiKey enrollment for homed").
+- systemd-boot enrolls the Secure Boot key ("Secure Boot").
+- `systemd-repart` provisions the disk ("Partition layout", "Disk encryption").
+- `systemd-firstboot` asks for locale, timezone, hostname and root password. The
+  hostname prompt preselects the default that mkosi's `Hostname=arch-????-????`
+  bakes into os-release, where systemd fills each `?` from the machine-id.
+- `luks-enroll-pkcs11` enrolls the YubiKey on root and swap ("Disk encryption").
+- `systemd-homed-firstboot` creates the home, and first login's
+  `user-first-login-playbook.yml` enrolls the YubiKey on it ("YubiKey enrollment
+  for homed").
 
 Per-machine traits (VM guest/host role, network runtime, etc.) are detected from
 hardware/facts at firstboot, so there are no per-host repo files. Build-time
 configuration that can't be detected at runtime goes in `group_vars` or behind a
 runtime condition in the roles.
 
-### Step 5 — First login
+### Backups
 
-Log in with the home recovery secret (`pass linux_users/<user>/recovery-key`, or
-the password given to `bin/dr-build --ephemeral-key`). First login runs
-`user-first-login-playbook.yml`, which enrolls the YubiKey on the home and drops
-the password (see "YubiKey enrollment for homed"), sets up Wi-Fi from `pass`, and
-clones this repo to `~/Projects/arch-ansible` and the password store into the home.
-
-### Step 6 — Back up and restore the home
-
-`restic-backup` (the `backup` role) looks up its Backblaze key in `pass` by
-hostname: `host_secrets/$(hostname)/restic_backblaze_key{,_id}`. The repo password
-(`restic_backup_password`) is shared. A new host needs its own key before it can
-back up or restore.
-
-1. Make sure the machine has its permanent name (Step 4).
-2. In Backblaze, create an application key for that host with read, list and
-   write access to the `mnussbaum-machine-backups` bucket. Don't limit it to a
-   file prefix: every host shares one restic repo, and a restore needs to read
-   other hosts' snapshots.
-3. Add it to the password store, then `pass git push`:
-   ```bash
-   pass insert host_secrets/<name>/restic_backblaze_key_id
-   pass insert host_secrets/<name>/restic_backblaze_key
-   ```
-4. The password store ships read-only in the image (`/usr/share/password-store`),
-   so roll a new image with `bin/update-system` and reboot into it.
-5. Check with `restic-backup snapshots`.
-
-Once the host's credentials are in place, seed its home from the latest snapshot:
-
-```bash
-restic-backup restore                    # every path in /etc/restic-backup/includes
-restic-backup restore -d ~/Documents     # or specific paths
-```
-
-By default the restore only adds files that are missing. It never deletes or
-overwrites anything, so it's safe to run on a home that already has work in it,
-such as a repo you cloned during setup. Pass `--exact` to make each path match
-the snapshot exactly, deleting files not in it and overwriting changed ones.
-
-Restore before adding any Syncthing folders. If a folder is already being synced,
-files deleted on other devices after the snapshot will come back and sync out to
-them.
+A new machine needs its own Backblaze key in `pass`
+([backup-credentials.md](backup-credentials.md)) before it can back up or
+restore its home ([restore-home.md](restore-home.md)).
 
 ---
 
@@ -578,48 +520,16 @@ asks for the YubiKey once and then heals ("PCR 7 via pcrlock").
   `pkcs11-tool` the way systemd-cryptsetup does and passes it as
   `--unlock-key-file`.
 
-**Lose a YubiKey:** every YubiKey carries the same PIV key, so one can't be
-revoked alone; its PIV PIN (limited attempts) is what protects it. To revoke,
-rotate the key: put a new PIV key in pass and re-provision the remaining
-YubiKeys (`bin/enroll-yubikeys`), then on each machine, while its TPM works,
-wipe the old PKCS#11 slot (`bin/revoke-luks-yubikey <slot>`) and re-enroll
-(`sudo /usr/bin/luks-enroll-pkcs11`).
-
-**Lose every YubiKey.** Machines whose TPM still unlocks keep booting, but you
-can't log in: homes take only the token. Rebuild YubiKeys from the offline
-primary-key USB with `bin/enroll-yubikeys <device>`. It loads the same PIV key
-from pass, so the new keys unlock every disk and home with no re-enrollment. If
-the USB is gone too, rebuild the key from the paper recovery guide and run
-`bin/restore-primary-gpg-from-paper <device>` (README.md), which writes a new
-USB and programs the YubiKeys the same way. Either way the password-store has to
-be reachable first: with the primary key imported, gpg-agent's SSH support can
-clone it.
-
-**PIV PIN blocked** (too many wrong tries): unblock it with the PUK,
-
-```bash
-ykman piv access unblock-pin --puk <PUK> --new-pin <PIN>
-```
-
-If the PUK is blocked too, the PIV applet is lost; re-provision that YubiKey
-with `bin/enroll-yubikeys`, which resets PIV and reloads the shared key. It also
-resets the OpenPGP and OATH applets, as with any provisioning.
-
-**Reach a home without a YubiKey.** You can't: after first login a home opens
-only with the shared PIV key. Re-provision a YubiKey ("Lose every YubiKey",
-above), or restore its data from restic.
+YubiKey problems (losing one or all of them, a blocked PIV PIN) are in
+[gpg-and-yubikeys.md](gpg-and-yubikeys.md).
 
 ### Secure Boot and the recovery USB
 
-Every image, the medium included, is signed with the one Secure Boot key from
-`pass`, the key every installed machine enrolled at first boot. So a stick built
-by `bin/build-image` or `bin/dr-build` boots under any of our machines' Secure
-Boot with no firmware changes.
-
-The exception is a stopgap stick built after losing every YubiKey, when the
-Secure Boot key in `pass` can't be decrypted: it's signed with a throwaway key
-that is in no firmware. Boot it with Secure Boot disabled, or in setup mode to enroll that key
-(`disaster-recovery.md`). Not every machine allows the first.
+Every image, the recovery USB included, is signed with the one Secure Boot key
+from `pass`, the key every installed machine enrolled at first boot. So a
+recovery USB built by `bin/build-image` or `bin/dr-build` boots under any of our
+machines' Secure Boot with no firmware changes. The exception is one built with
+a throwaway key ([build-recovery-usb.md](build-recovery-usb.md)).
 
 ---
 

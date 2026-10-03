@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the image on someone else's Linux or macOS machine, in a container, for
 # disaster recovery; then write it to a USB stick with bin/dr-burn. Needs only
-# podman or docker (plus gnupg on macOS). See docs/disaster-recovery.md.
+# podman or docker (plus gnupg on macOS). See docs/build-recovery-usb.md.
 #
 # bash 3.2 and BSD tools: this runs on stock macOS.
 set -o errexit
@@ -58,7 +58,7 @@ if command -v podman >/dev/null; then
   rt=(podman)
   if [ "$os" = Darwin ]; then
     rootful=$(podman machine inspect --format '{{.Rootful}}' 2>/dev/null | head -1) \
-      || die "no podman machine; see docs/disaster-recovery.md"
+      || die "no podman machine; see docs/build-recovery-usb.md"
     [ "$rootful" = true ] \
       || die "the podman machine must be rootful: podman machine stop; podman machine set --rootful; podman machine start"
   elif [ "$(id -u)" -ne 0 ]; then
@@ -68,7 +68,7 @@ elif command -v docker >/dev/null; then
   rt=(docker)
   if [ "$os" = Linux ] && ! docker info >/dev/null 2>&1; then rt=(sudo docker); fi
 else
-  die "install podman or docker first; see docs/disaster-recovery.md"
+  die "install podman or docker first; see docs/build-recovery-usb.md"
 fi
 "${rt[@]}" info >/dev/null 2>&1 || die "'${rt[*]} info' fails; is the runtime (or its VM) running?"
 

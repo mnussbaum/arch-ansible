@@ -47,186 +47,19 @@ mkosi/                      Image build (bin/* run `mkosi --directory=mkosi`)
   mkosi.postinst.chroot     Runs the Ansible postinst inside the image
   mkosi.repart/, mkosi.sysupdate/, mkosi.uki-profiles/, mkosi.initrd.conf/
 container/                  Disaster-recovery build container (run by bin/dr-build)
-docs/                       Design (bootstrapping.md), disaster recovery, plans, todos
+docs/                       Design (bootstrapping.md), procedures (disaster-recovery.md
+                            indexes them), the recovery guide, plans, todos
 secrets/                    Generated recovery guide (gitignored)
 dr-out/                     bin/dr-build output (gitignored)
 ```
 
-## Auth
+## GPG keys and YubiKeys
 
-### Build a new primary GPG USB
-
-The primary GPG USB is a LUKS-encrypted drive containing the primary (cert-only) GPG key
-and revocation certificate. It is only plugged in during key ceremonies and must be kept
-offline otherwise.
-
-```
-./bin/create-gpg-key <device> <existing-key-device>   # replacing a primary key
-./bin/create-gpg-key <device> <totp-file>             # starting fresh
-```
-
-`<device>` is wiped. The second argument supplies the TOTP seeds: a previous primary
-GPG USB (whose key also re-encrypts the password store) or a file of `otpauth://`
-URIs.
-
-This will:
-
-1. Format and LUKS-encrypt `<device>`
-2. Generate a new Ed25519 primary key (cert-only, no expiry)
-3. Add three subkeys (sign, encrypt, auth), each expiring in 1 year
-4. Generate a revocation certificate and store it on the USB
-5. Back up the primary key to the USB
-6. Export the public key to `ansible/roles/gpg/files/gpg-pubkey.asc`
-7. Re-encrypt the password store to the new key and copy the TOTP seeds to the USB
-8. Program all connected YubiKeys with the subkeys, the TOTP seeds and the shared
-   homed PIV key (minted into pass on first run)
-
-After running, commit the public key:
-
-```
-git add ansible/roles/gpg/files/gpg-pubkey.asc
-git commit -m 'Add GPG public key'
-```
-
-Also add the SSH public key to GitHub/GitLab:
-
-```
-gpg --export-ssh-key <fingerprint>
-```
-
-### Provision new YubiKeys
-
-YubiKeys are programmed as part of `create-gpg-key` or `enroll-yubikeys`. The scripts
-loop interactively, prompting to insert each YubiKey in turn. Each YubiKey receives the
-same three subkeys (sign, encrypt, auth), its TOTP seeds, and the shared PIV key from
-`pass` that unlocks LUKS and homed, so a replacement YubiKey works on every machine
-with no per-machine re-enrollment.
-
-To program additional YubiKeys against an existing primary GPG USB:
-
-```
-./bin/enroll-yubikeys <device>
-```
-
-When prompted, insert YubiKeys one at a time and follow the prompts.
-
-### Use YubiKeys
-
-The YubiKey's GPG auth subkey is used for SSH via the GPG agent. Once Ansible has
-provisioned the machine, the agent is configured automatically.
-
-To verify the YubiKey is working:
-
-```
-gpg --card-status          # shows card info and subkey fingerprints
-ssh-add -L                 # should show the auth subkey's SSH public key
-```
-
-If the agent is not picking up the card, restart it:
-
-```
-gpgconf --kill gpg-agent
-gpg --card-status
-```
-
-### Renew YubiKeys
-
-Subkeys expire annually. Run the renewal ceremony with the primary GPG USB plugged in:
-
-```
-./bin/enroll-yubikeys <device>   # e.g. /dev/sda1
-```
-
-This extends all subkey expiry by one year, exports the updated public key to
-`ansible/roles/gpg/files/gpg-pubkey.asc`, and reprograms all YubiKeys. After running:
-
-```
-git add ansible/roles/gpg/files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys'
-```
-
-### 2FA codes
-
-TOTP codes are stored in the YubiKey OATH applet, separate from the password
-store. This preserves genuine two-factor separation: compromising the password
-store doesn't expose TOTP seeds. The OATH applet is password-protected; the
-password is set during YubiKey provisioning.
-
-Seeds are backed up as `otpauth://` URIs in `oath-accounts.txt` on the primary
-GPG USB. They are automatically loaded onto each YubiKey during
-`create-gpg-key` and `enroll-yubikeys`. The recovery guide PDF includes QR codes
-and `otpauth://` URIs for a curated set of critical accounts (defined in
-`CRITICAL_TOTPS` in `bin/generate-gpg-recovery-guide`), so those accounts can
-be restored from paper alone without the USB.
-
-**Import from Aegis**
-
-Export from Aegis: Menu → Export → Plain text backup (unencrypted JSON), then:
-
-```
-./bin/import-aegis-export <device> <aegis-export.json>
-```
-
-Converts the Aegis JSON to `otpauth://` URIs, backs them up to the USB, and
-loads them onto the YubiKey. Delete the export file from your phone after
-running.
-
-**Add a single account**
-
-```
-./bin/add-oath-account <device>
-./bin/add-oath-account <device> --qr <screenshot.png>   # decode from a QR image
-```
-
-Backs up the seed to USB and adds it to the currently connected YubiKey.
-
-**Generate codes**
-
-```
-ykman oath accounts code           # list all accounts with current codes
-ykman oath accounts code <name>    # code for a specific account
-```
-
-### Back up the GPG USB
-
-Keep a second encrypted copy of the primary GPG USB in a separate physical location:
-
-```
-./bin/backup-gpg-key <source-device> <dest-device>
-```
-
-The destination device is formatted and LUKS-encrypted, then the key files are copied.
-
-### Generate a recovery guide
-
-The recovery guide is a printable PDF containing everything needed to reconstruct the
-GPG key from scratch: the public key (as a QR code and ASCII armor), the private key
-encoded via paperkey, and step-by-step instructions for
-restoring SSH access, cloning the password store and Ansible repo, programming new
-YubiKeys, and bootstrapping a new machine.
-
-```
-./bin/generate-gpg-recovery-guide <primary-key-usb-device> [output.pdf]
-```
-
-Output defaults to `secrets/gpg-recovery-guide.pdf`. Store a printed copy in a
-physically separate location from the USB drives and YubiKeys.
-
-Regenerate the guide whenever the primary GPG key is replaced or `CRITICAL_TOTPS`
-changes.
-
-### Restore from the recovery guide
-
-If every YubiKey and both primary GPG USBs are lost, follow
-`docs/gpg-paper-recovery.md`, which the guide also prints. From the Live System
-of a provisioned recovery USB, it rebuilds the key from paper, then runs
-
-```
-./bin/restore-primary-gpg-from-paper <device> [<totp-file>]
-```
-
-which renews the subkeys' expiry, writes a new primary GPG USB (with the TOTP seeds
-typed from the guide) and programs new YubiKeys. Then build a medium with
-`bin/dr-build` (`docs/disaster-recovery.md`).
+One GPG key is the root of trust: its primary key stays offline on an encrypted
+USB drive and on paper, and every YubiKey carries its subkeys (password store and
+SSH), a shared PIV key that unlocks disks and homes, and the TOTP seeds for 2FA.
+Creating and backing up the key, provisioning and renewing YubiKeys, 2FA codes
+and printing the recovery guide are in `docs/gpg-and-yubikeys.md`.
 
 ## Password store
 
@@ -245,20 +78,17 @@ roles") explains the design.
 
 ### Build a new install/recovery USB
 
-```
-bin/build-image
-bin/burn-image /dev/sda
-```
-
-With no working Arch machine, `bin/dr-build` runs the same build in a container on
-any Linux or macOS machine, and `bin/dr-burn` writes it (`docs/disaster-recovery.md`).
+`bin/build-image` and `bin/burn-image` on an Arch machine
+(`docs/bootstrapping.md`, "Building the image"), or `bin/dr-build` and
+`bin/dr-burn` on any Linux or macOS computer (`docs/build-recovery-usb.md`).
 
 ### Provision a new physical machine
 
-Boot the target machine from the USB, pick the **Installer** profile, and follow
-the prompts. `docs/bootstrapping.md` ("Build chain from scratch") walks through
-the install, first boot, first login and restoring the home from backup; "System
-recovery" covers the **Live System (Recovery)** profile.
+Add the machine's backup credentials (`docs/backup-credentials.md`), build a USB,
+install (`docs/install-machine.md`) and restore the home
+(`docs/restore-home.md`). `docs/disaster-recovery.md` covers what to do after
+losing a machine, YubiKey or key; `docs/bootstrapping.md` ("System recovery")
+covers the **Live System (Recovery)** profile.
 
 ### QEMU workflows
 
