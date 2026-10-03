@@ -14,8 +14,8 @@
 #          build's transient footprint — e.g. systemd-repart's ~5G /usr copy to
 #          size the erofs slot — overflows it) and makes the whole local-rebuild
 #          pipeline root-resident, alongside the update staging dir
-#          /var/lib/arch-ansible/updates. See docs/plan-usr-hermetic.md "Target
-#          partition layout" + Stage D.
+#          /var/lib/arch-ansible/updates. See docs/bootstrapping.md "Partition
+#          layout" and "Updates".
 #
 # mkosi expands ${ARCH_ANSIBLE_CACHE} in mkosi/mkosi.conf from the process environment,
 # so every script that invokes mkosi sources this and the export carries through.
