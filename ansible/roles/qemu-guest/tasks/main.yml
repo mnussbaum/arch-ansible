@@ -1,0 +1,56 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create systemd-vconsole-setup drop-in directory
+  file:
+    path: /usr/lib/systemd/system/systemd-vconsole-setup.service.d
+    state: directory
+
+- name: Skip systemd-vconsole-setup under virtualization
+  copy:
+    src: vconsole-setup-condition.conf
+    dest: /usr/lib/systemd/system/systemd-vconsole-setup.service.d/condition.conf
+    mode: "0644"
+
+- name: Create qemu-guest-agent drop-in directory
+  file:
+    path: /usr/lib/systemd/system/qemu-guest-agent.service.d
+    state: directory
+
+- name: Add ConditionVirtualization drop-in for qemu-guest-agent
+  copy:
+    src: qemu-guest-agent-condition.conf
+    dest: /usr/lib/systemd/system/qemu-guest-agent.service.d/condition.conf
+    mode: "0644"
+
+- name: Install systemd preset
+  copy:
+    src: 80-qemu-guest.preset
+    dest: /usr/lib/systemd/system-preset/80-qemu-guest.preset
+
+- name: Load vsock modules
+  copy:
+    content: "vsock\nvmw_vsock_virtio_transport"
+    dest: /usr/lib/modules-load.d/vsock.conf
+
+- name: Deploy pcscd vsock forwarding service
+  copy:
+    src: pcscd-vsock-guest.service
+    dest: /usr/lib/systemd/system/pcscd-vsock-guest.service
+    mode: "0644"
+
+- name: Create local pcscd drop-in directories
+  file:
+    path: "/usr/lib/systemd/system/{{ item }}.d"
+    state: directory
+  loop:
+    - pcscd.socket
+    - pcscd.service
+
+- name: Disable the local pcscd under KVM so the vsock forwarder owns the socket
+  copy:
+    src: pcscd-novm-condition.conf
+    dest: "/usr/lib/systemd/system/{{ item }}.d/novm.conf"
+    mode: "0644"
+  loop:
+    - pcscd.socket
+    - pcscd.service

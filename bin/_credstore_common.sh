@@ -1,0 +1,88 @@
+# shellcheck shell=bash
+# Build the systemd credential store baked into the image.
+#
+# Delivers home.create.<user>, the JSON user record that
+# systemd-homed-firstboot.service consumes (ImportCredential=home.*) to create
+# the user's per-user LUKS home UNATTENDED on first boot. The home is
+# bootstrapped with a secret kept in pass (encrypted to the GPG key, not the
+# vault). The YubiKey PKCS#11 token is enrolled later, at first login, by the
+# user-firstboot playbook, which then wipes this secret's keyslot
+# (ansible/roles/user/tasks/first-login.yml): it is readable from the image, see
+# below.
+#
+# A hardware token cannot be enrolled unattended (it requires user presence), so
+# this two-phase split - secret at boot, token at first login - is the
+# supported pattern for token-backed homed users.
+#
+# WHERE THIS ENDS UP, and it is not what an earlier version of this comment
+# claimed: mkosi/mkosi.conf ships the credstore to /usr/lib/credstore, and /usr is the
+# plain (signed, dm-verity, but UNENCRYPTED) erofs partition — not the LUKS root.
+# Mode 0600 protects it only on a running system; anyone holding the image or a
+# burned USB stick can read this secret straight out of the erofs. It also can't
+# be TPM-bound on a generic, multi-machine image.
+#
+# It is built outside the repo (under ${ARCH_ANSIBLE_CACHE}, see
+# bin/_cache_common.sh): the repo is ExtraTrees'd to /usr/share/arch-ansible and
+# remounted in the mkosi sandbox, so a secret written inside the repo would leak
+# into the image. mkosi/mkosi.conf references this same path.
+: "${PASSWORD_STORE_DIR:=$HOME/.local/share/password-store}"
+export PASSWORD_STORE_DIR
+
+credstore_user=$(python3 -c \
+  "import yaml;print(yaml.safe_load(open('ansible/group_vars/all/vars.yml'))['user']['name'])")
+credstore_shell=$(python3 -c \
+  "import yaml;print(yaml.safe_load(open('ansible/group_vars/all/vars.yml'))['user']['shell'])")
+credstore_recovery="linux_users/$credstore_user/recovery-key"
+
+# Already decrypted elsewhere (the disaster-recovery container, container/dr-entrypoint).
+if [[ -n "${ARCH_ANSIBLE_SECRETS_DIR:-}" ]]; then
+  credstore_recovery_secret() { cat "$ARCH_ANSIBLE_SECRETS_DIR/home-recovery-key"; }
+else
+  credstore_recovery_secret() { pass show "$credstore_recovery"; }
+fi
+
+# Generate the recovery secret once and keep it in pass, so it is stable across
+# rebuilds.
+if [[ -z "${ARCH_ANSIBLE_SECRETS_DIR:-}" ]] \
+    && ! pass show "$credstore_recovery" >/dev/null 2>&1; then
+  echo "==> Generating home recovery secret in pass ($credstore_recovery)..."
+  openssl rand -base64 24 | pass insert -m -f "$credstore_recovery" >/dev/null
+fi
+
+: "${ARCH_ANSIBLE_CACHE:?source bin/_cache_common.sh before _credstore_common.sh}"
+credstore_dir="$ARCH_ANSIBLE_CACHE/mkosi-credstore"
+trap 'rm -rf "$credstore_dir"' EXIT
+rm -rf "$credstore_dir"
+mkdir -p "$credstore_dir"
+chmod 700 "$credstore_dir"
+
+echo "==> Building home.create.$credstore_user + home.new-password credentials..."
+# systemd-homed-firstboot ignores any "secret" field embedded in the user record;
+# the password comes from a SEPARATE credential, home.new-password (read via the
+# ask-password .credential = "home.new-password" path in homectl's
+# acquire_new_password()). systemd-homed-firstboot.service ImportCredential=home.*
+# imports both.
+(umask 077; credstore_recovery_secret \
+  | CREDSTORE_USER="$credstore_user" CREDSTORE_SHELL="$credstore_shell" \
+    CREDSTORE_DIR="$credstore_dir" python3 -c '
+import json, os, sys
+pw = sys.stdin.read().strip()
+user = os.environ["CREDSTORE_USER"]
+d = os.environ["CREDSTORE_DIR"]
+record = {
+    "userName": user,
+    "memberOf": ["wheel", "input", "pcscd"],
+    "shell": os.environ["CREDSTORE_SHELL"],
+    "storage": "luks",
+    # Keep the LUKS image sparse and skip resize-on-login: on our small /home
+    # slice (repart 60-home.conf) the full-allocation grow fails with "Not enough
+    # disk space for home" and locks the user out. disk-size=max is set post-login
+    # in ansible/roles/user first-login.yml.
+    "luksDiscard": True,
+    "autoResizeMode": "off",
+}
+with open(f"{d}/home.create.{user}", "w") as f:
+    json.dump(record, f)
+with open(f"{d}/home.new-password", "w") as f:
+    f.write(pw)
+')

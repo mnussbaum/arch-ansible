@@ -1,0 +1,26 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install global gemrc
+  copy:
+    src: gemrc
+    dest: /etc/gemrc
+
+- name: Create irb config dir
+  file:
+    path: /etc/xdg/irb
+    state: directory
+
+- name: Install irb config
+  copy:
+    src: irbrc
+    dest: /etc/xdg/irb/irbrc
+
+- name: Create rubocop config dir
+  file:
+    path: /etc/xdg/rubocop
+    state: directory
+
+- name: Install rubocop config
+  copy:
+    src: rubocop.yml
+    dest: /etc/xdg/rubocop/config.yml

@@ -1,0 +1,153 @@
+[
+  {
+    "layer": "top",
+    "position": "top",
+    "modules-left": [
+  {% for workspace in range(1, window_manager["waybar_minimum_workspace_count"]+1) %}
+      "custom/sway-workspaces-{{ workspace }}",
+  {% endfor %}
+      "sway/mode"
+    ],
+
+  {% for workspace in range(1, window_manager["waybar_minimum_workspace_count"]+1) %}
+    "custom/sway-workspaces-{{ workspace }}": {
+      "exec": "tail --sleep-interval 0.6 -F ~/.cache/waybar-sway-workspace-output-manager/{{ workspace }} 2>/dev/null",
+      "on-click": "swaymsg workspace {{ workspace }}",
+      "tooltip": false
+    },
+
+  {% endfor %}
+
+    "modules-right": [
+      "custom/fake_vm_battery",
+      "battery",
+      "cpu",
+      "memory",
+      "custom/fake_vm_temperature",
+      "custom/temperature",
+      "clock"
+    ],
+
+    "custom/fake_vm_battery": {
+      "exec-if": "systemd-detect-virt --quiet --vm",
+      "exec": "echo 1",
+      "interval": "once",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '∞ ', first_block=True, position='right')  }}",
+      "tooltip": false
+    },
+
+    "battery": {
+      "bat": "BAT0",
+      "format-charging": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% ', first_block=True, position='right')  }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% {icon}', first_block=True, position='right')  }}",
+      "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{capacity}% {icon}/ {power} W', first_block=True, position='right')  }}",
+      "format-icons": [
+	"",
+	"",
+	"",
+	"",
+	""
+      ],
+      "states": {
+	"warning": 20,
+	"critical": 10
+      },
+      "tooltip": false
+    },
+
+    "cpu": {
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{usage}% ') }}",
+      "tooltip": false
+    },
+
+    "memory": {
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{}% ') }}",
+      "tooltip": false
+    },
+
+    "custom/fake_vm_temperature": {
+      "exec-if": "systemd-detect-virt --quiet --vm",
+      "exec": "echo 420",
+      "interval": "once",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{}°F ') }}",
+      "tooltip": false
+    },
+
+    "custom/temperature": {
+      "exec-if": "! systemd-detect-virt --quiet --vm",
+      "exec": "waybar-cpu-temp",
+      "interval": 5,
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{}°F ') }}",
+      "tooltip": false
+    },
+
+    "clock": {
+      "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{:%a, %d %b %I:%M:%S}', last_block=True, position='right') }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0B-hex', 'base0A-hex', '{:%I:%M}', last_block=True, position='right') }}",
+      "tooltip": false
+    }
+  },
+  {
+    "layer": "top",
+    "position": "bottom",
+    "modules-left": [
+      "idle_inhibitor",
+      "custom/toggle-headphone-profile"
+    ],
+
+    "modules-right": [
+      "network",
+      "custom/bluetooth",
+      "pulseaudio",
+      "backlight"
+    ],
+
+    "idle_inhibitor": {
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{icon}', first_block=True, position='left') }}",
+      "format-icons": {
+	"activated": "☕",
+	"deactivated": ""
+      },
+      "tooltip": false
+    },
+
+    "custom/toggle-headphone-profile": {
+      "exec": "headphone-profile-status",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}', last_block=True, position='left') }}",
+      "tooltip": false,
+      "interval": 1,
+      "on-click": "toggle-headphone-profile",
+    },
+
+    "network": {
+      "format-wifi": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{essid} {signalStrength}% ', first_block=True, position='right') }}",
+      "format-ethernet": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{ifname} ', first_block=True, position='right') }}",
+      "format-disconnected": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', 'Disconnected ⚠', first_block=True, position='right') }}",
+      "on-click": "toggle-wifi",
+      // Re-read the SSID often; the one lookup on carrier-up can race association
+      "interval": 5,
+      "tooltip": false
+    },
+
+    "custom/bluetooth": {
+      "on-click": "toggle-bluetooth",
+      "exec": "waybar-bluetooth-status",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}') }}",
+      "tooltip": false,
+      "interval": 1
+    },
+
+    "pulseaudio": {
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{volume}% ') }}",
+      "format-muted": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '0% ') }}",
+      "on-click": "pwvucontrol",
+      "tooltip": false
+    },
+
+    "backlight": {
+      "device": "intel_backlight",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{percent}% {icon}', last_block=True, position='right') }}",
+      "format-icons": ["", ""]
+    }
+  }
+]

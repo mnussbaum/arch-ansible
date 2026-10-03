@@ -1,0 +1,19 @@
+[Unit]
+Description=Forward pcscd socket from QEMU host via vsock
+DefaultDependencies=no
+After=sysinit.target
+ConditionVirtualization=kvm
+# A passed-through YubiKey gets a local pcscd instead; see pcscd-novm-condition.conf.
+ConditionCredential=!pcscd.local
+
+[Service]
+Type=simple
+RuntimeDirectory=pcscd
+RuntimeDirectoryMode=0755
+ExecStartPre=-/bin/rm -f /run/pcscd/pcscd.comm
+ExecStart=/usr/bin/socat UNIX-LISTEN:/run/pcscd/pcscd.comm,fork,reuseaddr,mode=0777 VSOCK-CONNECT:2:62001
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,140 @@
+# vim:ft=yaml.ansible:
+---
+- name: Clone arch-ansible repo into home
+  # The image ships /usr/share/arch-ansible as a shallow git repo (staged by
+  # bin/_cache_common.sh). Cloning it locally gives the VM a real checkout
+  # offline; origin is repointed at GitHub below so pull/push work.
+  # update: false leaves any later local work untouched on re-runs.
+  ansible.builtin.git:
+    repo: /usr/share/arch-ansible
+    dest: "{{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible"
+    update: false
+
+- name: Point arch-ansible origin at GitHub
+  ansible.builtin.command:
+    cmd: >-
+      git -C {{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible
+      remote set-url origin git@github.com:mnussbaum/arch-ansible.git
+  changed_when: false
+
+- name: Remove read-only password-store symlinks
+  # Older images linked these at the read-only /usr/share/password-store through
+  # /etc/skel, which breaks pass insert/edit.
+  ansible.builtin.shell: |
+    for p in ~/.local/share/password-store ~/.password-store; do
+      if [[ -L $p && $(readlink "$p") == /usr/share/password-store ]]; then
+        rm "$p"
+        echo removed
+      fi
+    done
+  args:
+    executable: /bin/bash
+  register: password_store_links
+  changed_when: "'removed' in password_store_links.stdout"
+
+- name: Check for a shipped password-store
+  # Images built with dr-build --ephemeral-key ship an empty directory instead.
+  ansible.builtin.stat:
+    path: /usr/share/password-store/.git
+  register: shipped_password_store
+
+- name: Set up the password-store
+  when: shipped_password_store.stat.exists
+  block:
+    - name: Clone password-store into home
+      # The image ships /usr/share/password-store as a git repo. The ansible git
+      # module can't pass safe.directory, which the root-owned repo needs.
+      ansible.builtin.command:
+        cmd: >-
+          git -c safe.directory=/usr/share/password-store/.git
+          clone /usr/share/password-store
+          {{ ansible_facts['env']['HOME'] }}/.local/share/password-store
+        creates: "{{ ansible_facts['env']['HOME'] }}/.local/share/password-store"
+
+    - name: Point password-store origin at GitLab
+      ansible.builtin.command:
+        cmd: >-
+          git -C {{ ansible_facts['env']['HOME'] }}/.local/share/password-store
+          remote set-url origin git@gitlab.com:mnussbaum/password-store.git
+      changed_when: false
+
+    - name: Link ~/.password-store to the clone
+      # For tools that ignore PASSWORD_STORE_DIR, e.g. Firefox's firejail profile.
+      ansible.builtin.file:
+        path: "{{ ansible_facts['env']['HOME'] }}/.password-store"
+        src: .local/share/password-store
+        state: link
+
+- name: Check for a volatile root
+  ansible.builtin.command: findmnt -no FSTYPE /
+  register: root_fstype
+  changed_when: false
+
+- name: Configure the homed account
+  # The Live profile's home is recreated every boot from the image's user record,
+  # so changing the account there is pointless; keep its password login.
+  when: root_fstype.stdout != 'tmpfs'
+  block:
+    - name: Inspect homed record
+      ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
+      register: homed_record
+      changed_when: false
+
+    - name: Discover card-agnostic PIV URI
+      # Pin to id=%03 (PIV slot 9d, the homed key). PIV slot 9c (id=%02) is the
+      # SecureBoot signing key and must not be returned here.
+      ansible.builtin.shell: |
+        set -o pipefail
+        p11tool --list-all-certs 'pkcs11:' 2>/dev/null \
+          | sed -n 's/.*URL: //p' \
+          | grep type=cert | grep -v p11-kit-trust \
+          | grep 'id=%03' \
+          | head -1 \
+          | sed -E 's/;serial=[^;]*//; s/;token=[^;]*//; s/;object=[^;]*//; s/;type=[^;]*//'
+      register: piv_uri
+      changed_when: false
+      failed_when: piv_uri.stdout | length == 0
+      when: "'pkcs11TokenUri' not in homed_record.stdout"
+
+    - name: Enroll YubiKey PIV
+      ansible.builtin.command: "sudo -n homectl update {{ user.name }} --pkcs11-token-uri={{ piv_uri.stdout }}"
+      when: "'pkcs11TokenUri' not in homed_record.stdout"
+
+    - name: Re-inspect homed record after enrollment
+      ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
+      register: homed_record_after
+      changed_when: false
+
+    - name: Tune homed for the small /home slice
+      # luks-discard keeps the image sparse, auto-resize-mode=off avoids the
+      # grow-on-login that fails with "Not enough disk space for home", and
+      # disk-size=max lets the home use the whole /home partition. The first two are
+      # also pre-set in the home.create record (bin/_credstore_common.sh) so the very
+      # first login works; disk-size=max needs the active home, so it's applied here.
+      ansible.builtin.command: >-
+        sudo -n homectl update {{ user.name }}
+        --auto-resize-mode=off --disk-size=max --luks-discard=on
+      when: >-
+        '"autoResizeMode":"off"' not in homed_record_after.stdout or
+        '"luksDiscard":true' not in homed_record_after.stdout
+
+    - name: Drop password factor
+      ansible.builtin.shell: |
+        set -o pipefail
+        sudo -n homectl inspect {{ user.name }} --export-format=minimal --json=short \
+          | python3 -c '
+        import sys, json, time
+        r = json.load(sys.stdin)
+        r.get("privileged", {}).pop("hashedPassword", None)
+        r["lastChangeUSec"] = int(time.time() * 1_000_000)
+        json.dump(r, sys.stdout)
+        ' \
+          | sudo -n homectl update {{ user.name }} --identity=-
+      when: "'hashedPassword' in homed_record_after.stdout"
+
+    - name: Remove the baked home secret
+      # It sits readable in every image's unencrypted /usr, so once the YubiKey
+      # is enrolled the home keeps only the token's keyslot.
+      ansible.builtin.command: sudo -n /usr/bin/home-drop-baked-secret
+      register: baked_secret_removal
+      changed_when: "'removed' in baked_secret_removal.stdout"

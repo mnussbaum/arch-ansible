@@ -1,0 +1,60 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create config dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - /etc/sway
+    - /etc/swaylock
+    - /etc/xdg/mako
+  tags: [base16]
+
+- name: Generate base16 configs
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: i3
+    schemes_source: "{{ base16['schemes_source'] }}"
+    templates_source: "{{ base16['templates_source'] }}"
+  register: base16_i3
+  tags: [base16]
+
+- name: Install config
+  template:
+    src: sway_config.j2
+    dest: /etc/sway/config
+  tags: [base16]
+
+- name: Install swaylock config
+  template:
+    src: swaylock_config.j2
+    dest: /etc/swaylock/config
+  tags: [base16]
+
+- name: Generate mako base16 config
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: mako
+    schemes_source: "{{ base16['schemes_source'] }}"
+    templates_source: "{{ base16['templates_source'] }}"
+  register: base16_mako
+  tags: [base16]
+
+- name: Write mako config to a file
+  template:
+    src: mako.j2
+    dest: /etc/xdg/mako/config
+  tags: [base16]
+
+- name: Install swayidle service
+  template:
+    src: swayidle.service.j2
+    dest: "/usr/lib/systemd/user/swayidle.service"
+
+- name: Install systemd user preset
+  copy:
+    src: 80-sway.preset
+    dest: /usr/lib/systemd/user-preset/80-sway.preset
+

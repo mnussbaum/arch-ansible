@@ -1,6 +1,0 @@
-# vim:ft=yaml.ansible:
----
-- name: Regenerate mkinitcpio ramdisk
-  command: mkinitcpio -p linux
-  become: true
-

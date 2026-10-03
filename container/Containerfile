@@ -1,0 +1,33 @@
+# Disaster-recovery builder: builds the image (and nothing else) on any Linux
+# or macOS machine with podman or docker. Run it through bin/dr-build, not
+# directly; see docs/disaster-recovery.md. The build context is the repo root,
+# narrowed by .dockerignore.
+#
+# x86_64 only, like the image. On an arm64 host it runs under Rosetta/qemu.
+FROM docker.io/library/archlinux:latest
+
+# The builder's packages are the ones the image carries to rebuild itself.
+COPY mkosi/mkosi.conf.d/20-builder.conf /tmp/
+
+# The image is x86_64 whatever uname says under emulation.
+RUN sed -i 's/^Architecture = auto/Architecture = x86_64/' /etc/pacman.conf \
+ && printf 'Server = %s\n' \
+      'https://geo.mirror.pkgbuild.com/$repo/os/$arch' \
+      'https://fastly.mirror.pkgbuild.com/$repo/os/$arch' \
+      > /etc/pacman.d/mirrorlist \
+ && pacman -Syu --noconfirm --needed \
+      $(sed -n '/^Packages=/,/^\[/s/^[[:space:]]\{1,\}\([a-z0-9][^[:space:]]*\).*/\1/p' \
+          /tmp/20-builder.conf) \
+ && pacman -Scc --noconfirm \
+ && rm /tmp/20-builder.conf
+
+# mkosi and makepkg run as an unprivileged user, as bin/build-image does on a host.
+RUN useradd --create-home --uid 1000 builder \
+ && echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder \
+ && echo 'builder:100000:65536' > /etc/subuid \
+ && echo 'builder:100000:65536' > /etc/subgid \
+ && install -d -o builder -g builder /home/builder/.cache
+
+COPY container/dr-entrypoint container/dr-unlock /usr/bin/
+
+ENTRYPOINT ["/usr/bin/dr-entrypoint"]

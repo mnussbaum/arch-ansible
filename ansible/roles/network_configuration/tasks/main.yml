@@ -1,0 +1,50 @@
+# vim:ft=yaml.ansible:
+---
+# Wifi profiles are NOT built here: their PSKs would ship in the unencrypted
+# /usr. tasks/wifi-credentials.yml stores them, at first login, as systemd
+# credentials encrypted to the machine.
+- name: Create network config dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - "/etc/iwd"
+    - "/etc/wireguard"
+
+- name: Install udev rule to start iwd on wireless device
+  copy:
+    src: 90-iwd-on-wireless.rules
+    dest: "/usr/lib/udev/rules.d/90-iwd-on-wireless.rules"
+
+- name: Install systemd-networkd config for the primary interface
+  copy:
+    src: 25-primary.network
+    dest: "/usr/lib/systemd/network/25-primary.network"
+
+- name: Install resume fix IPv6 flush service
+  copy:
+    src: wireless-resume-ipv6-flush.service
+    dest: "/usr/lib/systemd/system/wireless-resume-ipv6-flush.service"
+
+- name: Install networking.target
+  copy:
+    src: networking.target
+    dest: "/usr/lib/systemd/system/networking.target"
+
+- name: Create drop-in dirs for networking.target PartOf
+  file:
+    path: "/usr/lib/systemd/system/{{ item }}.d"
+    state: directory
+  loop:
+    - iwd.service
+    - systemd-networkd.service
+    - systemd-resolved.service
+
+- name: Install networking.target PartOf drop-ins
+  copy:
+    src: networking-target-part-of.conf
+    dest: "/usr/lib/systemd/system/{{ item }}.d/networking-target-part-of.conf"
+  loop:
+    - iwd.service
+    - systemd-networkd.service
+    - systemd-resolved.service

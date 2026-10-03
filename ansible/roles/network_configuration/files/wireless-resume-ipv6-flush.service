@@ -1,0 +1,12 @@
+[Unit]
+Description=Flush wireless IPv6 addresses before suspend
+Before=sleep.target
+
+[Service]
+Type=oneshot
+# Flush every wireless interface so this works on any host without baking an
+# interface name into the shared image.
+ExecStart=/usr/bin/sh -c 'for d in /sys/class/net/*/wireless; do ip -6 addr flush dev "$(basename "$(dirname "$d")")" scope global; done'
+
+[Install]
+WantedBy=sleep.target

@@ -1,6 +1,0 @@
-[Unit]
-Description=Sway session
-
-After=graphical-session-pre.target
-BindsTo=graphical-session.target
-Wants=graphical-session-pre.target

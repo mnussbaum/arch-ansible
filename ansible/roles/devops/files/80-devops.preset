@@ -1,0 +1,3 @@
+# Rootless podman's API socket, for docker-compose (DOCKER_HOST is set by
+# podman-docker's profile.d script).
+enable podman.socket

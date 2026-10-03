@@ -1,3 +1,0 @@
-machine packages.buildkite.com
-  login buildkite
-  password {{ lookup('pipe', 'pass show eq/buildkite_api_token') }}

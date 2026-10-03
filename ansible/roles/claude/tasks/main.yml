@@ -1,0 +1,11 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create skel claude config dir
+  file:
+    path: /etc/skel/.claude
+    state: directory
+
+- name: Install settings into skel
+  copy:
+    src: claude_settings.json
+    dest: /etc/skel/.claude/settings.json

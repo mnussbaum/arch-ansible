@@ -1,3 +1,0 @@
-for config in ~/.config/zsh/*sh ; do
-  source $config
-done

@@ -1,0 +1,81 @@
+[branch]
+  sort = committerdate
+
+[core]
+  attributesfile = /etc/gitconfig.d/attributes
+  pager = delta
+
+
+[interactive]
+  diffFilter = delta --color-only
+
+[delta]
+  navigate = true
+  features = base16-256
+  line-numbers = true
+
+[merge]
+  conflictstyle = zdiff3
+
+[merge "mergiraf"]
+    name = mergiraf
+    driver = mergiraf merge --git %O %A %B -s %S -x %X -y %Y -p %P
+
+[diff]
+  colorMoved = default
+
+[user]
+  name = {{ user.name }}
+  useConfigOnly = true
+
+[include]
+  path = /usr/share/delta-themes.gitconfig
+  path = /etc/gitconfig.d/personal
+
+[color]
+  ui = auto
+
+[alias]
+  ci = commit
+  co = checkout
+  st = status
+  br = branch
+  staged = diff --cached
+  sed = ! git grep -z --full-name -l '.' | xargs -0 sed -i -e
+  hist = log --pretty=format:'%C(auto)%h %ad | %s%d [%an]' --graph --date=short
+  oneline = log --pretty=format:'%C(auto)%h %ad%x20%s%x20%x28%an%x29' --date=short
+  current = log --pretty=format:'%C(auto)%ad %h %d' --abbrev-commit --date=short
+  cur = log --pretty=format:'%C(auto)%ad %h %d' --abbrev-commit --date=short -1
+  branches = log --graph --abbrev-commit --decorate --date=relative --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
+  fco = !git checkout "$(git branch --format='%(refname:short)' --sort=-committerdate | tr -d ' ' | tr -s '\n' | fzf)"
+  exeunt = stash --keep-index --include-untracked
+
+[init]
+  defaultBranch = main
+
+[push]
+  autoSetupRemote = true
+
+[rebase]
+  updateRefs = true
+
+[commit]
+  verbose = true
+
+[help]
+  autocorrect = 10
+
+[rerere]
+  enabled = true
+
+[diff]
+  algorithm = histogram
+
+[transfer]
+  fsckObjects = true
+
+[fetch]
+  fsckObjects = true
+
+[receive]
+  fsckObjects = true

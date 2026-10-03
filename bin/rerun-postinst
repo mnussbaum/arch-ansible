@@ -1,0 +1,82 @@
+#!/bin/bash
+set -euo pipefail
+
+# Re-exec with sudo -E to get root while keeping $HOME pointing at the user's
+# directory (needed to find the mkosi cache and password-store).
+[[ $EUID -eq 0 ]] || exec sudo -E "$0" "$@"
+
+shell=false
+hostname="qemu"
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --shell) shell=true ;;
+    *) hostname="$1" ;;
+  esac
+  shift
+done
+
+# Host dev tool: ARCH_ANSIBLE_TARGET is unset, so the base is ~/.cache (sudo -E
+# preserves HOME). Keeps the cache paths in sync with mkosi/mkosi.conf/build-image.
+source "$(dirname "$0")/_cache_common.sh"
+cache_dir="$ARCH_ANSIBLE_CACHE/mkosi/arch~rolling~x86-64~main.cache"
+
+if [[ ! -d "$cache_dir" ]]; then
+  echo "mkosi cache not found at $cache_dir — run a full build first" >&2
+  exit 1
+fi
+
+repo_root=$(cd "$(dirname "$0")/.." && pwd)
+
+work_dir=$(mktemp -d /tmp/rerun-postinst.XXXXXX)
+upper="$work_dir/upper"
+merged="$work_dir/merged"
+work="$work_dir/work"
+mkdir -p "$upper" "$merged" "$work"
+
+cleanup() {
+  umount "$merged" 2>/dev/null || true
+  rm -rf "$work_dir"
+}
+trap cleanup EXIT INT TERM
+
+# Overlay keeps the cache read-only so repeated runs stay fast.
+mount -t overlay overlay \
+  -o "lowerdir=$cache_dir,upperdir=$upper,workdir=$work" \
+  "$merged"
+
+extra_env=()
+if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
+  extra_env=(--setenv "ANSIBLE_EXTRA_ARGS=$ANSIBLE_EXTRA_ARGS")
+fi
+
+# Write an init script to run inside the container.
+init_script="$work_dir/init.sh"
+cat > "$init_script" << 'INIT'
+#!/bin/bash
+set -euo pipefail
+INIT
+
+if [[ "$shell" == true ]]; then
+  cat >> "$init_script" << INIT
+cd /work/src
+export USER=root HOME=/root IMAGE_ID=$hostname
+exec bash
+INIT
+else
+  echo 'exec /work/src/mkosi/mkosi.postinst.chroot' >> "$init_script"
+fi
+chmod +x "$init_script"
+
+systemd-nspawn \
+  --directory="$merged" \
+  --bind="$repo_root:/work/src" \
+  --bind="$HOME/.local/share/password-store:/work/src/password-store" \
+  --bind="$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg:/var/cache/pacman/pkg" \
+  --bind-ro=/etc/pacman.d/mirrorlist \
+  --bind-ro="$init_script:/run/rerun-postinst-init.sh" \
+  --network-namespace-path=/proc/1/ns/net \
+  --resolv-conf=bind-host \
+  --setenv="IMAGE_ID=$hostname" \
+  "${extra_env[@]}" \
+  /run/rerun-postinst-init.sh

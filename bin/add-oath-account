@@ -9,7 +9,7 @@
 #
 # Without --qr, paste a full otpauth:// URI or enter fields manually.
 # Seeds are stored in oath-accounts.txt on the USB. This file is used by
-# program_all_yubikeys (via create-gpg-key and renew-gpg-subkeys) to restore
+# program_all_yubikeys (via create-gpg-key and enroll-yubikeys) to restore
 # accounts when provisioning a replacement YubiKey.
 
 set -o errexit

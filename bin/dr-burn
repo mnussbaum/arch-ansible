@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# Write a medium built by bin/dr-build to a USB stick, on Linux or macOS.
+#
+# A plain dd: the medium is a complete GPT disk, and systemd-repart on its first
+# boot moves the backup GPT to the end of a larger stick, which is all that
+# bin/burn-image's `mkosi burn` adds. bash 3.2 and BSD tools: this runs on stock
+# macOS.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+usage() {
+  echo "Write a disaster-recovery medium to a whole USB device. Erases the device." >&2
+  echo "Usage: $0 <image.raw> <device>" >&2
+  echo "  Linux devices look like /dev/sdX (lsblk); macOS ones like /dev/disk4" >&2
+  echo "  (diskutil list external physical)." >&2
+}
+
+die() { echo "dr-burn: $*" >&2; exit 1; }
+
+case "${1:-}" in -h|--help) usage; exit ;; esac
+[ $# -eq 2 ] || { usage; exit 1; }
+img=$1
+dev=$2
+[ -f "$img" ] || die "$img is not a file"
+img_size=$(wc -c < "$img" | tr -d ' ')
+
+case "$(uname -s)" in
+  Linux)
+    [ -b "$dev" ] || die "$dev is not a block device"
+    disk=$(basename "$(readlink -f "$dev")")
+    [ ! -e "/sys/class/block/$disk/partition" ] || die "$dev is a partition; pass the whole disk"
+    if lsblk -nro MOUNTPOINTS "$dev" | grep -q .; then
+      lsblk -o NAME,MOUNTPOINTS "$dev" >&2
+      die "something on $dev is mounted; unmount it first"
+    fi
+    dev_size=$(lsblk -bndo SIZE "$dev")
+    lsblk -o NAME,SIZE,MODEL,TRAN "$dev" >&2
+    ;;
+  Darwin)
+    info=$(diskutil info "$dev") || die "diskutil doesn't know $dev"
+    echo "$info" | grep -Eq 'Whole: +Yes' || die "$dev is a partition; pass the whole disk"
+    if echo "$info" | grep -Eq 'Device Location: +Internal|Internal: +Yes'; then
+      die "$dev is an internal disk"
+    fi
+    dev_size=$(diskutil info -plist "$dev" | plutil -extract TotalSize raw -)
+    echo "$info" | grep -E 'Device Node|Media Name|Disk Size|Protocol' >&2
+    ;;
+  *) die "unsupported OS $(uname -s)" ;;
+esac
+
+[ "$dev_size" -ge "$img_size" ] \
+  || die "$dev holds $((dev_size / 1000000000))G; the image needs $((img_size / 1000000000))G"
+
+printf 'Everything on %s will be erased. Type the device path to continue: ' "$dev" >&2
+read -r answer
+[ "$answer" = "$dev" ] || die "aborted"
+
+case "$(uname -s)" in
+  Linux)
+    sudo wipefs --all --quiet "$dev"
+    sudo dd if="$img" of="$dev" bs=4M conv=fsync oflag=direct status=progress
+    ;;
+  Darwin)
+    diskutil unmountDisk "$dev"
+    echo "Writing (Ctrl-T shows progress)…" >&2
+    # The raw node skips the buffer cache, which is many times faster.
+    sudo dd if="$img" of="/dev/r${dev#/dev/}" bs=4m
+    sync
+    diskutil eject "$dev"
+    ;;
+esac
+echo "Wrote $img to $dev" >&2

@@ -1,0 +1,17 @@
+# vim:ft=yaml.ansible:
+---
+- name: Allow all users to run machinectl commands
+  copy:
+    src: polkit-00-machinectl.rules
+    dest: /usr/share/polkit-1/rules.d/00-machinectl.rules
+
+- name: Install user agent service
+  copy:
+    src: polkit-gnome-authentication-agent.service
+    dest: /usr/lib/systemd/user/polkit-gnome-authentication-agent.service
+
+- name: Install systemd user preset
+  copy:
+    src: 80-polkit.preset
+    dest: /usr/lib/systemd/user-preset/80-polkit.preset
+

@@ -1,0 +1,11 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create config dir
+  file:
+    path: "~/.ssh"
+    state: directory
+
+- name: Install config
+  copy:
+    src: ssh-config
+    dest: "~/.ssh/config"

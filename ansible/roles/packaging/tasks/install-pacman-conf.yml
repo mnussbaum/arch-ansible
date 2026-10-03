@@ -1,0 +1,6 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install pacman config
+  template:
+    src: pacman.conf.j2
+    dest: /etc/pacman.conf

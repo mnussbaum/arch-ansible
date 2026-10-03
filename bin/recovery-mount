@@ -1,0 +1,217 @@
+#!/bin/bash
+# Mount a persistent install's partitions under /mnt the way the running system
+# arranges them — decrypted root at /mnt (with its nested /var subvolume), the
+# read-only erofs /usr over it, the ESP at /mnt/efi, and the home partition at
+# /mnt/home — then arch-chroot in.
+#
+# Layout (systemd-repart, discoverable partitions): a LUKS2 root (GPT label
+# "root", TPM2-enrolled) holding a btrfs with a nested /var subvolume; a separate
+# read-only erofs /usr (dm-verity in a normal boot — mounted plain ro here, since
+# recovery doesn't need integrity enforcement); a vfat ESP; an encrypted swap;
+# and a btrfs home partition. systemd-homed keeps each user's data in its own
+# LUKS image inside /home (<user>.home); for each, it offers to unlock it
+# read-only with the YubiKey or the user's password and mount it at
+# /mnt/home/<user>. Swap is not a filesystem, so it is left alone.
+#
+# Usage: recovery-mount [DISK]
+#   DISK  the disk to recover (e.g. /dev/vdb). Only needed when more than one
+#         candidate root is found; normally it is discovered.
+set -euo pipefail
+
+TARGET=/mnt
+want_disk=${1:+$(basename "$1")}
+
+die() { echo "recovery-mount: $*" >&2; exit 1; }
+
+# --- Which disk is the running system on? ------------------------------------
+# The medium is a full mkosi layout too. Under the Live System profile it has no
+# root partition (repart is masked), but once it has booted its default profile
+# it has self-provisioned one — also labelled "root". Taking the first "root" in
+# lsblk order then picks the MEDIUM (vda sorts before vdb), so rule out every
+# disk backing the running /usr and ESP, walking dm-verity/crypt down to disks.
+boot_disks=" "
+for mnt in /usr /boot /efi; do
+    src=$(findmnt -no SOURCE "$mnt" 2>/dev/null) || continue
+    [[ $src == /dev/* ]] || continue
+    while IFS= read -r line; do
+        eval "$line"
+        # One disk is reached via several paths (both verity partitions, the ESP).
+        [[ ${TYPE:-} == disk && $boot_disks != *" $NAME "* ]] && boot_disks+="$NAME "
+    done < <(lsblk -sPno NAME,TYPE "$src" 2>/dev/null)
+done
+
+# --- Find the root LUKS partition -------------------------------------------
+# Match the GPT partition label "root": swap is also crypto_LUKS, so matching on
+# type alone could grab the swap partition instead.
+candidates=()
+while IFS= read -r line; do
+    eval "$line"
+    [[ "${PARTLABEL:-}" == "root" && "${FSTYPE:-}" == "crypto_LUKS" ]] || continue
+    disk=$(lsblk -ndo PKNAME "/dev/$NAME" | head -1)
+    [[ $boot_disks == *" $disk "* ]] && continue          # the running system's own
+    [[ -n $want_disk && $disk != "$want_disk" ]] && continue
+    candidates+=("/dev/$NAME")
+done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL)
+
+case ${#candidates[@]} in
+    0) die "no LUKS 'root' partition found${want_disk:+ on /dev/$want_disk}" \
+           "(the running system's own disk(s):${boot_disks% } are excluded)" ;;
+    1) root_luks=${candidates[0]} ;;
+    *) die "several candidate roots: ${candidates[*]} — pass the disk to" \
+           "recover, e.g. recovery-mount /dev/$(lsblk -ndo PKNAME "${candidates[0]}" | head -1)" ;;
+esac
+
+# Scope every other partition to the root's parent disk, so we never pick up the
+# recovery medium's own ESP/usr (its /usr carries the same label as the target's).
+parent=$(lsblk -ndo PKNAME "$root_luks" | head -1)
+[[ -n "$parent" ]] || die "could not determine the parent disk of $root_luks"
+echo "Persistent disk: /dev/$parent (root: $root_luks)"
+
+# --- Find the other partitions on that disk ---------------------------------
+esp="" usr="" home=""
+while IFS= read -r line; do
+    eval "$line"
+    dev="/dev/$NAME"
+    case "${FSTYPE:-}" in
+        # Only the home btrfs is a raw partition; the root btrfs is inside LUKS.
+        btrfs) home="$dev" ;;
+        # Active /usr slot; the inactive A/B slot is empty (no filesystem). If
+        # both are populated (post-update) the first is fine — either is a valid /usr.
+        erofs) usr="${usr:-$dev}" ;;
+        vfat)  esp="$dev" ;;
+    esac
+done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL "/dev/$parent")
+[[ -n "$usr" ]] || die "no erofs /usr partition found on /dev/$parent"
+[[ -n "$esp" ]] || echo "recovery-mount: warning: no ESP found on /dev/$parent" >&2
+
+# --- Unlock root ------------------------------------------------------------
+# The TPM2 token binds PCR 7 AND a signed PCR 11 policy (tpm2_pubkey_pcrs=[11];
+# PCR 7 is literal from repart at first, then a pcrlock policy once
+# pcrlock-enroll-luks.service has run), and both must be satisfied. PCR 11
+# measures THIS UKI and its boot phases, so a recovery boot — a different UKI,
+# and the Live profile signs no expected PCRs at all — can never match it, no
+# matter that PCR 7 does. The token therefore cannot unlock from here. (On the
+# volume's OWN boot it can, which is how luks-enroll-pkcs11.service authorizes
+# enrollment; that is not this case.) Tokens are still tried first, because the
+# YubiKey's PKCS#11 (PIV) token has no such limit.
+#
+# Anything a human can type is a keyslot NOT bound to a hardware token (a
+# passphrase, or a systemd-cryptenroll --recovery-key slot). If there is none,
+# prompting would just loop forever, so say so instead.
+typeable_slots() {
+    cryptsetup luksDump --dump-json-metadata "$1" 2>/dev/null | python3 -c '
+import json, sys
+m = json.load(sys.stdin)
+hw = {"systemd-tpm2", "systemd-fido2", "systemd-pkcs11"}
+bound = {s for t in m["tokens"].values() if t.get("type") in hw for s in t.get("keyslots", [])}
+print(len([k for k in m["keyslots"] if k not in bound]))'
+}
+
+if cryptsetup status cryptroot &>/dev/null; then
+    echo "cryptroot already open"
+# Not `cryptsetup open --token-only`: Arch's libcryptsetup has no token plugins,
+# so only systemd-cryptsetup's own PKCS#11 path can use the YubiKey slot. No
+# TPM2 attempt: as above, it can't match here, and only fails noisily.
+elif echo "Unlocking root: enter the YubiKey PIV PIN, then touch it." &&
+     /usr/lib/systemd/systemd-cryptsetup attach cryptroot "$root_luks" - \
+        pkcs11-uri=auto; then
+    echo "Opened root with the YubiKey (PIV)"
+elif [[ $(typeable_slots "$root_luks") -gt 0 ]]; then
+    echo "No token unlocked it (a signed-PCR-11 TPM2 token cannot, from a booted"
+    echo "system); enter the recovery key or passphrase:"
+    cryptsetup open "$root_luks" cryptroot
+else
+    die "$root_luks has no factor usable from recovery: its only keyslot(s) are" \
+        "bound to hardware tokens that did not unlock, and there is no recovery" \
+        "key or passphrase to type. A signed-PCR-11 TPM2 token only unlocks in" \
+        "the initrd of a normal signed boot. This root needs a recovery key or" \
+        "YubiKey (PKCS#11) factor enrolled when it is created (see docs/bootstrapping.md)."
+fi
+
+# --- Mount, mirroring the running system's layout ---------------------------
+btrfs_opts="noatime,compress=zstd:1,discard=async,space_cache=v2"
+mkdir -p "$TARGET"   # a tmpfs root (the Live profile) has no /mnt
+mount -o "$btrfs_opts" /dev/mapper/cryptroot "$TARGET"   # root (+ nested /var subvolume)
+mount -o ro "$usr" "$TARGET/usr"                          # immutable /usr (erofs)
+if [[ -n "$esp" ]]; then
+    mkdir -p "$TARGET/efi"
+    mount "$esp" "$TARGET/efi"
+fi
+[[ -n "$home" ]] && mount -o "$btrfs_opts" "$home" "$TARGET/home"  # home partition (per-user homed LUKS lives here)
+
+# --- Unlock homed homes, read-only -----------------------------------------
+# homed encrypts a random key to the YubiKey's PIV key and stores it in the
+# user record (privileged.pkcs11EncryptedKey); the base64 of the decrypted key
+# is a LUKS passphrase of the home image. Fall back to the user's password.
+# The image's filesystem holds the home in a <user> subdirectory, as homed
+# mounts it.
+pkcs11_module=/usr/lib/pkcs11/opensc-pkcs11.so
+home_cleanup=()
+
+unlock_home() {
+    local img=$1 user loop part record dm stage tmp n id padding mech reply
+    user=$(basename "$img" .home)
+    read -rp "Unlock $user's home (read-only)? [y/N] " reply
+    [[ $reply == [yY]* ]] || return 0
+
+    loop=$(losetup --find --show --read-only --partscan "$img")
+    udevadm settle
+    part=$(lsblk -nrpo NAME,FSTYPE "$loop" | awk '$2 == "crypto_LUKS" {print $1; exit}')
+    [[ -n $part ]] || { echo "no LUKS volume in $img" >&2; losetup -d "$loop"; return 0; }
+    dm="home-$user"
+    record="$TARGET/var/lib/systemd/home/$user.identity"
+    tmp=$(mktemp -d /run/recovery-home.XXXXXX)
+
+    # One line per encrypted key: index, PIV object id (hex), padding.
+    if [[ -r $record ]]; then
+        python3 - "$record" "$tmp" > "$tmp/keys" <<'EOF'
+import base64, json, re, sys, urllib.parse
+record, out = sys.argv[1], sys.argv[2]
+keys = json.load(open(record)).get("privileged", {}).get("pkcs11EncryptedKey", [])
+for n, k in enumerate(keys):
+    m = re.search(r"[;:]id=([^;]*)", k["uri"])
+    if not m:
+        continue
+    open(f"{out}/enc{n}", "wb").write(base64.b64decode(k["data"]))
+    print(n, urllib.parse.unquote_to_bytes(m.group(1)).hex(), k.get("padding", "pkcs1"))
+EOF
+    fi
+    while read -r n id padding; do
+        case $padding in
+            pkcs1)       mech=(--mechanism RSA-PKCS) ;;
+            oaep-sha1)   mech=(--mechanism RSA-PKCS-OAEP --hash-algorithm SHA-1 --mgf MGF1-SHA1) ;;
+            oaep-sha256) mech=(--mechanism RSA-PKCS-OAEP --hash-algorithm SHA256 --mgf MGF1-SHA256) ;;
+            *) continue ;;
+        esac
+        echo "Unlocking $user's home: enter the YubiKey PIV PIN, then touch it when it blinks."
+        pkcs11-tool --module "$pkcs11_module" --login --decrypt --id "$id" "${mech[@]}" \
+            --input-file "$tmp/enc$n" --output-file "$tmp/dec" || continue
+        base64 -w0 "$tmp/dec" > "$tmp/pass"
+        cryptsetup open --readonly --key-file="$tmp/pass" "$part" "$dm" && break
+    done < <(cat "$tmp/keys" 2>/dev/null)
+    rm -rf "$tmp"
+
+    if [[ ! -e /dev/mapper/$dm ]]; then
+        echo "Enter $user's password instead; only a home that hasn't had its"
+        echo "first login has one (Ctrl+D skips):"
+        cryptsetup open --readonly "$part" "$dm" || { losetup -d "$loop"; return 0; }
+    fi
+    stage=/run/recovery-home/$user
+    mkdir -p "$stage" "$TARGET/home/$user"
+    mount -o ro "/dev/mapper/$dm" "$stage"
+    mount --bind "$stage/$user" "$TARGET/home/$user"
+    mount -o remount,bind,ro "$TARGET/home/$user"
+    home_cleanup+=("umount $TARGET/home/$user $stage; cryptsetup close $dm; losetup -d $loop")
+    echo "$user's home is at $TARGET/home/$user (read-only)."
+}
+
+for img in "$TARGET"/home/*.home; do
+    [[ -e $img ]] && unlock_home "$img"
+done
+
+echo "Mounted under $TARGET:"
+findmnt -R "$TARGET" || true
+echo "When done, exit the chroot and run:"
+printf '  %s\n' "${home_cleanup[@]}" "umount -R $TARGET; cryptsetup close cryptroot"
+
+exec arch-chroot "$TARGET"

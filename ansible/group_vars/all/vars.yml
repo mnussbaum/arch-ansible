@@ -1,0 +1,82 @@
+---
+user:
+  name: mnussbaum
+  group: mnussbaum
+  shell: /usr/bin/zsh
+  email: michaelnussbaum08@gmail.com
+  gpg_key_uid: "mnussbaum <michaelnussbaum08@gmail.com>"
+
+font:
+  sans_family: "NotoSans Nerd Font"
+  serif_family: "NotoSerif Nerd Font"
+  monospace_family: "Cascadia Code NF"
+  emoji_family: "Noto Emoji"
+  size: 20
+
+# Cursive italic font generated via:
+#
+# sudo pyftfeatfreeze -f 'calt,ss01' \
+#   /usr/share/fonts/TTF/CaskaydiaCoveNerdFont-Italic.ttf \
+#   assets/CaskaydiaCoveNerdFont-Italic.ttf
+
+idle_thresholds:
+  lock_screen_delay_minutes: 5
+  suspend_delay_minutes: 10
+  hibernate_delay_minutes: 120
+
+base16:
+  day_scheme: gruvbox-dark-hard
+  day_scheme_family: gruvbox
+  night_scheme: unikitty-dark
+  night_scheme_family: unikitty
+  schemes_source: "https://github.com/mnussbaum/base16-schemes-source"
+  templates_source: "https://github.com/mnussbaum/base16-templates-source"
+
+
+wallpaper:
+  desktop_dir: /usr/share/backgrounds
+  daytime_image: lost_coast_golden_path.jpg
+  night_image: merch-mart.png
+
+key_repeat:
+  rate: 35
+  delay: 250
+
+window_manager:
+  waybar_minimum_workspace_count: 5
+  window_manager: sway
+  windowing_system: wayland
+
+
+monitors:
+  - id: Sharp Corporation 0x1551 Unknown
+    position:
+      x: 950
+      y: 1600
+    scale: 2
+  - id: ASUSTek COMPUTER INC PA34V KBLMQS025309
+    position:
+      x: 0
+      y: 0
+    scale: 0.9
+  - id: Samsung Electric Company LS27A40xU H4TW601355
+    position:
+      x: 950
+      y: 1600
+    scale: 0.95
+  - id: Dell Inc. DELL S3221QS 5SN17N3
+    position:
+      x: 0
+      y: 0
+    scale: 1
+  - id: eDP-1
+    position:
+      x: 950
+      y: 1600
+    scale: 2
+  - id: HDMI-A-1
+    position:
+      x: 0
+      y: 0
+    scale: 2
+  - id: Virtual-1

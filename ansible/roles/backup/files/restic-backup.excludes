@@ -1,0 +1,13 @@
+# Build artifacts that can appear anywhere inside an included tree.
+# `**/` matches at any depth.
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.tox
+**/.mypy_cache
+**/.pytest_cache
+**/.ruff_cache
+**/target
+**/.next
+**/.nuxt

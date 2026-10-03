@@ -1,0 +1,186 @@
+# vim:ft=yaml.ansible:
+---
+# Runs during the image build process. Runs within the chroot of the just built
+# image. Services can't be enabled directly in this playbook, instead create
+# a preset file so that the service will be enabled at image boot
+- hosts: all
+  roles:
+    - mnussbaum.base16-builder-ansible
+    - mnussbaum.firefox_ext_sideloader
+  pre_tasks:
+    - import_role:
+        name: packaging
+        tasks_from: install-pacman-conf
+      vars:
+        disable_sandbox: true
+        # --caching force: block package downloads during the build so installs
+        # come only from cache. Scoped to this pre-task only; the post_tasks
+        # re-render omits it, so the shipped image keeps a network pacman.conf.
+        pacman_caching: "{{ build_caching | default('available') }}"
+        # Reuse repo packages mkosi already downloaded: its package cache is
+        # mounted at /work/src/pacman-cache (BuildSources in mkosi/mkosi.conf). Listed
+        # after the in-image cache so new downloads still go to the latter.
+        # Build-only like the vars above — dropped by the post_tasks re-render.
+        pacman_cache_dirs: "/var/cache/pacman/pkg /work/src/pacman-cache"
+      tags: [packaging, min-user-session]
+    - import_role:
+        name: packaging
+        tasks_from: init-keyring
+      tags: [packaging, min-user-session]
+  post_tasks:
+    - import_role:
+        name: packaging
+        tasks_from: install-pacman-conf
+      vars:
+        disable_sandbox: false
+      tags: [packaging, min-user-session]
+    # AUR packages are built and kept current by bin/sync-aur before mkosi runs,
+    # and installed by mkosi itself (PackageDirectories= in mkosi/mkosi.conf), so no
+    # AUR tooling runs in here.
+    - name: Apply user-unit presets (mkosi only presets system units)
+      command: systemctl --global preset-all
+      changed_when: false
+      tags: [min-user-session]
+  tasks:
+    - import_role:
+        name: set-appearance-facts
+      tags: [set-appearance-facts, min-user-session]
+    - import_role:
+        name: vconsole
+      tags: [vconsole, min-user-session]
+    - import_role:
+        name: systemd-boot
+      tags: [systemd-boot, min-user-session]
+    - import_role:
+        name: qemu-guest
+      tags: [qemu-guest]
+    - import_role:
+        name: qemu-host
+      tags: [qemu-host]
+    - import_role:
+        name: user
+      tags: [user, min-user-session]
+    - import_role:
+        name: gpg
+        tasks_from: packaging
+      tags: [gpg]
+    - import_role:
+        name: network_configuration
+      tags: [network_configuration]
+    - import_role:
+        name: enable_network
+      tags: [enable_network]
+    - import_role:
+        name: reflector
+      tags: [reflector]
+    - import_role:
+        name: secrets
+      tags: [secrets]
+    - import_role:
+        name: zsh
+      tags: [zsh, min-user-session]
+    - import_role:
+        name: cli-tools
+      tags: [cli-tools]
+    - import_role:
+        name: ruby
+      tags: [ruby]
+    - import_role:
+        name: python
+      tags: [python]
+    - import_role:
+        name: rust
+      tags: [rust]
+    - import_role:
+        name: golang
+      tags: [golang]
+    - import_role:
+        name: frontend-dev
+      tags: [frontend-dev]
+    - import_role:
+        name: global-environment-configuration
+      tags: [global-environment-configuration, min-user-session]
+    - import_role:
+        name: neovim
+      tags: [neovim]
+    - import_role:
+        name: git
+      tags: [git, min-user-session]
+    - import_role:
+        name: terminals
+      tags: [terminals, min-user-session]
+    - import_role:
+        name: tmux
+      tags: [tmux, min-user-session]
+    - import_role:
+        name: power
+      tags: [power]
+    - import_role:
+        name: fonts
+      tags: [fonts, min-user-session]
+    - import_role:
+        name: libinput
+      tags: [libinput]
+    - import_role:
+        name: wallpaper
+      tags: [wallpaper, min-user-session]
+    - import_role:
+        name: sway
+      tags: [sway, min-user-session]
+    - import_role:
+        name: waybar
+      tags: [waybar, min-user-session]
+    - import_role:
+        name: greeter
+      tags: [greeter, min-user-session]
+    - import_role:
+        name: launcher
+      tags: [launcher]
+    - import_role:
+        name: qt
+      tags: [qt]
+    - import_role:
+        name: gtk
+      tags: [gtk]
+    - import_role:
+        name: polkit
+      tags: [polkit]
+    - import_role:
+        name: brightness
+      tags: [brightness]
+    - import_role:
+        name: media
+      tags: [media]
+    - import_role:
+        name: bluetooth
+      tags: [bluetooth]
+    - import_role:
+        name: backup
+      tags: [backup]
+    - import_role:
+        name: torrents
+      tags: [torrents]
+    - import_role:
+        name: devops
+      tags: [devops]
+    - import_role:
+        name: archiso
+      tags: [archiso]
+    - import_role:
+        name: pdf
+      tags: [pdf]
+    - import_role:
+        name: syncthing
+      tags: [syncthing]
+    - import_role:
+        name: firefox
+      tags: [firefox]
+    - import_role:
+        name: postgres
+      tags: [postgres]
+    - import_role:
+        name: beancount
+      tags: [beancount]
+    - import_role:
+        name: claude
+      tags: [claude]

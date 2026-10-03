@@ -1,0 +1,22 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install bluetooth main.conf
+  copy:
+    src: main.conf
+    dest: /etc/bluetooth/main.conf
+
+- name: Install systemd preset
+  copy:
+    src: 80-bluetooth.preset
+    dest: /usr/lib/systemd/system-preset/80-bluetooth.preset
+
+
+# To add a bluetooth device:
+# bluetoothctl
+# power on
+# agent on
+# default-agent
+# scan on
+# pair <MAC address>
+# connect <MAC address>
+# trust <MAC address>

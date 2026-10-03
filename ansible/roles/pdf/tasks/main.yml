@@ -1,0 +1,22 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create zathura config dir
+  file:
+    path: /etc/xdg/zathura
+    state: directory
+
+- name: Generate base16 zathura configs
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: zathura
+    schemes_source: "{{ base16['schemes_source'] }}"
+    templates_source: "{{ base16['templates_source'] }}"
+  register: base16_zathura
+  tags: [base16]
+
+- name: Install zathura config
+  template:
+    src: zathurarc.j2
+    dest: /etc/xdg/zathura/zathurarc
+  tags: [base16]

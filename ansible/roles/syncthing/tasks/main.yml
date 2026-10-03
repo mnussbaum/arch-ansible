@@ -1,0 +1,33 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create systemd service override dir
+  file:
+    path: /usr/lib/systemd/user/syncthing.service.d
+    state: directory
+
+- name: Add systemd override to set Nice=19
+  copy:
+    dest: /usr/lib/systemd/user/syncthing.service.d/10-low-priority.conf
+    content: |
+      [Service]
+      Nice=19
+      IOSchedulingClass=2
+      IOSchedulingPriority=7
+
+- name: Skip syncthing under virtualization
+  copy:
+    src: syncthing-condition.conf
+    dest: /usr/lib/systemd/user/syncthing.service.d/condition.conf
+    mode: "0644"
+
+- name: Skip syncthing for system users
+  copy:
+    src: skip-system-users.conf
+    dest: /usr/lib/systemd/user/syncthing.service.d/skip-system-users.conf
+    mode: "0644"
+
+- name: Install systemd user preset
+  copy:
+    src: 80-syncthing.preset
+    dest: /usr/lib/systemd/user-preset/80-syncthing.preset
+

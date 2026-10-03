@@ -9,6 +9,20 @@ set -o pipefail
 # the LUKS-encrypted USB, not the GPG key passphrase.
 GPG_BATCH=(gpg --batch --pinentry-mode loopback --passphrase "")
 
+# PIV slot loaded for systemd-homed PKCS#11 login (the "key management" slot, as
+# in `man homectl`'s example). Every YubiKey is loaded with the SAME imported
+# RSA key + self-signed cert, so a single homed enrollment (the volume key is
+# wrapped to that one public key) is unlocked by ANY of the cards — mirroring how
+# program_yubikey writes the same GPG subkeys to every card. The shared private
+# key lives only on the LUKS-encrypted offline USB and on the cards themselves.
+HOMED_PIV_SLOT="9d"
+# Factory PIV management key / PIN / PUK after `ykman piv reset` (pre-5.7 TDES
+# default; ykman auto-detects the algorithm). Adjust if your YubiKeys ship a
+# different factory management key.
+PIV_DEFAULT_MGMT_KEY="010203040506070801020304050607080102030405060708"
+PIV_DEFAULT_PIN="123456"
+PIV_DEFAULT_PUK="12345678"
+
 USB_MAPPER="gpg-offline-usb"
 USB_MOUNT=""
 
@@ -18,7 +32,7 @@ OLD_USB_MOUNT=""
 setup_gnupghome() {
   local gnupghome="$1"
   chmod 700 "$gnupghome"
-  cp roles/gpg/files/scdaemon.conf "$gnupghome/scdaemon.conf"
+  cp ansible/roles/gpg/files/scdaemon.conf "$gnupghome/scdaemon.conf"
 
   # Pinentry script that supplies the card admin PIN without prompting.
   # _write_card_admin_pin() must be called before any card operations.
@@ -128,7 +142,7 @@ restore_subkeys() {
 _collect_new_pin_config() {
   # Sets target PIN/password globals applied to every YubiKey. Called once before the loop.
   echo "==> New PIN configuration (will be applied to all YubiKeys)"
-  local user_pin2 admin_pin2
+  local user_pin2 admin_pin2 piv_pin2 piv_puk2
   while true; do
     read -r -s -p "  New user PIN (min 6 chars): " YUBIKEY_NEW_USER_PIN; echo
     read -r -s -p "  Confirm new user PIN: " user_pin2; echo
@@ -140,6 +154,21 @@ _collect_new_pin_config() {
     read -r -s -p "  Confirm new admin PIN: " admin_pin2; echo
     [[ "$YUBIKEY_NEW_ADMIN_PIN" == "$admin_pin2" ]] && break
     echo "  PINs do not match, try again."
+  done
+  echo "    PIV PIN + PUK (6-8 chars each; the PIN unlocks the home via systemd-homed):"
+  while true; do
+    read -r -s -p "  New PIV PIN (6-8 chars): " YUBIKEY_PIV_PIN; echo
+    read -r -s -p "  Confirm PIV PIN: " piv_pin2; echo
+    [[ "$YUBIKEY_PIV_PIN" != "$piv_pin2" ]] && { echo "  PINs do not match, try again."; continue; }
+    [[ "${#YUBIKEY_PIV_PIN}" -ge 6 && "${#YUBIKEY_PIV_PIN}" -le 8 ]] && break
+    echo "  PIV PIN must be 6-8 characters."
+  done
+  while true; do
+    read -r -s -p "  New PIV PUK (6-8 chars): " YUBIKEY_PIV_PUK; echo
+    read -r -s -p "  Confirm PIV PUK: " piv_puk2; echo
+    [[ "$YUBIKEY_PIV_PUK" != "$piv_puk2" ]] && { echo "  PUKs do not match, try again."; continue; }
+    [[ "${#YUBIKEY_PIV_PUK}" -ge 6 && "${#YUBIKEY_PIV_PUK}" -le 8 ]] && break
+    echo "  PIV PUK must be 6-8 characters."
   done
   echo "    OATH password (required by Yubico Authenticator to access 2FA codes):"
   local oath_pw2
@@ -187,8 +216,84 @@ set_oath_password() {
   ykman oath access change --new-password "$YUBIKEY_OATH_PASSWORD"
 }
 
+load_homed_piv_keypair() {
+  # Materialize the shared homed PIV key + cert into temp files (inside the
+  # ephemeral $GNUPGHOME, so they are wiped along with it) for import onto each
+  # card. RSA2048 because systemd-homed wraps the home's LUKS volume key with the
+  # certificate's public key at user creation (see `man homectl`, the
+  # --pkcs11-token-uri example).
+  #
+  # The keypair lives in pass, encrypted to the GPG key, so GPG stays the only
+  # root of trust and ONE key serves the user on every machine and every YubiKey.
+  # It is read/written through the offline subkeys already imported into
+  # $GNUPGHOME (no card needed); --trust-model always lets the first-run insert
+  # encrypt to the freshly-imported, not-yet-trusted key.
+  : "${PASSWORD_STORE_DIR:=$HOME/.local/share/password-store}"
+  export PASSWORD_STORE_DIR PASSWORD_STORE_GPG_OPTS="--trust-model always"
+
+  local user pass_key pass_cert
+  user=$(python3 -c \
+    "import yaml;print(yaml.safe_load(open('ansible/group_vars/all/vars.yml'))['user']['name'])")
+  pass_key="linux_users/$user/piv-key"
+  pass_cert="linux_users/$user/piv-cert"
+
+  HOMED_PIV_KEY="$GNUPGHOME/homed-piv-key.pem"
+  HOMED_PIV_CERT="$GNUPGHOME/homed-piv-cert.pem"
+
+  if [[ ! -f "$PASSWORD_STORE_DIR/.gpg-id" ]]; then
+    echo "Error: no password-store at PASSWORD_STORE_DIR=$PASSWORD_STORE_DIR" >&2
+    exit 1
+  fi
+
+  if [[ -f "$PASSWORD_STORE_DIR/$pass_key.gpg" ]]; then
+    echo "==> Loading homed PIV key + cert from pass ($pass_key)..."
+    (umask 077; pass show "$pass_key"  >"$HOMED_PIV_KEY")
+    (umask 077; pass show "$pass_cert" >"$HOMED_PIV_CERT")
+    return
+  fi
+
+  # A new key locks out every home enrolled with the old one, so only
+  # create-gpg-key may mint it.
+  if [[ -z "${HOMED_PIV_ALLOW_NEW:-}" ]]; then
+    echo "Error: $pass_key is missing from $PASSWORD_STORE_DIR" >&2
+    exit 1
+  fi
+
+  echo "==> Generating shared homed PIV RSA2048 key + cert, storing in pass..."
+  (umask 077; openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+    -out "$HOMED_PIV_KEY")
+  openssl req -new -x509 -key "$HOMED_PIV_KEY" -out "$HOMED_PIV_CERT" -days 36500 \
+    -subj "/CN=systemd-homed $user"
+  pass insert -m -f "$pass_key"  <"$HOMED_PIV_KEY"
+  pass insert -m -f "$pass_cert" <"$HOMED_PIV_CERT"
+}
+
+provision_yubikey_piv() {
+  # Load the shared homed key + cert into this card's PIV slot so systemd-homed
+  # can unlock the user with it. Resets PIV first so the slot is the only
+  # cert/key pair on the applet (--pkcs11-token-uri=auto requires exactly one).
+  # pin-policy=once: PIN entered once per session. touch-policy=cached: a tap is
+  # required but stays valid ~15s, so login/sudo/unlock bursts need a single tap.
+  echo "==> Resetting PIV applet..."
+  ykman piv reset --force
+  echo "==> Setting PIV PIN/PUK..."
+  ykman piv access change-pin --pin "$PIV_DEFAULT_PIN" --new-pin "$YUBIKEY_PIV_PIN"
+  ykman piv access change-puk --puk "$PIV_DEFAULT_PUK" --new-puk "$YUBIKEY_PIV_PUK"
+  echo "==> Protecting PIV management key with the PIN..."
+  ykman piv access change-management-key \
+    --management-key "$PIV_DEFAULT_MGMT_KEY" --pin "$YUBIKEY_PIV_PIN" \
+    --protect --force
+  echo "==> Importing homed key + cert into PIV slot $HOMED_PIV_SLOT..."
+  ykman piv keys import \
+    --pin "$YUBIKEY_PIV_PIN" --pin-policy once --touch-policy cached \
+    "$HOMED_PIV_SLOT" "$HOMED_PIV_KEY"
+  ykman piv certificates import \
+    --pin "$YUBIKEY_PIV_PIN" "$HOMED_PIV_SLOT" "$HOMED_PIV_CERT"
+}
+
 program_all_yubikeys() {
   _collect_new_pin_config
+  load_homed_piv_keypair
   local key_number=1
   while true; do
     gpgconf --kill scdaemon
@@ -223,6 +328,7 @@ program_all_yubikeys() {
     reset_oath_applet
     load_oath_accounts
     set_oath_password
+    provision_yubikey_piv
 
     (( key_number++ ))
   done

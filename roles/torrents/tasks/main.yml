@@ -1,8 +1,0 @@
-# vim:ft=yaml.ansible:
----
-- name: Torrents | Install packages
-  become: true
-  package:
-    state: present
-    name:
-      - qbittorrent

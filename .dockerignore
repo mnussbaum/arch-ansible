@@ -1,0 +1,6 @@
+# The container/Containerfile build context (bin/dr-build) is the repo root;
+# send only what it copies, never secrets/.
+*
+!container/dr-entrypoint
+!container/dr-unlock
+!mkosi/mkosi.conf.d/20-builder.conf

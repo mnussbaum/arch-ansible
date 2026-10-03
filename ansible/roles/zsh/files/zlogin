@@ -1,0 +1,7 @@
+# Run the user first-login playbook once, on the first interactive login.
+#
+# On the Live profile's volatile root the home, and so this marker, last until
+# shutdown, so there it runs once per boot.
+if [[ ! -f "$HOME/.config/user-first-login-done" ]]; then
+    (cd /usr/share/arch-ansible && ANSIBLE_PLAYBOOK=user-first-login-playbook.yml NO_ASK_BECOME_PASS=1 ./bin/ansible)
+fi

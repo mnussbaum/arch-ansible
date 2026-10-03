@@ -1,0 +1,11 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create config dir
+  file:
+    path: /etc/gtk-3.0
+    state: directory
+
+- name: Install config
+  template:
+    src: gtk_3_0_settings.ini.j2
+    dest: /etc/gtk-3.0/settings.ini

@@ -1,0 +1,29 @@
+#!/bin/bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# Resolve the CPU package thermal zone by type rather than by a hardcoded
+# index, since the index varies per machine. Prefer the Intel package sensor,
+# then common AMD sensors, falling back to the first available zone.
+zone=""
+for preferred in x86_pkg_temp k10temp Tctl; do
+  for type_file in /sys/class/thermal/thermal_zone*/type; do
+    if [[ "$(cat "$type_file")" == "$preferred" ]]; then
+      zone="${type_file%/type}"
+      break 2
+    fi
+  done
+done
+
+if [[ -z "$zone" ]]; then
+  zone="$(dirname "$(echo /sys/class/thermal/thermal_zone*/temp | cut -d' ' -f1)")"
+fi
+
+[[ -r "$zone/temp" ]] || exit 0
+
+milli_celsius=$(cat "$zone/temp")
+fahrenheit=$(( milli_celsius * 9 / 5000 + 32 ))
+
+printf "%d\n" "$fahrenheit"

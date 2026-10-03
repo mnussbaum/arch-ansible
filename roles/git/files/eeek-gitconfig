@@ -1,8 +1,0 @@
-[user]
-  email = mike@equilibriumenergy.com
-
-[url "git@github.com-eeek:equilibrium-energy/"]
-  insteadOf = git@github.com:equilibrium-energy/
-
-[url "ssh://git@github.com-eeek/equilibrium-energy/"]
-  insteadOf = ssh://git@github.com/equilibrium-energy/

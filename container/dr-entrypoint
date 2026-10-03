@@ -1,0 +1,114 @@
+#!/bin/bash
+# Entry point of the disaster-recovery builder (container/Containerfile), started
+# by bin/dr-build. Clones the mounted checkout, gets the build secrets, runs
+# bin/build-image and copies the finished medium to /out. Arguments go to
+# bin/build-image.
+#
+# DR_MODE picks where the secrets come from:
+#   yubikey    decrypted here from pass, with the YubiKey passed in (Linux hosts)
+#   provided   /host-secrets, decrypted on the host by dr-unlock (macOS hosts)
+#   ephemeral  a throwaway Secure Boot key, kept in the cache volume; no YubiKey
+#
+# Mounts: /host-repo (ro), /home/builder/.cache (named volume), /out, and
+# optionally /host-secrets or /host-password-store (ro).
+set -o errexit
+set -o nounset
+set -o pipefail
+
+secrets=/dev/shm/dr-secrets
+src=/home/builder/src
+
+if [[ $EUID -eq 0 ]]; then
+  # A fresh named volume can come up root-owned.
+  chown builder:builder /home/builder/.cache
+  install -d -o builder -g builder -m 700 "$secrets"
+  # Also refreshes the sync DB that mkosi seeds the image's from (10-sources-host.conf).
+  pacman -Syu --noconfirm
+  if [[ $DR_MODE == yubikey ]]; then
+    install -d /run/pcscd
+    pcscd --disable-polkit
+  fi
+  [[ $(uname -m) == x86_64 ]] \
+    || echo "dr-entrypoint: running under $(uname -m) emulation; expect a slow build" >&2
+
+  runuser -u builder -- "$0" "$@"
+
+  # Copied as root: a Linux host's /out may belong to a uid other than builder's.
+  version=$(cat "$src/mkosi/mkosi.version")
+  medium=/home/builder/.cache/mkosi/images/image/image_${version}_x86-64.raw
+  echo "==> Copying $(basename "$medium") to the host" >&2
+  cp --sparse=always "$medium" /out/
+  chown "$(stat -c %u:%g /out)" "/out/$(basename "$medium")"
+  exit
+fi
+
+if git -c safe.directory='*' -C /host-repo status --porcelain | grep -q .; then
+  echo "dr-entrypoint: warning: uncommitted changes in the checkout are not built" >&2
+fi
+git -c safe.directory='*' clone --quiet /host-repo "$src"
+cd "$src"
+
+store=$HOME/.local/share/password-store
+mkdir -p "$(dirname "$store")"
+
+case $DR_MODE in
+  yubikey)
+    unlock_args=()
+    if [[ -d /host-password-store ]]; then
+      unlock_args=(--password-store /host-password-store)
+    elif [[ -n ${DR_PASSWORD_STORE_URL:-} ]]; then
+      unlock_args=(--password-store-url "$DR_PASSWORD_STORE_URL")
+    fi
+    dr-unlock --repo "$src" --out "$secrets" --store-dest "$store" "${unlock_args[@]}"
+    ;;
+  provided)
+    cp /host-secrets/secureboot.key /host-secrets/secureboot.crt \
+      /host-secrets/home-recovery-key "$secrets/"
+    cp -R /host-secrets/password-store "$store"
+    ;;
+  ephemeral)
+    keys=$HOME/.cache/dr-ephemeral-secureboot
+    if [[ ! -f $keys/secureboot.key ]]; then
+      echo "==> Minting a throwaway Secure Boot key" >&2
+      mkdir -p -m 700 "$keys"
+      openssl req -new -x509 -newkey rsa:2048 -nodes -days 36500 \
+        -subj "/CN=arch-ansible disaster-recovery (throwaway)" \
+        -keyout "$keys/secureboot.key" -out "$keys/secureboot.crt" 2>/dev/null
+    fi
+    cp "$keys/secureboot.key" "$keys/secureboot.crt" "$secrets/"
+
+    # The first password of the new homed home; not the one in pass, which
+    # needs the YubiKey this mode does without.
+    if [[ -t 0 ]]; then
+      while :; do
+        read -rsp "Password for the new home directory: " pw; echo >&2
+        read -rsp "Again: " pw2; echo >&2
+        [[ -n $pw && $pw == "$pw2" ]] && break
+        echo "Empty or mismatched; try again." >&2
+      done
+    else
+      read -r pw
+    fi
+    (umask 077; printf '%s' "$pw" > "$secrets/home-recovery-key")
+    unset pw pw2
+
+    if [[ -d /host-password-store ]]; then
+      cp -R /host-password-store "$store"
+    elif [[ -n ${DR_PASSWORD_STORE_URL:-} ]]; then
+      git clone --quiet "$DR_PASSWORD_STORE_URL" "$store"
+    else
+      echo "dr-entrypoint: warning: no password-store; the image ships an empty one" >&2
+      mkdir -p "$store"
+    fi
+    ;;
+  *)
+    echo "dr-entrypoint: unknown DR_MODE '${DR_MODE:-}'" >&2
+    exit 1
+    ;;
+esac
+
+# build-image copies the signing key into the cache, which is the persistent volume.
+trap 'rm -rf "$HOME/.cache/mkosi-secureboot"' EXIT
+export ARCH_ANSIBLE_SECRETS_DIR=$secrets ARCH_ANSIBLE_AUR_CHROOT=no
+# One version: the volume only needs the newest, and each costs ~18G.
+bin/build-image --keep 1 "$@"

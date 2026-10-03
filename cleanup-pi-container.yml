@@ -1,7 +1,0 @@
-# vim:ft=yaml.ansible:
----
-- hosts: all
-  tasks:
-    - import_role:
-        name: bootstrapping
-        tasks_from: cleanup-pi-container

@@ -1,0 +1,5 @@
+enable gpg-agent.service
+enable gpg-agent-ssh.socket
+enable gpg-agent-extra.socket
+enable gpg-agent-browser.socket
+enable dirmngr.socket

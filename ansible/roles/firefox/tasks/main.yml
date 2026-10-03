@@ -1,0 +1,49 @@
+# vim:ft=yaml.ansible:
+---
+- name: Make skel default profile dir
+  file:
+    path: /etc/skel/.mozilla/firefox/default.profile
+    state: directory
+
+- name: Configure firefox profiles.ini
+  copy:
+    dest: /etc/skel/.mozilla/firefox/profiles.ini
+    src: firefox-profiles.ini
+
+- name: Sideload install extensions
+  firefox_ext_sideloader:
+    path: "{{ item }}"
+  with_fileglob:
+    - /usr/lib/firefox/browser/extensions/*.xpi
+
+- name: Configure firefox user.js
+  template:
+    dest: /etc/skel/.mozilla/firefox/default.profile/user.js
+    src: firefox-user.js.j2
+
+- name: Create chrome config dir
+  file:
+    path: /etc/skel/.mozilla/firefox/default.profile/chrome
+    state: directory
+
+- name: Configure firefox userChrome.css
+  template:
+    dest: /etc/skel/.mozilla/firefox/default.profile/chrome/userChrome.css
+    src: firefox-userChrome.css.j2
+  tags: [base16]
+
+- name: Configure firefox userContent.css
+  template:
+    dest: /etc/skel/.mozilla/firefox/default.profile/chrome/userContent.css
+    src: firefox-userContent.css.j2
+  tags: [base16]
+
+- name: Create tridactyl config directory
+  file:
+    path: /etc/xdg/tridactyl
+    state: directory
+
+- name: Create tridactyl config file
+  copy:
+    src: tridactylrc
+    dest: /etc/xdg/tridactyl/tridactylrc

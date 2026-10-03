@@ -1,0 +1,19 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install /etc/environment
+  copy:
+    src: etc_environment
+    dest: /etc/environment
+
+- name: Install shell profile files
+  copy:
+    dest: "/etc/profile.d/{{ item | basename }}"
+    src: "{{ item }}"
+    mode: "u=rwx,g=rx,o=rx"
+  with_fileglob:
+    - profile.d/*
+
+- name: Install global ZSH configs sourcing /etc/profile
+  copy:
+    dest: /etc/zsh/zprofile
+    src: source_etc_profile

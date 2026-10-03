@@ -1,0 +1,17 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create ghostty config dir
+  file:
+    path: /etc/skel/.config/ghostty
+    state: directory
+
+- name: Install ghostty config
+  template:
+    src: ghostty_config.j2
+    dest: /etc/skel/.config/ghostty/config
+  tags: [base16]
+
+- name: Disable ghostty daemon, it's fast enough as is
+  copy:
+    src: 80-terminals.preset
+    dest: /usr/lib/systemd/user-preset/80-terminals.preset

@@ -1,0 +1,7 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install pgpass file
+  template:
+    src: pgpass
+    dest: ~/.pgpass
+    mode: "0600"

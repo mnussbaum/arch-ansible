@@ -1,0 +1,1 @@
+SUBSYSTEM=="input", ENV{ID_INPUT_TOUCHPAD}=="1", SYMLINK+="input/touchpad"

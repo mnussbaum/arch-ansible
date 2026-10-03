@@ -1,0 +1,45 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install day-or-night binary
+  copy:
+    src: day-or-night
+    dest: /usr/bin/day-or-night
+    mode: a+x
+
+- name: Lengthen Dell keyboard backlight timeout
+  copy:
+    src: 99-dell-kbd-backlight-timeout.rules
+    dest: /usr/lib/udev/rules.d/99-dell-kbd-backlight-timeout.rules
+
+- name: Install wl-gammarelay service
+  copy:
+    src: wl-gammarelay.service
+    dest: /usr/lib/systemd/user/wl-gammarelay.service
+
+- name: Enable wl-gammarelay service
+  systemd_service:
+    name: wl-gammarelay.service
+    enabled: yes
+    scope: global
+
+- name: Install colorscheme-changer binary
+  copy:
+    src: colorscheme-changer
+    dest: /usr/bin/colorscheme-changer
+    mode: a+x
+
+- name: Install colorscheme-changer service
+  copy:
+    src: colorscheme-changer.service
+    dest: /usr/lib/systemd/user/colorscheme-changer.service
+
+- name: Install colorscheme-changer timer
+  copy:
+    src: colorscheme-changer.timer
+    dest: /usr/lib/systemd/user/colorscheme-changer.timer
+
+- name: Enable colorscheme-changer timer
+  systemd_service:
+    name: colorscheme-changer.timer
+    enabled: yes
+    scope: global

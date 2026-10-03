@@ -1,0 +1,44 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create restic-backup config dir
+  file:
+    path: /etc/restic-backup
+    state: directory
+    mode: '0755'
+
+- name: Install restic-backup includes
+  copy:
+    src: restic-backup.includes
+    dest: /etc/restic-backup/includes
+
+- name: Install restic-backup excludes
+  copy:
+    src: restic-backup.excludes
+    dest: /etc/restic-backup/excludes
+
+- name: Install restic-backup script
+  copy:
+    src: restic-backup
+    dest: /usr/bin/restic-backup
+    mode: a+x
+
+- name: Install restic-backup service
+  copy:
+    src: restic-backup.service
+    dest: /usr/lib/systemd/user/restic-backup.service
+
+- name: Install restic-backup timer
+  copy:
+    src: restic-backup.timer
+    dest: /usr/lib/systemd/user/restic-backup.timer
+
+- name: Install systemd user preset
+  copy:
+    src: 80-backup.preset
+    dest: /usr/lib/systemd/user-preset/80-backup.preset
+# TODO:
+#
+# * Get the backblaze configuration into terraform. Connect ansible to TF output
+#   to pull the bucket name
+# * Script the seeding of data during initial bootstrapping by restoring from
+#   a backup

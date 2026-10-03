@@ -1,0 +1,15 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create directory
+  file:
+    path: "{{ wallpaper.desktop_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Install desktop background images
+  copy:
+    src: "{{ item }}"
+    dest: "{{ wallpaper.desktop_dir }}/"
+    mode: "0644"
+  with_fileglob:
+    - "{{ playbook_dir }}/assets/wallpaper/*"

@@ -1,0 +1,10 @@
+# vim:ft=yaml.ansible:
+---
+- name: Initialize pacman keyring
+  command: pacman-key --init
+  args:
+    creates: /etc/pacman.d/gnupg/trustdb.gpg
+
+- name: Populate pacman keyring from the local archlinux-keyring package
+  command: pacman-key --populate archlinux
+  changed_when: true

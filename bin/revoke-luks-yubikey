@@ -1,0 +1,51 @@
+#!/bin/bash
+# Wipes a LUKS keyslot from the root partition. Every YubiKey carries the same
+# shared PIV key, so a lost one can't be revoked on its own: rotate the PIV key
+# (bin/enroll-yubikeys), then on each machine wipe its old PKCS#11 slot with this
+# and re-enroll with luks-enroll-pkcs11.
+#
+# The wipe needs an existing factor to authorize it. The TPM2 token works from
+# the running system (it binds PCR 7, via the pcrlock policy after first boot,
+# plus a signed PCR 11 policy whose signature covers the later boot phases
+# too), so that is tried first; otherwise systemd-cryptenroll falls back to
+# prompting.
+#
+# Usage: bin/revoke-luks-yubikey <slot> [DEVICE]
+#
+# Find the slot with `cryptsetup luksDump <device>`. DEVICE defaults to this
+# machine's root: /dev/disk/by-designator/root-luks on a booted install, or
+# whatever an open mapper points at (bin/recovery-mount opens root as
+# "cryptroot", so this also works inside a recovery chroot).
+set -o errexit
+set -o nounset
+set -o pipefail
+
+SLOT="${1:?Usage: $0 <slot> [DEVICE]}"
+DEVICE="${2:-}"
+
+if [[ -z "$DEVICE" ]]; then
+    if [[ -e /dev/disk/by-designator/root-luks ]]; then
+        DEVICE=$(readlink -f /dev/disk/by-designator/root-luks)
+    else
+        for name in root cryptroot; do
+            DEVICE=$(cryptsetup status "$name" 2>/dev/null | awk '/device:/{print $2}') || DEVICE=""
+            [[ -n "$DEVICE" ]] && break
+        done
+    fi
+fi
+[[ -n "$DEVICE" ]] || {
+    echo "error: could not find the root LUKS device; pass it explicitly" >&2
+    exit 1
+}
+
+echo "Current LUKS keyslots on $DEVICE:"
+cryptsetup luksDump "$DEVICE" | grep -E 'Keyslot|Type:|State:|systemd-'
+echo ""
+echo "==> Wiping slot $SLOT on $DEVICE…"
+if ! systemd-cryptenroll --unlock-tpm2-device=auto --wipe-slot="$SLOT" "$DEVICE"; then
+    echo "==> TPM2 did not authorize the wipe; falling back to a prompt."
+    systemd-cryptenroll --wipe-slot="$SLOT" "$DEVICE"
+fi
+
+echo "==> Slot $SLOT wiped. With a YubiKey carrying the new PIV key plugged in, re-enroll:"
+echo "      sudo /usr/bin/luks-enroll-pkcs11"

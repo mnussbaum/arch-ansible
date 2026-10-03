@@ -1,3 +1,10 @@
 *.pyc
 *.retry
 /secrets/
+/.qemu-host-shared/
+.claude/
+/mkosi.key
+/mkosi.crt
+/mkosi/mkosi.version
+.ansible/
+/dr-out/

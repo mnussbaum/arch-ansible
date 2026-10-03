@@ -1,0 +1,2 @@
+enable tlp.service
+enable thermald.service

@@ -1,16 +1,21 @@
 #!/bin/bash
 # Programs new YubiKeys and creates a new LUKS-encrypted primary key USB from
 # a GPG key already imported into GNUPGHOME. Use this after reconstructing the
-# primary key from the paper recovery guide (public key QR + paperkey QR).
+# primary key from the paper recovery guide (public key + paperkey).
 #
-# Usage: bin/restore-primary-gpg-from-paper <device>
+# Works on a copy of the key in a temporary GNUPGHOME, like enroll-yubikeys, so
+# the real one keeps its config and the full key on disk; only the renewed
+# public key is imported back.
 #
-# <device>: blank USB to format with LUKS as the new primary key backup.
-#           WARNING: this wipes the device.
+# Usage: bin/restore-primary-gpg-from-paper <device> [<totp-file>]
 #
-# Before running:
-#   gpg --import pubkey.asc
-#   paperkey --pubring pubkey.asc --secrets secrets.raw | gpg --import
+# <device>:    blank USB to format with LUKS as the new primary key backup.
+#              WARNING: this wipes the device.
+# <totp-file>: otpauth:// URIs (one per line), typed from the guide's TOTP
+#              section. Saved to the USB as oath-accounts.txt and loaded onto
+#              each YubiKey.
+#
+# Rebuild the key from paper first: docs/gpg-paper-recovery.md, Step 2.
 
 set -o errexit
 set -o nounset
@@ -18,26 +23,42 @@ set -o pipefail
 
 source bin/_gpg_common.sh
 
-DEVICE="${1:?Usage: $0 <device>}"
+DEVICE="${1:?Usage: $0 <device> [<totp-file>]}"
+TOTP_FILE="${2:-}"
+REAL_GNUPGHOME="${GNUPGHOME:-$HOME/.gnupg}"
+RESTORE_HOME=$(mktemp -d)
 SUBKEY_BACKUP=$(mktemp)
 
 cleanup() {
   close_usb
+  rm -rf "$RESTORE_HOME"
   rm -f "$SUBKEY_BACKUP"
 }
 trap cleanup EXIT
 
-FINGERPRINT=$(gpg --list-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')
+if [[ -n "$TOTP_FILE" && ! -f "$TOTP_FILE" ]]; then
+  echo "Error: $TOTP_FILE not found" >&2
+  exit 1
+fi
+
+FINGERPRINT=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')
 if [[ -z "$FINGERPRINT" ]]; then
-  echo "Error: no GPG key found in GNUPGHOME=${GNUPGHOME:-~/.gnupg}" >&2
-  echo "Import the primary key first:" >&2
-  echo "  paperkey --pubring pubkey.asc --secrets secrets.raw | gpg --import" >&2
+  echo "Error: no GPG secret key found in GNUPGHOME=$REAL_GNUPGHOME" >&2
+  echo "Reconstruct the primary key from the paper guide first." >&2
   exit 1
 fi
 echo "==> Found key: $FINGERPRINT"
 
-# Set up auto-PIN pinentry in GNUPGHOME for non-interactive YubiKey programming.
-setup_gnupghome "${GNUPGHOME:-$HOME/.gnupg}"
+setup_gnupghome "$RESTORE_HOME"
+export GNUPGHOME="$RESTORE_HOME"
+
+echo "==> Copying the key into a temporary GNUPGHOME..."
+GNUPGHOME="$REAL_GNUPGHOME" "${GPG_BATCH[@]}" --export-secret-keys "$FINGERPRINT" \
+  | "${GPG_BATCH[@]}" --import
+
+# The paper may predate the last annual renewal, leaving the subkeys expired.
+echo "==> Extending all subkey expiry by 1 year..."
+"${GPG_BATCH[@]}" --yes --quick-set-expire "$FINGERPRINT" 1y "*"
 
 format_and_open_usb "$DEVICE"
 
@@ -47,8 +68,14 @@ echo "==> Backing up primary key to USB..."
 echo "==> Generating revocation certificate..."
 printf 'y\n0\n\ny\n' | gpg --command-fd 0 --gen-revoke "$FINGERPRINT" > "$USB_MOUNT/revocation-cert.asc"
 
-echo "==> Exporting public key to roles/gpg/files/gpg-pubkey.asc..."
-gpg --armor --export "$FINGERPRINT" > roles/gpg/files/gpg-pubkey.asc
+if [[ -n "$TOTP_FILE" ]]; then
+  echo "==> Saving TOTP accounts to USB..."
+  cp "$TOTP_FILE" "$USB_MOUNT/oath-accounts.txt"
+fi
+
+echo "==> Exporting public key to ansible/roles/gpg/files/gpg-pubkey.asc..."
+gpg --armor --export "$FINGERPRINT" > ansible/roles/gpg/files/gpg-pubkey.asc
+GNUPGHOME="$REAL_GNUPGHOME" gpg --batch --import ansible/roles/gpg/files/gpg-pubkey.asc
 
 echo "==> Creating subkey backup for YubiKey programming..."
 "${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
@@ -58,7 +85,7 @@ program_all_yubikeys
 echo ""
 echo "Next steps:"
 echo "  1. Store $DEVICE offline in a separate location from any other backup."
-echo "  2. Regenerate the paper recovery guide:"
-echo "       bin/print-gpg-recovery-guide $DEVICE"
-echo "  3. Commit the updated keygrips:"
-echo "       git add group_vars/all/gpg_auth_keygrips.yml && git commit"
+echo "  2. Commit and push the renewed public key:"
+echo "       git add ansible/roles/gpg/files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys' && git push"
+echo "  3. Once a machine is provisioned, regenerate the paper recovery guide:"
+echo "       bin/generate-gpg-recovery-guide $DEVICE"

@@ -1,0 +1,14 @@
+# Initrd-only pcscd, so the LUKS PKCS#11 (YubiKey PIV) slot can unlock root.
+# Up before cryptsetup, and gone before switch-root so the real system's
+# pcscd.socket can bind the same path.
+[Unit]
+Description=PC/SC Smart Card Daemon Activation Socket (initrd)
+DefaultDependencies=no
+Wants=cryptsetup-pre.target
+Before=cryptsetup-pre.target initrd-switch-root.target
+Conflicts=initrd-switch-root.target
+
+[Socket]
+ListenStream=/run/pcscd/pcscd.comm
+SocketMode=0600
+RemoveOnStop=yes

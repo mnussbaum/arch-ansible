@@ -1,0 +1,224 @@
+set $mod Mod4
+set $left h
+set $down j
+set $up k
+set $right l
+
+set $term ghostty -e tmux
+
+set $menu wofi-toggle 'wofi --show run'
+set $passmenu wofi-toggle 'wofipassmenu'
+
+### Toggle tablet mode resizing
+bindswitch --locked tablet:off output * scale 2
+bindswitch --locked tablet:on output * scale 3
+
+### Window rules
+
+for_window [title=".*"] border pixel 0
+
+### Output configuration
+
+focus_follows_mouse yes
+font pango:{{ font.monospace_family }} {{ font.size }}
+
+gaps inner 7
+gaps outer 2
+gaps top 15
+
+output * bg {{ desktop_background }} fill
+
+{% for monitor in monitors %}
+{% if monitor.position is defined %}
+output "{{ monitor.id }}" position {{ monitor.position.x }} {{ monitor.position.y }}
+{% endif %}
+{% if monitor.scale is defined %}
+output "{{ monitor.id }}" scale {{ monitor.scale }}
+{% endif %}
+{% endfor %}
+
+### Input configuration
+
+input * {
+    # Keyboard configs
+    repeat_delay {{ key_repeat.delay }}
+    repeat_rate {{ key_repeat.rate }}
+    xkb_options caps:escape
+
+    # Mouse configs
+    natural_scroll enabled
+    scroll_method two_finger
+    tap enabled
+}
+
+### Key bindings
+
+# Start terminal
+bindsym $mod+Return exec $term
+
+# Kill focused window
+bindsym $mod+Shift+q kill
+
+# Launchers
+bindsym $mod+space exec $menu
+bindsym $mod+slash exec $passmenu
+
+# Lockscreen
+bindsym $mod+Print exec loginctl lock-session
+
+# Notifications
+bindsym $mod+Shift+d exec makoctl dismiss -a
+
+# Drag floating windows by holding down $mod and left mouse button.
+# Resize them with right mouse button + $mod.
+# Despite the name, also works for non-floating windows.
+# Change normal to inverse to use left mouse button for resizing and right
+# mouse button for dragging.
+floating_modifier $mod normal
+
+# reload the configuration file
+bindsym $mod+Shift+c reload
+
+# exit window manager (logs you out of your session)
+bindsym $mod+Shift+e exit
+
+### Moving around:
+
+# Move your focus around
+bindsym $mod+$left focus left
+bindsym $mod+$down focus down
+bindsym $mod+$up focus up
+bindsym $mod+$right focus right
+bindsym $mod+Left focus left
+bindsym $mod+Down focus down
+bindsym $mod+Up focus up
+bindsym $mod+Right focus right
+
+# _move_ the focused window with the same, but add Shift
+bindsym $mod+Shift+$left move left
+bindsym $mod+Shift+$down move down
+bindsym $mod+Shift+$up move up
+bindsym $mod+Shift+$right move right
+# Ditto, with arrow keys
+bindsym $mod+Shift+Left move left
+bindsym $mod+Shift+Down move down
+bindsym $mod+Shift+Up move up
+bindsym $mod+Shift+Right move right
+
+
+### Workspaces:
+
+# Switch to workspace
+bindsym $mod+1 workspace 1
+bindsym $mod+2 workspace 2
+bindsym $mod+3 workspace 3
+bindsym $mod+4 workspace 4
+bindsym $mod+5 workspace 5
+bindsym $mod+6 workspace 6
+bindsym $mod+7 workspace 7
+bindsym $mod+8 workspace 8
+bindsym $mod+9 workspace 9
+bindsym $mod+0 workspace 10
+
+# Move focused container to workspace
+bindsym $mod+Shift+1 move container to workspace 1
+bindsym $mod+Shift+2 move container to workspace 2
+bindsym $mod+Shift+3 move container to workspace 3
+bindsym $mod+Shift+4 move container to workspace 4
+bindsym $mod+Shift+5 move container to workspace 5
+bindsym $mod+Shift+6 move container to workspace 6
+bindsym $mod+Shift+7 move container to workspace 7
+bindsym $mod+Shift+8 move container to workspace 8
+bindsym $mod+Shift+9 move container to workspace 9
+bindsym $mod+Shift+0 move container to workspace 10
+
+# Move workspace between outputs
+bindsym $mod+Shift+Ctrl+$left move workspace to output left
+bindsym $mod+Shift+Ctrl+$down move workspace to output down
+bindsym $mod+Shift+Ctrl+$up move workspace to output up
+bindsym $mod+Shift+Ctrl+$right move workspace to output right
+
+
+### Layout stuff:
+
+# You can "split" the current object of your focus with
+# $mod+s or $mod+v, for horizontal and vertical splits
+# respectively.
+bindsym $mod+s splith
+bindsym $mod+v splitv
+
+# Switch the current container between different layout styles
+bindsym $mod+q layout stacking
+bindsym $mod+w layout tabbed
+bindsym $mod+e layout toggle split
+
+# Make the current focus fullscreen
+bindsym $mod+f fullscreen
+
+# Toggle the current focus between tiling and floating mode
+bindsym $mod+Shift+space floating toggle
+
+# Swap focus between the tiling area and the floating area
+bindsym $mod+t focus mode_toggle
+
+# move focus to the parent container
+bindsym $mod+a focus parent
+
+### Resizing containers:
+
+bindsym $mod+r mode "resize"
+
+mode "resize" {
+    # Left will shrink the containers width
+    bindsym $left resize shrink width 10 px or 10 ppt
+
+    # Down will grow the containers height
+    bindsym $down resize grow height 10 px or 10 ppt
+
+    # Up will shrink the containers height
+    bindsym $up resize shrink height 10 px or 10 ppt
+
+    # Right will grow the containers width
+    bindsym $right resize grow width 10 px or 10 ppt
+
+    # Arrow keys the same, but less units
+    bindsym Left  resize shrink width  1 px or 1 ppt
+    bindsym Down  resize grow   height 1 px or 1 ppt
+    bindsym Up    resize shrink height 1 px or 1 ppt
+    bindsym Right resize grow   width  1 px or 1 ppt
+
+    # return to default mode
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+
+{{ base16_i3['schemes'][base16_scheme]['i3']['colors']['base16-' + base16_scheme + '.config'] }}
+
+{{ base16_i3['schemes'][base16_scheme]['i3']['client-properties']['base16-' + base16_scheme + '.config'] }}
+
+bindsym --locked XF86AudioRaiseVolume exec pactl set-sink-volume @DEFAULT_SINK@ +5%
+bindsym --locked XF86AudioLowerVolume exec pactl set-sink-volume @DEFAULT_SINK@ -5%
+bindsym --locked XF86AudioMute exec pactl set-sink-mute @DEFAULT_SINK@ toggle
+bindsym --locked XF86AudioMicMute exec pactl set-source-mute \@DEFAULT_SOURCE@ toggle
+bindsym --locked XF86AudioPlay exec playerctl play-pause
+bindsym --locked XF86AudioPause exec playerctl play-pause
+bindsym --locked XF86AudioNext exec playerctl next
+bindsym --locked XF86AudioPrev exec playerctl previous
+
+bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
+bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
+
+bindsym --locked $mod+XF86MonBrightnessDown exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -1000
+bindsym --locked $mod+XF86MonBrightnessUp exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n +1000
+bindsym --locked $mod+Control+0 exec  busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500
+
+# Screenshot a selectable region and open in editor
+bindsym Print exec grim -g "$(slurp -c '#ff0000ff')" - | satty --filename - --fullscreen --output-filename ~/Downloads/screenshot-$(date '+%Y%m%d-%H:%M:%S').png
+
+# Systemd user-session integration via drop-ins:
+#  - sway pkg's 50-systemd-user.conf imports DISPLAY/WAYLAND_DISPLAY/SWAYSOCK
+#    and sets XDG_CURRENT_DESKTOP.
+#  - sway-systemd's 10-systemd-session.conf runs session.sh, which starts
+#    sway-session.target (and stops it via sway-session-shutdown.target on
+#    exit). Everything WantedBy=sway-session.target starts from there.
+include /etc/sway/config.d/*

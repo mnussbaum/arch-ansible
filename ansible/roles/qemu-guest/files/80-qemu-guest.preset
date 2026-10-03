@@ -1,0 +1,2 @@
+enable pcscd-vsock-guest.service
+enable qemu-guest-agent.service

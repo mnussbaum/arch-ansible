@@ -1,0 +1,8 @@
+# Bind root and swap's TPM2 slots to a systemd-pcrlock policy for PCR 7 instead
+# of a literal PCR 7 value, so a Secure Boot variable change (a dbx update, say)
+# can be re-predicted rather than breaking the seal. See
+# mkosi.extra/usr/lib/systemd/system/pcrlock-enroll-luks.service.
+enable systemd-pcrlock-secureboot-policy.service
+enable systemd-pcrlock-secureboot-authority.service
+enable systemd-pcrlock-make-policy.service
+enable pcrlock-enroll-luks.service

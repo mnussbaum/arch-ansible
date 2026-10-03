@@ -1,0 +1,8 @@
+# The ghostty package ships app-com.mitchellh.ghostty.service, a single-instance
+# GTK daemon (WantedBy=graphical-session.target). systemd's default preset
+# policy is "enable", so `systemctl --global preset-all` switches it on even
+# though nothing here asks for it. As a graphical-session.target unit it starts
+# before sway has imported WAYLAND_DISPLAY into the user manager, so GTK can't
+# open the display and it fails. We launch ghostty on demand from sway, not via
+# this daemon, so disable it.
+disable app-com.mitchellh.ghostty.service

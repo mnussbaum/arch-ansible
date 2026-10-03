@@ -1,0 +1,9 @@
+#!/bin/bash
+# Emit a fresh image version. `mkosi --bump` runs this and writes the result to
+# mkosi.version, which drives ImageVersion (ImageId is `image`, so partitions and
+# UKIs are labeled image_<version>_<arch>). A monotonically increasing timestamp
+# means systemd-sysupdate always sees the new build as newer than the running
+# slot, so it installs to the inactive A/B slot; InstancesMax=2 prunes the rest.
+set -e
+
+date +%Y%m%d%H%M%S

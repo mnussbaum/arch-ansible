@@ -1,0 +1,11 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create psql config dir
+  file:
+    path: /etc/xdg/psql
+    state: directory
+
+- name: Install psqlrc file
+  copy:
+    src: psqlrc
+    dest: /etc/xdg/psql/psqlrc

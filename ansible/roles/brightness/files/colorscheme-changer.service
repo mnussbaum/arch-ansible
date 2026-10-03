@@ -1,0 +1,9 @@
+[Unit]
+Description=Change colorscheme and wallpaper based on the time of day
+Requires=graphical-session.target
+After=graphical-session.target
+ConditionPathExists=!/run/systemd/sleep/
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/colorscheme-changer

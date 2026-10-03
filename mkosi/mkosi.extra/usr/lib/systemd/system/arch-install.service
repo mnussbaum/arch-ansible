@@ -1,0 +1,38 @@
+# Guided installer, auto-started on tty1 in the Installer UKI profile. Runs
+# `install-system --guided` (enumerate target disks -> pick -> confirm ->
+# systemd-repart), producing a pure Boot Loader Spec Type #2 install. Replaces
+# the old `systemd.unit=systemd-sysinstall.service` wiring (Type #1 via `bootctl
+# link`). See mkosi.extra/usr/bin/install-system and
+# mkosi.uki-profiles/25-install.conf.
+#
+# Gated on the `arch.install` kernel-cmdline marker that only the Installer
+# profile sets, so it is inert (condition fails, ordinary getty runs) in the
+# Live/Recovery and installed-system profiles that share this same image. The
+# guided menu offers "drop to a shell"; autologin on the other VTs is a second
+# escape hatch.
+[Unit]
+Description=Guided OS installer (Boot Loader Spec Type #2)
+Documentation=man:systemd-repart(8)
+ConditionKernelCommandLine=arch.install
+After=systemd-user-sessions.service getty-pre.target systemd-udevd.service
+Before=getty.target
+Conflicts=getty@tty1.service
+IgnoreOnIsolate=yes
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/install-system --guided
+Restart=always
+RestartSec=1
+UtmpIdentifier=tty1
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+KillMode=process
+SendSIGHUP=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,22 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install libinput-gestures service
+  copy:
+    dest: /usr/lib/systemd/user/libinput-gestures.service
+    src: libinput-gestures.service
+
+- name: Install libinput-gestures.conf
+  copy:
+    dest: /etc/libinput-gestures.conf
+    src: libinput-gestures.conf
+
+- name: Install touchpad symlink udev rule
+  copy:
+    dest: /usr/lib/udev/rules.d/99-touchpad-symlink.rules
+    src: 99-touchpad-symlink.rules
+
+- name: Install systemd user preset
+  copy:
+    src: 80-libinput.preset
+    dest: /usr/lib/systemd/user-preset/80-libinput.preset
+

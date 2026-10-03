@@ -1,0 +1,40 @@
+#!/bin/sh
+# Rebind the Elan i2c touchpad after resume. Without this, pointer movement
+# works but clicking is delayed ~1-2 minutes while the touchpad firmware
+# reinitializes its button reporting path.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+log() {
+    logger -t reset-elan-touchpad "$*"
+}
+
+# Only run on the Dell XPS hardware that needs this workaround. The image is
+# shared across machines, so guard at runtime via DMI (the same source as
+# ansible's system_vendor/product_name facts) rather than at build time.
+vendor=$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)
+product=$(cat /sys/class/dmi/id/product_name 2>/dev/null || true)
+case "$vendor::$product" in
+    "Dell Inc."::*XPS*) ;;
+    *) exit 0 ;;
+esac
+
+case "$1" in
+    post)
+        driver=/sys/bus/i2c/drivers/i2c_hid_acpi
+        rebound=0
+        for dev in "$driver"/*/; do
+            [ -L "${dev%/}/driver" ] || continue
+            devid=$(basename "$dev")
+            log "post: rebinding $devid"
+            echo "$devid" > "$driver/unbind"
+            sleep 0.3
+            echo "$devid" > "$driver/bind"
+            rebound=$((rebound + 1))
+        done
+        log "post: rebound $rebound device(s)"
+        # swayidle's after-resume restarts libinput-gestures onto the new device
+        ;;
+esac

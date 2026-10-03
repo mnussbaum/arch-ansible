@@ -1,0 +1,55 @@
+# vim:ft=yaml.ansible:
+---
+- name: Enable loop kernel module
+  copy:
+    content: loop
+    dest: /usr/lib/modules-load.d/loop.conf
+
+- name: Install systemd user preset
+  copy:
+    src: 80-devops.preset
+    dest: /usr/lib/systemd/user-preset/80-devops.preset
+
+- name: Create podman socket drop-in dir
+  file:
+    path: /usr/lib/systemd/user/podman.socket.d
+    state: directory
+
+- name: Skip the podman socket for system users
+  copy:
+    src: skip-system-users.conf
+    dest: /usr/lib/systemd/user/podman.socket.d/skip-system-users.conf
+    mode: "0644"
+
+- name: Create containers config dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+    - /etc/containers
+    - /etc/containers/registries.conf.d
+
+- name: Install containers storage config
+  copy:
+    src: containers-storage.conf
+    dest: /etc/containers/storage.conf
+
+- name: Create the rootless storage parent at boot
+  copy:
+    src: containers-rootless.tmpfiles
+    dest: /usr/lib/tmpfiles.d/containers-rootless.conf
+
+- name: Use the ECR credential helper for registry logins
+  copy:
+    src: 50-ecr.conf
+    dest: /etc/containers/registries.conf.d/50-ecr.conf
+
+- name: Create docker client config dir
+  file:
+    path: /etc/xdg/docker
+    state: directory
+
+- name: Install docker client config
+  copy:
+    src: docker-user-config.json
+    dest: /etc/xdg/docker/config.json

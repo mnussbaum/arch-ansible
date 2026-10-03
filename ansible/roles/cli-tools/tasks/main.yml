@@ -1,0 +1,50 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install fzf helper scripts
+  copy:
+    dest: "/usr/bin/{{ item | basename }}"
+    src: "{{ item }}"
+    mode: a+x
+  with_fileglob:
+    - fzf_helpers/*
+
+- name: Generate base16-fzf config
+  base16_builder:
+    scheme: "{{ base16_scheme }}"
+    scheme_family: "{{ base16_scheme_family }}"
+    template: fzf
+    schemes_source: "{{ base16['schemes_source'] }}"
+    templates_source: "{{ base16['templates_source'] }}"
+  register: base16_fzf
+  tags: [base16]
+
+- name: Write base16-fzf config to a file
+  copy:
+    content: "{{ base16_fzf['schemes'][base16_scheme]['fzf']['sh']['base16-' + base16_scheme + '.sh'] }}"
+    dest: /etc/zsh/fzf-base16.zsh
+  tags: [base16]
+
+- name: Create bat config dir
+  file:
+    path: /etc/xdg/bat
+    state: directory
+
+- name: Write bat config file
+  copy:
+    src: bat-config
+    dest: /etc/xdg/bat/config
+
+- name: Create ripgrep config dir
+  file:
+    path: /etc/xdg/ripgrep
+    state: directory
+
+- name: Write ripgrep config file
+  copy:
+    src: ripgrep-config
+    dest: /etc/xdg/ripgrep/config
+
+- name: Write inputrc config file
+  copy:
+    src: inputrc
+    dest: /etc/inputrc

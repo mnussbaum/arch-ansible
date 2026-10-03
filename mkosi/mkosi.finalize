@@ -1,0 +1,64 @@
+#!/bin/bash
+set -euo pipefail
+
+# Write build caches the postinst generated back to the host so the next build's
+# SkeletonTrees / BuildSources seed them in, avoiding re-download/-compile.
+#
+# Finalize scripts run in a sandbox that binds neither the host ~/.cache nor the
+# build caches' image paths — only mkosi's own mounts and $OUTPUTDIR. Writing to
+# "$ARCH_ANSIBLE_CACHE/..." here is silently discarded. So we use two routes:
+#   - pacman's package cache, which mkosi binds RW into this sandbox at
+#     /var/cache/pacman/pkg (the pacman-cache BuildSource's host source), is
+#     written directly; and
+#   - cargo/sccache/nvim, which have no such mount, are staged into $OUTPUTDIR
+#     (which mkosi copies to the output dir) for bin/build-image to fold into
+#     $ARCH_ANSIBLE_CACHE after mkosi returns.
+
+# --- pacman: postinst downloads -> mkosi's package cache (direct, mounted) ---
+# /var/cache/pacman/pkg here is the *sandbox* mount of the host cache
+# (== $ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg). rsync is additive;
+# packages already present from mkosi's own install are identical and skipped.
+if [[ -d "$BUILDROOT/var/cache/pacman/pkg" ]]; then
+    rsync -a "$BUILDROOT/var/cache/pacman/pkg/" /var/cache/pacman/pkg/
+fi
+
+# --- cargo/sccache/nvim: postinst caches -> $OUTPUTDIR (host pickup) ---
+# Stage only what the postinst created this build: files newer than the marker
+# mkosi.postinst.chroot drops at its start. The rest were seeded in via
+# SkeletonTrees and are already on the host, so this keeps the staged delta small
+# instead of copying multi-GB caches every build. The marker (not a timestamp
+# from the host) is robust against however the incremental restore stamps mtimes,
+# since it is created after that restore. No marker (e.g. --skip-postinst) =>
+# nothing to write back.
+marker="$BUILDROOT/root/.cache-writeback-since"
+if [[ -f "$marker" ]]; then
+    stage=/work/out/cache-writeback
+    _stage_delta() {
+        local src="$1" name="$2"
+        [[ -d "$src" ]] || return 0
+        mkdir -p "$stage/$name"
+        # Include directories, not just files/symlinks: an empty dir carries no
+        # file to drag it across, and rsync --files-from won't create absent
+        # parents. A git clone that packs every ref into packed-refs leaves refs/
+        # empty — drop it and git stops recognising the dir as a repo (this bit
+        # yay's mirror clones, when those were cached here; nvim's vim.pack
+        # clones are git too). rsync copies a listed dir non-recursively, so
+        # empty refs/ is recreated while non-empty dirs still arrive via their
+        # own (newer) files.
+        find "$src" -mindepth 1 \( -type f -o -type l -o -type d \) -newer "$marker" -printf '%P\0' \
+            | rsync -a --from0 --files-from=- "$src/" "$stage/$name/"
+    }
+    # cargo: write back only the downloaded .crate archives (cache/) and the
+    # registry index (index/), whose files carry current mtimes and round-trip
+    # through the -newer delta cleanly. NOT src/: cargo extracts each .crate
+    # there preserving the archive's stored (old) mtimes, so -newer matches the
+    # freshly-created src/<crate>/ *directory* but none of its old-mtime contents
+    # — and rsync copies a listed dir non-recursively (see refs/ above), writing
+    # back an empty src/<crate>/. That empty dir then makes cargo skip re-extraction
+    # and fail reading the absent Cargo.toml. src/ is fully rebuilt from cache/,
+    # so the postinst drops it and cargo re-extracts cleanly each build.
+    _stage_delta "$BUILDROOT/root/.cargo/registry/cache" cargo-registry/cache
+    _stage_delta "$BUILDROOT/root/.cargo/registry/index" cargo-registry/index
+    _stage_delta "$BUILDROOT/root/.cache/sccache"  sccache
+    _stage_delta "$BUILDROOT/etc/skel/.local/share/nvim/site" nvim-site
+fi

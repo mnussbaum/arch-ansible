@@ -1,0 +1,26 @@
+# vim:ft=yaml.ansible:
+---
+- name: Download delta themes
+  get_url:
+    url: https://raw.githubusercontent.com/dandavison/delta/master/themes.gitconfig
+    dest: /usr/share/delta-themes.gitconfig
+
+- name: Install gitconfig
+  template:
+    src: gitconfig.j2
+    dest: /etc/gitconfig
+
+- name: Create gitconfig.d dir
+  file:
+    path: /etc/gitconfig.d
+    state: directory
+
+- name: Install personal gitconfig
+  template:
+    src: personal-gitconfig.j2
+    dest: /etc/gitconfig.d/personal
+
+- name: Install attributes file for mergiraf
+  copy:
+    src: gitattributes
+    dest: /etc/gitconfig.d/attributes

@@ -1,0 +1,7 @@
+Host github.com
+  Hostname github.com
+  User git
+
+Host *
+  PreferredAuthentications publickey
+  Compression yes

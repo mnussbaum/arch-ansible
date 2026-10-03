@@ -1,0 +1,60 @@
+# vim:ft=yaml.ansible:
+---
+# TODO: Make waybars reveal over full screen when screen is touched or mouse is moved
+
+- name: Create waybar config dir
+  file:
+    path: /etc/xdg/waybar
+    state: directory
+
+- name: Install waybar config
+  template:
+    src: waybar-config.json.j2
+    dest: /etc/xdg/waybar/config
+  tags: [base16]
+
+- name: Install waybar styling
+  template:
+    src: waybar-style.css.j2
+    dest: /etc/xdg/waybar/style.css
+  tags: [base16]
+
+- name: Install service
+  copy:
+    src: waybar.service
+    dest: /usr/lib/systemd/user/waybar.service
+
+- name: Install systemd user preset
+  copy:
+    src: 80-waybar.preset
+    dest: /usr/lib/systemd/user-preset/80-waybar.preset
+
+
+- name: Create waybar-sway-workspace-output-manager config dir
+  file:
+    path: /etc/xdg/waybar-sway-workspace-output-manager
+    state: directory
+
+- name: Install waybar-sway-workspace-output-manager config file
+  template:
+    src: waybar-sway-workspace-output-manager-config.j2
+    dest: /etc/xdg/waybar-sway-workspace-output-manager/config
+  tags: [base16]
+
+- name: Install waybar-sway-workspace-output-manager service
+  copy:
+    src: waybar-sway-workspace-output-manager.service
+    dest: /usr/lib/systemd/user/waybar-sway-workspace-output-manager.service
+
+
+- name: Install module scripts
+  copy:
+    src: "{{ item }}"
+    dest: "/usr/bin/{{ item }}"
+    mode: a+x
+  with_items:
+    - waybar-cpu-temp
+    - waybar-bluetooth-status
+    - toggle-bluetooth
+    - toggle-wifi
+    - headphone-profile-status
