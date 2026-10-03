@@ -217,8 +217,11 @@ def snapshot_entry_type(
          "--json", str(path)],
         capture_output=True, text=True, env=env,
     )
+    # A path missing from the snapshot is an empty result, not an error, so a
+    # failure here (bad credentials, unreachable repo, unknown snapshot) must
+    # stop the restore rather than look like every path is absent.
     if r.returncode != 0:
-        return None
+        sys.exit(f"restic find failed:\n{r.stderr.strip()}")
     data = json.loads(r.stdout or "[]")
     matches = data[0]["matches"] if data else []
     return matches[0]["type"] if matches else None
@@ -240,7 +243,10 @@ def home_relative(arg: str, home: pathlib.Path) -> pathlib.Path:
 
 def cmd_restore(args: argparse.Namespace) -> None:
     home = home_dir(args.user).resolve()
-    snap_root = home / SNAPSHOT_DIRNAME / SNAPSHOT_NAME
+    # Where the backed-up paths live inside a snapshot: under the btrfs
+    # snapshot `backup` takes, or, for snapshots made by the older script that
+    # backed up the live home directly, at their plain home paths.
+    snap_roots = [home / SNAPSHOT_DIRNAME / SNAPSHOT_NAME, home]
 
     # Explicit -d paths are resolved and required to be under home; the
     # includes-file defaults are already authored home-relative.
@@ -251,10 +257,13 @@ def cmd_restore(args: argparse.Namespace) -> None:
 
     with repo_env(args.device) as env:
         for rel in rels:
-            src = snap_root / rel       # the path inside the snapshot
             dst = home / rel            # the same path on disk, restored in place
-            kind = snapshot_entry_type(env, args.snapshot, src)
-            if kind is None:
+            for root in snap_roots:
+                src = root / rel        # the path inside the snapshot
+                kind = snapshot_entry_type(env, args.snapshot, src)
+                if kind is not None:
+                    break
+            else:
                 print(f"skipping {rel}: not in snapshot {args.snapshot}",
                       file=sys.stderr)
                 continue
