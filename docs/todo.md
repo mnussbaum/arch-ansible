@@ -1,3 +1,5 @@
+## Bootstrapping
+
 - Burn recovery media
 - Label recovery media
 - Prepare recovery packages
@@ -7,3 +9,9 @@
 - Remove ARCH_ANSIBLE_SRCTREE copying used to avoid copying secrets dir with repo into image
 - Verify update from USB on XPS
 - Add testing and CI
+
+## Sync
+
+- Organize the Sync directory
+- Move all photos into a photo management tool
+- Holistic data sync strategy
