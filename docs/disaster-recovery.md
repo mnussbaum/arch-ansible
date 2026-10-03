@@ -97,7 +97,9 @@ The result is a stopgap:
 
 ## How it works
 
-- `container/Containerfile` is an Arch container with mkosi and the build tools.
+- `container/Containerfile` is an Arch container holding the packages listed in
+  `mkosi/mkosi.conf.d/20-builder.conf`, the same ones the image carries to
+  rebuild itself; add build tools there, not to the Containerfile.
   It is x86_64 only, like the image; mkosi's `Architecture=` and pacman's are
   pinned, so emulation on an arm64 host can't change what gets built.
 - `container/dr-unlock` imports the public key from

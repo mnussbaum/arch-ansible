@@ -115,7 +115,7 @@ else
 fi
 
 echo "==> Building the builder container" >&2
-"${rt[@]}" build --platform linux/amd64 --tag "$image" --file container/Containerfile container
+"${rt[@]}" build --platform linux/amd64 --tag "$image" --file container/Containerfile .
 
 echo "==> Building the image (a cold build takes hours, more under emulation)" >&2
 "${run[@]}" "$image" ${build_args[@]+"${build_args[@]}"}
