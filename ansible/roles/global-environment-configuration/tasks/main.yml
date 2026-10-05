@@ -17,3 +17,9 @@
   copy:
     dest: /etc/zsh/zprofile
     src: source_etc_profile
+
+- name: Install default applications
+  copy:
+    src: mimeapps.list
+    dest: /usr/share/applications/mimeapps.list
+    mode: "0644"

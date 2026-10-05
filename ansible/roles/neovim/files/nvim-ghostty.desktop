@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Neovim (Ghostty)
+Comment=Edit text files in Neovim inside a Ghostty window
+# xdg-open ignores Terminal=true under sway, so open the terminal ourselves
+Exec=ghostty -e nvim %F
+Terminal=false
+Icon=nvim
+NoDisplay=true
+MimeType=text/plain;text/markdown;text/x-csrc;text/x-chdr;text/x-python;text/x-shellscript;application/x-shellscript;application/json;application/toml;application/x-yaml;

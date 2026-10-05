@@ -209,3 +209,9 @@
     content: "{{ base16_lightline['schemes'][base16_scheme]['vim-lightline']['autoload/lightline/colorscheme']['base16-' + base16_scheme + '.vim'] }}"
     dest: "{{ nvim_config_dir }}/plugin/base16-lightline.vim"
   tags: [base16]
+
+- name: Install Neovim-in-Ghostty desktop entry for default text handling
+  copy:
+    src: nvim-ghostty.desktop
+    dest: /usr/share/applications/nvim-ghostty.desktop
+    mode: "0644"
