@@ -1,3 +1,0 @@
-# Enable wireless power save
-
-ACTION=="add", SUBSYSTEM=="net", KERNEL=="wlan*", RUN+="/usr/bin/iw dev %k set power_save on"

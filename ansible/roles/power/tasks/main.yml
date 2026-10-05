@@ -11,10 +11,16 @@
     dest: /usr/lib/systemd/system/thermald.service.d/condition.conf
     mode: "0644"
 
+- name: Create TLP drop-in directory
+  file:
+    path: /etc/tlp.d
+    state: directory
+
 - name: Configure TLP
   copy:
-    src: tlp
-    dest: /etc/default/tlp
+    src: tlp.conf
+    dest: /etc/tlp.d/50-power.conf
+    mode: "0644"
 
 - name: Install systemd preset
   copy:
@@ -98,8 +104,3 @@
     dest: "/usr/lib/udev/rules.d/{{ item | basename }}"
   with_fileglob:
     - udev-rules.d/*
-
-- name: Enable audio codec power management
-  copy:
-    content: "options snd_hda_intel power_save=1 power_save_controller=Y"
-    dest: "/usr/lib/modprobe.d/audio_powersave.conf"
