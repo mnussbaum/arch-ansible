@@ -22,6 +22,7 @@
     driver = mergiraf merge --git %O %A %B -s %S -x %X -y %Y -p %P
 
 [diff]
+  algorithm = histogram
   colorMoved = default
 
 [user]
@@ -49,15 +50,25 @@
   branches = log --graph --abbrev-commit --decorate --date=relative --format=format:'%C(bold blue)%h%C(reset) - %C(bold green)(%ar)%C(reset) %C(white)%s%C(reset) %C(dim white)- %an%C(reset)%C(bold yellow)%d%C(reset)' --all
   fco = !git checkout "$(git branch --format='%(refname:short)' --sort=-committerdate | tr -d ' ' | tr -s '\n' | fzf)"
   exeunt = stash --keep-index --include-untracked
+  lg = log --graph --pretty=format:'%C(auto)%h%d %s %C(dim)(%ar, %an)' --abbrev-commit
+  uncommit = reset --soft HEAD~1
+  amend = commit --amend --no-edit
+  wip = !git add -A && git commit --no-verify -m wip
+  sync = !git fetch origin && git rebase origin/main
 
 [init]
   defaultBranch = main
+
+[pull]
+  rebase = true
 
 [push]
   autoSetupRemote = true
 
 [rebase]
   updateRefs = true
+  autoSquash = true
+  autoStash = true
 
 [commit]
   verbose = true
@@ -67,9 +78,6 @@
 
 [rerere]
   enabled = true
-
-[diff]
-  algorithm = histogram
 
 [transfer]
   fsckObjects = true
