@@ -3,3 +3,6 @@ AllowSuspend=yes
 AllowHibernation=yes
 AllowSuspendThenHibernate=yes
 HibernateDelaySec={{ idle_thresholds["hibernate_delay_minutes"] * 60 }}
+# Check the battery during suspend-then-hibernate more often than hourly, so a
+# fast drain still hibernates near the 5% floor
+SuspendEstimationSec=30min

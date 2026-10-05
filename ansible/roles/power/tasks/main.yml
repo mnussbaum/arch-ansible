@@ -22,10 +22,21 @@
     dest: /etc/tlp.d/50-power.conf
     mode: "0644"
 
+- name: Configure UPower
+  copy:
+    src: upower.conf
+    dest: /etc/UPower/UPower.conf.d/50-power.conf
+    mode: "0644"
+
 - name: Install systemd preset
   copy:
     src: 80-power.preset
     dest: /usr/lib/systemd/system-preset/80-power.preset
+
+- name: Install systemd user preset
+  copy:
+    src: 80-power-user.preset
+    dest: /usr/lib/systemd/user-preset/80-power.preset
 
 
 - name: Create logind drop-in directory
