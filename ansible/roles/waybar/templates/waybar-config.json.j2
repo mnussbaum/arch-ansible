@@ -115,7 +115,6 @@
       "exec": "headphone-profile-status",
       "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}', last_block=True, position='left') }}",
       "tooltip": false,
-      "interval": 1,
       "on-click": "toggle-headphone-profile",
     },
 
@@ -133,8 +132,7 @@
       "on-click": "toggle-bluetooth",
       "exec": "waybar-bluetooth-status",
       "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}') }}",
-      "tooltip": false,
-      "interval": 1
+      "tooltip": false
     },
 
     "pulseaudio": {

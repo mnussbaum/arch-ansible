@@ -3,12 +3,24 @@
 set -o errexit
 set -o nounset
 
-if pactl list | grep -q "Active Profile: a2dp-sink" ; then
-  printf "󰋋🎶"
-elif pactl list | grep -q "Active Profile: headset-head-unit" ; then
-  printf "󰋋󰍮"
-else
-  printf "󰟎"
-fi
+print_status() {
+  local cards
+  cards=$(pactl list cards)
 
-printf "\n"
+  if grep -q "Active Profile: a2dp-sink" <<< "$cards" ; then
+    printf "󰋋🎶\n"
+  elif grep -q "Active Profile: headset-head-unit" <<< "$cards" ; then
+    printf "󰋋󰍮\n"
+  else
+    printf "󰟎\n"
+  fi
+}
+
+print_status
+
+# Reprint on card events (profile switches, headsets connecting) instead of polling
+pactl subscribe | while read -r event ; do
+  if [[ $event == *" on card "* ]] ; then
+    print_status
+  fi
+done

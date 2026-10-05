@@ -4,16 +4,22 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-unblocked_bluetooth_devices_count=$(
-  rfkill --json | \
-    jq '.rfkilldevices | map(select(.type == "bluetooth")) |
-          map(select(.soft == "unblocked")) | length'
-)
+print_status() {
+  local unblocked_bluetooth_devices_count
+  unblocked_bluetooth_devices_count=$(
+    rfkill --json | \
+      jq '.rfkilldevices | map(select(.type == "bluetooth")) |
+            map(select(.soft == "unblocked")) | length'
+  )
 
-if [[ $unblocked_bluetooth_devices_count -gt 0 ]] ; then
-  printf "⏽"
-else
-  printf "⭘"
-fi
+  if [[ $unblocked_bluetooth_devices_count -gt 0 ]] ; then
+    printf "⏽\n"
+  else
+    printf "⭘\n"
+  fi
+}
 
-printf "\n"
+# rfkill event lists current devices on start, then streams changes
+rfkill event | while read -r _ ; do
+  print_status
+done
