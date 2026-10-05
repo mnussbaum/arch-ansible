@@ -1,5 +1,5 @@
 [Unit]
-Description=Lock screen after 5 min idle and sleep after 10 min idle
+Description=Lock, blank and then sleep the session when idle
 Documentation=man:swayidle(1) man:swaylock(1)
 PartOf=graphical-session.target
 
@@ -11,6 +11,8 @@ PartOf=graphical-session.target
 # i915 after hibernate, and libinput-gestures picks up the rebound touchpad.
 ExecStart=swayidle -w \
     timeout {{ idle_thresholds["lock_screen_delay_minutes"] * 60 }} "chayang && loginctl lock-session" \
+    timeout {{ idle_thresholds["screen_off_delay_minutes"] * 60 }} "swaymsg 'output * power off'" \
+        resume "swaymsg 'output * power on'" \
     timeout {{ idle_thresholds["suspend_delay_minutes"] * 60 }} "systemctl sleep" \
     lock "pgrep -x swaylock || swaylock -f" \
     before-sleep "pgrep -x swaylock || swaylock -f" \

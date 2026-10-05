@@ -21,6 +21,7 @@ font:
 
 idle_thresholds:
   lock_screen_delay_minutes: 5
+  screen_off_delay_minutes: 6
   suspend_delay_minutes: 10
   hibernate_delay_minutes: 120
 
