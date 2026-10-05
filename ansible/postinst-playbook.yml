@@ -146,6 +146,9 @@
         name: polkit
       tags: [polkit]
     - import_role:
+        name: udiskie
+      tags: [udiskie]
+    - import_role:
         name: brightness
       tags: [brightness]
     - import_role:
