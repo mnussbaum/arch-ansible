@@ -10,3 +10,15 @@
     pass show parallel/vanta-agent-key
     | sudo -n /usr/bin/vanta-activate {{ active_organizations[organization].email | quote }}
   when: not vanta_conf.stat.exists
+
+# rustup replaces the rust package for Parallel; keep cargo working outside
+# repos that pin a toolchain.
+- name: Check for a default rustup toolchain
+  command: rustup default
+  register: rustup_default
+  failed_when: false
+  changed_when: false
+
+- name: Default rustup to the stable toolchain
+  command: rustup default stable
+  when: rustup_default.rc != 0

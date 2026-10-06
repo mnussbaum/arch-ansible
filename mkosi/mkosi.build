@@ -8,6 +8,13 @@ if [[ -d /work/src/cargo-registry ]]; then
     ln -sf /work/src/cargo-registry "$CARGO_HOME/registry"
 fi
 
+# rustup builders (the Parallel profile) have no toolchain for root; keep one
+# in the build cache.
+if command -v rustup >/dev/null; then
+    export RUSTUP_HOME=/work/src/rustup-home RUSTUP_TOOLCHAIN=stable
+    rustup toolchain install stable --profile minimal --no-self-update
+fi
+
 SCCACHE_NO_DAEMON=1 SCCACHE_DIR=/work/src/sccache-cache \
     SCCACHE_SERVER_PORT=14226 /usr/bin/sccache --start-server &
 trap "SCCACHE_SERVER_PORT=14226 /usr/bin/sccache --stop-server 2>/dev/null || true" EXIT

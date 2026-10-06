@@ -4,3 +4,4 @@
 !container/dr-entrypoint
 !container/dr-unlock
 !mkosi/mkosi.conf.d/20-builder.conf
+!mkosi/mkosi.conf.d/91-rust.conf

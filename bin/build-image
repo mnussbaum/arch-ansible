@@ -129,7 +129,8 @@ output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 mkdir -p "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg" "$output_dir" \
   "$ARCH_ANSIBLE_CACHE/aur-repo" \
   "$ARCH_ANSIBLE_CACHE/nvim/site" \
-  "$ARCH_ANSIBLE_CACHE/cargo/registry" "$ARCH_ANSIBLE_CACHE/sccache"
+  "$ARCH_ANSIBLE_CACHE/cargo/registry" "$ARCH_ANSIBLE_CACHE/sccache" \
+  "$ARCH_ANSIBLE_CACHE/rustup"
 
 # Prime an empty nvim plugin/parser cache from the invoking user's personal nvim,
 # so the very first build (or one after a cache wipe) skips re-fetching ~130M of

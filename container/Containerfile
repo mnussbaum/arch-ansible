@@ -7,7 +7,7 @@
 FROM docker.io/library/archlinux:latest
 
 # The builder's packages are the ones the image carries to rebuild itself.
-COPY mkosi/mkosi.conf.d/20-builder.conf /tmp/
+COPY mkosi/mkosi.conf.d/20-builder.conf mkosi/mkosi.conf.d/91-rust.conf /tmp/
 
 # The image is x86_64 whatever uname says under emulation.
 RUN sed -i 's/^Architecture = auto/Architecture = x86_64/' /etc/pacman.conf \
@@ -17,9 +17,9 @@ RUN sed -i 's/^Architecture = auto/Architecture = x86_64/' /etc/pacman.conf \
       > /etc/pacman.d/mirrorlist \
  && pacman -Syu --noconfirm --needed \
       $(sed -n '/^Packages=/,/^\[/s/^[[:space:]]\{1,\}\([a-z0-9][^[:space:]]*\).*/\1/p' \
-          /tmp/20-builder.conf) \
+          /tmp/20-builder.conf /tmp/91-rust.conf) \
  && pacman -Scc --noconfirm \
- && rm /tmp/20-builder.conf
+ && rm /tmp/20-builder.conf /tmp/91-rust.conf
 
 # mkosi and makepkg run as an unprivileged user, as bin/build-image does on a host.
 RUN useradd --create-home --uid 1000 builder \
