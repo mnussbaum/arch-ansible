@@ -1,0 +1,18 @@
+# Routes each organization's remotes through its ssh alias
+# (/etc/ssh/ssh_config.d/50-org-*.conf). Remotes keep their real URLs; only the
+# transport sees the alias.
+{% for name, org in active_organizations.items() %}
+
+# {{ name }}
+{% for remote in org.git_remotes %}
+{% set prefixes = ['git@' ~ remote.host ~ ':', 'https://' ~ remote.host ~ '/', 'ssh://git@' ~ remote.host ~ '/'] %}
+[url "git@{{ remote.host }}-{{ name }}:{{ remote.owner }}/"]
+{% for prefix in prefixes %}
+  insteadOf = {{ prefix }}{{ remote.owner }}/
+{% endfor %}
+{% for prefix in prefixes %}
+[includeIf "hasconfig:remote.*.url:{{ prefix }}{{ remote.owner }}/**"]
+  path = /etc/gitconfig.d/organizations.d/{{ name }}
+{% endfor %}
+{% endfor %}
+{% endfor %}

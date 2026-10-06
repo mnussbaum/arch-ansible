@@ -1,0 +1,52 @@
+# vim:ft=yaml.ansible:
+---
+# Per-organization git identity and ssh keys, from `organizations`
+# (group_vars/all/organizations.yml).
+- name: Install organizations gitconfig
+  template:
+    src: gitconfig.j2
+    dest: /etc/gitconfig.d/organizations
+
+- name: Create organization gitconfig dir
+  file:
+    path: /etc/gitconfig.d/organizations.d
+    state: directory
+
+- name: Install organization gitconfigs
+  template:
+    src: org-gitconfig.j2
+    dest: "/etc/gitconfig.d/organizations.d/{{ item.key }}"
+  loop: "{{ active_organizations | dict2items }}"
+
+- name: Install organization ssh public keys
+  copy:
+    content: "{{ item.value.ssh_key.public }}\n"
+    dest: "/etc/ssh/org-{{ item.key }}.pub"
+  loop: "{{ active_organizations | dict2items }}"
+
+- name: Install organization ssh configs
+  template:
+    src: org-ssh_config.j2
+    dest: "/etc/ssh/ssh_config.d/50-org-{{ item.key }}.conf"
+  loop: "{{ active_organizations | dict2items }}"
+
+- name: Pin the personal ssh key on organization forges
+  template:
+    src: personal-ssh_config.j2
+    dest: /etc/ssh/ssh_config.d/40-personal-key.conf
+  when: active_organizations | length > 0
+
+# bin/ansible and bin/update-system read this back to keep the same set.
+- name: Record the image's organizations in os-release
+  lineinfile:
+    path: /usr/lib/os-release
+    regexp: "^ARCH_ANSIBLE_ORGANIZATIONS="
+    line: "ARCH_ANSIBLE_ORGANIZATIONS={{ image_organizations | join(',') }}"
+    state: "{{ 'present' if image_organizations else 'absent' }}"
+
+- name: Run organization-specific build tasks
+  include_tasks: "{{ organization }}/main.yml"
+  loop: "{{ active_organizations.keys() | list }}"
+  loop_control:
+    loop_var: organization
+  when: (role_path ~ '/tasks/' ~ organization ~ '/main.yml') is file

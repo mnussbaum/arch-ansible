@@ -4,18 +4,23 @@ set -o errexit
 set -o nounset
 
 mkosi_args=()
+organizations=()
 device=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       echo "Write the built image to a device. Build it first with build-image." >&2
-      echo "Usage: $0 [mkosi options...] <device>" >&2
-      echo "  <device>    Whole block device to write the image to. It is wiped first (sudo)." >&2
+      echo "Usage: $0 [--organization NAME]... [mkosi options...] <device>" >&2
+      echo "  <device>         Whole block device to write the image to. It is wiped first (sudo)." >&2
+      echo "  --organization   Burn the newest image built with exactly these organizations" >&2
+      echo "                   (repeatable). Defaults to \$ARCH_ANSIBLE_ORGANIZATIONS, else none." >&2
       echo "  The machine names itself at first boot (mkosi Hostname=, machine-id derived)." >&2
       echo "  Any other options are forwarded to mkosi." >&2
       exit
       ;;
+    --organization=*) organizations+=("${1#*=}") ;;
+    --organization) organizations+=("$2"); shift ;;
     *)
       if [[ "$1" =~ ^-- ]]; then
         mkosi_args+=("$1")
@@ -28,6 +33,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 : "${device:?Usage: $0 <device>}"
+
+source bin/_cache_common.sh
+source bin/_images_common.sh
+if [[ ${#organizations[@]} -eq 0 && -n "${ARCH_ANSIBLE_ORGANIZATIONS:-}" ]]; then
+  IFS=, read -ra organizations <<< "$ARCH_ANSIBLE_ORGANIZATIONS"
+fi
+orgs=$(arch_ansible_normalize_organizations "$(IFS=,; echo "${organizations[*]}")")
+version=$(arch_ansible_latest_image_version "$orgs")
+echo "Burning image $version (organizations: ${orgs:-none})" >&2
 
 # Clear the device's old layout before burning. After writing the new GPT,
 # systemd-repart syncs the kernel's view one partition at a time with BLKPG, in
@@ -60,14 +74,14 @@ if [[ -n "$leftover" ]]; then
   exit 1
 fi
 
-source bin/_cache_common.sh
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 mkdir -p "$output_dir"
 
 mkosi \
   --directory=mkosi \
   --output-directory="$output_dir" \
-  --profile=build \
+  --profile="build${orgs:+,$orgs}" \
+  --image-version="$version" \
   "${mkosi_args[@]}" \
   burn "$device"
 

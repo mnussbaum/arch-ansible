@@ -21,6 +21,9 @@
     - import_role:
         name: ssh
     - import_role:
+        name: organizations
+        tasks_from: user
+    - import_role:
         name: postgres
         tasks_from: pgpass
     - name: Mark user first login complete

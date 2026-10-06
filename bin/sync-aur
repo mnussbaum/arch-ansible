@@ -79,7 +79,9 @@ mkdir -p "$repo"
 # bin/build-image passes it: mkosi/mkosi.conf defaults it to host, so without this a
 # device would resolve the host's mkosi/mkosi.conf.d/10-sources-host.conf and fail on
 # its missing ~/.local/share/password-store.
+# Organization profiles add packages; bin/build-image exports which are enabled.
 summary=$(mkosi --directory "$root/mkosi" \
+    --profile="build${ARCH_ANSIBLE_ORGANIZATIONS:+,$ARCH_ANSIBLE_ORGANIZATIONS}" \
     --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" --json summary)
 mapfile -t wanted < <(printf '%s' "$summary" | python3 -c '
 import json, sys

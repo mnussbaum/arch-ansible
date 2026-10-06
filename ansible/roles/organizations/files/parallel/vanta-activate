@@ -1,0 +1,20 @@
+#!/bin/bash
+# Activate the Vanta agent: write /etc/vanta.conf from the agent key on stdin
+# and start the agent. Run as root via sudo by the first-login playbook.
+#
+#   vanta-activate OWNER_EMAIL < agent-key
+set -o errexit
+set -o nounset
+set -o pipefail
+
+[[ $EUID -eq 0 ]] || { echo "error: run as root" >&2; exit 1; }
+email="${1:?usage: $0 OWNER_EMAIL < agent-key}"
+key=$(tr -d '[:space:]')
+[[ -n "$key" ]] || { echo "error: no agent key on stdin" >&2; exit 2; }
+
+# The vanta deb's postinst writes the same fields; the nonce requests activation.
+umask 077
+jq -n --arg key "$key" --arg email "$email" --argjson nonce "$(date +%s%3N)" \
+    '{ACTIVATION_REQUESTED_NONCE: $nonce, AGENT_KEY: $key, OWNER_EMAIL: $email,
+      REGION: "US", NEEDS_OWNER: true}' > /etc/vanta.conf
+systemctl restart vanta-agent.service

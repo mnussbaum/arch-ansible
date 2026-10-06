@@ -8,13 +8,14 @@ caching="available"
 keep="3"
 skip_postinst=""
 ansible_tags=""
+organizations=()
 mkosi_args=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       echo "Build the image. vm run/burn-image set the hostname at boot." >&2
-      echo "Usage: $0 [--caching force|off|available] [--keep N|all] [--skip-postinst] [--ansible-tags TAGS] [mkosi options...]" >&2
+      echo "Usage: $0 [--caching force|off|available] [--keep N|all] [--organization NAME]... [--skip-postinst] [--ansible-tags TAGS] [mkosi options...]" >&2
       echo "  --caching        Package cache policy for the package-install AND postinst" >&2
       echo "                   phases (default: available):" >&2
       echo "                     force      install only already-cached packages; never use the network" >&2
@@ -23,6 +24,8 @@ while [[ $# -gt 0 ]]; do
       echo "  --keep           After a successful build, prune the output directory to the" >&2
       echo "                   newest N image versions (default: 3). 'all' keeps every" >&2
       echo "                   version; each one costs ~18G." >&2
+      echo "  --organization   Include an organization from ansible/group_vars/all/organizations.yml" >&2
+      echo "                   (repeatable). Defaults to \$ARCH_ANSIBLE_ORGANIZATIONS (comma-separated)." >&2
       echo "  --skip-postinst  Skip the Ansible post-installation step." >&2
       echo "  --ansible-tags   Limit Ansible to specific tags." >&2
       echo "  Any other options are forwarded to mkosi." >&2
@@ -32,6 +35,8 @@ while [[ $# -gt 0 ]]; do
     --caching) caching="$2"; shift ;;
     --keep=*) keep="${1#*=}" ;;
     --keep) keep="$2"; shift ;;
+    --organization=*) organizations+=("${1#*=}") ;;
+    --organization) organizations+=("$2"); shift ;;
     --skip-postinst) skip_postinst="--environment=SKIP_POSTINST=1" ;;
     --ansible-tags=*) ansible_tags="--environment=ANSIBLE_TAGS=${1#*=}" ;;
     --ansible-tags) ansible_tags="--environment=ANSIBLE_TAGS=$2"; shift ;;
@@ -65,6 +70,25 @@ case "$caching" in
     exit 1
     ;;
 esac
+
+# Organizations: each enables its mkosi/mkosi.profiles/<name> (packages) and its
+# config in the organizations Ansible role; the postinst reads them back out of
+# mkosi's $PROFILES. Exported for bin/sync-aur, which must resolve the same
+# package set.
+if [[ ${#organizations[@]} -eq 0 && -n "${ARCH_ANSIBLE_ORGANIZATIONS:-}" ]]; then
+  IFS=, read -ra organizations <<< "$ARCH_ANSIBLE_ORGANIZATIONS"
+fi
+known_organizations=$(python3 -c \
+  "import yaml;print(' '.join(yaml.safe_load(open('ansible/group_vars/all/organizations.yml'))['organizations']))")
+for org in "${organizations[@]}"; do
+  if [[ " $known_organizations " != *" $org "* ]]; then
+    echo "error: unknown organization '$org' (known: $known_organizations)" >&2
+    exit 1
+  fi
+done
+source bin/_images_common.sh
+ARCH_ANSIBLE_ORGANIZATIONS=$(arch_ansible_normalize_organizations "$(IFS=,; echo "${organizations[*]}")")
+export ARCH_ANSIBLE_ORGANIZATIONS
 
 if [[ "$keep" != all && ! "$keep" =~ ^[1-9][0-9]*$ ]]; then
   echo "error: --keep must be a positive integer or 'all' (got '$keep')" >&2
@@ -141,7 +165,7 @@ mkosi \
   --sign-expected-pcr-key="$SECUREBOOT_KEY" \
   --verity-certificate="$SECUREBOOT_CERT" \
   --verity-key="$SECUREBOOT_KEY" \
-  --profile=build \
+  --profile="build${ARCH_ANSIBLE_ORGANIZATIONS:+,$ARCH_ANSIBLE_ORGANIZATIONS}" \
   --force \
   --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
   `# TRANSITIONAL: selects mkosi/mkosi.conf.d/10-sources-*.conf; remove after cutover` \
@@ -151,6 +175,10 @@ mkosi \
   ${ansible_tags:+"$ansible_tags"} \
   "${mkosi_args[@]}" \
   build
+
+# Which organizations this version has, for bin/burn-image, bin/vm and the
+# retention below (bin/_images_common.sh).
+echo "$ARCH_ANSIBLE_ORGANIZATIONS" > "$output_dir/image_$(cat mkosi/mkosi.version)_organizations"
 
 # Fold the postinst-generated cargo/sccache/nvim caches into the reusable caches
 # so the next build's SkeletonTrees/BuildSources seed them. mkosi/mkosi.finalize can't
@@ -170,7 +198,8 @@ fi
 # build with ENOSPC while repart was pre-populating the erofs. One version is the
 # medium plus the split usr/verity/verity-sig/UKI artifacts — ~18G — so a handful
 # is all that fits. Old versions are not reproducible (their Arch package sets have
-# moved on), hence a conservative default of 3 and a --keep all escape hatch.
+# moved on), hence a conservative default of 3 and a --keep all escape hatch. The
+# count is per organization set, so building one image never prunes another's.
 #
 # Versions are the zero-padded UTC timestamps mkosi/mkosi.bump emits, so a reverse
 # sort is newest-first. Each version is deleted by its own explicit -name pattern:
@@ -183,6 +212,7 @@ if [[ "$keep" != all ]]; then
   while read -r version; do
     # Ignores the unversioned leftovers mkosi drops alongside (initrd*, tpm/).
     [[ "$version" =~ ^[0-9]+$ ]] || continue
+    [[ "$(arch_ansible_image_organizations "$version")" == "$ARCH_ANSIBLE_ORGANIZATIONS" ]] || continue
     kept=$((kept + 1))
     (( kept > keep )) || continue
     # Belt and braces: the build we just made is the newest, so it is already
@@ -190,11 +220,7 @@ if [[ "$keep" != all ]]; then
     [[ "$version" != "$current" ]] || continue
     echo "Pruning image version $version" >&2
     find "$output_dir" -maxdepth 1 -name "image_${version}_*" -delete
-  done < <(
-    find "$output_dir" -maxdepth 1 -name 'image_*' -printf '%f\n' \
-      | sed -n 's/^image_\([0-9]\{1,\}\)_.*/\1/p' \
-      | sort -rnu
-  )
+  done < <(arch_ansible_image_versions)
 fi
 
 echo "Built image:" >&2

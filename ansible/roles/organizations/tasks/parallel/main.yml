@@ -1,0 +1,46 @@
+# vim:ft=yaml.ansible:
+---
+# Only /usr ships in the image; move the package's /var/vanta to the factory
+# tree that vanta-tmpfiles.conf seeds it from.
+- name: Move /var/vanta into the factory tree
+  shell: |
+    if [[ -d /var/vanta ]]; then
+      rm -rf /usr/share/factory/var/vanta
+      mkdir -p /usr/share/factory/var
+      mv /var/vanta /usr/share/factory/var/vanta
+    fi
+  args:
+    executable: /bin/bash
+
+- name: Seed /var/vanta at boot
+  copy:
+    src: parallel/vanta-tmpfiles.conf
+    dest: /usr/lib/tmpfiles.d/vanta.conf
+
+- name: Create vanta-agent drop-in dir
+  file:
+    path: /usr/lib/systemd/system/vanta-agent.service.d
+    state: directory
+
+- name: Hold vanta-agent until it is activated
+  copy:
+    src: parallel/vanta-agent-condition.conf
+    dest: /usr/lib/systemd/system/vanta-agent.service.d/arch-ansible-condition.conf
+
+- name: Install vanta-agent preset
+  copy:
+    src: parallel/80-vanta.preset
+    dest: /usr/lib/systemd/system-preset/80-vanta.preset
+
+- name: Install vanta-activate
+  copy:
+    src: parallel/vanta-activate
+    dest: /usr/bin/vanta-activate
+    mode: "0755"
+
+- name: Allow wheel to run vanta-activate
+  copy:
+    src: parallel/vanta-sudoers
+    dest: /etc/sudoers.d/vanta
+    mode: "0440"
+    validate: visudo -cf %s

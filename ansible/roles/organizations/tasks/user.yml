@@ -1,0 +1,35 @@
+# vim:ft=yaml.ansible:
+---
+# /etc/ssh/ssh_config.d/40-personal-key.conf pins this file.
+- name: Export personal SSH public key from the GPG auth subkey
+  command: gpg --export-ssh-key "{{ user.gpg_key_uid }}"
+  register: personal_ssh_pubkey
+  changed_when: false
+  when: active_organizations | length > 0
+
+- name: Install personal SSH public key
+  copy:
+    content: "{{ personal_ssh_pubkey.stdout }}\n"
+    dest: "~/.ssh/personal.pub"
+  when: active_organizations | length > 0
+
+- name: List keys in gpg-agent
+  command: ssh-add -L
+  register: agent_ssh_keys
+  failed_when: false
+  changed_when: false
+
+# gpg-agent prompts once for a passphrase to protect its copy of each key.
+- name: Add organization ssh keys from pass to gpg-agent
+  shell: pass show "{{ item.value.ssh_key.pass }}" | ssh-add -
+  loop: "{{ active_organizations | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when: item.value.ssh_key.public.split()[1] not in agent_ssh_keys.stdout
+
+- name: Run organization-specific first-login tasks
+  include_tasks: "{{ organization }}/user.yml"
+  loop: "{{ active_organizations.keys() | list }}"
+  loop_control:
+    loop_var: organization
+  when: (role_path ~ '/tasks/' ~ organization ~ '/user.yml') is file

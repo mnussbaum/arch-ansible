@@ -1,0 +1,2 @@
+# Only writes /etc/vanta.conf and starts the agent; see the script.
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/vanta-activate

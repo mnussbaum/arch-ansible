@@ -1,0 +1,30 @@
+---
+# Organizations (employers, clients) an image can be built for. Only those
+# selected with bin/build-image --organization are set up (image_organizations);
+# the rest of this catalog is ignored. Per organization:
+#
+#   email        git identity in repos whose remote is under a git_remotes owner
+#   git_remotes  forge host + owner; git routes these remotes through a hidden
+#                <host>-<name> ssh alias that offers only this org's ssh key
+#   ssh_key      pass entry holding the private key, loaded into gpg-agent at
+#                first login, and its public half
+#   wifi         pass directory of iwd profiles, stored like the personal wifi/
+#                entries at first login
+#
+# Packages go in mkosi/mkosi.profiles/<name>/, which --organization enables, and
+# anything bespoke in ansible/roles/organizations/tasks/<name>/{main,user}.yml.
+organizations:
+  parallel:
+    email: mnussbaum@moveparallel.com
+    git_remotes:
+      - host: github.com
+        owner: parallelsystems
+    ssh_key:
+      pass: parallel/github-ssh-key
+      public: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINEIVGltSOwD1T3kpz9BrjVon0EPWDvMwUiU3aFu7dQ3 mnussbaum@moveparallel.com"
+    wifi: parallel/wifi
+
+# Set by bin/ansible from the build's --organization list, or at runtime from
+# os-release.
+image_organizations: []
+active_organizations: "{{ organizations | dict2items | selectattr('key', 'in', image_organizations) | items2dict }}"

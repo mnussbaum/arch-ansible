@@ -30,9 +30,18 @@ else
   target=(--inventory localhost, --connection local)
 fi
 
+# The image's organizations: set by the build, otherwise recorded in os-release
+# by the organizations role.
+if [[ -z "${ARCH_ANSIBLE_ORGANIZATIONS+set}" && -r /usr/lib/os-release ]]; then
+  ARCH_ANSIBLE_ORGANIZATIONS=$(. /usr/lib/os-release; echo "${ARCH_ANSIBLE_ORGANIZATIONS:-}")
+fi
+organizations_json=$(python3 -c 'import json,sys;print(json.dumps({"image_organizations":[o for o in sys.argv[1].split(",") if o]}))' \
+  "${ARCH_ANSIBLE_ORGANIZATIONS:-}")
+
 exec ansible-playbook "${ANSIBLE_PLAYBOOK:-postinst-playbook.yml}" \
   --verbose \
   "${target[@]}" \
   --extra-vars "appearance=$appearance" \
+  --extra-vars "$organizations_json" \
   "$@" \
   $maybe_ask_become_pass

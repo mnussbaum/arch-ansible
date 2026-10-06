@@ -307,17 +307,35 @@ def secureboot_cert(recover=False):
     return cert
 
 
-def newest_medium():
-    """The most recently built mkosi medium (image_<version>_<arch>.raw)."""
-    cands = [
-        p
-        for p in output_dir().glob("image_*.raw")
+def selected_organizations(args):
+    """--organization, else $ARCH_ANSIBLE_ORGANIZATIONS, as bin/_images_common.sh
+    normalizes them: sorted, deduplicated, comma-separated."""
+    orgs = args.organization or os.environ.get("ARCH_ANSIBLE_ORGANIZATIONS", "").split(",")
+    return ",".join(sorted({o for o in orgs if o}))
+
+
+def newest_medium(orgs):
+    """The newest built mkosi medium (image_<version>_<arch>.raw) whose
+    organizations, recorded by bin/build-image in image_<version>_organizations,
+    are exactly `orgs`. An image without the record has none."""
+    cands = []
+    for p in output_dir().glob("image_*.raw"):
         # Skip the per-partition artifacts mkosi drops alongside the disk image.
-        if re.fullmatch(r"image_\d+_[a-z0-9-]+\.raw", p.name)
-    ]
+        m = re.fullmatch(r"image_(\d+)_[a-z0-9-]+\.raw", p.name)
+        if not m:
+            continue
+        record = output_dir() / f"image_{m[1]}_organizations"
+        if (record.read_text().strip() if record.is_file() else "") == orgs:
+            cands.append((int(m[1]), p))
     if not cands:
-        sys.exit(f"error: no built image found in {output_dir()}; run bin/build-image")
-    return max(cands, key=lambda p: p.stat().st_mtime)
+        flags = "".join(f" --organization {o}" for o in orgs.split(",") if o)
+        sys.exit(f"error: no image built for organizations '{orgs or 'none'}' in "
+                 f"{output_dir()}; run bin/build-image{flags}")
+    return max(cands)[1]
+
+
+def medium_version(medium):
+    return re.fullmatch(r"image_(\d+)_.*", medium.name)[1]
 
 
 def make_varstore(dest, cert):
@@ -851,6 +869,7 @@ def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=Fal
         vmm += ["-netdev", "passt,id=net0",
                 "-device", "virtio-net-pci,netdev=net0"]
 
+    orgs = selected_organizations(args)
     cmd = [
         "mkosi",
         "--directory=mkosi",
@@ -870,7 +889,10 @@ def build_live_cmd(args, output, shared, varstore=None, tpm_sock=None, passt=Fal
         # setup mode, shifting PCR 7 out from under the TPM2-bound LUKS keyslot.
         "--firmware=uefi-secure-boot",
         f"--firmware-variables={varstore}",
-        "--profile=build",
+        f"--profile={','.join(['build', *filter(None, orgs.split(','))])}",
+        # mkosi would otherwise boot mkosi/mkosi.version, the newest build of
+        # any organization set.
+        f"--image-version={medium_version(newest_medium(orgs))}",
     ]
     if args.gui:
         cmd.append("--console=gui")
@@ -910,7 +932,8 @@ def run_medium(args, log):
 def cmd_run(args):
     """One entry point: no disk boots the medium, a disk boots that disk alone."""
     log = log_to(sys.stdout)
-    medium_only = {"--device": args.device, "--ephemeral": args.ephemeral}
+    medium_only = {"--device": args.device, "--ephemeral": args.ephemeral,
+                   "--organization": args.organization}
     disk_only = {"--run": args.run, "--share": args.share, "--entry": args.entry}
     if args.disk:
         for flag, val in medium_only.items():
@@ -927,7 +950,7 @@ def cmd_run(args):
 
 def cmd_install(args):
     log = log_to(sys.stdout)
-    medium = Path(args.medium) if args.medium else newest_medium()
+    medium = Path(args.medium) if args.medium else newest_medium(selected_organizations(args))
     target = Path(args.target).resolve()
 
     if args.fresh:
@@ -1166,6 +1189,10 @@ def main():
     common.add_argument("--cpus", type=int, default=nproc - 2 if nproc > 4 else nproc,
                         help="vCPUs (default: host CPUs minus 2, leaving the host "
                              "room; in-guest rebuilds scale with this)")
+    common.add_argument("--organization", action="append", metavar="NAME",
+                        help="use the newest medium built with exactly these "
+                             "organizations (repeatable; default "
+                             "$ARCH_ANSIBLE_ORGANIZATIONS, else none)")
     common.add_argument("-v", "--verbose", action="store_true",
                         help="mirror the raw serial stream to stdout as it arrives")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -1215,7 +1242,8 @@ def main():
     i = sub.add_parser("install", parents=[common],
                        help="install the built medium onto TARGET")
     i.add_argument("target", help="target disk image (recreated unless --no-fresh)")
-    i.add_argument("--medium", help="medium to boot (default: newest built image)")
+    i.add_argument("--medium", help="medium to boot (default: newest image built "
+                                    "for --organization)")
     i.add_argument("--size", default="100G",
                    help="target size when created (default 100G: the fixed\n"
                         "partitions total ~49G, so a 60G disk leaves too little\n"

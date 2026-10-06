@@ -1,0 +1,12 @@
+# vim:ft=yaml.ansible:
+---
+- name: Check whether Vanta is activated
+  stat:
+    path: /etc/vanta.conf
+  register: vanta_conf
+
+- name: Activate Vanta with the agent key from pass
+  shell: >-
+    pass show parallel/vanta-agent-key
+    | sudo -n /usr/bin/vanta-activate {{ active_organizations[organization].email | quote }}
+  when: not vanta_conf.stat.exists

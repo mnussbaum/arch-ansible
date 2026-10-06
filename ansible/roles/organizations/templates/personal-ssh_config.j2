@@ -1,0 +1,7 @@
+# gpg-agent also holds organization keys, so pin the personal one or the
+# forge authenticates as whichever account's key it is offered first.
+{% for host in active_organizations.values() | map(attribute='git_remotes') | flatten | map(attribute='host') | unique %}
+Host {{ host }}
+  IdentityFile ~/.ssh/personal.pub
+  IdentitiesOnly yes
+{% endfor %}

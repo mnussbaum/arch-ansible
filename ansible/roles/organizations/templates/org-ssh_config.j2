@@ -1,0 +1,9 @@
+# {{ item.key }}. Git rewrites its remotes to these hosts
+# (/etc/gitconfig.d/organizations); don't use them directly.
+{% for host in item.value.git_remotes | map(attribute='host') | unique %}
+Host {{ host }}-{{ item.key }}
+  Hostname {{ host }}
+  User git
+  IdentityFile /etc/ssh/org-{{ item.key }}.pub
+  IdentitiesOnly yes
+{% endfor %}

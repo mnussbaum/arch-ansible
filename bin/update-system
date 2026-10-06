@@ -59,6 +59,7 @@ while [[ $# -gt 0 ]]; do
       echo "                device (live-USB mode). Updates only its inactive /usr slot and" >&2
       echo "                ESP; leaves root/home/swap intact." >&2
       echo "  Other options are forwarded to build-image (e.g. --ansible-tags TAGS)." >&2
+      echo "  Rebuilds with the running image's organizations unless --organization is given." >&2
       exit
       ;;
     --reboot) reboot=1 ;;
@@ -200,6 +201,14 @@ else
   source bin/_cache_common.sh
 fi
 
+# Keep the running image's organizations (recorded in os-release by the
+# organizations role) unless the caller chose some. With --image that is the live
+# medium's set, not necessarily the target's.
+if [[ -z "${ARCH_ANSIBLE_ORGANIZATIONS+set}" && " ${build_args[*]} " != *" --organization"* ]]; then
+  ARCH_ANSIBLE_ORGANIZATIONS=$(. /usr/lib/os-release; echo "${ARCH_ANSIBLE_ORGANIZATIONS:-}")
+  export ARCH_ANSIBLE_ORGANIZATIONS
+  echo "Organizations: ${ARCH_ANSIBLE_ORGANIZATIONS:-none}" >&2
+fi
 bin/build-image "${build_args[@]}"
 
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
