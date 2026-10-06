@@ -27,6 +27,29 @@
     label: "{{ item.key }}"
   when: item.value.ssh_key.public.split()[1] not in agent_ssh_keys.stdout
 
+- name: Install AWS config
+  vars:
+    aws_config_orgs: "{{ active_organizations | dict2items | selectattr('value.aws_config', 'defined') }}"
+  when: aws_config_orgs | length > 0
+  block:
+    # EKS kubeconfigs (aws eks update-kubeconfig) go in ~/.kube.
+    - name: Create AWS and kube config dirs
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - ~/.aws
+        - ~/.kube
+
+    - name: Join organization AWS configs into ~/.aws/config
+      copy:
+        content: |
+          {% for org in aws_config_orgs %}
+          {{ lookup('pipe', 'pass show ' ~ (org.value.aws_config | quote)) }}
+
+          {% endfor %}
+        dest: ~/.aws/config
+
 - name: Run organization-specific first-login tasks
   include_tasks: "{{ organization }}/user.yml"
   loop: "{{ active_organizations.keys() | list }}"
