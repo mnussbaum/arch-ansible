@@ -16,5 +16,5 @@ key=$(tr -d '[:space:]')
 umask 077
 jq -n --arg key "$key" --arg email "$email" --argjson nonce "$(date +%s%3N)" \
     '{ACTIVATION_REQUESTED_NONCE: $nonce, AGENT_KEY: $key, OWNER_EMAIL: $email,
-      REGION: "US", NEEDS_OWNER: true}' > /etc/vanta.conf
+      REGION: "us", NEEDS_OWNER: true}' > /etc/vanta.conf
 systemctl restart vanta-agent.service
