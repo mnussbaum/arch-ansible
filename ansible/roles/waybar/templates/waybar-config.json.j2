@@ -1,3 +1,5 @@
+{# The VPN belongs to an organization; only Parallel has one so far. #}
+{% set vpn = 'parallel' in active_organizations %}
 [
   {
     "layer": "top",
@@ -92,7 +94,10 @@
     "position": "bottom",
     "modules-left": [
       "idle_inhibitor",
-      "custom/toggle-headphone-profile"
+      "custom/toggle-headphone-profile"{{ ',' if vpn else '' }}
+{% if vpn %}
+      "custom/toggle-vpn"
+{% endif %}
     ],
 
     "modules-right": [
@@ -113,10 +118,20 @@
 
     "custom/toggle-headphone-profile": {
       "exec": "headphone-profile-status",
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}', last_block=True, position='left') }}",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0D-hex', '{}', last_block=not vpn, position='left') }}",
       "tooltip": false,
       "on-click": "toggle-headphone-profile",
     },
+{% if vpn %}
+
+    "custom/toggle-vpn": {
+      "exec": "tailscale-status",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0D-hex', 'base0C-hex', '{}', last_block=True, position='left') }}",
+      "interval": 1,
+      "on-click": "toggle-tailscale",
+      "tooltip": false
+    },
+{% endif %}
 
     "network": {
       "format-wifi": "{{ color_scheme_vars | waybar_colored_block('base0E-hex', 'base0E-hex', '{essid} {signalStrength}% ', first_block=True, position='right') }}",

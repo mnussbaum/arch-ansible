@@ -1,0 +1,12 @@
+#!/bin/bash
+# Waybar VPN indicator: connected to Tailscale or not.
+
+state=$(tailscale status --json 2> /dev/null | jq -r .BackendState)
+
+if [[ $state == Running ]]; then
+  printf "󱪐"
+else
+  printf "✌"
+fi
+
+printf "\n"

@@ -1,0 +1,18 @@
+#!/bin/bash
+# Waybar VPN toggle. Connecting prints an SSO login URL when this machine needs
+# one; open it in the browser. tailscale-sudoers allows exactly these commands.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+state=$(tailscale status --json 2> /dev/null | jq -r .BackendState) || true
+
+if [[ $state == Running ]]; then
+  sudo -n tailscale down
+else
+  sudo -n tailscale up 2>&1 | while read -r line; do
+    if [[ $line =~ (https://[^[:space:]]+) ]]; then
+      xdg-open "${BASH_REMATCH[1]}"
+    fi
+  done
+fi
