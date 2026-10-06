@@ -26,6 +26,9 @@
     - import_role:
         name: postgres
         tasks_from: pgpass
+    - import_role:
+        name: firefox
+        tasks_from: user
     - name: Mark user first login complete
       file:
         path: "~/.config/user-first-login-done"

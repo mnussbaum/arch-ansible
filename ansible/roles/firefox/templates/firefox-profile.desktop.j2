@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Firefox ({{ item | capitalize }})
+GenericName=Web Browser
+Icon=firefox
+# --name sets the Wayland app_id, telling its windows apart from personal ones,
+# and keeps this profile's remoting separate.
+Exec=firefox -P {{ item }} --name firefox-{{ item }} %u
+StartupWMClass=firefox-{{ item }}
+Categories=Network;WebBrowser;
+Terminal=false

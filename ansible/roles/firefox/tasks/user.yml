@@ -1,0 +1,14 @@
+# vim:ft=yaml.ansible:
+---
+# Adds profiles to homes created before an organization was added to the image.
+- name: Copy missing Firefox profiles from skel
+  command: cp -r "/etc/skel/.mozilla/firefox/{{ item }}" "{{ ansible_facts['env']['HOME'] }}/.mozilla/firefox/{{ item }}"
+  args:
+    creates: "{{ ansible_facts['env']['HOME'] }}/.mozilla/firefox/{{ item }}"
+  loop: "{{ firefox_profiles.values() | list }}"
+
+- name: Install Firefox profiles.ini
+  copy:
+    src: /etc/skel/.mozilla/firefox/profiles.ini
+    dest: ~/.mozilla/firefox/profiles.ini
+    remote_src: true

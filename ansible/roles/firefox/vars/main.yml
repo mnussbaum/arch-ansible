@@ -1,0 +1,7 @@
+---
+# Profile name -> dir under ~/.mozilla/firefox. Personal is the default, which
+# plain `firefox` and links open in; it keeps the default.profile dir older homes
+# have. Each active organization gets its own, e.g. for a separate Sync account.
+firefox_profiles: >-
+  {{ {'personal': 'default.profile'}
+     | combine(dict(active_organizations.keys() | zip(active_organizations.keys() | map('regex_replace', '$', '.profile')))) }}

@@ -1,0 +1,13 @@
+{% for name, dir in firefox_profiles.items() %}
+[Profile{{ loop.index0 }}]
+Name={{ name }}
+IsRelative=1
+Path={{ dir }}
+{% if name == 'personal' %}
+Default=1
+{% endif %}
+
+{% endfor %}
+[General]
+StartWithLastProfile=1
+Version=2

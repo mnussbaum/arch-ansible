@@ -1,14 +1,22 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Make skel default profile dir
+- name: Create skel profile chrome dirs
   file:
-    path: /etc/skel/.mozilla/firefox/default.profile
+    path: "/etc/skel/.mozilla/firefox/{{ item }}/chrome"
     state: directory
+  loop: "{{ firefox_profiles.values() | list }}"
 
 - name: Configure firefox profiles.ini
-  copy:
+  template:
     dest: /etc/skel/.mozilla/firefox/profiles.ini
-    src: firefox-profiles.ini
+    src: firefox-profiles.ini.j2
+
+- name: Install organization profile desktop entries
+  template:
+    src: firefox-profile.desktop.j2
+    dest: "/usr/share/applications/firefox-{{ item }}.desktop"
+    mode: "0644"
+  loop: "{{ active_organizations.keys() | list }}"
 
 - name: Sideload install extensions
   firefox_ext_sideloader:
@@ -18,24 +26,31 @@
 
 - name: Configure firefox user.js
   template:
-    dest: /etc/skel/.mozilla/firefox/default.profile/user.js
+    dest: "/etc/skel/.mozilla/firefox/{{ item }}/user.js"
     src: firefox-user.js.j2
+  loop: "{{ firefox_profiles.values() | list }}"
 
-- name: Create chrome config dir
-  file:
-    path: /etc/skel/.mozilla/firefox/default.profile/chrome
-    state: directory
+# Unlike user.js, prefs.js only seeds new profiles; Firefox rewrites it, so
+# picking another theme sticks.
+- name: Default firefox profiles to the Dark theme
+  copy:
+    content: |
+      user_pref("extensions.activeThemeID", "firefox-compact-dark@mozilla.org");
+    dest: "/etc/skel/.mozilla/firefox/{{ item }}/prefs.js"
+  loop: "{{ firefox_profiles.values() | list }}"
 
 - name: Configure firefox userChrome.css
   template:
-    dest: /etc/skel/.mozilla/firefox/default.profile/chrome/userChrome.css
+    dest: "/etc/skel/.mozilla/firefox/{{ item }}/chrome/userChrome.css"
     src: firefox-userChrome.css.j2
+  loop: "{{ firefox_profiles.values() | list }}"
   tags: [base16]
 
 - name: Configure firefox userContent.css
   template:
-    dest: /etc/skel/.mozilla/firefox/default.profile/chrome/userContent.css
+    dest: "/etc/skel/.mozilla/firefox/{{ item }}/chrome/userContent.css"
     src: firefox-userContent.css.j2
+  loop: "{{ firefox_profiles.values() | list }}"
   tags: [base16]
 
 - name: Create tridactyl config directory
