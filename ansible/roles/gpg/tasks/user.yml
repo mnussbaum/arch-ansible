@@ -68,12 +68,23 @@
     executable: /bin/bash
   changed_when: false
 
+# Keygrips of the public key's usable authentication subkeys.
+- name: Find YubiKey SSH keygrips
+  shell: |
+    gpg --show-keys --with-colons --with-keygrip ~/.gnupg/pubkey.asc \
+      | awk -F: '$1 == "sub" { auth = $12 ~ /a/ && $2 !~ /[erd]/ } $1 == "grp" && auth { print $10; auth = 0 }'
+  args:
+    executable: /bin/bash
+  register: gpg_auth_ssh_keygrips
+  changed_when: false
+  failed_when: gpg_auth_ssh_keygrips.rc != 0 or not gpg_auth_ssh_keygrips.stdout
+
 - name: Register YubiKey SSH keygrips in sshcontrol
   lineinfile:
     path: ~/.gnupg/sshcontrol
     line: "{{ item }} 0"
     create: true
-  loop: "{{ gpg_auth_ssh_keygrips }}"
+  loop: "{{ gpg_auth_ssh_keygrips.stdout_lines }}"
 
 # gpg-agent and dirmngr sockets are enabled in the image
 # (mkosi/mkosi.extra/usr/lib/systemd/user/sockets.target.wants/).

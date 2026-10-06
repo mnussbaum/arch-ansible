@@ -2,6 +2,12 @@
 ---
 # Per-organization git identity and ssh keys, from `organizations`
 # (group_vars/all/organizations.yml).
+- name: Check the image's organizations are known
+  assert:
+    that: image_organizations | difference(organizations.keys() | list) | length == 0
+    fail_msg: "unknown organizations: {{ image_organizations | difference(organizations.keys() | list) }}"
+    quiet: true
+
 - name: Install organizations gitconfig
   template:
     src: gitconfig.j2
@@ -41,7 +47,7 @@
   lineinfile:
     path: /usr/lib/os-release
     regexp: "^ARCH_ANSIBLE_ORGANIZATIONS="
-    line: "ARCH_ANSIBLE_ORGANIZATIONS={{ image_organizations | join(',') }}"
+    line: "ARCH_ANSIBLE_ORGANIZATIONS={{ image_organizations | join(',') | quote }}"
     state: "{{ 'present' if image_organizations else 'absent' }}"
 
 - name: Run organization-specific build tasks
