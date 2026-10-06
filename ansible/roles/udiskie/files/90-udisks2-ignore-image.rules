@@ -1,0 +1,5 @@
+# Hide this image's own partitions (root, usr, verity, swap, home) on other
+# disks, e.g. a left-in install USB, so udiskie doesn't prompt to unlock them
+ENV{ID_PART_ENTRY_SCHEME}=="gpt", \
+  ENV{ID_PART_ENTRY_TYPE}=="4f68bce3-e8cd-4db1-96e7-fbcaf984b709|8484680c-9521-48c6-9c11-b0720656f69e|77ff5f63-e7b6-4633-acf4-1565b864c0e6|e7bb33fb-06cf-4e81-8273-e543b413e2e2|0657fd6d-a4ab-43c4-84e5-0933c84b4f4f|933ac7e1-2eb4-4f13-b844-0e14e2aef915", \
+  ENV{UDISKS_IGNORE}="1"

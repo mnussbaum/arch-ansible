@@ -9,3 +9,8 @@
   copy:
     src: 80-udiskie.preset
     dest: /usr/lib/systemd/user-preset/80-udiskie.preset
+
+- name: Hide image partitions from udisks
+  copy:
+    src: 90-udisks2-ignore-image.rules
+    dest: /usr/lib/udev/rules.d/90-udisks2-ignore-image.rules
