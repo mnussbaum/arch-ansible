@@ -1,4 +1,4 @@
-vim.g["test#strategy"] = "vtr"
+vim.g["test#strategy"] = "vimux"
 
 -- Run all
 vim.api.nvim_set_keymap(
