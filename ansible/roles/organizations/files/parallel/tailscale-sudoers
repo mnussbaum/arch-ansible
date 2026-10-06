@@ -1,2 +1,2 @@
-# For toggle-tailscale; no other flags, so prefs can't be changed this way.
-%wheel ALL=(root) NOPASSWD: /usr/bin/tailscale up, /usr/bin/tailscale down
+# For toggle-tailscale; exactly these flags, so prefs can't be changed this way.
+%wheel ALL=(root) NOPASSWD: /usr/bin/tailscale up --accept-routes, /usr/bin/tailscale down
