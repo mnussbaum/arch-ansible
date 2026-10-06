@@ -50,6 +50,16 @@
     src: parallel/80-tailscale.preset
     dest: /usr/lib/systemd/system-preset/80-tailscale.preset
 
+- name: Create tailscaled drop-in dir
+  file:
+    path: /usr/lib/systemd/system/tailscaled.service.d
+    state: directory
+
+- name: Start tailscaled disconnected
+  copy:
+    src: parallel/tailscaled-down.conf
+    dest: /usr/lib/systemd/system/tailscaled.service.d/arch-ansible-down.conf
+
 - name: Install tailscale waybar scripts
   copy:
     src: "parallel/{{ item }}"
