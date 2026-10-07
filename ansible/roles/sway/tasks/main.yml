@@ -5,6 +5,7 @@
     path: "{{ item }}"
     state: directory
   with_items:
+    - /etc/kanshi
     - /etc/sway
     - /etc/swaylock
     - /etc/xdg/mako
@@ -52,6 +53,16 @@
   template:
     src: swayidle.service.j2
     dest: "/usr/lib/systemd/user/swayidle.service"
+
+- name: Install kanshi config
+  template:
+    src: kanshi_config.j2
+    dest: /etc/kanshi/config
+
+- name: Install kanshi service
+  copy:
+    src: kanshi.service
+    dest: /usr/lib/systemd/user/kanshi.service
 
 - name: Install systemd user preset
   copy:

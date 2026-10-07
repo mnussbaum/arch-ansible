@@ -1,1 +1,2 @@
 enable swayidle.service
+enable kanshi.service

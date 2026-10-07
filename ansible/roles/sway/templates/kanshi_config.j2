@@ -1,0 +1,10 @@
+profile {
+  output "{{ docked_monitors.laptop.id }}" position 0,0 scale {{ docked_monitors.laptop.scale }}
+}
+{% for external in docked_monitors.externals %}
+
+profile {
+  output "{{ docked_monitors.laptop.id }}" position {{ external.laptop_position }} scale {{ docked_monitors.laptop.scale }}
+  output "{{ external.id }}" position {{ external.position }} scale {{ external.scale }}
+}
+{% endfor %}
