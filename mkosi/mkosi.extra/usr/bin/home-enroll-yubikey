@@ -38,6 +38,9 @@ if homectl inspect "$user" --json=short \
     | python3 -c '
 import sys, json, time
 r = json.load(sys.stdin)
+# The minimal export of a subvolume home has "perMachine": null, which
+# --identity rejects.
+r = {k: v for k, v in r.items() if v is not None}
 r.get("privileged", {}).pop("hashedPassword", None)
 r["lastChangeUSec"] = int(time.time() * 1_000_000)
 json.dump(r, sys.stdout)
