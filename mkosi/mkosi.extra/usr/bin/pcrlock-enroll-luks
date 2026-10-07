@@ -1,9 +1,9 @@
 #!/bin/bash
-# Move root and swap's TPM2 slots from a literal PCR 7 binding onto the pcrlock
-# policy, keeping signed PCR 11, so Secure Boot variable changes can be
+# Move root, swap and home's TPM2 slots from a literal PCR 7 binding onto the
+# pcrlock policy, keeping signed PCR 11, so Secure Boot variable changes can be
 # re-predicted instead of breaking the seal. Volumes are born literal (repart
 # enrolls in the initrd, before any policy exists) and moved here after boot.
-# Run every boot by pcrlock-enroll-luks.service; a no-op once both are bound.
+# Run every boot by pcrlock-enroll-luks.service; a no-op once all are bound.
 #
 # Only moves literal bindings: slots bound to a replaced NV index (after
 # `systemd-pcrlock remove-policy`) must be re-enrolled by hand.
@@ -38,7 +38,7 @@ print("none" if not tokens else "pcrlock" if all(t.get("tpm2_pcrlock") for t in 
 }
 
 rc=0
-for dev in /dev/disk/by-designator/root-luks /dev/disk/by-designator/swap-luks; do
+for dev in /dev/disk/by-designator/{root,swap,home}-luks; do
     [[ -e "$dev" ]] || continue
     case "$(tpm2_binding "$dev")" in
         pcrlock) continue ;;

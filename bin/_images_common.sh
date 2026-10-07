@@ -12,6 +12,16 @@ arch_ansible_normalize_organizations() {
   tr ',' '\n' <<< "$1" | sed '/^$/d' | sort -u | paste -sd,
 }
 
+# 1 if any of these organizations (comma-separated) sets full_disk_encryption,
+# else 0.
+arch_ansible_full_disk_encryption() {
+  python3 - "$1" <<'PY'
+import sys, yaml
+orgs = yaml.safe_load(open("ansible/group_vars/all/organizations.yml"))["organizations"]
+print(int(any(orgs[o].get("full_disk_encryption") for o in sys.argv[1].split(",") if o)))
+PY
+}
+
 # The organizations recorded for an image version.
 arch_ansible_image_organizations() {
   local record="$ARCH_ANSIBLE_OUTPUT_DIR/image_${1}_organizations"

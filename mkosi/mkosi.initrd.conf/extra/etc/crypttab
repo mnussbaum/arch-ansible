@@ -7,3 +7,8 @@
 # noauto: only used when gpt-auto pulls in systemd-cryptsetup@root.service for a
 # real root, so the Live/Installer profiles don't try to unlock attached disks.
 root /dev/disk/by-designator/root-luks - tpm2-device=auto,pkcs11-uri=auto,tpm2-measure-pcr=yes,tpm2-measure-keyslot-nvpcr=yes,noauto
+# An encrypted home (the full-disk-encryption profile) is opened here too, so
+# the YubiKey works when the TPM doesn't. Only that profile's drop-in for
+# systemd-cryptsetup@root.service pulls it in. x-initrd.attach keeps it open
+# past switch-root, where gpt-auto finds it already active.
+home /dev/disk/by-designator/home-luks - tpm2-device=auto,pkcs11-uri=auto,x-initrd.attach,noauto

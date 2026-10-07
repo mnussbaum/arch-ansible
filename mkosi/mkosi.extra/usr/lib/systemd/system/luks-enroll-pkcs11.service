@@ -1,4 +1,4 @@
-# Enroll the shared YubiKey PIV key on root and swap at first boot, before
+# Enroll the shared YubiKey PIV key on root, swap and home at first boot, before
 # anyone logs in. Replaces the interactive systemd-cryptenroll-firstboot wizard,
 # which the kernel command line masks (mkosi.conf).
 [Unit]

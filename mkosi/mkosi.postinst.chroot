@@ -80,7 +80,12 @@ identity=""
 organizations=()
 read -ra profiles <<< "${PROFILES:-}"
 for profile in "${profiles[@]}"; do
-  if [[ "$profile" == build ]]; then identity=build; else organizations+=("$profile"); fi
+  case "$profile" in
+    build) identity=build ;;
+    # Derived from the organizations, not one itself.
+    full-disk-encryption) ;;
+    *) organizations+=("$profile") ;;
+  esac
 done
 env NO_ASK_BECOME_PASS=1 ARCH_ANSIBLE_IDENTITY="$identity" \
     ARCH_ANSIBLE_ORGANIZATIONS="$(IFS=,; echo "${organizations[*]}")" \

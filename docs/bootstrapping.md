@@ -137,8 +137,9 @@ sudo /usr/bin/luks-enroll-pkcs11
 
 The initrd carries pcscd and the PIV PKCS#11 module (`mkosi/mkosi.initrd.conf/`), so
 a machine whose TPM path broke still boots, asking for the YubiKey at the LUKS
-prompt. systemd 262's interactive `systemd-cryptenroll-firstboot.service` is
-masked on the kernel command line in favour of this. In a VM the unit does
+prompt (for home too, under full disk encryption). systemd 262's interactive
+`systemd-cryptenroll-firstboot.service` is masked on the kernel command line in
+favour of this. In a VM the unit does
 nothing unless a YubiKey is passed through (`bin/vm run --yubikey`).
 
 #### PCR 7 via pcrlock
@@ -184,6 +185,24 @@ fully recognized, so a newer TPM firmware would be enough.
 
 `home` is a plain btrfs partition; per-user encryption is `systemd-homed` — one
 LUKS volume per home directory — on top of it.
+
+#### Full disk encryption
+
+An organization with `full_disk_encryption: true`
+(`ansible/group_vars/all/organizations.yml`) makes `bin/build-image` add the
+`full-disk-encryption` mkosi profile, which encrypts the home partition too:
+
+- **Home partition** is LUKS2, sealed to the TPM2 like root, with the YubiKey
+  enrolled by `luks-enroll-pkcs11` and moved onto pcrlock like the others
+  (`mkosi/mkosi.profiles/full-disk-encryption/`).
+- **Homes** are homed subvolumes on it, not LUKS images, so there is no
+  plaintext `/home` and no loop device.
+- **Boot** opens home in the initrd alongside root, so the YubiKey works when the
+  TPM doesn't (`mkosi/mkosi.initrd.conf/mkosi.profiles/full-disk-encryption/`).
+
+The trade-off: home unlocks from the TPM at boot and stays unlocked until
+shutdown, instead of only with the YubiKey at login. Logging in still takes the
+YubiKey, but root on a running machine can read every home.
 
 ### YubiKey enrollment for homed
 

@@ -64,7 +64,8 @@ echo "==> Building home.create.$credstore_user + home.new-password credentials..
 # imports both.
 (umask 077; credstore_recovery_secret \
   | CREDSTORE_USER="$credstore_user" CREDSTORE_SHELL="$credstore_shell" \
-    CREDSTORE_DIR="$credstore_dir" python3 -c '
+    CREDSTORE_DIR="$credstore_dir" \
+    CREDSTORE_FDE="${ARCH_ANSIBLE_FULL_DISK_ENCRYPTION:-0}" python3 -c '
 import json, os, sys
 pw = sys.stdin.read().strip()
 user = os.environ["CREDSTORE_USER"]
@@ -81,6 +82,11 @@ record = {
     "luksDiscard": True,
     "autoResizeMode": "off",
 }
+# Full disk encryption encrypts the home partition itself, so a plain subvolume.
+if os.environ["CREDSTORE_FDE"] == "1":
+    record = {k: v for k, v in record.items()
+              if k not in ("storage", "luksDiscard", "autoResizeMode")}
+    record["storage"] = "subvolume"
 with open(f"{d}/home.create.{user}", "w") as f:
     json.dump(record, f)
 with open(f"{d}/home.new-password", "w") as f:

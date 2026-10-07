@@ -1,5 +1,5 @@
 #!/bin/bash
-# Re-seal root and swap's TPM2 slots to this machine's current TPM state,
+# Re-seal root, swap and home's TPM2 slots to this machine's current TPM state,
 # authorized by the YubiKey (the shared PIV key's PKCS#11 slot). Use after the
 # TPM stopped unlocking (a cleared or replaced TPM, a firmware or Secure Boot
 # change) and you booted by typing the YubiKey PIN.
@@ -16,7 +16,7 @@ set -o pipefail
 
 [[ $EUID -eq 0 ]] || { echo "error: run as root" >&2; exit 1; }
 umask 077
-(( $# )) || set -- /dev/disk/by-designator/root-luks /dev/disk/by-designator/swap-luks
+(( $# )) || set -- /dev/disk/by-designator/{root,swap,home}-luks
 
 module=/usr/lib/pkcs11/opensc-pkcs11.so
 tmp=$(mktemp -d /run/luks-reseal.XXXXXX)

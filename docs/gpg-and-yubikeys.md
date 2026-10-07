@@ -154,8 +154,9 @@ with `bin/enroll-yubikeys`, which resets PIV and reloads the shared key. It also
 resets the OpenPGP and OATH applets, as with any provisioning.
 
 **Reach a home without a YubiKey.** You can't: after first login a home opens
-only with the shared PIV key. Re-provision a YubiKey ("Lose every YubiKey",
-above), or restore its data from restic.
+only with the shared PIV key (under full disk encryption, root on the running
+machine can also read it; see docs/bootstrapping.md). Re-provision a YubiKey
+("Lose every YubiKey", above), or restore its data from restic.
 
 ## 2FA codes
 

@@ -115,8 +115,9 @@
         sudo -n homectl update {{ user.name }}
         --auto-resize-mode=off --disk-size=max --luks-discard=on
       when: >-
-        '"autoResizeMode":"off"' not in homed_record_after.stdout or
-        '"luksDiscard":true' not in homed_record_after.stdout
+        '"storage":"luks"' in homed_record_after.stdout and
+        ('"autoResizeMode":"off"' not in homed_record_after.stdout or
+         '"luksDiscard":true' not in homed_record_after.stdout)
 
     - name: Drop password factor
       ansible.builtin.shell: |
@@ -134,7 +135,9 @@
 
     - name: Remove the baked home secret
       # It sits readable in every image's unencrypted /usr, so once the YubiKey
-      # is enrolled the home keeps only the token's keyslot.
+      # is enrolled the home keeps only the token's keyslot. A subvolume home
+      # (full disk encryption) has no keyslot; dropping the password covers it.
       ansible.builtin.command: sudo -n /usr/bin/home-drop-baked-secret
       register: baked_secret_removal
       changed_when: "'removed' in baked_secret_removal.stdout"
+      when: "'\"storage\":\"luks\"' in homed_record_after.stdout"

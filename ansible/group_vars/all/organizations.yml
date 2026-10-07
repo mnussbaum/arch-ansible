@@ -12,6 +12,10 @@
 #                entries at first login
 #   aws_config   optional pass entry of AWS CLI profiles; every org's are joined
 #                into ~/.aws/config at first login, so names must not collide
+#   full_disk_encryption
+#                optional; true also encrypts the home partition, with homed
+#                homes as plain subvolumes on it instead of per-user LUKS images
+#                (no plaintext /home, no loop devices). See docs/bootstrapping.md
 #
 # Packages go in mkosi/mkosi.profiles/<name>/, which --organization enables, and
 # anything bespoke in ansible/roles/organizations/tasks/<name>/{main,user}.yml.
@@ -28,6 +32,7 @@ organizations:
     # infrastructure's shell-config/aws/config with AdministratorAccess swapped
     # for PowerUserAccess
     aws_config: parallel/aws-config
+    full_disk_encryption: true
 
 # Set by bin/ansible from the build's --organization list, or at runtime from
 # os-release.

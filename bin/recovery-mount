@@ -11,7 +11,9 @@
 # and a btrfs home partition. systemd-homed keeps each user's data in its own
 # LUKS image inside /home (<user>.home); for each, it offers to unlock it
 # read-only with the YubiKey or the user's password and mount it at
-# /mnt/home/<user>. Swap is not a filesystem, so it is left alone.
+# /mnt/home/<user>. With full disk encryption the home partition is LUKS2
+# instead (GPT label "home"), opened like root, holding plain subvolume homes.
+# Swap is not a filesystem, so it is left alone.
 #
 # Usage: recovery-mount [DISK]
 #   DISK  the disk to recover (e.g. /dev/vdb). Only needed when more than one
@@ -68,10 +70,11 @@ parent=$(lsblk -ndo PKNAME "$root_luks" | head -1)
 echo "Persistent disk: /dev/$parent (root: $root_luks)"
 
 # --- Find the other partitions on that disk ---------------------------------
-esp="" usr="" home=""
+esp="" usr="" home="" home_luks=""
 while IFS= read -r line; do
     eval "$line"
     dev="/dev/$NAME"
+    [[ ${PARTLABEL:-} == home && ${FSTYPE:-} == crypto_LUKS ]] && home_luks="$dev"
     case "${FSTYPE:-}" in
         # Only the home btrfs is a raw partition; the root btrfs is inside LUKS.
         btrfs) home="$dev" ;;
@@ -107,25 +110,35 @@ bound = {s for t in m["tokens"].values() if t.get("type") in hw for s in t.get("
 print(len([k for k in m["keyslots"] if k not in bound]))'
 }
 
-if cryptsetup status cryptroot &>/dev/null; then
-    echo "cryptroot already open"
-# Not `cryptsetup open --token-only`: Arch's libcryptsetup has no token plugins,
-# so only systemd-cryptsetup's own PKCS#11 path can use the YubiKey slot. No
-# TPM2 attempt: as above, it can't match here, and only fails noisily.
-elif echo "Unlocking root: enter the YubiKey PIV PIN, then touch it." &&
-     /usr/lib/systemd/systemd-cryptsetup attach cryptroot "$root_luks" - \
-        pkcs11-uri=auto; then
-    echo "Opened root with the YubiKey (PIV)"
-elif [[ $(typeable_slots "$root_luks") -gt 0 ]]; then
-    echo "No token unlocked it (a signed-PCR-11 TPM2 token cannot, from a booted"
-    echo "system); enter the recovery key or passphrase:"
-    cryptsetup open "$root_luks" cryptroot
-else
-    die "$root_luks has no factor usable from recovery: its only keyslot(s) are" \
-        "bound to hardware tokens that did not unlock, and there is no recovery" \
-        "key or passphrase to type. A signed-PCR-11 TPM2 token only unlocks in" \
-        "the initrd of a normal signed boot. This root needs a recovery key or" \
-        "YubiKey (PKCS#11) factor enrolled when it is created (see docs/bootstrapping.md)."
+# open_luks DEVICE NAME
+open_luks() {
+    local dev=$1 name=$2
+    if cryptsetup status "$name" &>/dev/null; then
+        echo "$name already open"
+    # Not `cryptsetup open --token-only`: Arch's libcryptsetup has no token
+    # plugins, so only systemd-cryptsetup's own PKCS#11 path can use the YubiKey
+    # slot. No TPM2 attempt: as above, it can't match here, and only fails noisily.
+    elif echo "Unlocking $name: enter the YubiKey PIV PIN, then touch it." &&
+         /usr/lib/systemd/systemd-cryptsetup attach "$name" "$dev" - \
+            pkcs11-uri=auto; then
+        echo "Opened $name with the YubiKey (PIV)"
+    elif [[ $(typeable_slots "$dev") -gt 0 ]]; then
+        echo "No token unlocked it (a signed-PCR-11 TPM2 token cannot, from a booted"
+        echo "system); enter the recovery key or passphrase:"
+        cryptsetup open "$dev" "$name"
+    else
+        die "$dev has no factor usable from recovery: its only keyslot(s) are" \
+            "bound to hardware tokens that did not unlock, and there is no recovery" \
+            "key or passphrase to type. A signed-PCR-11 TPM2 token only unlocks in" \
+            "the initrd of a normal signed boot. This volume needs a recovery key or" \
+            "YubiKey (PKCS#11) factor enrolled when it is created (see docs/bootstrapping.md)."
+    fi
+}
+
+open_luks "$root_luks" cryptroot
+if [[ -n "$home_luks" ]]; then
+    open_luks "$home_luks" crypthome
+    home=/dev/mapper/crypthome
 fi
 
 # --- Mount, mirroring the running system's layout ---------------------------
@@ -212,6 +225,7 @@ done
 echo "Mounted under $TARGET:"
 findmnt -R "$TARGET" || true
 echo "When done, exit the chroot and run:"
-printf '  %s\n' "${home_cleanup[@]}" "umount -R $TARGET; cryptsetup close cryptroot"
+printf '  %s\n' "${home_cleanup[@]}" \
+    "umount -R $TARGET${home_luks:+; cryptsetup close crypthome}; cryptsetup close cryptroot"
 
 exec arch-chroot "$TARGET"

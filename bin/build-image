@@ -90,6 +90,14 @@ source bin/_images_common.sh
 ARCH_ANSIBLE_ORGANIZATIONS=$(arch_ansible_normalize_organizations "$(IFS=,; echo "${organizations[*]}")")
 export ARCH_ANSIBLE_ORGANIZATIONS
 
+# An organization requiring full disk encryption also encrypts the home
+# partition: the full-disk-encryption mkosi profile, and subvolume homes in the
+# credstore (bin/_credstore_common.sh).
+mkosi_profiles="build${ARCH_ANSIBLE_ORGANIZATIONS:+,$ARCH_ANSIBLE_ORGANIZATIONS}"
+ARCH_ANSIBLE_FULL_DISK_ENCRYPTION=$(arch_ansible_full_disk_encryption "$ARCH_ANSIBLE_ORGANIZATIONS")
+export ARCH_ANSIBLE_FULL_DISK_ENCRYPTION
+(( ARCH_ANSIBLE_FULL_DISK_ENCRYPTION )) && mkosi_profiles+=,full-disk-encryption
+
 if [[ "$keep" != all && ! "$keep" =~ ^[1-9][0-9]*$ ]]; then
   echo "error: --keep must be a positive integer or 'all' (got '$keep')" >&2
   exit 1
@@ -166,7 +174,7 @@ mkosi \
   --sign-expected-pcr-key="$SECUREBOOT_KEY" \
   --verity-certificate="$SECUREBOOT_CERT" \
   --verity-key="$SECUREBOOT_KEY" \
-  --profile="build${ARCH_ANSIBLE_ORGANIZATIONS:+,$ARCH_ANSIBLE_ORGANIZATIONS}" \
+  --profile="$mkosi_profiles" \
   --force \
   --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
   `# TRANSITIONAL: selects mkosi/mkosi.conf.d/10-sources-*.conf; remove after cutover` \
