@@ -1,0 +1,48 @@
+#!/bin/bash
+# Enroll a YubiKey's PIV key on the sudo caller's homed home, then drop the
+# password factor so the token is the only login factor. Run as root via sudo by
+# the first-login playbook, on an active home.
+#
+#   home-enroll-yubikey [PKCS11_URI]   (needed unless a token is enrolled)
+#
+# homed authenticates updates of an active LUKS home with the volume key in the
+# kernel keyring, but a subvolume home (full disk encryption) has none, so its
+# updates authenticate with the baked initial secret (bin/_credstore_common.sh),
+# which only root can read. Prints "changed" or "unchanged".
+set -o errexit
+set -o nounset
+set -o pipefail
+
+[[ $EUID -eq 0 ]] || { echo "error: run as root" >&2; exit 1; }
+user=${SUDO_USER:?run via sudo}
+[[ $user =~ ^[a-z_][a-z0-9_-]*$ ]] || { echo "error: bad user name '$user'" >&2; exit 2; }
+uri=${1:-}
+
+record=$(homectl inspect "$user" --json=short)
+if ! grep -q '"storage":"luks"' <<<"$record"; then
+  PASSWORD=$(cat /usr/lib/credstore/home.new-password)
+  export PASSWORD
+fi
+
+changed=unchanged
+if ! grep -q '"pkcs11TokenUri"' <<<"$record"; then
+  [[ $uri =~ ^pkcs11:[^[:space:]]*$ ]] || { echo "error: bad PKCS#11 URI '$uri'" >&2; exit 2; }
+  homectl update "$user" --pkcs11-token-uri="$uri"
+  changed=changed
+fi
+
+# Only the top-level hashedPassword; each pkcs11EncryptedKey carries its own.
+if homectl inspect "$user" --json=short \
+    | python3 -c 'import json, sys; sys.exit("hashedPassword" not in json.load(sys.stdin).get("privileged", {}))'; then
+  homectl inspect "$user" --export-format=minimal --json=short \
+    | python3 -c '
+import sys, json, time
+r = json.load(sys.stdin)
+r.get("privileged", {}).pop("hashedPassword", None)
+r["lastChangeUSec"] = int(time.time() * 1_000_000)
+json.dump(r, sys.stdout)
+' \
+    | homectl update "$user" --identity=-
+  changed=changed
+fi
+echo "$changed"

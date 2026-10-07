@@ -216,8 +216,11 @@ hence the split:
    `linux_users/<user>/recovery-key`) — and creates the encrypted home with no
    prompting.
 2. **First login.** `ansible/roles/user/tasks/first-login.yml` discovers the YubiKey's
-   PIV URI and runs `homectl update --pkcs11-token-uri=…`, then **drops the
-   password factor**, leaving the token as the login factor.
+   PIV URI and runs `home-enroll-yubikey`, which does `homectl update
+   --pkcs11-token-uri=…` and then **drops the password factor**, leaving the
+   token as the login factor. A subvolume home (full disk encryption) has no
+   volume key in the keyring to authenticate those updates, so the helper
+   supplies the baked secret as root.
 3. **Baked secret removal.** The baked secret is readable from any image's
    unencrypted `/usr`, so first login then wipes its LUKS keyslot, leaving the
    YubiKey's as the home's only one. It refuses if no YubiKey slot exists
