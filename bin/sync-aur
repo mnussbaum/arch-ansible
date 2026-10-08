@@ -29,6 +29,13 @@
 # container that is itself the clean environment (container/dr-entrypoint):
 # nspawn nested in a container, in a VM on macOS, is not reliable.
 #
+# LOCAL PACKAGES: a directory pkgbuilds/<name> builds <name> in place of the
+# AUR's. Its executable update script, run on a scratch copy before the
+# version check, moves the PKGBUILD to the upstream's newest release, and the
+# copy's version takes the place of the AUR's. Under --caching force it never
+# runs, as with the AUR check. vanta-agent is one: the AUR's trails Vanta's
+# releases.
+#
 # PRUNING keeps only the newest version of each package (and its -debug
 # package). The repo is baked into /usr (mkosi/mkosi.conf ExtraTrees) for offline
 # rebuilds, so every superseded version would otherwise ride along in every
@@ -67,6 +74,7 @@ fi
 
 repo=$ARCH_ANSIBLE_CACHE/aur-repo
 chroots=$ARCH_ANSIBLE_CACHE/aur-chroot
+local_pkgbuilds=$root/pkgbuilds
 # The same configs devtools' own extra-x86_64-build uses.
 pacman_conf=/usr/share/devtools/pacman.conf.d/extra.conf
 makepkg_conf=/usr/share/devtools/makepkg.conf.d/x86_64.conf
@@ -150,6 +158,18 @@ for pkg in "${aur[@]}"; do
     [[ -n $(newest_version "$pkg") ]] || missing+=("$pkg")
 done
 
+# Clones, local PKGBUILD copies and downloaded sources (makechrootpkg defaults
+# SRCDEST to the clone) live under the cache, not /tmp, which is RAM on a live
+# medium.
+work=$(mktemp -d "$ARCH_ANSIBLE_CACHE/aur-build.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+
+# The full version (epoch:pkgver-pkgrel) of the PKGBUILD $1.
+pkgbuild_version() {
+    # shellcheck disable=SC1090
+    ( source "$1"; printf '%s' "${epoch:+$epoch:}$pkgver-$pkgrel" )
+}
+
 declare -A aur_version=() aur_base=() stale=()
 if [[ $caching == force ]]; then
     if [[ ${#missing[@]} -gt 0 ]]; then
@@ -158,22 +178,33 @@ if [[ $caching == force ]]; then
     fi
 else
     rpc_args=()
-    for pkg in "${aur[@]}"; do rpc_args+=(--data-urlencode "arg[]=$pkg"); done
-    # Captured first, not read through a process substitution, so a failed
-    # request or an RPC error response stops the build under errexit.
-    rpc=$(curl -fsS --get "${rpc_args[@]}" https://aur.archlinux.org/rpc/v5/info)
-    rows=$(printf '%s' "$rpc" | python3 -c '
+    for pkg in "${aur[@]}"; do
+        if [[ -d $local_pkgbuilds/$pkg ]]; then
+            cp -r "$local_pkgbuilds/$pkg" "$work/$pkg"
+            ( cd "$work/$pkg" && ./update )
+            aur_version[$pkg]=$(pkgbuild_version "$work/$pkg/PKGBUILD")
+            aur_base[$pkg]=$pkg
+        else
+            rpc_args+=(--data-urlencode "arg[]=$pkg")
+        fi
+    done
+    if [[ ${#rpc_args[@]} -gt 0 ]]; then
+        # Captured first, not read through a process substitution, so a failed
+        # request or an RPC error response stops the build under errexit.
+        rpc=$(curl -fsS --get "${rpc_args[@]}" https://aur.archlinux.org/rpc/v5/info)
+        rows=$(printf '%s' "$rpc" | python3 -c '
 import json, sys
 reply = json.load(sys.stdin)
 if reply.get("type") == "error":
     sys.exit("sync-aur: AUR RPC error: " + reply.get("error", "unknown"))
 for r in reply["results"]:
     print(r["Name"], r["Version"], r["PackageBase"], sep="\t")')
-    while IFS=$'\t' read -r name version base; do
-        [[ -n $name ]] || continue
-        aur_version[$name]=$version
-        aur_base[$name]=$base
-    done <<< "$rows"
+        while IFS=$'\t' read -r name version base; do
+            [[ -n $name ]] || continue
+            aur_version[$name]=$version
+            aur_base[$name]=$base
+        done <<< "$rows"
+    fi
 
     for pkg in "${aur[@]}"; do
         have=$(newest_version "$pkg")
@@ -236,11 +267,6 @@ if [[ ${#stale[@]} -gt 0 ]]; then
         mkarchroot -C "$pacman_conf" -M "$makepkg_conf" "$chroots/root" base-devel
     fi
 
-    # Clones and downloaded sources (makechrootpkg defaults SRCDEST to the clone)
-    # live under the cache, not /tmp, which is RAM on a live medium.
-    work=$(mktemp -d "$ARCH_ANSIBLE_CACHE/aur-build.XXXXXX")
-    trap 'rm -rf "$work"' EXIT
-
     declare -A state=()
     # Build pkgbase $1, first building any stale AUR package its PKGBUILD needs
     # and installing the repo's copy of every AUR dependency into the chroot (-I):
@@ -254,7 +280,12 @@ if [[ ${#stale[@]} -gt 0 ]]; then
         esac
         state[$base]=building
 
-        git clone --quiet --depth=1 "https://aur.archlinux.org/$base.git" "$dir"
+        if [[ -d $local_pkgbuilds/$base ]]; then
+            # Already copied and updated by the version check.
+            ( cd "$dir" && makepkg --printsrcinfo > .SRCINFO )
+        else
+            git clone --quiet --depth=1 "https://aur.archlinux.org/$base.git" "$dir"
+        fi
         # Read into an array before recursing: a nested build must not consume
         # the input of a loop that is still reading.
         mapfile -t deps < <(sed -nE \

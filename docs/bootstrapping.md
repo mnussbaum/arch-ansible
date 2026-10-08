@@ -308,7 +308,11 @@ A build reuses six caches under `${ARCH_ANSIBLE_CACHE}` (`~/.cache` on a host,
 `bin/sync-aur` checks the AUR for newer versions of the image's AUR packages and
 builds missing or outdated ones with `makechrootpkg` into `aur-repo`, keeping only
 the newest version of each. Makedepends go into the chroot, so this works on a
-device with a read-only `/usr`. A run that builds asks for sudo.
+device with a read-only `/usr`. A run that builds asks for sudo. A package with a
+directory under `pkgbuilds/` is built from that directory instead of the AUR: its
+`update` script moves the PKGBUILD to the upstream's newest release first.
+`vanta-agent` is built this way, from Vanta's own release metadata, because the
+AUR package trails Vanta's releases.
 
 ### The round-trip pattern
 

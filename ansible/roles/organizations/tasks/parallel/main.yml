@@ -1,7 +1,7 @@
 # vim:ft=yaml.ansible:
 ---
 # Only /usr ships in the image; move the package's /var/vanta to the factory
-# tree that vanta-tmpfiles.conf seeds it from.
+# tree that vanta-seed copies it from.
 - name: Move /var/vanta into the factory tree
   shell: |
     if [[ -d /var/vanta ]]; then
@@ -12,11 +12,6 @@
   args:
     executable: /bin/bash
 
-- name: Seed /var/vanta at boot
-  copy:
-    src: parallel/vanta-tmpfiles.conf
-    dest: /usr/lib/tmpfiles.d/vanta.conf
-
 - name: Create vanta-agent drop-in dir
   file:
     path: /usr/lib/systemd/system/vanta-agent.service.d
@@ -26,6 +21,17 @@
   copy:
     src: parallel/vanta-agent-condition.conf
     dest: /usr/lib/systemd/system/vanta-agent.service.d/arch-ansible-condition.conf
+
+- name: Install vanta-seed
+  copy:
+    src: parallel/vanta-seed
+    dest: /usr/bin/vanta-seed
+    mode: "0755"
+
+- name: Seed /var/vanta before each vanta-agent start
+  copy:
+    src: parallel/vanta-seed.conf
+    dest: /usr/lib/systemd/system/vanta-agent.service.d/arch-ansible-seed.conf
 
 - name: Install vanta-agent preset
   copy:

@@ -1,0 +1,21 @@
+#!/bin/bash
+# Copy the image's Vanta agent into /var/vanta, where it runs and updates
+# itself, unless /var/vanta already holds the same or a newer version. Runs
+# before every vanta-agent start (vanta-seed.conf), so an image shipping a
+# newer agent replaces a self-updated older one, and an older image's agent
+# never replaces a newer self-update.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+factory=/usr/share/factory/var/vanta
+shipped=$("$factory/vanta-cli" --version)
+running=$(/var/vanta/vanta-cli --version 2>/dev/null || true)
+if [[ -n $running ]] && (( $(vercmp "$shipped" "$running") <= 0 )); then
+  exit 0
+fi
+
+echo "Installing Vanta agent $shipped over ${running:-nothing}"
+mkdir -p /var/vanta
+# --remove-destination: replace binaries rather than write into them.
+cp -r --preserve=mode --remove-destination "$factory/." /var/vanta/

@@ -1,0 +1,33 @@
+#!/bin/bash
+# Point the PKGBUILD in the current directory at Vanta's newest Linux agent.
+# bin/sync-aur runs it on a scratch copy before every online build.
+#
+# The source is Vanta's TUF targets metadata, which the agents update
+# themselves from: it lists every release with its hash. install-linux.sh and
+# the AUR package pin older releases, and the metadata's own versions/latest
+# alias points at an older one still, so take the highest versions/X entry.
+# Only the hash is used, fetched over TLS like install-linux.sh's pin; the
+# TUF signatures aren't verified.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+targets=$(curl -fsS https://agent-downloads.vanta.com/targets.json)
+newest=$(printf '%s' "$targets" | python3 -c '
+import json, re, sys
+found = []
+for path, target in json.load(sys.stdin)["signed"]["targets"].items():
+    m = re.fullmatch(r"versions/(\d+(?:\.\d+)*)/vanta-amd64\.deb", path)
+    if m:
+        found.append((tuple(map(int, m[1].split("."))), m[1], target["hashes"]["sha512"]))
+if not found:
+    sys.exit("update: no versions/X/vanta-amd64.deb in Vanta targets.json")
+print(*max(found)[1:])')
+read -r version sha512 <<< "$newest"
+
+# A new release starts at pkgrel 1; the same one keeps the committed pkgrel.
+current=$(sed -n 's/^pkgver=//p' PKGBUILD)
+if [[ $version != "$current" ]]; then
+  sed -i -e "s/^pkgver=.*/pkgver=$version/" -e 's/^pkgrel=.*/pkgrel=1/' \
+    -e "s/^_deb_sha512=.*/_deb_sha512=$sha512/" PKGBUILD
+fi

@@ -1,0 +1,34 @@
+# Vanta's Linux agent, repackaged from its .deb. Built by bin/sync-aur in place
+# of the AUR's vanta-agent, which trails Vanta's releases. Before every online
+# build sync-aur runs ./update on a scratch copy, which moves pkgver to Vanta's
+# newest release; the version committed here is only what an offline
+# (--caching force) build falls back to.
+pkgname=vanta-agent
+pkgver=2.20.0
+pkgrel=1
+_deb_sha512=173615f1a53302e6da328eb5347b0f929a177962d2ea05ed272a6a01d4cecbc7334f1cc992f6d4434ce4c86c17541d612301b936140054c12f3822d7cc42770a
+pkgdesc="Vanta agent"
+arch=('x86_64')
+url="https://www.vanta.com/"
+depends=('systemd')
+license=('LicenseRef-vanta')
+source=("vanta-$pkgver-amd64.deb::https://agent-downloads.vanta.com/targets/versions/$pkgver/vanta-amd64.deb"
+        vanta-agent.conf)
+sha512sums=("$_deb_sha512"
+            'a781e310a6c7d6d0f04576e2ea75539755a50f25fbc89fb6e72e69971857924cab8308e4a8811e076817fa8025bb8ec5efb81a0f9195df53b1e926f61882d17d')
+
+package() {
+  bsdtar -xf data.tar.gz
+
+  # The .deb's etc/ is sysvinit/upstart scripts and an empty vanta.conf, which
+  # vanta-activate writes instead.
+  install -Dm644 usr/lib/systemd/system/vanta.service \
+    "$pkgdir/usr/lib/systemd/system/vanta-agent.service"
+  install -Dm644 vanta-agent.conf \
+    "$pkgdir/usr/lib/systemd/system/vanta-agent.service.d/vanta-agent.conf"
+  install -Dm644 usr/share/doc/vanta/changelog.gz "$pkgdir/usr/share/doc/vanta/changelog.gz"
+  install -d "$pkgdir/var"
+  cp -r --preserve=mode var/vanta "$pkgdir/var/"
+  install -d "$pkgdir/usr/bin"
+  ln -s /var/vanta/vanta-cli "$pkgdir/usr/bin/vanta-cli"
+}
