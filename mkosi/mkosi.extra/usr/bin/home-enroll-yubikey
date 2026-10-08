@@ -24,9 +24,23 @@ if ! grep -q '"storage":"luks"' <<<"$record"; then
   export PASSWORD
 fi
 
+# Re-import the record with python code $1 applied to it as r.
+reimport() {
+  homectl inspect "$user" --export-format=minimal --json=short \
+    | python3 -c "import sys, json, time
+r = json.load(sys.stdin)
+$1
+r['lastChangeUSec'] = int(time.time() * 1_000_000)
+json.dump(r, sys.stdout)" \
+    | homectl update "$user" --identity=-
+}
+
 changed=unchanged
 if ! grep -q '"pkcs11TokenUri"' <<<"$record"; then
   [[ $uri =~ ^pkcs11:[^[:space:]]*$ ]] || { echo "error: bad PKCS#11 URI '$uri'" >&2; exit 2; }
+  # homectl update of a record with no perMachine writes "perMachine": null and
+  # then rejects it, so give it an empty array first.
+  grep -q '"perMachine"' <<<"$record" || reimport 'r["perMachine"] = []'
   homectl update "$user" --pkcs11-token-uri="$uri"
   changed=changed
 fi
@@ -34,18 +48,7 @@ fi
 # Only the top-level hashedPassword; each pkcs11EncryptedKey carries its own.
 if homectl inspect "$user" --json=short \
     | python3 -c 'import json, sys; sys.exit("hashedPassword" not in json.load(sys.stdin).get("privileged", {}))'; then
-  homectl inspect "$user" --export-format=minimal --json=short \
-    | python3 -c '
-import sys, json, time
-r = json.load(sys.stdin)
-# The minimal export of a subvolume home has "perMachine": null, which
-# --identity rejects.
-r = {k: v for k, v in r.items() if v is not None}
-r.get("privileged", {}).pop("hashedPassword", None)
-r["lastChangeUSec"] = int(time.time() * 1_000_000)
-json.dump(r, sys.stdout)
-' \
-    | homectl update "$user" --identity=-
+  reimport 'r.get("privileged", {}).pop("hashedPassword", None)'
   changed=changed
 fi
 echo "$changed"
