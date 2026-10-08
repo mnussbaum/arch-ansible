@@ -43,13 +43,3 @@
   copy:
     src: 50-ecr.conf
     dest: /etc/containers/registries.conf.d/50-ecr.conf
-
-- name: Create docker client config dir
-  file:
-    path: /etc/xdg/docker
-    state: directory
-
-- name: Install docker client config
-  copy:
-    src: docker-user-config.json
-    dest: /etc/xdg/docker/config.json
