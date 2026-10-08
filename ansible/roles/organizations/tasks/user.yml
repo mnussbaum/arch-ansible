@@ -27,10 +27,11 @@
     label: "{{ item.key }}"
   when: item.value.ssh_key.public.split()[1] not in agent_ssh_keys.stdout
 
-- name: Install AWS config
+- name: Install AWS config and credentials
   vars:
     aws_config_orgs: "{{ active_organizations | dict2items | selectattr('value.aws_config', 'defined') }}"
-  when: aws_config_orgs | length > 0
+    aws_credentials_orgs: "{{ active_organizations | dict2items | selectattr('value.aws_credentials', 'defined') }}"
+  when: (aws_config_orgs + aws_credentials_orgs) | length > 0
   block:
     # EKS kubeconfigs (aws eks update-kubeconfig) go in ~/.kube.
     - name: Create AWS and kube config dirs
@@ -49,6 +50,19 @@
 
           {% endfor %}
         dest: ~/.aws/config
+      when: aws_config_orgs | length > 0
+
+    - name: Join organization AWS credentials into ~/.aws/credentials
+      copy:
+        content: |
+          {% for org in aws_credentials_orgs %}
+          {{ lookup('pipe', 'pass show ' ~ (org.value.aws_credentials | quote)) }}
+
+          {% endfor %}
+        dest: ~/.aws/credentials
+        mode: "0600"
+      when: aws_credentials_orgs | length > 0
+      no_log: true
 
 - name: Run organization-specific first-login tasks
   include_tasks: "{{ organization }}/user.yml"
