@@ -5,7 +5,7 @@ set -o nounset
 set -o pipefail
 
 caching="available"
-keep="3"
+keep="1"
 skip_postinst=""
 ansible_tags=""
 organizations=()
@@ -22,8 +22,8 @@ while [[ $# -gt 0 ]]; do
       echo "                     off        ignore the cache; refresh metadata and pull everything fresh" >&2
       echo "                     available  use the cache where it satisfies the request, download the rest" >&2
       echo "  --keep           After a successful build, prune the output directory to the" >&2
-      echo "                   newest N image versions (default: 3). 'all' keeps every" >&2
-      echo "                   version; each one costs ~18G." >&2
+      echo "                   newest N image versions per organization set (default: 1)." >&2
+      echo "                   'all' keeps every version; each one costs ~18G." >&2
       echo "  --organization   Include an organization from ansible/group_vars/all/organizations.yml" >&2
       echo "                   (repeatable). Defaults to \$ARCH_ANSIBLE_ORGANIZATIONS (comma-separated)." >&2
       echo "  --skip-postinst  Skip the Ansible post-installation step." >&2
@@ -207,8 +207,9 @@ fi
 # build with ENOSPC while repart was pre-populating the erofs. One version is the
 # medium plus the split usr/verity/verity-sig/UKI artifacts — ~18G — so a handful
 # is all that fits. Old versions are not reproducible (their Arch package sets have
-# moved on), hence a conservative default of 3 and a --keep all escape hatch. The
-# count is per organization set, so building one image never prunes another's.
+# moved on), so by default only the newest is kept, with --keep N|all to hold
+# more. The count is per organization set (including none), so building one
+# image never prunes another's.
 #
 # Versions are the zero-padded UTC timestamps mkosi/mkosi.bump emits, so a reverse
 # sort is newest-first. Each version is deleted by its own explicit -name pattern:
