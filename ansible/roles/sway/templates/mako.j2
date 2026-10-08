@@ -1,5 +1,19 @@
-{{ base16_mako["schemes"][base16_scheme]["mako"]["colors"]["base16-" + base16_scheme + ".config"] }}
-
+# Global options must precede the color scheme's [urgency] sections
 default-timeout=7
 ignore-timeout=1
 group-by=app-name
+
+{{ base16_mako["schemes"][base16_scheme]["mako"]["colors"]["base16-" + base16_scheme + ".config"] }}
+
+# poweralertd should only surface battery warnings, not charging and AC changes
+[category=power.update]
+invisible=1
+
+[category=power.online]
+invisible=1
+
+[category=power.offline]
+invisible=1
+
+[category=power.cleared]
+invisible=1

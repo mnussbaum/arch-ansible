@@ -38,6 +38,17 @@
     src: 80-power-user.preset
     dest: /usr/lib/systemd/user-preset/80-power.preset
 
+- name: Create poweralertd drop-in directory
+  file:
+    path: /usr/lib/systemd/user/poweralertd.service.d
+    state: directory
+
+- name: Limit poweralertd to the system power supplies
+  copy:
+    src: poweralertd-flags.conf
+    dest: /usr/lib/systemd/user/poweralertd.service.d/flags.conf
+    mode: "0644"
+
 
 - name: Create logind drop-in directory
   file:
