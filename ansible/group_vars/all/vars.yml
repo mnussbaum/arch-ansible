@@ -67,26 +67,19 @@ monitors:
     scale: 2
   - id: Virtual-1
 
-# kanshi profiles for the laptop docked to one external monitor. The "*"
-# fallback must stay last; it catches any monitor not listed above it.
+# kanshi profiles for the laptop docked to one external monitor, each centered
+# above the laptop by center-laptop-output. The "*" fallback must stay last; it
+# catches any monitor not listed above it.
 docked_monitors:
   laptop:
     id: Sharp Corporation 0x1551 Unknown
     scale: 2
   externals:
     - id: ASUSTek COMPUTER INC PA34V KBLMQS025309
-      position: 0,0
       scale: 0.9
-      laptop_position: 950,1600
     - id: Samsung Electric Company LS27A40xU H4TW601355
-      position: 950,1600
       scale: 0.95
-      laptop_position: 950,1600
     - id: Dell Inc. DELL S3221QS 5SN17N3
-      position: 0,0
       scale: 1
-      laptop_position: 950,1600
     - id: "*"
-      position: 0,0
       scale: 1
-      laptop_position: 957,2160

@@ -1,0 +1,17 @@
+#!/bin/bash
+# Center the laptop panel directly below the external monitor. Run by kanshi's
+# catch-all profile, where the monitor's size isn't known ahead of time.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+swaymsg --raw -t get_outputs | jq -r '
+  [.[] | select(.active)] as $active
+  | ($active | map(select(.name | startswith("eDP"))) | first) as $laptop
+  | ($active | map(select(.name | startswith("eDP") | not)) | first) as $ext
+  | if $laptop == null or $ext == null then empty else
+      ([$ext.rect.width, $laptop.rect.width] | max) as $w
+      | "output \($ext.name) position \(($w - $ext.rect.width) / 2 | floor) 0, "
+        + "output \($laptop.name) position \(($w - $laptop.rect.width) / 2 | floor) \($ext.rect.height)"
+    end
+' | xargs -r -d '\n' swaymsg

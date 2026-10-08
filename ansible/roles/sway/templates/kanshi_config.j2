@@ -4,7 +4,8 @@ profile {
 {% for external in docked_monitors.externals %}
 
 profile {
-  output "{{ docked_monitors.laptop.id }}" position {{ external.laptop_position }} scale {{ docked_monitors.laptop.scale }}
-  output "{{ external.id }}" position {{ external.position }} scale {{ external.scale }}
+  output "{{ docked_monitors.laptop.id }}" scale {{ docked_monitors.laptop.scale }}
+  output "{{ external.id }}" scale {{ external.scale }}
+  exec /usr/bin/center-laptop-output
 }
 {% endfor %}
