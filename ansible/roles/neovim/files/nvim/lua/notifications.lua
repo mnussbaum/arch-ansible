@@ -44,6 +44,12 @@ local function update_spinner(client_id, token)
 	end
 end
 
+-- Clients whose progress is constant background chatter
+local silenced_progress_clients = {
+	pyright = true,
+	rust_analyzer = true,
+}
+
 local function format_title(title, client_name)
 	return client_name .. (#title > 0 and ": " .. title or "")
 end
@@ -55,7 +61,7 @@ end
 vim.lsp.handlers["$/progress"] = function(_, result, ctx)
 	local client_id = ctx.client_id
 	local client = vim.lsp.get_client_by_id(client_id)
-	if client and client.name == "pyright" then
+	if client and silenced_progress_clients[client.name] then
 		return
 	end
 
