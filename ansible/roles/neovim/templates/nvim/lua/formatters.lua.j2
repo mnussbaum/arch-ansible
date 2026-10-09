@@ -15,9 +15,10 @@ return {
     lsp_format = "fallback",
   },
 
+  -- rustup-proxied rustfmt can take >500ms on a cold start
   format_on_save = {
     lsp_format = "fallback",
-    timeout_ms = 500,
+    timeout_ms = 2000,
   },
 
   notify_on_error = true,
