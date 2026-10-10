@@ -101,7 +101,10 @@ The root and swap partitions are LUKS2, created and TPM2-enrolled by
 (`mkosi/mkosi.extra/usr/lib/repart.d/{40-swap,50-root}.conf`, `Encrypt=tpm2`). The
 keyslot is bound to **PCR 7 and a signed PCR 11 policy**: `TPM2PCRs=7` pins the
 Secure Boot state, and repart adds the signed policy by default from mkosi's
-`SignExpectedPcr=` key. A normal boot unlocks with no interaction.
+`SignExpectedPcr=` key. A normal boot unlocks with no interaction. Swap (and
+home, under full disk encryption) is opened in the initrd alongside root and
+stays open past switch-root (`x-initrd.attach` in
+`mkosi/mkosi.initrd.conf/extra/etc/crypttab`).
 
 Once first boot has created a policy, `pcrlock-enroll-luks.service` moves the
 PCR 7 half onto a **systemd-pcrlock policy** (see "PCR 7 via pcrlock" below);
@@ -110,17 +113,38 @@ the signed PCR 11 half never changes.
 Those two bindings behave very differently, and the difference matters for
 recovery:
 
-- **PCR 7** is stable within a boot, so the token can also authorize changes
-  from the running system (`systemd-cryptenroll --unlock-tpm2-device=auto`).
+- **PCR 7** is stable within a boot.
 - **Signed PCR 11** measures _this_ UKI and its boot phases, so no other
   image — including a recovery medium — can ever satisfy it. That is the point:
   a different OS cannot unseal the disk. It also means `bin/recovery-mount`
   cannot use the TPM token and needs a second factor.
 
+The signed PCR 11 policy is the UKI's **initrd-only** one. ukify signs two:
+the default covers every phase through `ready`, and a second, with policy
+reference `initrd` (mkosi passes `--sign-initrd-pcrs`), covers only
+`enter-initrd`. repart enrolls against the second
+(`--tpm2-public-key-policyref=initrd`, set by a `systemd-repart.service`
+drop-in in the initrd, since repart.d has no setting for it). With the default
+one, anyone with the disk could retype the real root's partition, add their own
+LUKS root, and boot the signed UKI: their root's units would run with PCR 7
+unchanged and PCR 11 in a signed state, free to unseal the real volumes. With
+the initrd one, the slots stop unsealing at `leave-initrd`, before any root's
+own code runs.
+
+So the TPM token can't authorize keyslot changes from the running system.
+Instead the initrd links each volume key into root's user keyring
+(`link-volume-key=` in the crypttab), and `/usr/bin/luks-volume-key` adds a
+throwaway passphrase keyslot from it for `systemd-cryptenroll
+--unlock-key-file`. `luks-enroll-pkcs11`, `pcrlock-enroll-luks`,
+`bin/luks-reseal-tpm` and `bin/revoke-luks-yubikey` all authorize that way. A
+volume key outlives every keyslot rotation, so `luks-forget-volume-keys.service`
+unlinks them once each boot's enrollment is done, but only when every volume
+already has a YubiKey slot to authorize later changes with.
+
 That second factor is the **YubiKey's shared PIV key**, enrolled on root and
 swap as a PKCS#11 slot at first boot, before login, by
 `luks-enroll-pkcs11.service` (`/usr/bin/luks-enroll-pkcs11`),
-authorized by the TPM2 token. `bin/enroll-yubikeys` loads the same PIV key
+authorized by the volume keys. `bin/enroll-yubikeys` loads the same PIV key
 (kept in pass, encrypted to the GPG root) onto every YubiKey, so any of them —
 including ones provisioned later, or rebuilt from the root key on the offline
 USB — unlocks every disk. Enrolling asks for the PIV PIN, no touch; unlocking
@@ -156,8 +180,10 @@ rewritten without touching the keyslot:
   `--strict=yes` so it fails rather than silently dropping PCR 7. A copy goes to
   the ESP (`loader/credentials/pcrlock.<machine-id>.cred`) for the initrd.
 - `pcrlock-enroll-luks.service` (`mkosi/mkosi.extra/usr/bin/pcrlock-enroll-luks`) then re-enrolls each
-  TPM2 slot as signed PCR 11 + pcrlock, wiping the old slot only after the new
-  one exists. If the policy was not made, the volumes keep the literal binding.
+  TPM2 slot as initrd-only signed PCR 11 + pcrlock, wiping the old slot only
+  after the new one exists. If the policy was not made, the volumes keep the
+  literal binding. It also moves slots sealed to the default PCR 11 signature
+  (installs from before the initrd-only one) onto it.
 - The policy's recovery PIN is ours, kept root-only on the encrypted root
   (`/var/lib/arch-ansible/pcrlock-recovery-pin`), so the policy can always be
   rewritten once root is open.
@@ -180,7 +206,7 @@ the TPM again.
 
 pcrlock needs a TPM 2.0 rev ≥ 1.38 (PolicyAuthorizeNV). On older TPMs — the
 XPS 13 9365's Intel PTT is one — `systemd-pcrlock-make-policy` is skipped and
-root and swap stay on literal PCR 7 + signed PCR 11. Its PCR 7 event log was
+root and swap stay on literal PCR 7 + initrd-only signed PCR 11. Its PCR 7 event log was
 fully recognized, so a newer TPM firmware would be enough.
 
 `home` is a plain btrfs partition; per-user encryption is `systemd-homed` — one
@@ -532,11 +558,13 @@ asks for the YubiKey once and then heals ("PCR 7 via pcrlock").
   sudo /usr/share/arch-ansible/bin/luks-reseal-tpm
   ```
 
-  It binds literal PCR 7 + signed PCR 11, and `pcrlock-enroll-luks.service`
-  moves PCR 7 onto the pcrlock policy on a later boot. Don't re-enroll by hand
-  with `systemd-cryptenroll --tpm2-pcrs=7`: without `--tpm2-public-key-pcrs=11`
-  the slot loses the signed PCR 11 policy.
+  It binds literal PCR 7 + initrd-only signed PCR 11, and
+  `pcrlock-enroll-luks.service` moves PCR 7 onto the pcrlock policy on a later
+  boot. Don't re-enroll by hand with `systemd-cryptenroll --tpm2-pcrs=7`:
+  without `--tpm2-public-key-pcrs=11 --tpm2-public-key-policyref=initrd` the
+  slot loses the signed PCR 11 policy, or gets one that unseals after boot.
 
+  When the boot's volume keys are already gone, it falls back to the YubiKey.
   `systemd-cryptenroll` can't authorize with a PKCS#11 token and Arch's
   libcryptsetup has no token plugins, so the script decrypts the slot's key with
   `pkcs11-tool` the way systemd-cryptsetup does and passes it as

@@ -1,15 +1,17 @@
 #!/bin/bash
-# Re-seal root, swap and home's TPM2 slots to this machine's current TPM state,
-# authorized by the YubiKey (the shared PIV key's PKCS#11 slot). Use after the
-# TPM stopped unlocking (a cleared or replaced TPM, a firmware or Secure Boot
-# change) and you booted by typing the YubiKey PIN.
+# Re-seal root, swap and home's TPM2 slots to this machine's current TPM state.
+# Use after the TPM stopped unlocking (a cleared or replaced TPM, a firmware or
+# Secure Boot change) and you booted by typing the YubiKey PIN.
 #
 #   sudo bin/luks-reseal-tpm [DEVICE...]
 #
-# systemd-cryptenroll can't authorize with a PKCS#11 token, and Arch's
-# libcryptsetup has no token plugins, so do what systemd-cryptsetup does: decrypt
-# the token's key with the YubiKey (asks for the PIV PIN and a touch) and pass
-# its base64 encoding, the keyslot's passphrase, as --unlock-key-file.
+# Authorized by the volume key the initrd left in root's keyring
+# (luks-volume-key) when it's still there, and otherwise by the YubiKey (the
+# shared PIV key's PKCS#11 slot): systemd-cryptenroll can't authorize with a
+# PKCS#11 token, and Arch's libcryptsetup has no token plugins, so do what
+# systemd-cryptsetup does: decrypt the token's key with the YubiKey (asks for
+# the PIV PIN and a touch) and pass its base64 encoding, the keyslot's
+# passphrase, as --unlock-key-file.
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -22,9 +24,27 @@ module=/usr/lib/pkcs11/opensc-pkcs11.so
 tmp=$(mktemp -d /run/luks-reseal.XXXXXX)
 trap 'rm -rf "$tmp"' EXIT
 
+# Replace every TPM2 slot with one sealed to this TPM: literal PCR 7 plus the
+# UKI's initrd-only signed PCR 11 policy (its public key comes from the running
+# UKI; policyref=initrd as in the initrd's systemd-repart.service.d). The slot
+# still only unseals in the initrd. --tpm2-pcrlock= (empty) stops cryptenroll
+# from binding to a pcrlock.json it finds, which after a TPM change belongs to
+# the old TPM; pcrlock-enroll-luks moves PCR 7 onto the current policy on a
+# later boot.
+reseal() {
+    systemd-cryptenroll "$1" --unlock-key-file="$2" --wipe-slot=tpm2 \
+        --tpm2-device=auto --tpm2-pcrs=7 --tpm2-public-key-pcrs=11 \
+        --tpm2-public-key-policyref=initrd --tpm2-pcrlock=
+}
+
 for dev in "$@"; do
     [[ -e "$dev" ]] || continue
     echo "==> $dev"
+    if key=$(/usr/bin/luks-volume-key add "$dev" 2>/dev/null); then
+        reseal "$dev" "$key" || { /usr/bin/luks-volume-key remove "$dev" "$key"; exit 1; }
+        /usr/bin/luks-volume-key remove "$dev" "$key"
+        continue
+    fi
     cryptsetup luksDump --dump-json-metadata "$dev" | python3 -c '
 import base64, json, sys
 tokens = [t for t in json.load(sys.stdin)["tokens"].values() if t["type"] == "systemd-pkcs11"]
@@ -40,14 +60,7 @@ sys.stdout.buffer.write(base64.b64decode(t["pkcs11-key"]))' > "$tmp/enc"
         --mechanism RSA-PKCS-OAEP --hash-algorithm SHA256 --mgf MGF1-SHA256 \
         --input-file "$tmp/enc" --output-file "$tmp/dec"
     base64 -w0 "$tmp/dec" > "$tmp/pass"
-
-    # Replace every TPM2 slot with one sealed to this TPM: literal PCR 7 plus
-    # the signed PCR 11 policy (its public key comes from the running UKI).
-    # --tpm2-pcrlock= (empty) stops cryptenroll from binding to a pcrlock.json
-    # it finds, which after a TPM change belongs to the old TPM;
-    # pcrlock-enroll-luks moves PCR 7 onto the current policy on a later boot.
-    systemd-cryptenroll "$dev" --unlock-key-file="$tmp/pass" --wipe-slot=tpm2 \
-        --tpm2-device=auto --tpm2-pcrs=7 --tpm2-public-key-pcrs=11 --tpm2-pcrlock=
+    reseal "$dev" "$tmp/pass"
     rm -f "$tmp/enc" "$tmp/dec" "$tmp/pass"
 done
 echo "Done. The next boot should unlock from the TPM again."

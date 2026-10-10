@@ -1,6 +1,6 @@
 # Move root, swap and home's TPM2 keyslots from a literal PCR 7 binding onto the
-# systemd-pcrlock policy for PCR 7, keeping the signed PCR 11 policy. See
-# mkosi.extra/usr/bin/pcrlock-enroll-luks.
+# systemd-pcrlock policy for PCR 7, keeping the initrd-only signed PCR 11
+# policy. See mkosi.extra/usr/bin/pcrlock-enroll-luks.
 #
 # repart enrolls the volumes in the initrd on first boot, before any pcrlock
 # policy can exist (it lives in /var and a TPM NV index), so they are born on
@@ -18,6 +18,8 @@ After=systemd-pcrlock-make-policy.service local-fs.target cryptsetup.target
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/bin/pcrlock-enroll-luks
+# Lets luks-volume-key read the volume keys from root's user keyring.
+KeyringMode=shared
 
 [Install]
 WantedBy=multi-user.target

@@ -1,0 +1,71 @@
+#!/bin/bash
+# Authorize keyslot changes on root, swap or home from the booted system. Their
+# TPM2 slots only unseal in the initrd (systemd-repart.service.d/policyref.conf
+# there), so they can't do this after boot. Instead the initrd links each volume
+# key into root's user keyring (link-volume-key= in its crypttab), and this adds
+# a throwaway passphrase keyslot from it for systemd-cryptenroll's
+# --unlock-key-file:
+#
+#   key=$(luks-volume-key add DEVICE)
+#   systemd-cryptenroll DEVICE --unlock-key-file="$key" ...
+#   luks-volume-key remove DEVICE "$key"
+#
+#   luks-volume-key forget   # unlink every volume key from the keyring
+#
+# The keys are only there when this boot's initrd opened the volumes, so not on
+# a recovery medium, and not once luks-forget-volume-keys.service has run.
+# Reading them needs a session keyring linked to the user keyring, which a
+# systemd service only gets with KeyringMode=shared and a sudo shell doesn't
+# have, so this re-runs itself that way when it can't see the key.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+volumes=(root swap home)
+
+usage() { echo "usage: $0 add DEVICE | remove DEVICE KEYFILE | forget" >&2; exit 2; }
+
+# Must match link-volume-key= in mkosi.initrd.conf/extra/etc/crypttab.
+key_name() { echo "arch-ansible-$1-vk"; }
+
+rerun() {
+    [[ -z "${LUKS_VOLUME_KEY_RERUN:-}" ]] || return 0
+    exec systemd-run --pipe --wait --quiet --collect \
+        -p KeyringMode=shared -E LUKS_VOLUME_KEY_RERUN=1 \
+        "$(readlink -f "$0")" "$@"
+}
+
+case "${1:-}" in
+    add)
+        dev="${2:-}"; [[ -n "$dev" ]] || usage
+        name=
+        for v in "${volumes[@]}"; do
+            [[ "$dev" -ef "/dev/disk/by-designator/$v-luks" ]] && name=$v
+        done
+        [[ -n "$name" ]] || { echo "luks-volume-key: $dev isn't root, swap or home" >&2; exit 1; }
+        dir=$(mktemp -d /run/luks-volume-key.XXXXXX)
+        (umask 077 && head -c 48 /dev/urandom | base64 -w0 > "$dir/key")
+        if err=$(cryptsetup luksAddKey --batch-mode \
+                --volume-key-keyring="%user:$(key_name "$name")" "$dev" "$dir/key" 2>&1); then
+            echo "$dir/key"
+            exit 0
+        fi
+        rm -rf "$dir"
+        rerun "$@"
+        echo "luks-volume-key: $name's volume key isn't available: $err" >&2
+        exit 1
+        ;;
+    remove)
+        dev="${2:-}" key="${3:-}"; [[ -n "$dev" && -n "$key" ]] || usage
+        [[ "$key" == /run/luks-volume-key.*/key ]] || usage
+        cryptsetup luksRemoveKey --batch-mode --key-file="$key" "$dev"
+        rm -rf "${key%/*}"
+        ;;
+    forget)
+        rerun "$@"
+        for v in "${volumes[@]}"; do
+            keyctl unlink "%user:$(key_name "$v")" @u &>/dev/null || true
+        done
+        ;;
+    *) usage ;;
+esac

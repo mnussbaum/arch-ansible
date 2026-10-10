@@ -1,6 +1,7 @@
 #!/bin/bash
 # Enroll the shared YubiKey PIV key (slot 9d) on root, swap and home as a PKCS#11
-# unlock, authorized by their TPM2 slot. Every YubiKey bin/enroll-yubikeys
+# unlock, authorized by their volume keys (luks-volume-key), since their TPM2
+# slots only unseal in the initrd. Every YubiKey bin/enroll-yubikeys
 # provisions carries the same key, so any of them, including future ones,
 # unlocks the disk. Enrolling asks for the PIV PIN (to read the certificate)
 # but no touch. Run at first boot by luks-enroll-pkcs11.service; safe to
@@ -57,11 +58,20 @@ while ! have_key; do
     fi
 done
 
+key=
+trap '[[ -z "$key" ]] || luks-volume-key remove "$dev" "$key"' EXIT
 for dev in "${devices[@]}"; do
     name=${dev##*/}
+    if ! key=$(luks-volume-key add "$dev"); then
+        # luks-forget-volume-keys.service keeps them on boots that start with
+        # a volume lacking the slot.
+        say "Can't authorize enrolling ${name%-luks} this boot; reboot and re-run."
+        key=
+        continue
+    fi
     while true; do
         say "Enrolling the YubiKey for ${name%-luks}; enter its PIV PIN when asked."
-        if systemd-cryptenroll "$dev" --unlock-tpm2-device=auto --pkcs11-token-uri="$uri"; then
+        if systemd-cryptenroll "$dev" --unlock-key-file="$key" --pkcs11-token-uri="$uri"; then
             say "YubiKey PIV key enrolled for ${name%-luks}."
             break
         fi
@@ -70,6 +80,8 @@ for dev in "${devices[@]}"; do
         read -rp "Enrollment failed. Press Enter to retry, or type skip: " reply
         [[ "$reply" == skip ]] && break
     done
+    luks-volume-key remove "$dev" "$key"
+    key=
 done
 
 rc=0
@@ -79,4 +91,7 @@ for dev in "${devices[@]}"; do
         rc=1
     fi
 done
+# Every volume has its slot again, so the volume keys can go
+# (luks-forget-volume-keys.service, bin/revoke-luks-yubikey).
+(( rc )) || rm -f /var/lib/arch-ansible/keep-volume-keys
 exit "$rc"

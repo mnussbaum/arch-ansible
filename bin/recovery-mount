@@ -93,10 +93,10 @@ done < <(lsblk -Pno NAME,FSTYPE,PARTLABEL "/dev/$parent")
 # pcrlock-enroll-luks.service has run), and both must be satisfied. PCR 11
 # measures THIS UKI and its boot phases, so a recovery boot — a different UKI,
 # and the Live profile signs no expected PCRs at all — can never match it, no
-# matter that PCR 7 does. The token therefore cannot unlock from here. (On the
-# volume's OWN boot it can, which is how luks-enroll-pkcs11.service authorizes
-# enrollment; that is not this case.) Tokens are still tried first, because the
-# YubiKey's PKCS#11 (PIV) token has no such limit.
+# matter that PCR 7 does. The token therefore cannot unlock from here; even on
+# the volume's OWN boot it only unseals in the initrd (policyref=initrd). Tokens
+# are still tried first, because the YubiKey's PKCS#11 (PIV) token has no such
+# limit.
 #
 # Anything a human can type is a keyslot NOT bound to a hardware token (a
 # passphrase, or a systemd-cryptenroll --recovery-key slot). If there is none,

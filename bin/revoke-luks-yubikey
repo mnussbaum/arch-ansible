@@ -4,11 +4,12 @@
 # (bin/enroll-yubikeys), then on each machine wipe its old PKCS#11 slot with this
 # and re-enroll with luks-enroll-pkcs11.
 #
-# The wipe needs an existing factor to authorize it. The TPM2 token works from
-# the running system (it binds PCR 7, via the pcrlock policy after first boot,
-# plus a signed PCR 11 policy whose signature covers the later boot phases
-# too), so that is tried first; otherwise systemd-cryptenroll falls back to
-# prompting.
+# The wipe needs an existing factor to authorize it. The TPM2 token can't: it
+# only unseals in the initrd. On a booted install the volume key the initrd left
+# in root's keyring does (luks-volume-key). luks-forget-volume-keys.service
+# drops it once every volume has a YubiKey slot, so if it's gone this keeps it
+# from the next boot on and asks for a reboot. Elsewhere (a recovery chroot)
+# systemd-cryptenroll prompts.
 #
 # Usage: bin/revoke-luks-yubikey <slot> [DEVICE]
 #
@@ -42,9 +43,16 @@ echo "Current LUKS keyslots on $DEVICE:"
 cryptsetup luksDump "$DEVICE" | grep -E 'Keyslot|Type:|State:|systemd-'
 echo ""
 echo "==> Wiping slot $SLOT on $DEVICE…"
-if ! systemd-cryptenroll --unlock-tpm2-device=auto --wipe-slot="$SLOT" "$DEVICE"; then
-    echo "==> TPM2 did not authorize the wipe; falling back to a prompt."
+if [[ ! -e /dev/disk/by-designator/root-luks ]]; then
     systemd-cryptenroll --wipe-slot="$SLOT" "$DEVICE"
+elif key=$(/usr/bin/luks-volume-key add "$DEVICE"); then
+    trap '/usr/bin/luks-volume-key remove "$DEVICE" "$key"' EXIT
+    systemd-cryptenroll --unlock-key-file="$key" --wipe-slot="$SLOT" "$DEVICE"
+else
+    # Read by luks-forget-volume-keys.service, removed by luks-enroll-pkcs11.
+    install -D -m 0644 /dev/null /var/lib/arch-ansible/keep-volume-keys
+    echo "==> The volume key was already dropped this boot. Reboot and re-run this." >&2
+    exit 1
 fi
 
 echo "==> Slot $SLOT wiped. With a YubiKey carrying the new PIV key plugged in, re-enroll:"

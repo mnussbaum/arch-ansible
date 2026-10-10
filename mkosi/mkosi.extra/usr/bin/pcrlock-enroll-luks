@@ -1,9 +1,13 @@
 #!/bin/bash
 # Move root, swap and home's TPM2 slots from a literal PCR 7 binding onto the
-# pcrlock policy, keeping signed PCR 11, so Secure Boot variable changes can be
-# re-predicted instead of breaking the seal. Volumes are born literal (repart
-# enrolls in the initrd, before any policy exists) and moved here after boot.
-# Run every boot by pcrlock-enroll-luks.service; a no-op once all are bound.
+# pcrlock policy, keeping the initrd-only signed PCR 11 policy, so Secure Boot
+# variable changes can be re-predicted instead of breaking the seal. Volumes are
+# born literal (repart enrolls in the initrd, before any policy exists) and moved
+# here after boot. Also moves slots sealed to the older signed PCR 11 policy,
+# which still unseals after switch-root, onto the initrd-only one, keeping
+# literal PCR 7 when there is no pcrlock policy. Authorized by the volume keys
+# (luks-volume-key). Run every boot by pcrlock-enroll-luks.service; a no-op once
+# all are bound.
 #
 # Only moves literal bindings: slots bound to a replaced NV index (after
 # `systemd-pcrlock remove-policy`) must be re-enrolled by hand.
@@ -15,51 +19,76 @@ policy=/var/lib/systemd/pcrlock.json
 
 log() { echo "pcrlock-enroll-luks: $*"; }
 
-[[ -s "$policy" ]] || { log "no pcrlock policy at $policy; nothing to do"; exit 0; }
-
-# make-policy runs with --strict=yes, but check anyway: binding to a policy that
-# does not cover PCR 7 would silently drop the Secure Boot binding.
-if ! python3 -c '
+if [[ -s "$policy" ]]; then
+    # make-policy runs with --strict=yes, but check anyway: binding to a policy
+    # that does not cover PCR 7 would silently drop the Secure Boot binding.
+    if ! python3 -c '
 import json, sys
 p = json.load(open(sys.argv[1]))
 sys.exit(0 if any(e.get("pcr") == 7 and e.get("values") for e in p["pcrValues"]) else 1)
 ' "$policy"; then
-    log "ERROR: $policy does not cover PCR 7; refusing to re-enroll"
-    exit 1
+        log "ERROR: $policy does not cover PCR 7; refusing to re-enroll"
+        exit 1
+    fi
+    pcr7=(--tpm2-pcrlock="$policy" --tpm2-pcrs=)
+    want=pcrlock
+else
+    log "no pcrlock policy at $policy; keeping literal PCR 7"
+    pcr7=(--tpm2-pcrlock= --tpm2-pcrs=7)
+    want=literal
 fi
 
-# Prints "pcrlock" if the volume's TPM2 token is already bound to a pcrlock
-# policy, "literal" if it has a TPM2 token that is not, and "none" otherwise.
+# Prints "none" if the volume has no TPM2 token, "old" if one is sealed to the
+# signed PCR 11 policy without the initrd policyref, and otherwise "pcrlock" or
+# "literal" by how PCR 7 is bound.
 tpm2_binding() {
     cryptsetup luksDump --dump-json-metadata "$1" | python3 -c '
 import json, sys
 tokens = [t for t in json.load(sys.stdin)["tokens"].values() if t["type"] == "systemd-tpm2"]
-print("none" if not tokens else "pcrlock" if all(t.get("tpm2_pcrlock") for t in tokens) else "literal")'
+if not tokens:
+    print("none")
+elif not all(t.get("tpm2_pubkey_ref") for t in tokens):
+    print("old")
+else:
+    print("pcrlock" if all(t.get("tpm2_pcrlock") for t in tokens) else "literal")'
 }
 
 rc=0
+key=
+trap '[[ -z "$key" ]] || luks-volume-key remove "$dev" "$key"' EXIT
 for dev in /dev/disk/by-designator/{root,swap,home}-luks; do
     [[ -e "$dev" ]] || continue
-    case "$(tpm2_binding "$dev")" in
-        pcrlock) continue ;;
+    binding=$(tpm2_binding "$dev")
+    case "$binding" in
         none) log "$dev has no TPM2 token; leaving it alone"; continue ;;
+        "$want"|pcrlock) continue ;;
     esac
 
-    log "binding $dev to signed PCR 11 + pcrlock (PCR 7)…"
-    # --tpm2-pcrs= (empty) drops the literal PCR 7; the PCR 11 public key is
-    # found automatically in /run/systemd/tpm2-pcr-public-key.pem, which
-    # systemd-stub hands over from the UKI's .pcrpkey section.
+    if ! key=$(luks-volume-key add "$dev"); then
+        log "WARNING: can't authorize re-enrolling $dev; it keeps its $binding binding"
+        key=
+        rc=1
+        continue
+    fi
+
+    log "binding $dev to initrd-only signed PCR 11 + $want PCR 7…"
+    # The PCR 11 public key is found automatically in
+    # /run/systemd/tpm2-pcr-public-key.pem, which systemd-stub hands over from
+    # the UKI's .pcrpkey section. policyref=initrd matches repart's enrollment
+    # (systemd-repart.service.d/policyref.conf in the initrd).
     if systemd-cryptenroll "$dev" \
-        --unlock-tpm2-device=auto \
+        --unlock-key-file="$key" \
         --tpm2-device=auto \
-        --tpm2-pcrlock="$policy" \
+        "${pcr7[@]}" \
         --tpm2-public-key-pcrs=11 \
-        --tpm2-pcrs= \
+        --tpm2-public-key-policyref=initrd \
         --wipe-slot=tpm2; then
         log "$dev bound."
     else
-        log "WARNING: re-enrolling $dev failed; it keeps its literal PCR 7 binding"
+        log "WARNING: re-enrolling $dev failed; it keeps its $binding binding"
         rc=1
     fi
+    luks-volume-key remove "$dev" "$key"
+    key=
 done
 exit "$rc"

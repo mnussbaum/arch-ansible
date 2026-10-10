@@ -1,14 +1,20 @@
 # Replaces gpt-auto's unit for the root volume, adding pkcs11-uri=auto: Arch's
 # libcryptsetup has no token plugins (and gpt-auto's TPM2 measurement would
 # disable them anyway), so systemd-cryptsetup only tries the PKCS#11 (YubiKey)
-# slot when asked to. Swap stays TPM-only at boot: it is opened after
-# switch-root, before the real system's pcscd can run. If the TPM breaks, swap
-# is skipped for that boot and bin/luks-reseal-tpm re-seals it.
+# slot when asked to.
 # noauto: only used when gpt-auto pulls in systemd-cryptsetup@root.service for a
 # real root, so the Live/Installer profiles don't try to unlock attached disks.
-root /dev/disk/by-designator/root-luks - tpm2-device=auto,pkcs11-uri=auto,tpm2-measure-pcr=yes,tpm2-measure-keyslot-nvpcr=yes,noauto
-# An encrypted home (the full-disk-encryption profile) is opened here too, so
-# the YubiKey works when the TPM doesn't. Only that profile's drop-in for
-# systemd-cryptsetup@root.service pulls it in. x-initrd.attach keeps it open
-# past switch-root, where gpt-auto finds it already active.
-home /dev/disk/by-designator/home-luks - tpm2-device=auto,pkcs11-uri=auto,x-initrd.attach,noauto
+# Every volume is opened here because their TPM2 slots only unseal in the initrd
+# (systemd-repart.service.d/policyref.conf). x-initrd.attach keeps swap and home
+# open past switch-root, where gpt-auto finds them already active.
+# link-volume-key= leaves each volume key in root's user keyring, which is how
+# luks-volume-key authorizes keyslot changes after boot.
+root /dev/disk/by-designator/root-luks - tpm2-device=auto,pkcs11-uri=auto,tpm2-measure-pcr=yes,tpm2-measure-keyslot-nvpcr=yes,link-volume-key=@u::%user:arch-ansible-root-vk,noauto
+# Swap stays TPM-only (headless): one PIN prompt per volume is enough. If the
+# TPM breaks, swap is skipped for that boot and bin/luks-reseal-tpm re-seals it.
+# systemd-cryptsetup@root.service pulls it in.
+swap /dev/disk/by-designator/swap-luks - tpm2-device=auto,headless=yes,link-volume-key=@u::%user:arch-ansible-swap-vk,x-initrd.attach,nofail,noauto
+# An encrypted home (the full-disk-encryption profile), so the YubiKey works
+# when the TPM doesn't. Only that profile's drop-in for
+# systemd-cryptsetup@root.service pulls it in.
+home /dev/disk/by-designator/home-luks - tpm2-device=auto,pkcs11-uri=auto,link-volume-key=@u::%user:arch-ansible-home-vk,x-initrd.attach,noauto

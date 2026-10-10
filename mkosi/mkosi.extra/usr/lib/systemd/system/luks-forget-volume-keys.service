@@ -1,0 +1,21 @@
+# Unlink the volume keys the initrd left in root's user keyring once this boot's
+# keyslot changes are done, so a root process can't copy one (a volume key
+# outlives every keyslot rotation). Only once every volume has a YubiKey slot,
+# which can authorize later changes instead (bin/luks-reseal-tpm); until then
+# luks-enroll-pkcs11 still needs them. bin/revoke-luks-yubikey asks to keep them
+# with keep-volume-keys. See /usr/bin/luks-volume-key.
+[Unit]
+Description=Forget LUKS volume keys
+ConditionPathExists=!/var/lib/arch-ansible/keep-volume-keys
+After=pcrlock-enroll-luks.service luks-enroll-pkcs11.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecCondition=/usr/bin/bash -c 'for d in /dev/disk/by-designator/{root,swap,home}-luks; do [[ -e $$d ]] || continue; systemd-cryptenroll "$$d" | grep -qw pkcs11 || exit 1; done'
+ExecStart=/usr/bin/luks-volume-key forget
+KeyringMode=shared
+Environment=LUKS_VOLUME_KEY_RERUN=1
+
+[Install]
+WantedBy=multi-user.target

@@ -22,6 +22,8 @@ StandardOutput=tty
 StandardError=tty
 TTYPath=/dev/console
 TTYReset=yes
+# Lets luks-volume-key read the volume keys from root's user keyring.
+KeyringMode=shared
 
 [Install]
 WantedBy=multi-user.target
