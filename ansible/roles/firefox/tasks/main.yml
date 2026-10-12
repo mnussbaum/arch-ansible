@@ -18,6 +18,20 @@
     mode: "0644"
   loop: "{{ active_organizations.keys() | list }}"
 
+- name: Install firefox user services
+  copy:
+    src: "{{ item }}"
+    dest: "/usr/lib/systemd/user/{{ item }}"
+  loop:
+    - firefox.service
+    - firefox-profile@.service
+
+# Opens each profile at login, restoring its last session
+- name: Install firefox systemd user preset
+  template:
+    src: 80-firefox.preset.j2
+    dest: /usr/lib/systemd/user-preset/80-firefox.preset
+
 - name: Sideload install extensions
   firefox_ext_sideloader:
     path: "{{ item }}"

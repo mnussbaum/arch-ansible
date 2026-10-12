@@ -1,0 +1,11 @@
+[Unit]
+Description=Firefox (personal profile)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+# Restores the profile's last session (browser.startup.page=3)
+ExecStart=/usr/bin/firefox
+
+[Install]
+WantedBy=graphical-session.target

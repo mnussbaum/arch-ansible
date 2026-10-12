@@ -1,0 +1,11 @@
+[Unit]
+Description=Firefox (%i profile)
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+# Matches the firefox-%i.desktop launcher, so links reach this instance
+ExecStart=/usr/bin/firefox -P %i --name firefox-%i
+
+[Install]
+WantedBy=graphical-session.target

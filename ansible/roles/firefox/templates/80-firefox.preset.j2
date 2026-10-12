@@ -1,0 +1,4 @@
+enable firefox.service
+{% if active_organizations %}
+enable firefox-profile@.service {{ active_organizations.keys() | join(' ') }}
+{% endif %}
