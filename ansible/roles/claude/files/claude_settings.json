@@ -1,6 +1,7 @@
 {
   "prefersReducedMotion": true,
   "env": {
+    "CLAUDE_CODE_DISABLE_ALTERNATE_SCREEN": "1",
     "ENABLE_LSP_TOOL": "1"
   },
   "enabledPlugins": {
