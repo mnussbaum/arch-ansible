@@ -38,8 +38,12 @@
     src: colorscheme-changer.timer
     dest: /usr/lib/systemd/user/colorscheme-changer.timer
 
-- name: Enable colorscheme-changer timer
+# Disabled for now
+- name: Disable colorscheme-changer timer and service
   systemd_service:
-    name: colorscheme-changer.timer
-    enabled: yes
+    name: "{{ item }}"
+    enabled: no
     scope: global
+  loop:
+    - colorscheme-changer.timer
+    - colorscheme-changer.service
