@@ -42,3 +42,17 @@
   copy:
     dest: /etc/xdg/starship.toml
     src: starship.toml
+
+# Default fnm to /usr/bin/node so cd outside a pinned project doesn't error.
+# What `fnm default system` writes; seeded here so new homes get it.
+- name: Create skel fnm aliases dir
+  file:
+    path: /etc/skel/.local/share/fnm/aliases
+    state: directory
+
+- name: Default fnm to the system node
+  file:
+    path: /etc/skel/.local/share/fnm/aliases/default
+    src: /dev/null/installation
+    state: link
+    force: true
