@@ -39,6 +39,19 @@
     dest: /usr/lib/systemd/user/wireplumber.service.d/skip-system-users.conf
     mode: "0644"
 
+- name: Create xdg-desktop-portal user unit drop-in dir
+  file:
+    path: /usr/lib/systemd/user/xdg-desktop-portal.service.d
+    state: directory
+
+# gtkgreet D-Bus activates the portal, which falls back to the gtk backend and
+# fails with "cannot open display" until it hits its start limit
+- name: Skip xdg-desktop-portal for system users
+  copy:
+    src: skip-system-users.conf
+    dest: /usr/lib/systemd/user/xdg-desktop-portal.service.d/skip-system-users.conf
+    mode: "0644"
+
 - name: Install IPu6 ov01a10 front-facing camera config file
   copy:
     src: ov01a10.yaml
