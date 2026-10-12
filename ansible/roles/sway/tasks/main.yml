@@ -49,6 +49,17 @@
     dest: /etc/xdg/mako/config
   tags: [base16]
 
+- name: Create mako drop-in directory
+  file:
+    path: /usr/lib/systemd/user/mako.service.d
+    state: directory
+
+- name: Point mako at the system config
+  copy:
+    src: mako-config.conf
+    dest: /usr/lib/systemd/user/mako.service.d/config.conf
+    mode: "0644"
+
 - name: Install swayidle service
   template:
     src: swayidle.service.j2
