@@ -35,7 +35,11 @@ install-system --reboot /dev/nvme0n1   # ...and reboots into it when done
 
 Remove the recovery USB and reboot into the installed disk. Its first boot:
 
-1. **Enrolls the Secure Boot key** from the ESP.
+1. **Enrolls the Secure Boot key** from the ESP. If enrolling the PK fails
+   with "Security Violation", enroll
+   it from firmware setup: in the Secure Boot key management (e.g. Expert Key
+   Management with Custom Mode enabled), replace the PK from file with
+   `loader/keys/auto/PK.auth` on the internal disk's ESP, then reboot.
 2. **Provisions the disk**: the inactive `usr` slot, swap, root and home, with
    root and swap sealed to the TPM2.
 3. **Asks for locale, timezone, hostname and root password.** The hostname
