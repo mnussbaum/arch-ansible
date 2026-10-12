@@ -19,7 +19,7 @@
     src: source_etc_profile
 
 - name: Install default applications
-  copy:
-    src: mimeapps.list
+  template:
+    src: mimeapps.list.j2
     dest: /usr/share/applications/mimeapps.list
     mode: "0644"

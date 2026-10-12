@@ -1,10 +1,12 @@
 # System-wide defaults; ~/.config/mimeapps.list overrides per user
+{# Organization images open links in the first organization's Firefox profile #}
+{% set browser = ('firefox-' ~ image_organizations[0]) if image_organizations else 'firefox' %}
 
 [Default Applications]
-x-scheme-handler/http=firefox.desktop
-x-scheme-handler/https=firefox.desktop
-text/html=firefox.desktop
-application/xhtml+xml=firefox.desktop
+x-scheme-handler/http={{ browser }}.desktop
+x-scheme-handler/https={{ browser }}.desktop
+text/html={{ browser }}.desktop
+application/xhtml+xml={{ browser }}.desktop
 
 application/pdf=org.pwmt.zathura-pdf-poppler.desktop
 

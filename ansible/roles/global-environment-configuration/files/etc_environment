@@ -1,4 +1,5 @@
-BROWSER=firefox
+# Follows the http handler in mimeapps.list, e.g. an organization's profile
+BROWSER=xdg-open
 EDITOR=nvim
 VISUAL=nvim
 PAGER=less
