@@ -1,5 +1,8 @@
 [Unit]
 Description=Run restic backup daily
+# Organization images don't back up home. A missing key fails a plain
+# "=" match, hence the negated glob.
+ConditionOSRelease=ARCH_ANSIBLE_ORGANIZATIONS!$=?*
 
 [Timer]
 OnCalendar=daily
