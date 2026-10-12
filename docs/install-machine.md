@@ -67,6 +67,8 @@ only with the YubiKey. It also sets up Wi-Fi from `pass` and clones this repo to
 
 Each profile (Firefox, and each "Firefox (<Org>)") opens its Sync settings on
 first launch: sign into that profile's Firefox account, using browserpass to
-fill the credentials from `pass`. Then in about:addons → PersistentPin →
-Preferences, turn on syncing so the profile's pinned sites come from its
-account; on the first machine, add the sites to pin there.
+fill the credentials from `pass`. Let the first sync finish (Sync Now in the
+account menu), then in about:addons → PersistentPin → Preferences turn on
+syncing and restart Firefox; it pins the account's sites at startup. Turning on
+syncing before the first sync finishes uploads this machine's empty list over
+the account's. On the first machine, add the sites to pin there.
