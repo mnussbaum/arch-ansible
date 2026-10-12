@@ -1,0 +1,59 @@
+#!/usr/bin/python3
+# Print the sha256 PCR 15 value the initrd reaches right after opening root, for
+# sealing swap and home to it (systemd-cryptenroll --tpm2-pcrs=15:sha256=VALUE).
+#
+# Root's crypttab entry measures its volume key into PCR 15
+# (tpm2-measure-pcr=yes), and swap and home only open after root
+# (systemd-cryptsetup@{swap,home}.service.d in the initrd). So when someone
+# swaps in a LUKS root of their own and boots the signed UKI, PCR 15 holds their
+# root's measurement and swap and home don't unseal into it, though PCR 7 and
+# the initrd-only signed PCR 11 still match.
+#
+# Replays this boot's PCR 15 measurements from systemd's measurement log up to
+# and including root's, after checking that replaying all of them gives the
+# TPM's current PCR 15, i.e. that the log is complete.
+import hashlib
+import json
+import sys
+
+LOG = "/run/log/systemd/tpm2-measure.log"
+PCR = "/sys/class/tpm/tpm0/pcr-sha256/15"
+# Must match the volume name in mkosi.initrd.conf/extra/etc/crypttab.
+ROOT = "cryptsetup:root:"
+
+
+def fail(msg):
+    sys.exit(f"luks-root-pcr15: {msg}")
+
+
+def replay(digests):
+    value = bytes(32)
+    for digest, _ in digests:
+        value = hashlib.sha256(value + digest).digest()
+    return value
+
+
+digests = []
+with open(LOG) as f:
+    # JSON-SEQ: records start with an ASCII record separator.
+    for chunk in f.read().split("\x1e"):
+        if not chunk.strip():
+            continue
+        record = json.loads(chunk)
+        if record.get("pcr") != 15:
+            continue
+        sha256 = [d["digest"] for d in record.get("digests", []) if d.get("hashAlg") == "sha256"]
+        if not sha256:
+            fail(f"PCR 15 record without a sha256 digest: {record}")
+        string = (record.get("content") or {}).get("string", "")
+        digests.append((bytes.fromhex(sha256[0]), string.startswith(ROOT)))
+
+with open(PCR) as f:
+    current = bytes.fromhex(f.read().strip())
+if replay(digests) != current:
+    fail(f"{LOG} doesn't account for the TPM's PCR 15")
+
+roots = [i for i, (_, is_root) in enumerate(digests) if is_root]
+if len(roots) != 1:
+    fail(f"expected one root volume key measurement in {LOG}, found {len(roots)}")
+print(replay(digests[: roots[0] + 1]).hex())

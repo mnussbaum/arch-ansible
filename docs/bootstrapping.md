@@ -131,6 +131,18 @@ unchanged and PCR 11 in a signed state, free to unseal the real volumes. With
 the initrd one, the slots stop unsealing at `leave-initrd`, before any root's
 own code runs.
 
+That alone still lets swap and home through: the initrd opens them itself, and
+with their own root swapped in, PCR 7 and the initrd PCR 11 are unchanged, so
+they would unseal and stay open (`x-initrd.attach`) into that root. So root's
+crypttab entry measures its volume key into **PCR 15**
+(`tpm2-measure-pcr=yes`), swap and home open only after root, and their slots
+are also sealed to the PCR 15 value this machine's root leaves there. Any other
+root leaves a different one. repart can't seal to it on first boot, since it
+creates root in the same run, so `pcrlock-enroll-luks.service` adds it after
+boot, computing it with `/usr/bin/luks-root-pcr15` from the measurement log.
+Unlocking root with the YubiKey gives the same value, because the measurement
+is of the volume key, not the keyslot.
+
 So the TPM token can't authorize keyslot changes from the running system.
 Instead the initrd links each volume key into root's user keyring
 (`link-volume-key=` in the crypttab), and `/usr/bin/luks-volume-key` adds a
@@ -180,8 +192,8 @@ rewritten without touching the keyslot:
   `--strict=yes` so it fails rather than silently dropping PCR 7. A copy goes to
   the ESP (`loader/credentials/pcrlock.<machine-id>.cred`) for the initrd.
 - `pcrlock-enroll-luks.service` (`mkosi/mkosi.extra/usr/bin/pcrlock-enroll-luks`) then re-enrolls each
-  TPM2 slot as initrd-only signed PCR 11 + pcrlock, wiping the old slot only
-  after the new one exists. If the policy was not made, the volumes keep the
+  TPM2 slot as initrd-only signed PCR 11 + pcrlock (+ root's PCR 15 for swap
+  and home), wiping the old slot only after the new one exists. If the policy was not made, the volumes keep the
   literal binding. It also moves slots sealed to the default PCR 11 signature
   (installs from before the initrd-only one) onto it.
 - The policy's recovery PIN is ours, kept root-only on the encrypted root
@@ -207,7 +219,9 @@ the TPM again.
 pcrlock needs a TPM 2.0 rev ≥ 1.38 (PolicyAuthorizeNV). On older TPMs — the
 XPS 13 9365's Intel PTT is one — `systemd-pcrlock-make-policy` is skipped and
 root and swap stay on literal PCR 7 + initrd-only signed PCR 11. Its PCR 7 event log was
-fully recognized, so a newer TPM firmware would be enough.
+fully recognized, so a newer TPM firmware would be enough. There
+`pcrlock-secureboot-change` refuses to run the command: plan on the YubiKey and
+`luks-reseal-tpm` after a Secure Boot variable change instead.
 
 `home` is a plain btrfs partition; per-user encryption is `systemd-homed` — one
 LUKS volume per home directory — on top of it.
@@ -558,7 +572,8 @@ asks for the YubiKey once and then heals ("PCR 7 via pcrlock").
   sudo /usr/share/arch-ansible/bin/luks-reseal-tpm
   ```
 
-  It binds literal PCR 7 + initrd-only signed PCR 11, and
+  It binds literal PCR 7 + initrd-only signed PCR 11 (+ root's PCR 15 for swap
+  and home), and
   `pcrlock-enroll-luks.service` moves PCR 7 onto the pcrlock policy on a later
   boot. Don't re-enroll by hand with `systemd-cryptenroll --tpm2-pcrs=7`:
   without `--tpm2-public-key-pcrs=11 --tpm2-public-key-policyref=initrd` the

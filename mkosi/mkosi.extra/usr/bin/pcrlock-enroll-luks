@@ -5,7 +5,10 @@
 # born literal (repart enrolls in the initrd, before any policy exists) and moved
 # here after boot. Also moves slots sealed to the older signed PCR 11 policy,
 # which still unseals after switch-root, onto the initrd-only one, keeping
-# literal PCR 7 when there is no pcrlock policy. Authorized by the volume keys
+# literal PCR 7 when there is no pcrlock policy. And seals swap and home to the
+# PCR 15 value root's volume key measurement leaves in the initrd
+# (luks-root-pcr15), so they only open after this machine's root did; repart
+# can't, as it creates root in the same run. Authorized by the volume keys
 # (luks-volume-key). Run every boot by pcrlock-enroll-luks.service; a no-op once
 # all are bound.
 #
@@ -30,17 +33,20 @@ sys.exit(0 if any(e.get("pcr") == 7 and e.get("values") for e in p["pcrValues"])
         log "ERROR: $policy does not cover PCR 7; refusing to re-enroll"
         exit 1
     fi
-    pcr7=(--tpm2-pcrlock="$policy" --tpm2-pcrs=)
+    pcrlock=(--tpm2-pcrlock="$policy")
+    pcrs=()
     want=pcrlock
 else
     log "no pcrlock policy at $policy; keeping literal PCR 7"
-    pcr7=(--tpm2-pcrlock= --tpm2-pcrs=7)
+    pcrlock=(--tpm2-pcrlock=)
+    pcrs=(7)
     want=literal
 fi
 
 # Prints "none" if the volume has no TPM2 token, "old" if one is sealed to the
 # signed PCR 11 policy without the initrd policyref, and otherwise "pcrlock" or
-# "literal" by how PCR 7 is bound.
+# "literal" by how PCR 7 is bound, with "+15" when every slot is also sealed to
+# PCR 15.
 tpm2_binding() {
     cryptsetup luksDump --dump-json-metadata "$1" | python3 -c '
 import json, sys
@@ -50,19 +56,35 @@ if not tokens:
 elif not all(t.get("tpm2_pubkey_ref") for t in tokens):
     print("old")
 else:
-    print("pcrlock" if all(t.get("tpm2_pcrlock") for t in tokens) else "literal")'
+    pcr7 = "pcrlock" if all(t.get("tpm2_pcrlock") for t in tokens) else "literal"
+    print(pcr7 + ("+15" if all(15 in t.get("tpm2-pcrs", []) for t in tokens) else ""))'
 }
 
 rc=0
 key=
+# Root's PCR 15 measurement, computed once and only when swap or home needs it.
+root_pcr15=
 trap '[[ -z "$key" ]] || luks-volume-key remove "$dev" "$key"' EXIT
 for dev in /dev/disk/by-designator/{root,swap,home}-luks; do
     [[ -e "$dev" ]] || continue
     binding=$(tpm2_binding "$dev")
+    suffix=
+    [[ "$dev" == */root-luks ]] || suffix=+15
     case "$binding" in
         none) log "$dev has no TPM2 token; leaving it alone"; continue ;;
-        "$want"|pcrlock) continue ;;
+        "$want$suffix"|"pcrlock$suffix") continue ;;
     esac
+
+    dev_pcrs=("${pcrs[@]}")
+    if [[ -n "$suffix" ]]; then
+        if [[ -z "$root_pcr15" ]] && ! root_pcr15=$(luks-root-pcr15); then
+            log "WARNING: can't tell root's PCR 15 measurement; $dev keeps its $binding binding"
+            root_pcr15=
+            rc=1
+            continue
+        fi
+        dev_pcrs+=("15:sha256=$root_pcr15")
+    fi
 
     if ! key=$(luks-volume-key add "$dev"); then
         log "WARNING: can't authorize re-enrolling $dev; it keeps its $binding binding"
@@ -71,7 +93,7 @@ for dev in /dev/disk/by-designator/{root,swap,home}-luks; do
         continue
     fi
 
-    log "binding $dev to initrd-only signed PCR 11 + $want PCR 7…"
+    log "binding $dev to initrd-only signed PCR 11 + $want PCR 7${suffix:+ + PCR 15 of root}…"
     # The PCR 11 public key is found automatically in
     # /run/systemd/tpm2-pcr-public-key.pem, which systemd-stub hands over from
     # the UKI's .pcrpkey section. policyref=initrd matches repart's enrollment
@@ -79,7 +101,8 @@ for dev in /dev/disk/by-designator/{root,swap,home}-luks; do
     if systemd-cryptenroll "$dev" \
         --unlock-key-file="$key" \
         --tpm2-device=auto \
-        "${pcr7[@]}" \
+        "${pcrlock[@]}" \
+        --tpm2-pcrs="$(IFS=+; echo "${dev_pcrs[*]}")" \
         --tpm2-public-key-pcrs=11 \
         --tpm2-public-key-policyref=initrd \
         --wipe-slot=tpm2; then

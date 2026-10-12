@@ -30,10 +30,19 @@ trap 'rm -rf "$tmp"' EXIT
 # still only unseals in the initrd. --tpm2-pcrlock= (empty) stops cryptenroll
 # from binding to a pcrlock.json it finds, which after a TPM change belongs to
 # the old TPM; pcrlock-enroll-luks moves PCR 7 onto the current policy on a
-# later boot.
+# later boot. Swap and home are also sealed to the PCR 15 value root's volume
+# key measurement leaves in the initrd, so they only open after this root has.
+root_pcr15=
 reseal() {
+    local pcrs=7
+    # Resolved, as DEVICE may be given as /dev/nvme0n1p9: sealing root to PCR 15
+    # would lock it out for good, as PCR 15 is only extended once root is open.
+    if [[ "$(readlink -f "$1")" != "$(readlink -f /dev/disk/by-designator/root-luks)" ]]; then
+        [[ -n "$root_pcr15" ]] || root_pcr15=$(/usr/bin/luks-root-pcr15) || return 1
+        pcrs+="+15:sha256=$root_pcr15"
+    fi
     systemd-cryptenroll "$1" --unlock-key-file="$2" --wipe-slot=tpm2 \
-        --tpm2-device=auto --tpm2-pcrs=7 --tpm2-public-key-pcrs=11 \
+        --tpm2-device=auto --tpm2-pcrs="$pcrs" --tpm2-public-key-pcrs=11 \
         --tpm2-public-key-policyref=initrd --tpm2-pcrlock=
 }
 

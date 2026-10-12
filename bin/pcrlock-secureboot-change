@@ -18,8 +18,14 @@ set -o pipefail
 pcrlock=/usr/lib/systemd/systemd-pcrlock
 dir=/var/lib/pcrlock.d/240-secureboot-policy.pcrlock.d
 
-[[ -s "$dir/generated.pcrlock" ]] || {
-    echo "error: no $dir/generated.pcrlock; is pcrlock in use on this machine?" >&2
+# Refuse before running the command, not after: without a policy the volumes are
+# bound to literal PCR 7, and generated.pcrlock exists even then
+# (systemd-pcrlock-secureboot-policy.service runs on TPMs pcrlock can't use).
+[[ -s /var/lib/systemd/pcrlock.json && -s "$dir/generated.pcrlock" ]] \
+        && "$pcrlock" is-supported --quiet || {
+    echo "error: pcrlock is not in use on this machine; the volumes are bound to" >&2
+    echo "  literal PCR 7, so this change will need the YubiKey on the next boot," >&2
+    echo "  then sudo bin/luks-reseal-tpm." >&2
     exit 1
 }
 

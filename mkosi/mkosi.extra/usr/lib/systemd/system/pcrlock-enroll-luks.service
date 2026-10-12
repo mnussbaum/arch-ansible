@@ -1,6 +1,7 @@
 # Move root, swap and home's TPM2 keyslots from a literal PCR 7 binding onto the
 # systemd-pcrlock policy for PCR 7, keeping the initrd-only signed PCR 11
-# policy. See mkosi.extra/usr/bin/pcrlock-enroll-luks.
+# policy, and seal swap and home to root's PCR 15 measurement. See
+# mkosi.extra/usr/bin/pcrlock-enroll-luks.
 #
 # repart enrolls the volumes in the initrd on first boot, before any pcrlock
 # policy can exist (it lives in /var and a TPM NV index), so they are born on
