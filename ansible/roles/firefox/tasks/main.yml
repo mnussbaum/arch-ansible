@@ -24,18 +24,33 @@
   with_fileglob:
     - /usr/lib/firefox/browser/extensions/*.xpi
 
+- name: Create firefox policies dir
+  file:
+    path: /etc/firefox/policies
+    state: directory
+    mode: "0755"
+
+# Installs the Dracula theme, which installing also selects, and PersistentPin,
+# which re-pins a list of sites at startup; its sync option carries the list
+# with each profile's Firefox account.
+- name: Install firefox enterprise policies
+  copy:
+    src: policies.json
+    dest: /etc/firefox/policies/policies.json
+    mode: "0644"
+
 - name: Configure firefox user.js
   template:
     dest: "/etc/skel/.mozilla/firefox/{{ item }}/user.js"
     src: firefox-user.js.j2
   loop: "{{ firefox_profiles.values() | list }}"
 
-# Unlike user.js, prefs.js only seeds new profiles; Firefox rewrites it, so
-# picking another theme sticks.
-- name: Default firefox profiles to the Dark theme
+# Unlike user.js, prefs.js only seeds new profiles. The welcome URL opens on a
+# profile's first run, prompting a Sync sign-in.
+- name: Seed firefox profile prefs
   copy:
     content: |
-      user_pref("extensions.activeThemeID", "firefox-compact-dark@mozilla.org");
+      user_pref("startup.homepage_welcome_url", "about:preferences#sync");
     dest: "/etc/skel/.mozilla/firefox/{{ item }}/prefs.js"
   loop: "{{ firefox_profiles.values() | list }}"
 

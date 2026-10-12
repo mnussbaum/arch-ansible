@@ -1,0 +1,14 @@
+{
+  "policies": {
+    "ExtensionSettings": {
+      "{b8f5b973-7a28-4787-8e94-fdb7504e3991}": {
+        "installation_mode": "force_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/persistentpin/latest.xpi"
+      },
+      "{b743f56d-1cc1-4048-8ba6-f9c2ab7aa54d}": {
+        "installation_mode": "force_installed",
+        "install_url": "https://addons.mozilla.org/firefox/downloads/latest/dracula-dark-colorscheme/latest.xpi"
+      }
+    }
+  }
+}

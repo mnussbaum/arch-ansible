@@ -62,3 +62,11 @@ First login runs `user-first-login-playbook.yml`. It enrolls the YubiKey on the
 home (PIN and touch) and drops the password, so from then on the home unlocks
 only with the YubiKey. It also sets up Wi-Fi from `pass` and clones this repo to
 `~/Projects/arch-ansible` and the password store into the home.
+
+## 5. Firefox
+
+Each profile (Firefox, and each "Firefox (<Org>)") opens its Sync settings on
+first launch: sign into that profile's Firefox account, using browserpass to
+fill the credentials from `pass`. Then in about:addons → PersistentPin →
+Preferences, turn on syncing so the profile's pinned sites come from its
+account; on the first machine, add the sites to pin there.
