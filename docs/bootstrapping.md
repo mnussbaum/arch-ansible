@@ -102,7 +102,7 @@ The root and swap partitions are LUKS2, created and TPM2-enrolled by
 keyslot is bound to **PCR 7 and a signed PCR 11 policy**: `TPM2PCRs=7` pins the
 Secure Boot state, and repart adds the signed policy by default from mkosi's
 `SignExpectedPcr=` key. A normal boot unlocks with no interaction. Swap (and
-home, under full disk encryption) is opened in the initrd alongside root and
+home, under full disk encryption) is opened in the initrd right after root and
 stays open past switch-root (`x-initrd.attach` in
 `mkosi/mkosi.initrd.conf/extra/etc/crypttab`).
 
