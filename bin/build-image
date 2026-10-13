@@ -106,6 +106,19 @@ fi
 source bin/_cache_common.sh
 arch_ansible_ensure_cache
 
+# mkosi removes its scratch dirs on a clean exit; a crashed or killed build
+# leaves them behind (up to ~17G each). The age cutoff spares a concurrent build.
+# Some contents are read-only, so make them writable before removing.
+if [[ -d "$ARCH_ANSIBLE_CACHE/mkosi" ]]; then
+  find "$ARCH_ANSIBLE_CACHE/mkosi" -mindepth 1 -maxdepth 1 -type d -mtime +0 \
+    \( -name 'mkosi-workspace-*' -o -name 'mkosi-packages-*' \) -print0 |
+    while IFS= read -r -d '' stale; do
+      echo "Removing stale mkosi scratch dir $stale" >&2
+      chmod -R u+w -- "$stale"
+      rm -rf -- "$stale"
+    done
+fi
+
 arch_ansible_stage_srctree
 
 # Point pass at the shipped password-store when building from a live/volatile
