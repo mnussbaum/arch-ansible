@@ -1,0 +1,16 @@
+# Organizations with claude_account log Claude Code in to their own account
+# under ~/Projects/<organization>/; the personal ~/.config/claude
+# (/etc/profile.d/claude.sh) is used elsewhere.
+_claude_organization_config_dir() {
+  case "$PWD/" in
+{% for name, org in active_organizations.items() if org.claude_account | default(false) %}
+    "$HOME/Projects/{{ name }}/"*) export CLAUDE_CONFIG_DIR="$XDG_CONFIG_HOME/claude-{{ name }}" ;;
+{% endfor %}
+    *) [[ "${CLAUDE_CONFIG_DIR:-}" == "$XDG_CONFIG_HOME"/claude-* ]] &&
+      export CLAUDE_CONFIG_DIR="$XDG_CONFIG_HOME/claude" ;;
+  esac
+}
+
+autoload -Uz add-zsh-hook
+add-zsh-hook chpwd _claude_organization_config_dir
+_claude_organization_config_dir

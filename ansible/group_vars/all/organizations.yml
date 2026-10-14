@@ -15,6 +15,11 @@
 #   aws_credentials
 #                optional pass entry of AWS credentials, joined the same way
 #                into ~/.aws/credentials
+#   claude_account
+#                optional; true gives shells under ~/Projects/<name>/ their own
+#                Claude Code login (CLAUDE_CONFIG_DIR=~/.config/claude-<name>);
+#                run /login there once. Elsewhere the personal ~/.config/claude
+#                is used
 #   full_disk_encryption
 #                optional; true also encrypts the home partition, with homed
 #                homes as plain subvolumes on it instead of per-user LUKS images
@@ -36,6 +41,7 @@ organizations:
     # for PowerUserAccess
     aws_config: parallel/aws-config
     aws_credentials: parallel/aws-credentials
+    claude_account: true
     full_disk_encryption: true
 
 # Set by bin/ansible from the build's --organization list, or at runtime from

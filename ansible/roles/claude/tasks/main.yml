@@ -2,10 +2,10 @@
 ---
 - name: Create skel claude config dir
   file:
-    path: /etc/skel/.claude
+    path: /etc/skel/.config/claude
     state: directory
 
 - name: Install settings into skel
   copy:
     src: claude_settings.json
-    dest: /etc/skel/.claude/settings.json
+    dest: /etc/skel/.config/claude/settings.json

@@ -42,6 +42,35 @@
     dest: /etc/ssh/ssh_config.d/40-personal-key.conf
   when: active_organizations | length > 0
 
+- name: Install organization Claude Code account switching
+  vars:
+    claude_orgs: "{{ active_organizations | dict2items | selectattr('value.claude_account', 'defined') | selectattr('value.claude_account') }}"
+  template:
+    src: claude-organizations.zsh.j2
+    dest: /etc/zsh/claude-organizations.zsh
+  when: claude_orgs | length > 0
+
+# claude-organizations.zsh points CLAUDE_CONFIG_DIR here; share the personal
+# settings.
+- name: Create skel organization Claude Code config dirs
+  file:
+    path: "/etc/skel/.config/claude-{{ item.key }}"
+    state: directory
+    mode: "0700"
+  loop: "{{ active_organizations | dict2items | selectattr('value.claude_account', 'defined') | selectattr('value.claude_account') }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Share Claude Code settings with skel organization config dirs
+  file:
+    path: "/etc/skel/.config/claude-{{ item.key }}/settings.json"
+    src: ../claude/settings.json
+    state: link
+    force: true
+  loop: "{{ active_organizations | dict2items | selectattr('value.claude_account', 'defined') | selectattr('value.claude_account') }}"
+  loop_control:
+    label: "{{ item.key }}"
+
 # bin/ansible and bin/update-system read this back to keep the same set.
 - name: Record the image's organizations in os-release
   lineinfile:
