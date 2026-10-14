@@ -109,16 +109,17 @@ gpgconf --kill gpg-agent
 gpg --card-status
 ```
 
-### Renew YubiKeys
+### Renew subkeys
 
-Subkeys expire annually. Run the renewal ceremony with the primary GPG USB plugged in:
+Subkeys expire annually. Renew them with the primary GPG USB plugged in:
 
 ```
-./bin/enroll-yubikeys <device>   # e.g. /dev/sda1
+./bin/renew-gpg-subkeys <device>   # e.g. /dev/sda1
 ```
 
-This extends all subkey expiry by one year, exports the updated public key to
-`ansible/roles/gpg/files/gpg-pubkey.asc`, and reprograms all YubiKeys. After running:
+This extends all subkey expiry by one year and exports the updated public key to
+`ansible/roles/gpg/files/gpg-pubkey.asc`. Expiry lives only in the public key, so
+YubiKeys need no reprogramming. After running:
 
 ```
 git add ansible/roles/gpg/files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys'
