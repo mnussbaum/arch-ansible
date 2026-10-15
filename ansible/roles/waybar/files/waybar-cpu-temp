@@ -4,26 +4,33 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# Resolve the CPU package thermal zone by type rather than by a hardcoded
-# index, since the index varies per machine. Prefer the Intel package sensor,
-# then common AMD sensors, falling back to the first available zone.
-zone=""
-for preferred in x86_pkg_temp k10temp Tctl; do
-  for type_file in /sys/class/thermal/thermal_zone*/type; do
-    if [[ "$(cat "$type_file")" == "$preferred" ]]; then
-      zone="${type_file%/type}"
-      break 2
-    fi
-  done
+# Find the CPU package sensor by name rather than a hardcoded index, since the
+# index varies per machine: Intel's x86_pkg_temp thermal zone, else AMD's
+# k10temp hwmon (Tctl), else the first thermal zone.
+temp_file=""
+for type_file in /sys/class/thermal/thermal_zone*/type; do
+  if [[ "$(cat "$type_file")" == x86_pkg_temp ]]; then
+    temp_file="${type_file%/type}/temp"
+    break
+  fi
 done
 
-if [[ -z "$zone" ]]; then
-  zone="$(dirname "$(echo /sys/class/thermal/thermal_zone*/temp | cut -d' ' -f1)")"
+if [[ -z "$temp_file" ]]; then
+  for name_file in /sys/class/hwmon/hwmon*/name; do
+    if [[ "$(cat "$name_file")" == k10temp ]]; then
+      temp_file="${name_file%/name}/temp1_input"
+      break
+    fi
+  done
 fi
 
-[[ -r "$zone/temp" ]] || exit 0
+if [[ -z "$temp_file" ]]; then
+  temp_file="$(echo /sys/class/thermal/thermal_zone*/temp | cut -d' ' -f1)"
+fi
 
-milli_celsius=$(cat "$zone/temp")
+[[ -r "$temp_file" ]] || exit 0
+
+milli_celsius=$(cat "$temp_file")
 fahrenheit=$(( milli_celsius * 9 / 5000 + 32 ))
 
 printf "%d\n" "$fahrenheit"

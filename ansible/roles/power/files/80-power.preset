@@ -1,2 +1,3 @@
 enable tlp.service
 enable thermald.service
+enable disable-pm-async.service

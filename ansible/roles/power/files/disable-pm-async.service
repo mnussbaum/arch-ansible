@@ -1,0 +1,12 @@
+[Unit]
+Description=Disable async suspend and resume
+# Async power management locks up suspend and resume on the Dell XPS
+ConditionFirmware=smbios-field(sys_vendor $= Dell*)
+ConditionFirmware=smbios-field(product_name $= XPS*)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'echo 0 > /sys/power/pm_async'
+
+[Install]
+WantedBy=multi-user.target

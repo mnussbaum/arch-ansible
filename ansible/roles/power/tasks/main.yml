@@ -5,7 +5,7 @@
     path: /usr/lib/systemd/system/thermald.service.d
     state: directory
 
-- name: Skip thermald under virtualization
+- name: Skip thermald under virtualization and on non-Intel CPUs
   copy:
     src: thermald-condition.conf
     dest: /usr/lib/systemd/system/thermald.service.d/condition.conf
@@ -20,6 +20,37 @@
   copy:
     src: tlp.conf
     dest: /etc/tlp.d/50-power.conf
+    mode: "0644"
+
+- name: Install per-vendor TLP settings
+  copy:
+    src: tlp-hardware/
+    dest: /usr/lib/tlp-hardware/
+    mode: "0644"
+
+- name: Install tlp-hardware-config script
+  copy:
+    src: tlp-hardware-config
+    dest: /usr/bin/tlp-hardware-config
+    mode: a+x
+
+# Dangling until tlp-hardware-config runs at boot; TLP skips it until then
+- name: Link TLP to the vendor settings selected at boot
+  file:
+    src: /run/tlp-hardware.conf
+    dest: /etc/tlp.d/60-hardware.conf
+    state: link
+    force: yes
+
+- name: Create TLP service drop-in directory
+  file:
+    path: /usr/lib/systemd/system/tlp.service.d
+    state: directory
+
+- name: Select vendor TLP settings before TLP starts
+  copy:
+    src: tlp-hardware.conf
+    dest: /usr/lib/systemd/system/tlp.service.d/hardware.conf
     mode: "0644"
 
 - name: Configure UPower
@@ -92,16 +123,11 @@
     dest: /usr/lib/systemd/system-sleep/reset-elan-touchpad
     mode: a+x
 
-- name: Create tmpfiles.d directory
-  file:
-    path: /usr/lib/tmpfiles.d
-    state: directory
-
-# Async power management appears to be causing lock ups during suspend and resume
-- name: Disable async suspend and resume
+- name: Install disable-pm-async service
   copy:
-    src: tmpfiles.d/pm-async.conf
-    dest: /usr/lib/tmpfiles.d/pm-async.conf
+    src: disable-pm-async.service
+    dest: /usr/lib/systemd/system/disable-pm-async.service
+    mode: "0644"
 
 - name: Create sysctl param directory
   file:

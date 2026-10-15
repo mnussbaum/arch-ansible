@@ -1,0 +1,16 @@
+#!/bin/bash
+# Point /run/tlp-hardware.conf, which /etc/tlp.d/60-hardware.conf links to, at
+# this machine's vendor settings. TLP takes a single platform profile name and
+# vendors offer different ones, so the shared image picks at boot.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+case "$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)" in
+    "Dell Inc.") vendor=dell ;;
+    Framework) vendor=framework ;;
+    *) rm -f /run/tlp-hardware.conf; exit 0 ;;
+esac
+
+ln -sfn "/usr/lib/tlp-hardware/$vendor.conf" /run/tlp-hardware.conf
