@@ -3,6 +3,7 @@
 set -o errexit
 set -o nounset
 set -o pipefail
+shopt -s nullglob
 
 # Find the CPU package sensor by name rather than a hardcoded index, since the
 # index varies per machine: Intel's x86_pkg_temp thermal zone, else AMD's
