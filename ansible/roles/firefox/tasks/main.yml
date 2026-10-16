@@ -18,6 +18,13 @@
     mode: "0644"
   loop: "{{ active_organizations.keys() | list }}"
 
+- name: Install organization profile commands
+  template:
+    src: firefox-profile.sh.j2
+    dest: "/usr/bin/firefox-{{ item }}"
+    mode: "0755"
+  loop: "{{ active_organizations.keys() | list }}"
+
 - name: Install firefox user services
   copy:
     src: "{{ item }}"

@@ -1,0 +1,6 @@
+#!/bin/bash
+# Opens the {{ item }} profile. A command, not just a desktop entry, so the
+# `wofi --show run` launcher lists it.
+# --name sets the Wayland app_id, telling its windows apart from personal ones,
+# and keeps this profile's remoting separate.
+exec /usr/bin/firefox -P {{ item }} --name firefox-{{ item }} "$@"
