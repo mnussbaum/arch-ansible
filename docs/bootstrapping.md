@@ -54,9 +54,11 @@ UEFI firmware (Secure Boot, custom keys)
 A single software RSA-2048 keypair signs everything: the UKIs (Secure Boot), the
 expected-PCR measurements, and the verity root hash. It is **not** generated
 per-machine. The keypair lives in `pass` (encrypted to the GPG key, so GPG stays
-the only root of trust); `bin/_secureboot_common.sh` materializes it to
-`${ARCH_ANSIBLE_CACHE}/mkosi-secureboot/mkosi.{key,crt}` on every build, outside
-the repo so the `ExtraTrees` sweep can't carry it into the plaintext `/usr`.
+the only root of trust); `bin/_secureboot_common.sh` decrypts the key into a private tmpfs directory
+(`$XDG_RUNTIME_DIR`, or `/dev/shm`) for each build and `bin/build-image` deletes
+it on exit; the public cert stays in `${ARCH_ANSIBLE_CACHE}/mkosi-secureboot/mkosi.crt`.
+Both are outside the repo so the `ExtraTrees` sweep can't carry them into the
+plaintext `/usr`.
 `bin/build-image` passes it to mkosi via `--secure-boot-key/--secure-boot-certificate`,
 `--sign-expected-pcr-key/-certificate`, and `--verity-key/-certificate`.
 

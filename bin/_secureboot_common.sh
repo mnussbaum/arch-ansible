@@ -4,25 +4,29 @@
 # The same software RSA-2048 keypair signs UKIs (SecureBoot), expected PCR
 # measurements, and the verity root hash. It lives in pass (encrypted to the
 # GPG key, so GPG stays the only root of trust). bin/build-image materializes
-# it to ${ARCH_ANSIBLE_CACHE}/mkosi-secureboot/mkosi.{key,crt} on every build —
-# outside the repo, since ExtraTrees=.:/usr/share/arch-ansible copies the whole
-# working tree into the plaintext /usr, so a key under the repo root would ship
-# in the image and defeat Secure Boot. RSA-2048 (not ECC) because UEFI Secure
+# the key into a private tmpfs directory for the length of the build and
+# deletes it on exit (forget_secureboot_key): anyone who can read it can sign a
+# UKI, /usr and PCR 11 policy that Secure Boot, the image policy and the TPM
+# all accept. The public cert stays in ${ARCH_ANSIBLE_CACHE}/mkosi-secureboot
+# for bin/vm. Both live outside the repo, since ExtraTrees=.:/usr/share/arch-ansible
+# copies the whole working tree into the plaintext /usr, so a key under the
+# repo root would ship in the image and defeat Secure Boot. RSA-2048 (not ECC) because UEFI Secure
 # Boot's auto-enroll path in OVMF/firmware historically rejects ECDSA descriptors.
 #
 # pkcs11-provider doesn't currently support the signing operations that
 # systemd-sbsign and systemd-repart need, so the key has to live on disk
-# rather than on a YubiKey. The cost is that the build host must keep the key
-# protected at the filesystem layer (mode 0600 + LUKS-encrypted disk). When
+# rather than on a YubiKey. The cost is that the key sits decrypted in memory
+# (tmpfs, mode 0600) while a build runs. When
 # pkcs11-provider's CMS/PE signing paths land we can move the key back onto a
 # YubiKey PIV slot.
 SECUREBOOT_PASS_KEY="arch_ansible/secureboot-key"
 SECUREBOOT_PASS_CERT="arch_ansible/secureboot-cert"
 
 materialize_secureboot_keypair() {
-  # Materialize the keypair under ${ARCH_ANSIBLE_CACHE}/mkosi-secureboot and
-  # export SECUREBOOT_KEY/SECUREBOOT_CERT for build-image to pass to mkosi. The
-  # dir is outside the repo so the ExtraTree sweep can't carry the key into /usr.
+  # Materialize the key into a fresh private tmpfs dir and the cert under
+  # ${ARCH_ANSIBLE_CACHE}/mkosi-secureboot, and export SECUREBOOT_KEY/
+  # SECUREBOOT_CERT for build-image to pass to mkosi. Callers must run
+  # forget_secureboot_key when done, e.g. `trap forget_secureboot_key EXIT`.
   #
   # The signing key is the root of Secure Boot trust, so retrieval failures must
   # NEVER fall through to minting a new key: overwriting it would invalidate
@@ -40,7 +44,12 @@ materialize_secureboot_keypair() {
   local dir="$ARCH_ANSIBLE_CACHE/mkosi-secureboot"
   mkdir -p "$dir"
   chmod 700 "$dir"
-  SECUREBOOT_KEY="$dir/mkosi.key"
+  # Older builds kept the key here, on disk, for good.
+  rm -f "$dir/mkosi.key"
+  # tmpfs, so the key never reaches the disk: the user's runtime dir, or
+  # /dev/shm where there's none (the disaster-recovery container).
+  SECUREBOOT_KEY_DIR=$(mktemp -d "${XDG_RUNTIME_DIR:-/dev/shm}/mkosi-secureboot.XXXXXX")
+  SECUREBOOT_KEY="$SECUREBOOT_KEY_DIR/mkosi.key"
   SECUREBOOT_CERT="$dir/mkosi.crt"
   export SECUREBOOT_KEY SECUREBOOT_CERT
   # Drop any key/cert older builds left at the repo root, so a stale copy can't
@@ -87,4 +96,11 @@ materialize_secureboot_keypair() {
     -subj "/CN=arch-ansible SecureBoot"
   pass insert -m -f "$SECUREBOOT_PASS_KEY"  < "$SECUREBOOT_KEY"
   pass insert -m -f "$SECUREBOOT_PASS_CERT" < "$SECUREBOOT_CERT"
+}
+
+forget_secureboot_key() {
+  # Delete the key materialize_secureboot_keypair decrypted. Safe to call twice.
+  [[ -n "${SECUREBOOT_KEY_DIR:-}" ]] || return 0
+  rm -rf -- "$SECUREBOOT_KEY_DIR"
+  SECUREBOOT_KEY_DIR=
 }

@@ -135,6 +135,12 @@ if [[ -z "${PASSWORD_STORE_DIR:-}" \
 fi
 
 source bin/_secureboot_common.sh
+# Delete the decrypted signing key however the build ends. The signal traps
+# turn Ctrl-C or a kill into an exit, so the EXIT trap runs for those too.
+trap forget_secureboot_key EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+trap 'exit 129' HUP
 materialize_secureboot_keypair
 
 source bin/_credstore_common.sh

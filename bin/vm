@@ -299,6 +299,7 @@ def secureboot_cert(recover=False):
         out = subprocess.run(
             ["bash", "-c",
              "source bin/_cache_common.sh; source bin/_secureboot_common.sh; "
+             "trap forget_secureboot_key EXIT; "
              "materialize_secureboot_keypair >&2; printf %s \"$SECUREBOOT_CERT\""],
             cwd=REPO, capture_output=True, text=True,
         )
