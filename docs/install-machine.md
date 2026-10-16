@@ -65,7 +65,8 @@ It is also `pass linux_users/mnussbaum/recovery-key` wherever pass works.
 First login runs `user-first-login-playbook.yml`. It enrolls the YubiKey on the
 home (PIN and touch) and drops the password, so from then on the home unlocks
 only with the YubiKey. It also sets up Wi-Fi from `pass` and clones this repo to
-`~/Projects/arch-ansible` and the password store into the home.
+`~/Projects/arch-ansible` and the password store into the home. The playbook
+runs again on the first login after each image update.
 
 ## 5. Firefox
 

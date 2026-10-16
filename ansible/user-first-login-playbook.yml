@@ -1,11 +1,13 @@
 # vim:ft=yaml.ansible:
 ---
-# Runs tasks as a user once, when a user first logs in. Runs from user shell
-# configs, blocking user interaction until it completes. Should be used for
-# configuring files in the user's home dir, and running machine role specific
-# user services that aren't known until runtime. It's preferable to put tasks
-# in the postinst-playbook.yml file to execute them at image build time to keep
-# user provisioning fast and reliable
+# Runs tasks as a user on their first login, and again on their first login after
+# each image update (zlogin compares the marker below with the image version).
+# Runs from user shell configs, blocking user interaction until it completes.
+# Should be used for home state that needs the user's secrets or YubiKey, or
+# machine role specific user services that aren't known until runtime, and must
+# be safe to re-run. Plain config files don't belong here: install them
+# system-wide (/etc/xdg and the like) or link them into homes with user tmpfiles
+# (/usr/share/user-tmpfiles.d) in postinst-playbook.yml, so they track the image.
 - hosts: all
   tasks:
     - import_role:
@@ -19,8 +21,6 @@
         name: network_configuration
         tasks_from: wifi-credentials
     - import_role:
-        name: ssh
-    - import_role:
         name: organizations
         tasks_from: user
     - import_role:
@@ -29,8 +29,5 @@
     - import_role:
         name: firefox
         tasks_from: user
-    - name: Mark user first login complete
-      file:
-        path: "~/.config/user-first-login-done"
-        state: touch
-        mode: "0600"
+    - name: Record the image version this home was provisioned for
+      shell: grep '^IMAGE_VERSION=' /usr/lib/os-release > ~/.config/user-first-login-done

@@ -33,7 +33,7 @@ auth subkey. A shared PIV key on every YubiKey unlocks LUKS and homed.
 bin/                        Human-run scripts: build, VM, burn, update, key ceremonies
 ansible/                    Everything Ansible (bin/ansible runs from here)
   postinst-playbook.yml     Image build playbook (run by mkosi's postinst)
-  user-first-login-playbook.yml  Per-user setup on first login
+  user-first-login-playbook.yml  Per-user setup on first login and after updates
   hosts.yml                 Inventory (the `build` identity)
   roles/                    One role per subsystem (tasks/, files/, templates/)
   group_vars/               Shared variables (user, fonts, theming)
@@ -153,8 +153,10 @@ another machine's disk from the live USB instead.
 ### Iterate on Ansible
 
 Ansible runs inside the image build (`mkosi/mkosi.postinst.chroot` calls
-`bin/ansible` with `postinst-playbook.yml`) and once per user at first login
-(`user-first-login-playbook.yml`). To iterate on part of it:
+`bin/ansible` with `postinst-playbook.yml`) and per user at first login and the
+first login after each image update (`user-first-login-playbook.yml`).
+`docs/bootstrapping.md` ("Home directory config") says where home config goes.
+To iterate on part of it:
 
 ```
 bin/build-image --ansible-tags sway,waybar   # rebuild running only these roles

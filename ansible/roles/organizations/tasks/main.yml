@@ -50,26 +50,18 @@
     dest: /etc/zsh/claude-organizations.zsh
   when: claude_orgs | length > 0
 
-# claude-organizations.zsh points CLAUDE_CONFIG_DIR here; share the personal
-# settings.
-- name: Create skel organization Claude Code config dirs
-  file:
-    path: "/etc/skel/.config/claude-{{ item.key }}"
-    state: directory
-    mode: "0700"
-  loop: "{{ active_organizations | dict2items | selectattr('value.claude_account', 'defined') | selectattr('value.claude_account') }}"
-  loop_control:
-    label: "{{ item.key }}"
-
-- name: Share Claude Code settings with skel organization config dirs
-  file:
-    path: "/etc/skel/.config/claude-{{ item.key }}/settings.json"
-    src: ../claude/settings.json
-    state: link
-    force: true
-  loop: "{{ active_organizations | dict2items | selectattr('value.claude_account', 'defined') | selectattr('value.claude_account') }}"
-  loop_control:
-    label: "{{ item.key }}"
+# claude-organizations.zsh points CLAUDE_CONFIG_DIR here. The settings come from
+# /etc/claude-code/managed-settings.json (the claude role).
+- name: Create organization Claude Code config dirs in homes
+  vars:
+    claude_orgs: "{{ active_organizations | dict2items | selectattr('value.claude_account', 'defined') | selectattr('value.claude_account') }}"
+  copy:
+    content: |
+      {% for org in claude_orgs %}
+      d %h/.config/claude-{{ org.key }} 0700 - - -
+      {% endfor %}
+    dest: /usr/share/user-tmpfiles.d/arch-ansible-organizations.conf
+  when: claude_orgs | length > 0
 
 # bin/ansible and bin/update-system read this back to keep the same set.
 - name: Record the image's organizations in os-release

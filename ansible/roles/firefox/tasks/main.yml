@@ -1,10 +1,29 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Create skel profile chrome dirs
+# Firefox only reads user.js and userChrome/userContent.css from the profile, so
+# ship one copy in /usr and link it into every profile at each login
+# (systemd-tmpfiles --user); profiles then track the image. Linking a profile's
+# files also creates it, so homes gain profiles for organizations added later.
+- name: Create firefox home config dir
   file:
-    path: "/etc/skel/.mozilla/firefox/{{ item }}/chrome"
+    path: /usr/share/arch-ansible-home/firefox
     state: directory
-  loop: "{{ firefox_profiles.values() | list }}"
+
+- name: Link firefox config into home profiles
+  copy:
+    content: |
+      {% for dir in firefox_profiles.values() %}
+      L+ %h/.mozilla/firefox/{{ dir }}/user.js - - - - /usr/share/arch-ansible-home/firefox/user.js
+      L+ %h/.mozilla/firefox/{{ dir }}/chrome/userChrome.css - - - - /usr/share/arch-ansible-home/firefox/userChrome.css
+      L+ %h/.mozilla/firefox/{{ dir }}/chrome/userContent.css - - - - /usr/share/arch-ansible-home/firefox/userContent.css
+      C %h/.mozilla/firefox/{{ dir }}/prefs.js - - - - /usr/share/arch-ansible-home/firefox/prefs.js
+      {% endfor %}
+    dest: /usr/share/user-tmpfiles.d/arch-ansible-firefox.conf
+
+- name: Create skel firefox dir
+  file:
+    path: /etc/skel/.mozilla/firefox
+    state: directory
 
 - name: Configure firefox profiles.ini
   template:
@@ -62,31 +81,27 @@
 
 - name: Configure firefox user.js
   template:
-    dest: "/etc/skel/.mozilla/firefox/{{ item }}/user.js"
+    dest: /usr/share/arch-ansible-home/firefox/user.js
     src: firefox-user.js.j2
-  loop: "{{ firefox_profiles.values() | list }}"
 
-# Unlike user.js, prefs.js only seeds new profiles. The welcome URL opens on a
-# profile's first run, prompting a Sync sign-in.
+# Unlike user.js, prefs.js only seeds new profiles (Firefox rewrites it). The
+# welcome URL opens on a profile's first run, prompting a Sync sign-in.
 - name: Seed firefox profile prefs
   copy:
     content: |
       user_pref("startup.homepage_welcome_url", "about:preferences#sync");
-    dest: "/etc/skel/.mozilla/firefox/{{ item }}/prefs.js"
-  loop: "{{ firefox_profiles.values() | list }}"
+    dest: /usr/share/arch-ansible-home/firefox/prefs.js
 
 - name: Configure firefox userChrome.css
   template:
-    dest: "/etc/skel/.mozilla/firefox/{{ item }}/chrome/userChrome.css"
+    dest: /usr/share/arch-ansible-home/firefox/userChrome.css
     src: firefox-userChrome.css.j2
-  loop: "{{ firefox_profiles.values() | list }}"
   tags: [base16]
 
 - name: Configure firefox userContent.css
   template:
-    dest: "/etc/skel/.mozilla/firefox/{{ item }}/chrome/userContent.css"
+    dest: /usr/share/arch-ansible-home/firefox/userContent.css
     src: firefox-userContent.css.j2
-  loop: "{{ firefox_profiles.values() | list }}"
   tags: [base16]
 
 - name: Create tridactyl config directory

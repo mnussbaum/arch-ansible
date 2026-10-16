@@ -6,43 +6,6 @@
     mode: "0700"
     state: directory
 
-- name: Install config
-  copy:
-    dest: ~/.gnupg/gpg.conf
-    src: gpg.conf
-    mode: "0600"
-
-- name: Install gpg-agent config
-  copy:
-    dest: ~/.gnupg/gpg-agent.conf
-    src: gpg-agent.conf
-    mode: "0600"
-
-- name: Install scdaemon config
-  copy:
-    dest: ~/.gnupg/scdaemon.conf
-    src: scdaemon.conf
-    mode: "0600"
-
-- name: Create user systemd dir
-  file:
-    path: ~/.config/systemd/user
-    state: directory
-
-- name: Find gpg-agent user service configs
-  find:
-    paths: "/usr/share/doc/gnupg/examples/systemd-user"
-    excludes: "README"
-    recurse: false
-  changed_when: false
-  register: gpg_agent_service_configs
-
-- name: Install gpg-agent user service configs
-  copy:
-    dest: "~/.config/systemd/user/{{ item.path | basename }}"
-    src: "{{ item.path }}"
-  with_items: "{{ gpg_agent_service_configs.files }}"
-
 - name: Deploy public key file
   copy:
     src: gpg-pubkey.asc

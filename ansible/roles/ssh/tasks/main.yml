@@ -1,11 +1,14 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Create config dir
-  file:
-    path: "~/.ssh"
-    state: directory
-
-- name: Install config
+# Read before the organization configs (40-*, 50-*), as ~/.ssh/config used to be.
+- name: Install ssh client config
   copy:
-    src: ssh-config
-    dest: "~/.ssh/config"
+    src: 10-defaults.conf
+    dest: /etc/ssh/ssh_config.d/10-defaults.conf
+    mode: "0644"
+
+- name: Create ~/.ssh in homes
+  copy:
+    content: |
+      d %h/.ssh 0700 - - -
+    dest: /usr/share/user-tmpfiles.d/arch-ansible-ssh.conf

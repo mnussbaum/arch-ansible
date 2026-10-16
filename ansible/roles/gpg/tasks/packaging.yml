@@ -10,3 +10,32 @@
   copy:
     src: 80-gpg.preset
     dest: /usr/lib/systemd/system-preset/80-gpg.preset
+
+# Global per-component configs, read before (and overridden by) ~/.gnupg's.
+- name: Create global gnupg config dir
+  file:
+    path: /etc/gnupg
+    state: directory
+    mode: "0755"
+
+- name: Install global gnupg configs
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/gnupg/{{ item }}"
+    mode: "0644"
+  loop:
+    - gpg.conf
+    - gpg-agent.conf
+    - scdaemon.conf
+
+- name: Create gpg-agent ssh socket drop-in dir
+  file:
+    path: /usr/lib/systemd/user/gpg-agent-ssh.socket.d
+    state: directory
+
+# Exports the ssh socket to the user manager, so units and the apps sway starts
+# reach the agent. gnupg's example unit does this; the packaged one doesn't.
+- name: Install gpg-agent ssh socket drop-in
+  copy:
+    src: gpg-agent-ssh-socket-env.conf
+    dest: /usr/lib/systemd/user/gpg-agent-ssh.socket.d/10-ssh-auth-sock.conf

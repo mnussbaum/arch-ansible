@@ -59,7 +59,7 @@
       changed_when: false
 
     - name: Link ~/.password-store to the clone
-      # For tools that ignore PASSWORD_STORE_DIR, e.g. Firefox's firejail profile.
+      # For tools that ignore PASSWORD_STORE_DIR.
       ansible.builtin.file:
         path: "{{ ansible_facts['env']['HOME'] }}/.password-store"
         src: .local/share/password-store

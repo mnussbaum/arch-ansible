@@ -80,6 +80,9 @@
         name: zsh
       tags: [zsh, min-user-session]
     - import_role:
+        name: ssh
+      tags: [ssh]
+    - import_role:
         name: cli-tools
       tags: [cli-tools]
     - import_role:

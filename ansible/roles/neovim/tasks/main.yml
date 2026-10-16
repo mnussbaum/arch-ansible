@@ -1,7 +1,10 @@
 # vim:ft=yaml.ansible:
 ---
 - set_fact:
-    nvim_config_dir: /etc/skel/.config/nvim
+    # nvim reads init.lua from $XDG_CONFIG_DIRS when the home has none, so the
+    # config tracks the image. Plugins stay seeded into the home (vim.pack keeps
+    # them, and its lockfile, under the home's data and config dirs).
+    nvim_config_dir: /etc/xdg/nvim
     nvim_data_dir: /etc/skel/.local/share/nvim
     vim_plugins:
       - name: "preservim/vimux"
@@ -128,6 +131,7 @@
     state: directory
   with_items:
     - "{{ nvim_config_dir }}"
+    - /etc/skel/.config/nvim
     - "{{ nvim_config_dir }}/lua"
     - "{{ nvim_config_dir }}/plugin"
     - "{{ nvim_data_dir }}"
@@ -161,8 +165,10 @@
 # (stdpath('data')/site/pack). The SkeletonTree seeds the build host's plugins, so
 # vim.pack normally finds everything present and does nothing; anything missing is
 # fetched here (best-effort). HOME=/etc/skel points stdpath('data')/('config') at
-# skel so plugins and the lockfile land there. pack_headless_install.lua blocks
-# until PackChanged events settle.
+# skel so plugins and the lockfile land there, while XDG_CONFIG_DIRS finds the
+# plugin list in nvim_config_dir. pack_headless_install.lua blocks until
+# PackChanged events settle. Existing homes fetch plugins added later themselves,
+# at nvim startup.
 - name: Install nvim plugins
   command: >
     nvim --headless -u NONE -i NONE
@@ -170,6 +176,9 @@
     -c "luafile {{ nvim_config_dir }}/pack_headless_install.lua"
   environment:
     HOME: /etc/skel
+    XDG_CONFIG_HOME: /etc/skel/.config
+    XDG_DATA_HOME: /etc/skel/.local/share
+    XDG_CONFIG_DIRS: /etc/xdg
   when: plugin_config.changed
 
 - name: Configure base16 colorscheme

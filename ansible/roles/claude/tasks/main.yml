@@ -1,11 +1,16 @@
 # vim:ft=yaml.ansible:
 ---
-- name: Create skel claude config dir
+# Managed settings apply under every CLAUDE_CONFIG_DIR (personal and per
+# organization) and track the image, unlike a settings.json seeded into the home,
+# which Claude Code also writes to.
+- name: Create Claude Code managed settings dir
   file:
-    path: /etc/skel/.config/claude
+    path: /etc/claude-code
     state: directory
+    mode: "0755"
 
-- name: Install settings into skel
+- name: Install Claude Code managed settings
   copy:
     src: claude_settings.json
-    dest: /etc/skel/.config/claude/settings.json
+    dest: /etc/claude-code/managed-settings.json
+    mode: "0644"

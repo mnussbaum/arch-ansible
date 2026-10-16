@@ -455,6 +455,33 @@ hardware/facts at firstboot, so there are no per-host repo files. Build-time
 configuration that can't be detected at runtime goes in `group_vars` or behind a
 runtime condition in the roles.
 
+### Home directory config
+
+Homes outlive images: `systemd-homed` copies `/etc/skel` only when it creates a
+home, so anything copied into a home goes stale as the repo changes. Config
+reaches homes in one of these ways, in order of preference:
+
+1. **System-wide**, where the tool reads a system location: `/etc/xdg/<tool>`
+   (nvim, bat, ripgrep, waybar, ...), `/etc/ssh/ssh_config.d`, `/etc/gnupg`,
+   `/etc/claude-code/managed-settings.json`, `/etc/gitconfig.d`, `/etc/zsh`. It
+   lives in the image, so it changes with each update.
+2. **Linked in at login**, for files a tool only reads from the home (Ghostty's
+   config, Firefox's `user.js` and `userChrome`/`userContent.css`). The role
+   installs the file under `/usr/share/arch-ansible-home/<tool>/` and a
+   `/usr/share/user-tmpfiles.d/arch-ansible-<role>.conf` with an `L+` line that
+   `systemd-tmpfiles --user` applies at every login, replacing whatever is in the
+   home with a link into the image. `C` lines seed files the tool then rewrites
+   (Firefox's `prefs.js`); `d` lines create directories.
+3. **Seeded from `/etc/skel`** when the home is created, only for state the user
+   or a tool then owns: neovim's plugins and `vim.pack` lockfile, the empty
+   `.zshrc`, `~/Projects`.
+4. **The user playbook** (`user-first-login-playbook.yml`), for home state that
+   needs the user's secrets or YubiKey: the password store, `~/.pgpass`, AWS
+   credentials, Wi-Fi, gpg key import, homed enrollment. `/etc/zsh/zlogin` runs it
+   whenever `~/.config/user-first-login-done` doesn't hold the image's
+   `IMAGE_VERSION`, so it runs on first login and again on the first login after
+   each update. Its tasks must be safe to re-run.
+
 ### Backups
 
 A new machine needs its own Backblaze key in `pass`

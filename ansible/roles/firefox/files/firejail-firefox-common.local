@@ -1,8 +1,0 @@
-dbus-user.talk org.freedesktop.Notifications
-
-noblacklist ${HOME}/.gnupg
-mkdir ${HOME}/.gnupg
-whitelist ${HOME}/.gnupg
-
-mkdir ${HOME}/.password-store
-whitelist ${HOME}/.password-store

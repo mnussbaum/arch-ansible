@@ -1,15 +1,23 @@
 # vim:ft=yaml.ansible:
 ---
+# Ghostty only reads its config from the home, so ship it in /usr and link it in
+# at every login (systemd-tmpfiles --user); homes then track the image.
 - name: Create ghostty config dir
   file:
-    path: /etc/skel/.config/ghostty
+    path: /usr/share/arch-ansible-home/ghostty
     state: directory
 
 - name: Install ghostty config
   template:
     src: ghostty_config.j2
-    dest: /etc/skel/.config/ghostty/config
+    dest: /usr/share/arch-ansible-home/ghostty/config
   tags: [base16]
+
+- name: Link ghostty config into homes
+  copy:
+    content: |
+      L+ %h/.config/ghostty/config - - - - /usr/share/arch-ansible-home/ghostty/config
+    dest: /usr/share/user-tmpfiles.d/arch-ansible-terminals.conf
 
 - name: Disable ghostty daemon, it's fast enough as is
   copy:
