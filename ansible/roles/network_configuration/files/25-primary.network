@@ -16,4 +16,6 @@ RequiredFamilyForOnline=ipv4
 
 [IPv6AcceptRA]
 DHCPv6Client=yes
-Token=static:::1
+# A stable address per prefix, so it survives roaming between APs. Not a fixed
+# ::1 suffix: routers often hold ::1, so DAD kept removing ours.
+Token=prefixstable
