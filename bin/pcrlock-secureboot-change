@@ -31,6 +31,17 @@ dir=/var/lib/pcrlock.d/240-secureboot-policy.pcrlock.d
 
 cp "$dir/generated.pcrlock" "$dir/prior.pcrlock"
 
+# Framework BIOS updates can restore the factory Secure Boot keys, which
+# don't trust ours; see "Firmware Secure Boot key reset" in docs/bootstrapping.md.
+if [[ $(</sys/class/dmi/id/sys_vendor) == Framework* ]]; then
+    cat >&2 <<'EOF'
+warning: a Framework BIOS update may reset Secure Boot to the factory keys,
+  and the next boot then fails with "no bootable device". To recover: F2 into
+  setup, Security > Secure Boot > "Erase all Secure Boot settings", save and
+  reboot so systemd-boot re-enrolls our key, then unlock with the YubiKey once.
+EOF
+fi
+
 rc=0
 "$@" || rc=$?
 # Re-lock even if the command failed: it may have changed some variables

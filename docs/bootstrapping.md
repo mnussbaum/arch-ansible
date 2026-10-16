@@ -225,6 +225,18 @@ skipped for that boot): that boot re-predicts from the new state and rewrites
 the policy with the stored PIN, and the next boot unlocks root and swap from
 the TPM again.
 
+**Firmware Secure Boot key reset.** A Framework BIOS update can restore the
+factory Secure Boot keys. Only our key is enrolled, so the firmware then
+rejects systemd-boot and reports "no bootable device". `pcrlock-secureboot-change`
+warns about this before running on a Framework. To recover:
+
+1. F2 into firmware setup, Security → Secure Boot, and choose "Erase all Secure
+   Boot settings". This leaves the firmware in setup mode; keep Secure Boot
+   enabled.
+2. Save and reboot. systemd-boot's `secure-boot-enroll force` re-enrolls our key
+   from the ESP after a countdown, then boots.
+3. Unlock root with the YubiKey once, as for any unplanned change above.
+
 pcrlock needs a TPM 2.0 rev ≥ 1.38 (PolicyAuthorizeNV). On older TPMs — the
 XPS 13 9365's Intel PTT is one — `systemd-pcrlock-make-policy` is skipped and
 root and swap stay on literal PCR 7 + initrd-only signed PCR 11. Its PCR 7 event log was
