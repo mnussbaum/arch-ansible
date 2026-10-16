@@ -50,11 +50,6 @@ window_manager:
 
 
 monitors:
-  - id: Sharp Corporation 0x1551 Unknown
-    position:
-      x: 950
-      y: 1600
-    scale: 2
   - id: eDP-1
     position:
       x: 950
@@ -72,7 +67,7 @@ monitors:
 # catches any monitor not listed above it.
 docked_monitors:
   laptop:
-    id: Sharp Corporation 0x1551 Unknown
+    id: eDP-1
     scale: 2
   externals:
     - id: ASUSTek COMPUTER INC PA34V KBLMQS025309
