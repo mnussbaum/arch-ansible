@@ -17,6 +17,18 @@ bindswitch --locked tablet:on output * scale 3
 
 for_window [title=".*"] border pixel 0
 
+# Firefox starts from systemd user units, not sway's exec, so sway can't place
+# it by launch workspace. Match on the app_id each profile sets with --name.
+assign [app_id="^firefox$"] workspace 2
+{% if active_organizations %}
+assign [app_id="^firefox-({{ active_organizations.keys() | join('|') }})$"] workspace 3
+{% endif %}
+
+### Startup
+
+# Opens on workspace 1, the one sway starts on
+exec $term
+
 ### Output configuration
 
 focus_follows_mouse yes
