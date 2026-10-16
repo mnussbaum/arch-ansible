@@ -1,0 +1,25 @@
+#!/bin/bash
+# Second half of mkosi.postinst.fwupd-efi: move the loader mkosi signed out of
+# /usr/lib/systemd/boot/efi to /usr/lib/fwupd/efi/fwupd<arch>.efi.signed, which
+# fwupd uses when Secure Boot is on, and take back what `bootctl install` did
+# with it.
+#
+# bootctl copies every .efi in that directory onto the ESP, so the loader also
+# landed at /efi/EFI/systemd/. Remove it: fwupd copies it to the ESP itself when
+# it schedules a capsule update. The staged copy has to go too, or the running
+# system's `bootctl update` would do the same.
+
+set -euo pipefail
+
+name="fwupd$EFI_ARCHITECTURE.efi"
+staged="$BUILDROOT/usr/lib/systemd/boot/efi/$name"
+
+[[ -f "$staged" ]] || exit 0
+
+if [[ ! -f "$staged.signed" ]]; then
+    echo "error: mkosi did not sign /usr/lib/systemd/boot/efi/$name" >&2
+    exit 1
+fi
+
+mv "$staged.signed" "$BUILDROOT/usr/lib/fwupd/efi/$name.signed"
+rm -f "$staged" "$BUILDROOT/efi/EFI/systemd/$name"

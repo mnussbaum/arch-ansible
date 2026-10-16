@@ -212,6 +212,13 @@ It keeps the old variables as a second variant, runs the command, locks the new
 ones, and rebuilds the policy covering both; the next boot drops the old one.
 The TPM keeps unlocking across the change.
 
+BIOS updates are UEFI capsules that fwupd applies at reboot via its own EFI
+loader, which Secure Boot only boots if our key signed it. mkosi signs it
+during the build (`mkosi/mkosi.postinst.fwupd-efi` stages it with the
+systemd-boot binaries, which mkosi signs; `mkosi/mkosi.finalize.fwupd-efi`
+moves the result to `/usr/lib/fwupd/efi/fwupdx64.efi.signed`), and fwupd is set
+to boot it directly rather than through shim, which the image doesn't ship.
+
 **After an unplanned change** (or a new db certificate, which cannot be
 predicted), the TPM refuses. Unlock root with the YubiKey once (swap is
 skipped for that boot): that boot re-predicts from the new state and rewrites

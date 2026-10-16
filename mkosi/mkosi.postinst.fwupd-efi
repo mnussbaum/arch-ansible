@@ -1,0 +1,32 @@
+#!/bin/bash
+# Get fwupd's UEFI capsule loader signed with the Secure Boot key, so BIOS
+# updates can boot it with Secure Boot on (docs/bootstrapping.md).
+#
+# mkosi signs every *.efi in /usr/lib/systemd/boot/efi as <name>.efi.signed
+# right before `bootctl install`, using the key it was handed; no script ever
+# sees the key. So stage a copy of the loader there, and
+# mkosi.finalize.fwupd-efi moves the signed result to where fwupd looks for it.
+# A copy, not a symlink: mkosi bind-mounts the input into its signing sandbox,
+# and an absolute symlink would resolve against the host.
+#
+# Also tell fwupd to boot the loader directly. With Secure Boot on it otherwise
+# insists on chainloading through shim, which this image doesn't ship.
+#
+# Runs host-side on $BUILDROOT, after mkosi.postinst.chroot. It ignores
+# SKIP_POSTINST: it's quick, and the finalize half needs the staged copy.
+
+set -euo pipefail
+
+loader="$BUILDROOT/usr/lib/fwupd/efi/fwupd$EFI_ARCHITECTURE.efi"
+if [[ ! -f "$loader" ]]; then
+    echo "fwupd EFI loader not installed, nothing to sign" >&2
+    exit 0
+fi
+cp "$loader" "$BUILDROOT/usr/lib/systemd/boot/efi/"
+
+# Appended to the packaged file, which keeps its 0640 mode. Incremental builds
+# restore the pre-postinst tree, but check anyway so a rerun can't repeat it.
+conf="$BUILDROOT/etc/fwupd/fwupd.conf"
+if ! grep -q '^\[uefi_capsule\]' "$conf"; then
+    printf '\n[uefi_capsule]\nDisableShimForSecureBoot=true\n' >> "$conf"
+fi
