@@ -4,6 +4,10 @@ PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
+# User units can't order after the system's network-online.target, so wait
+# here; otherwise restored tabs load offline. "-": start offline after the
+# timeout rather than not at all.
+ExecStartPre=-/usr/lib/systemd/systemd-networkd-wait-online --any --timeout=60
 # Restores the profile's last session (browser.startup.page=3)
 ExecStart=/usr/bin/firefox
 
