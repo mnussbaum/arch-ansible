@@ -46,6 +46,32 @@ rm -rf /root/.cargo/registry/src
 mkdir -p /root/.cache/sccache
 rsync -a --ignore-existing /work/src/sccache-cache/ /root/.cache/sccache/ 2>/dev/null || true
 
+caching="${CACHING:-available}"
+
+# Refresh the pinned GitHub/GitLab SSH host keys from their published sources.
+# The committed copy (mkosi.extra/etc/ssh/ssh_known_hosts) stays in place when a
+# fetch fails, returns nothing usable, or the build is offline (--caching force).
+# GitLab has no API for its keys, so they're scraped from its docs' Markdown.
+if [[ "$caching" != force ]]; then
+  known_hosts=$(mktemp)
+  if {
+    echo "# Pinned host keys, from https://api.github.com/meta and GitLab's docs"
+    curl -fsS --max-time 20 https://api.github.com/meta \
+      | jq -er '.ssh_keys[] | "github.com " + .'
+    curl -fsS --max-time 20 \
+      https://gitlab.com/gitlab-org/gitlab/-/raw/master/doc/user/gitlab_com/_index.md \
+      | grep -E '^gitlab\.com (ssh-|ecdsa-)'
+  } > "$known_hosts" \
+    && ssh-keygen -lf "$known_hosts" >/dev/null \
+    && grep -q '^github\.com ssh-ed25519 ' "$known_hosts" \
+    && grep -q '^gitlab\.com ssh-ed25519 ' "$known_hosts"; then
+    install -m 0644 "$known_hosts" /etc/ssh/ssh_known_hosts
+  else
+    echo "postinst: couldn't fetch SSH host keys; keeping the committed copy" >&2
+  fi
+  rm -f "$known_hosts"
+fi
+
 extra_args=()
 if [[ -n "${ANSIBLE_EXTRA_ARGS:-}" ]]; then
   eval "extra_args=($ANSIBLE_EXTRA_ARGS)"
@@ -57,7 +83,6 @@ fi
 # resync the chroot's package DB here, since the image's /var/lib/pacman/sync is
 # seeded, not the DB mkosi refreshed for its own install. 'available' keeps the
 # default behaviour (no resync; download only what the cache is missing).
-caching="${CACHING:-available}"
 extra_args+=(--extra-vars "build_caching=$caching")
 if [[ "$caching" == off ]]; then
   # --disable-sandbox: this runs before Ansible templates the pacman.conf that
