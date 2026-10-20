@@ -139,6 +139,27 @@
     dest: /usr/lib/systemd/system/multi-user.target.wants/disable-pm-async.service
     state: link
 
+- name: Install unbind-thunderbolt service
+  copy:
+    src: unbind-thunderbolt.service
+    dest: /usr/lib/systemd/system/unbind-thunderbolt.service
+    mode: "0644"
+
+# Not shutdown.target or final.target, which soft-reboot pulls in too: that
+# keeps the kernel, and would come back up with Thunderbolt unbound
+- name: Create reboot, poweroff, halt and kexec target wants directories
+  file:
+    path: "/usr/lib/systemd/system/{{ item }}.target.wants"
+    state: directory
+  loop: [reboot, poweroff, halt, kexec]
+
+- name: Unbind Thunderbolt on reboot, poweroff, halt and kexec
+  file:
+    src: ../unbind-thunderbolt.service
+    dest: "/usr/lib/systemd/system/{{ item }}.target.wants/unbind-thunderbolt.service"
+    state: link
+  loop: [reboot, poweroff, halt, kexec]
+
 - name: Create sysctl param directory
   file:
     path: /usr/lib/sysctl.d

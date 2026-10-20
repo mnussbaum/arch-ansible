@@ -1,0 +1,20 @@
+[Unit]
+Description=Unbind Thunderbolt before rebooting or powering off
+# Linux 7.2 hangs reboot and poweroff in the thunderbolt driver's shutdown
+# hook: nhi_pci_remove waits, without a timeout, for the domain to be released
+# (f5cc545f5969), and a DisplayPort tunnel can leak a domain reference
+# (d6d458d42e1e), so it never is. Seen here with a Thunderbolt display attached
+# at boot; unplugging it before shutdown doesn't help. Unbinding the USB4 host
+# controllers while the system is still up completes cleanly. Fixed upstream in
+# v7.3-rc3 by Sven Peter's series ending in 0b457c6733f7 ("thunderbolt: Tear
+# down inactive DP tunnels when the domain is stopped"), tagged for stable;
+# drop this unit once the kernel carries it.
+ConditionPathExists=/sys/bus/pci/drivers/thunderbolt
+DefaultDependencies=no
+# After the last filesystems on Thunderbolt storage are unmounted
+After=umount.target
+Before=final.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'for dev in /sys/bus/pci/drivers/thunderbolt/0000:*; do [ -e "$$dev" ] && echo "$${dev##*/}" > /sys/bus/pci/drivers/thunderbolt/unbind; done; true'
