@@ -14,7 +14,8 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: $0 [--organization NAME]... [mkosi options...] <device>" >&2
       echo "  <device>         Whole block device to write the image to. It is wiped first (sudo)." >&2
       echo "  --organization   Burn the newest image built with exactly these organizations" >&2
-      echo "                   (repeatable). Defaults to \$ARCH_ANSIBLE_ORGANIZATIONS, else none." >&2
+      echo "                   (repeatable). Defaults to \$ARCH_ANSIBLE_ORGANIZATIONS, else the" >&2
+      echo "                   running image's (as update-system), else none." >&2
       echo "  The machine names itself at first boot (mkosi Hostname=, machine-id derived)." >&2
       echo "  Any other options are forwarded to mkosi." >&2
       exit
@@ -34,9 +35,16 @@ done
 
 : "${device:?Usage: $0 <device>}"
 
+# Resolve the build context and organizations exactly as bin/update-system
+# does, so this burns the image it built: on one of our images the output dir
+# is the device cache (or a live medium's existing scratch, never created
+# here), and the organizations default to the running image's.
+source bin/_build_context_common.sh
+arch_ansible_select_build_target
 source bin/_cache_common.sh
 source bin/_images_common.sh
-if [[ ${#organizations[@]} -eq 0 && -n "${ARCH_ANSIBLE_ORGANIZATIONS:-}" ]]; then
+if [[ ${#organizations[@]} -eq 0 ]]; then
+  arch_ansible_default_organizations
   IFS=, read -ra organizations <<< "$ARCH_ANSIBLE_ORGANIZATIONS"
 fi
 orgs=$(arch_ansible_normalize_organizations "$(IFS=,; echo "${organizations[*]}")")
@@ -82,6 +90,8 @@ mkosi \
   --output-directory="$output_dir" \
   --profile="build${orgs:+,$orgs}" \
   --image-version="$version" \
+  --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
+  `# TRANSITIONAL: selects mkosi/mkosi.conf.d/10-sources-*.conf; remove after cutover` \
   "${mkosi_args[@]}" \
   burn "$device"
 
