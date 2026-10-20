@@ -28,12 +28,14 @@ Two properties of the image make that possible:
   * OVMF's ConSplitter mirrors the firmware console onto the serial port, so
     sd-boot's menu is readable on serial and QEMU's HMP `sendkey` can move the
     selection — no display, no keyboard, no VT switching;
-  * every UKI profile carries `console=ttyS0` and an agetty autologin
-    credential, so a root shell lands on the serial socket and commands and
-    their output round-trip over it. (`console=tty0` comes last, so /dev/console
-    — and thus systemd's own boot output and any password prompt — still goes to
-    the invisible VGA console. Read those back with `journalctl` over serial, or
-    reach for the screendump this takes when a headless boot goes quiet.)
+  * QEMU adds `console=ttyS0` to every UKI profile's cmdline (an SMBIOS
+    kernel-cmdline-extra; the signed cmdline leaves it out, as hardware has no
+    UART there) and passes an agetty autologin credential, so a root shell
+    lands on the serial socket and commands and their output round-trip over
+    it. (`console=tty0` still comes last, so /dev/console — and thus systemd's
+    own boot output and any password prompt — still goes to the invisible VGA
+    console. Read those back with `journalctl` over serial, or reach for the
+    screendump this takes when a headless boot goes quiet.)
 
 `--gui` opens a window instead and hands the VM over, for when you are sitting
 at it. Without a keyboard grab Ctrl+Alt+F<n> lands on the HOST compositor, so
@@ -624,6 +626,14 @@ def build_qemu_args(drives, varstore, tpm_sock, memory, cpus, credentials,
         if "bootindex" in d:
             dev += f",bootindex={d['bootindex']}"
         args += ["-device", dev]
+    # The kernel console on serial, for the root shell and the boot log. Not in
+    # the image's signed cmdline, since hardware has no UART behind ttyS0;
+    # systemd-stub appends this, even under Secure Boot. It lands after the
+    # UKI's own console=tty0, and the last console= becomes /dev/console, so
+    # tty0 is repeated to keep firstboot and LUKS prompts on the VGA console.
+    args += ["-smbios",
+             "type=11,value=io.systemd.stub.kernel-cmdline-extra="
+             "console=ttyS0 console=tty0"]
     for cred in credentials:
         args += ["-smbios", f"type=11,value=io.systemd.credential:{cred}"]
     if share_sock:
@@ -691,7 +701,7 @@ class Vm:
     def screenshot(self, tag="screen"):
         """Capture the VGA console to a PPM (converted to PNG when possible).
 
-        The image's cmdline ends with `console=tty0`, so /dev/console — and
+        The guest's cmdline ends with `console=tty0`, so /dev/console — and
         therefore systemd's status output, systemd-firstboot's prompts and any
         LUKS passphrase query — lands on the VGA console, not on serial. With no
         display attached, a screendump is the only way to see it, so this is the
