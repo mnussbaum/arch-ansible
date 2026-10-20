@@ -145,6 +145,7 @@ new image. On the machine itself:
 ```
 bin/update-system            # build a new image, install it to the inactive /usr slot
 bin/update-system --reboot   # ...and reboot into it
+bin/update-system --no-build # apply the image bin/build-image last built
 ```
 
 Failed boots fall back to the previous slot automatically. `--image=DISK` updates

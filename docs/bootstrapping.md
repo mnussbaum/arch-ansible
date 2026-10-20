@@ -539,6 +539,7 @@ the transfers use `PathRelativeTo=explicit` and the source must be supplied with
 ```bash
 bin/update-system            # build + apply to the inactive slot
 bin/update-system --reboot   # ...and reboot into it
+bin/update-system --no-build # apply the image bin/build-image last built
 ```
 
 To update a machine that is installed but can't boot far enough to update itself

@@ -48,6 +48,7 @@ set -o pipefail
 
 reboot=""
 image=""
+no_build=""
 build_args=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -58,6 +59,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --image=DISK  Offline-update another system's disk/raw image instead of this" >&2
       echo "                device (live-USB mode). Updates only its inactive /usr slot and" >&2
       echo "                ESP; leaves root/home/swap intact." >&2
+      echo "  --no-build    Apply the image bin/build-image last built instead of rebuilding." >&2
       echo "  Other options are forwarded to build-image (e.g. --ansible-tags TAGS)." >&2
       echo "  Rebuilds with the running image's organizations unless --organization is given." >&2
       exit
@@ -65,6 +67,7 @@ while [[ $# -gt 0 ]]; do
     --reboot) reboot=1 ;;
     --image=*) image="${1#*=}" ;;
     --image) image="$2"; shift ;;
+    --no-build) no_build=1 ;;
     *) build_args+=("$1") ;;
   esac
   shift
@@ -72,6 +75,11 @@ done
 
 if [[ -n "$reboot" && -n "$image" ]]; then
   echo "Refusing: --reboot updates the running system; it has no meaning with --image." >&2
+  exit 1
+fi
+
+if [[ -n "$no_build" && ${#build_args[@]} -gt 0 ]]; then
+  echo "Refusing: --no-build skips build-image, so it can't take its options: ${build_args[*]}" >&2
   exit 1
 fi
 
@@ -109,7 +117,9 @@ fi
 arch_ansible_select_build_target --provision
 source bin/_cache_common.sh
 
-bin/build-image "${build_args[@]}"
+if [[ -z "$no_build" ]]; then
+  bin/build-image "${build_args[@]}"
+fi
 
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 # The version build-image just bumped to (mkosi/mkosi.bump > mkosi/mkosi.version). We pass it
@@ -118,6 +128,19 @@ output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 # bare `update`, which prints "No update needed" and exits 0), and errexit aborts
 # before any reboot.
 new_version=$(cat mkosi/mkosi.version)
+
+# With --no-build, take the version from the built UKI instead: build-image bumps
+# mkosi.version before building, so a failed build leaves it ahead of the output.
+# Versions are zero-padded timestamps, so the last in sort order is the newest.
+if [[ -n "$no_build" ]]; then
+  new_version=$(find "$output_dir" -maxdepth 1 -name 'image_*_*.efi' -printf '%f\n' 2>/dev/null |
+    sed 's/^image_\([^_]*\)_.*/\1/' | sort | tail -n 1)
+  if [[ -z "$new_version" ]]; then
+    echo "Refusing: no built image in $output_dir. Run bin/build-image first." >&2
+    exit 1
+  fi
+  echo "Applying previously built image version $new_version." >&2
+fi
 
 if [[ -n "$image" ]]; then
   # Offline path: apply the freshly built artifacts to the target disk's inactive
