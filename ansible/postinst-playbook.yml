@@ -71,9 +71,6 @@
         name: enable_network
       tags: [enable_network]
     - import_role:
-        name: reflector
-      tags: [reflector]
-    - import_role:
         name: secrets
       tags: [secrets]
     - import_role:
