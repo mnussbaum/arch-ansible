@@ -1,0 +1,23 @@
+#!/bin/bash
+# Pad the split usr verity signature with NULs to a 4 KiB boundary.
+#
+# systemd-sysupdate imports it through the whole disk with a buffered write,
+# then BLKZEROOUTs the rest of the slot. On a running device the disk's other
+# partitions are claimed, so the kernel can only invalidate the zeroed range's
+# page cache, which fails with EBUSY on the still-dirty page holding the
+# signature's tail. Ending the file on a page boundary keeps that range clear
+# of it. The signature JSON ends at its first NUL, like the repart-written slot.
+#
+# Appends real zeros, not a sparse truncate, so no import can skip over them
+# and leave stale bytes in the slot.
+
+set -euo pipefail
+
+shopt -s nullglob
+for sig in "$OUTPUTDIR"/*.usr-*-verity-sig.*.raw; do
+    size=$(stat -c %s "$sig")
+    pad=$(( (4096 - size % 4096) % 4096 ))
+    (( pad == 0 )) && continue
+
+    head -c "$pad" /dev/zero >>"$sig"
+done

@@ -198,12 +198,18 @@ if [[ -n "$image" ]]; then
   # ESP mount live only there and vanish with it (nothing leaks into the live
   # system). SYSTEMD_ESP_PATH + RELAX_ESP_CHECKS make sysupdate write the UKI to
   # the target ESP we mounted instead of scanning the live system's mount points.
+  # vacuum first clears any partial install a failed run left behind, which
+  # sysupdate otherwise refuses to retry.
   sudo unshare --mount --propagation private -- \
     bash -c '
       set -o errexit
       mount --bind "$1" /run/systemd
       mount "$2" "$3"
       export SYSTEMD_ESP_PATH="$3" SYSTEMD_RELAX_ESP_CHECKS=1
+      /usr/lib/systemd/systemd-sysupdate \
+        --definitions="$4" \
+        --transfer-source="$5" \
+        vacuum
       exec /usr/lib/systemd/systemd-sysupdate \
         --definitions="$4" \
         --transfer-source="$5" \
@@ -226,6 +232,9 @@ else
   # auto-discovers the running system's disk and writes the new version to the
   # inactive usr slot; the guard above (we're on a real device) keeps that
   # discovery off a build host's disk.
+  # vacuum first clears any partial install a failed run left behind, which
+  # sysupdate otherwise refuses to retry.
+  sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" vacuum
   sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" update "$new_version"
   if [[ -n "$reboot" ]]; then sudo systemctl reboot; fi
 fi
