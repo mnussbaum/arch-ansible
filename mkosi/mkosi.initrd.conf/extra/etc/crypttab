@@ -10,10 +10,11 @@
 # link-volume-key= leaves each volume key in root's user keyring, which is how
 # luks-volume-key authorizes keyslot changes after boot.
 root /dev/disk/by-designator/root-luks - tpm2-device=auto,pkcs11-uri=auto,tpm2-measure-pcr=yes,tpm2-measure-keyslot-nvpcr=yes,link-volume-key=@u::%user:arch-ansible-root-vk,noauto
-# Swap stays TPM-only (headless): one PIN prompt per volume is enough. If the
-# TPM breaks, swap is skipped for that boot and bin/luks-reseal-tpm re-seals it.
-# systemd-cryptsetup@root.service pulls it in.
-swap /dev/disk/by-designator/swap-luks - tpm2-device=auto,headless=yes,link-volume-key=@u::%user:arch-ansible-swap-vk,x-initrd.attach,nofail,noauto
+# Swap falls back to the YubiKey when its TPM2 slot doesn't unseal, so its
+# volume key still reaches the keyring and pcrlock-enroll-luks can re-bind the
+# slot; otherwise it would stay closed on every boot. nofail: a missed touch
+# only skips swap for that boot. systemd-cryptsetup@root.service pulls it in.
+swap /dev/disk/by-designator/swap-luks - tpm2-device=auto,pkcs11-uri=auto,link-volume-key=@u::%user:arch-ansible-swap-vk,x-initrd.attach,nofail,noauto
 # An encrypted home (the full-disk-encryption profile), so the YubiKey works
 # when the TPM doesn't. Only that profile's drop-in for
 # systemd-cryptsetup@root.service pulls it in.
