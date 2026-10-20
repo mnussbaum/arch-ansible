@@ -1,0 +1,19 @@
+#!/bin/bash
+# ExecStopPost of iwd.service: copy the channels iwd last saw each known
+# network on out of its tmpfs state directory, so the next start's quick scan
+# can find them instead of falling back to slow full scans. Holds network
+# names and frequencies only, no PSKs. iwd-networks-from-credentials restores
+# it.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+state="${STATE_DIRECTORY:?not run by iwd.service}"
+freq="$state/.known_network.freq"
+persist=/var/lib/iwd
+
+[[ -f "$freq" ]] || exit 0
+
+install -d -m 0700 "$persist"
+install -m 0600 "$freq" "$persist/.known_network.freq.tmp"
+mv "$persist/.known_network.freq.tmp" "$persist/.known_network.freq"
