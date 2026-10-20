@@ -96,6 +96,17 @@ so it tracks `/usr` across updates instead of freezing at first boot; per-host
 state (machine-id, ssh host keys, shadow) is written into the writable `/etc`
 on first boot.
 
+The exception is `/etc/systemd/system`, which is a real directory (see the
+comment in `mkosi.finalize.factory-seed`) that `systemctl preset-all` fills on
+first boot and nothing touches after. So enable a **system** unit with a static
+link in `/usr` — `/usr/lib/systemd/system/<target>.wants/<unit>` pointing at
+`../<unit>`, and no `[Install]` section — not a `system-preset` line, which
+never reaches a machine installed before it was added. Links in
+`mkosi.extra/etc/systemd/system` and ansible's `systemd_service: enabled` don't
+work at all: mkosi's own `preset-all` at build time drops any enablement a
+preset doesn't list. User units are unaffected: `/etc/systemd/user` is a
+factory link, so `user-preset` lines ship with each update.
+
 ### Disk encryption
 
 The root and swap partitions are LUKS2, created and TPM2-enrolled by
