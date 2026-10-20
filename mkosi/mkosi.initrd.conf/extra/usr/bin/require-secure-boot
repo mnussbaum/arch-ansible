@@ -1,0 +1,56 @@
+#!/bin/bash
+# Refuse to let systemd-repart create TPM2-sealed volumes while Secure Boot is
+# off: they would be sealed to a PCR 7 that turning Secure Boot on changes, and
+# no pcrlock policy can be made for it, so swap and home could never re-bind.
+# Run by require-secure-boot.service only when Secure Boot is off; exits
+# non-zero (powering off) once the console has seen the message.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# A failed dry run means the real one has nothing to do or fails on its own.
+plan=$(systemd-repart --dry-run=yes --json=pretty --no-pager 2>/dev/null) || exit 0
+
+# Pure bash: the initrd has no grep. repart names definitions relative to the
+# root it read them from, /sysusr in the initrd. One that can't be read counts
+# as sealing, so a path mismatch halts rather than lets repart seal.
+seals_to_tpm2() {
+    local path line
+
+    path=$1
+    if [[ "$path" != /* ]]; then
+        path=/sysusr/$1
+        [[ -f "$path" ]] || path=/$1
+    fi
+    [[ -r "$path" ]] || return 0
+
+    while IFS= read -r line; do
+        [[ "$line" == Encrypt=*tpm2* ]] && return 0
+    done < "$path"
+
+    return 1
+}
+
+file=
+sealing=
+while IFS= read -r line; do
+    if [[ "$line" =~ \"file\"\ :\ \"(.*)\" ]]; then
+        file=${BASH_REMATCH[1]}
+    elif [[ "$line" == *'"activity" : "create"'* ]] && seals_to_tpm2 "$file"; then
+        sealing=1
+    fi
+done <<< "$plan"
+
+[[ -n "$sealing" ]] || exit 0
+
+cat <<'EOF'
+
+Secure Boot is off. This boot would seal the new disk volumes to the TPM in
+that state, and they would stop unlocking once Secure Boot is turned on.
+
+Turn Secure Boot on in the firmware setup, then boot this disk again.
+
+Press Enter to power off.
+EOF
+read -r || true
+exit 1

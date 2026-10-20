@@ -1,0 +1,21 @@
+# Stops systemd-repart from sealing new volumes to the TPM while Secure Boot is
+# off; see /usr/bin/require-secure-boot. Pulled in by
+# systemd-repart.service.d/secure-boot.conf.
+[Unit]
+Description=Require Secure Boot before sealing disk volumes
+ConditionSecurity=!uefi-secureboot
+DefaultDependencies=no
+After=initrd-usr-fs.target systemd-tpm2-setup-early.service systemd-tmpfiles-setup-dev.service
+Before=systemd-repart.service
+FailureAction=poweroff
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/require-secure-boot
+TimeoutStartSec=infinity
+StandardInput=tty
+StandardOutput=tty
+StandardError=journal+console
+TTYPath=/dev/console
+TTYReset=yes
