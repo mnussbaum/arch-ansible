@@ -80,7 +80,6 @@
     dest: /usr/lib/systemd/user/poweralertd.service.d/flags.conf
     mode: "0644"
 
-
 - name: Create logind drop-in directory
   file:
     path: /usr/lib/systemd/logind.conf.d
@@ -128,6 +127,17 @@
     src: disable-pm-async.service
     dest: /usr/lib/systemd/system/disable-pm-async.service
     mode: "0644"
+
+- name: Create multi-user.target.wants directory
+  file:
+    path: /usr/lib/systemd/system/multi-user.target.wants
+    state: directory
+
+- name: Enable disable-pm-async service
+  file:
+    src: ../disable-pm-async.service
+    dest: /usr/lib/systemd/system/multi-user.target.wants/disable-pm-async.service
+    state: link
 
 - name: Create sysctl param directory
   file:

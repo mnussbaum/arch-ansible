@@ -7,6 +7,3 @@ ConditionFirmware=smbios-field(product_name $= XPS*)
 [Service]
 Type=oneshot
 ExecStart=/bin/sh -c 'echo 0 > /sys/power/pm_async'
-
-[Install]
-WantedBy=multi-user.target
