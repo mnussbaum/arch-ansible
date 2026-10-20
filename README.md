@@ -116,7 +116,7 @@ Attach a second disk with `--device=<disk.raw>` and pick **Live System (Recovery
 at the boot menu to repair it, or **Installer** to install onto it.
 
 ```
-bin/vm run --device="$HOME/.cache/mkosi/images/image/<disk>.raw"
+bin/vm run --device=/var/cache/arch-ansible/mkosi/images/image/<disk>.raw
 ```
 
 #### Scripted runs
@@ -127,12 +127,12 @@ attaches it **alone**, which a target's first boot requires: with the medium
 also attached, first-boot `systemd-repart` provisions the wrong disk.
 
 ```
-bin/vm install ~/.cache/mkosi/test-target.raw   # fresh install
-bin/vm run     ~/.cache/mkosi/test-target.raw   # first boot + health checks
-bin/vm run DISK --run 'CMD'                     # run CMD in the booted guest
-bin/vm run DISK --share DIR                     # hand the guest files at /mnt/vmtest
-bin/vm run DISK --entry VERSION                 # pick an sd-boot entry
-bin/vm run DISK --gui                           # a window instead of the checks
+bin/vm install /var/cache/arch-ansible/mkosi/test-target.raw    # fresh install
+bin/vm run     /var/cache/arch-ansible/mkosi/test-target.raw    # first boot + health checks
+bin/vm run DISK --run 'CMD'                                     # run CMD in the booted guest
+bin/vm run DISK --share DIR                                     # hand the guest files at /mnt/vmtest
+bin/vm run DISK --entry VERSION                                 # pick an sd-boot entry
+bin/vm run DISK --gui                                           # a window instead of the checks
 ```
 
 ## Maintenance
@@ -162,7 +162,6 @@ To iterate on part of it:
 ```
 bin/build-image --ansible-tags sway,waybar   # rebuild running only these roles
 bin/build-image --skip-postinst              # rebuild without Ansible at all
-bin/rerun-postinst                           # re-run the postinst on the cached image
 ```
 
 `bin/update-system` forwards the same options to `bin/build-image`. Tags are the

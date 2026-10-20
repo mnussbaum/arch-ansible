@@ -22,7 +22,6 @@ if [[ $EUID -eq 0 ]]; then
   # A fresh named volume can come up root-owned.
   chown builder:builder /home/builder/.cache
   install -d -o builder -g builder -m 700 "$secrets"
-  # Also refreshes the sync DB that mkosi seeds the image's from (10-sources-host.conf).
   pacman -Syu --noconfirm
   if [[ $DR_MODE == yubikey ]]; then
     install -d /run/pcscd
@@ -107,9 +106,8 @@ case $DR_MODE in
     ;;
 esac
 
-# Older build-images copied the signing key into the cache, which is the
-# persistent volume; build-image now keeps it in tmpfs and deletes it itself.
-trap 'rm -f "$HOME/.cache/mkosi-secureboot/mkosi.key"' EXIT
+# The build caches live on the named volume, not /var/cache/arch-ansible.
+export ARCH_ANSIBLE_CACHE=$HOME/.cache
 export ARCH_ANSIBLE_SECRETS_DIR=$secrets ARCH_ANSIBLE_AUR_CHROOT=no
 # One version: the volume only needs the newest, and each costs ~18G.
 bin/build-image --keep 1 "$@"

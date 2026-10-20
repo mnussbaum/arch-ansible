@@ -56,11 +56,11 @@ done
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 
-# mkosi/mkosi.conf expands ${ARCH_ANSIBLE_CACHE} and ${ARCH_ANSIBLE_SRCTREE} from the
-# environment, so `mkosi summary` fails config validation without them. Exported
-# already when bin/build-image calls this; sourced here so the script also works
-# standalone. (Suppressing mkosi's stderr hid exactly this failure once.)
-if [[ -z ${ARCH_ANSIBLE_CACHE:-} ]]; then
+# mkosi/mkosi.conf expands ${ARCH_ANSIBLE_CACHE}, ${ARCH_ANSIBLE_SRCTREE} and
+# ${ARCH_ANSIBLE_PASSWORD_STORE} from the environment, so `mkosi summary` fails
+# config validation without them. Exported already when bin/build-image calls
+# this; sourced here so the script also works standalone.
+if [[ -z ${ARCH_ANSIBLE_CACHE:-} || -z ${ARCH_ANSIBLE_PASSWORD_STORE:-} ]]; then
     # shellcheck source=bin/_cache_common.sh
     source "$root/bin/_cache_common.sh"
 fi
@@ -75,14 +75,11 @@ mkdir -p "$repo"
 # Every package the main image will install, straight from mkosi's own resolved
 # configuration (the initrd image has its own, much shorter, list). Captured
 # first so a failing mkosi (e.g. a BuildSources path that does not exist yet)
-# stops here with its own error. ARCH_ANSIBLE_TARGET is passed the way
-# bin/build-image passes it: mkosi/mkosi.conf defaults it to host, so without this a
-# device would resolve the host's mkosi/mkosi.conf.d/10-sources-host.conf and fail on
-# its missing ~/.local/share/password-store.
+# stops here with its own error.
 # Organization profiles add packages; bin/build-image exports which are enabled.
 summary=$(mkosi --directory "$root/mkosi" \
     --profile="build${ARCH_ANSIBLE_ORGANIZATIONS:+,$ARCH_ANSIBLE_ORGANIZATIONS}" \
-    --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" --json summary)
+    --json summary)
 mapfile -t wanted < <(printf '%s' "$summary" | python3 -c '
 import json, sys
 images = json.load(sys.stdin)["Images"]
@@ -92,12 +89,9 @@ if not main:
 print("\n".join(main[0].get("Packages") or []))')
 [[ ${#wanted[@]} -gt 0 ]] || { echo "sync-aur: mkosi summary listed no packages" >&2; exit 1; }
 
-# A device has no system sync DB; bin/update-system keeps one for the build
+# A device has no system sync DB; bin/build-image keeps one for the build
 # under the cache. Without it every package would look like an AUR package.
-pacman_args=()
-if [[ ${ARCH_ANSIBLE_TARGET:-host} == device ]]; then
-    pacman_args=(--dbpath "$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-db")
-fi
+pacman_args=(--dbpath "$ARCH_ANSIBLE_CACHE/arch-ansible/pacman-db")
 
 # Whatever the official repos cannot resolve must come from the local repo.
 # One pacman call reports them all; other failures it may print (an unsatisfiable

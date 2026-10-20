@@ -4,7 +4,7 @@ set -euo pipefail
 # Write build caches the postinst generated back to the host so the next build's
 # SkeletonTrees / BuildSources seed them in, avoiding re-download/-compile.
 #
-# Finalize scripts run in a sandbox that binds neither the host ~/.cache nor the
+# Finalize scripts run in a sandbox that binds neither ${ARCH_ANSIBLE_CACHE} nor the
 # build caches' image paths — only mkosi's own mounts and $OUTPUTDIR. Writing to
 # "$ARCH_ANSIBLE_CACHE/..." here is silently discarded. So we use two routes:
 #   - pacman's package cache, which mkosi binds RW into this sandbox at

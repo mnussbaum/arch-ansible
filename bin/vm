@@ -267,9 +267,7 @@ class Shell:
 def cache_dir():
     if v := os.environ.get("ARCH_ANSIBLE_CACHE"):
         return Path(v)
-    if os.environ.get("ARCH_ANSIBLE_TARGET") == "device":
-        return Path("/var/cache/arch-ansible")
-    return Path.home() / ".cache"
+    return Path("/var/cache/arch-ansible")
 
 
 def output_dir():
@@ -279,16 +277,22 @@ def output_dir():
 def mkosi_env():
     """The environment `mkosi` needs to expand mkosi/mkosi.conf.
 
-    mkosi/mkosi.conf refers to ${ARCH_ANSIBLE_CACHE} and ${ARCH_ANSIBLE_SRCTREE} and
-    expands them from the process environment (bin/_cache_common.sh exports
-    them for the build scripts). Without them mkosi fails config validation
-    before it boots anything: "${ARCH_ANSIBLE_CACHE}/cargo/registry does not
-    exist". An already-exported value wins, matching _cache_common.sh.
+    mkosi/mkosi.conf refers to ${ARCH_ANSIBLE_CACHE}, ${ARCH_ANSIBLE_SRCTREE} and
+    ${ARCH_ANSIBLE_PASSWORD_STORE} and expands them from the process environment
+    (bin/_cache_common.sh exports them for the build scripts). Without them
+    mkosi fails config validation before it boots anything:
+    "${ARCH_ANSIBLE_CACHE}/cargo/registry does not exist". An already-exported
+    value wins, matching _cache_common.sh.
     """
     env = dict(os.environ)
     cache = cache_dir()
     env.setdefault("ARCH_ANSIBLE_CACHE", str(cache))
     env.setdefault("ARCH_ANSIBLE_SRCTREE", str(cache / "mkosi-srctree"))
+    store = Path(os.environ.get("PASSWORD_STORE_DIR")
+                 or Path.home() / ".local/share/password-store")
+    if not store.is_dir():
+        store = Path("/usr/share/password-store")
+    env.setdefault("ARCH_ANSIBLE_PASSWORD_STORE", str(store))
     return env
 
 

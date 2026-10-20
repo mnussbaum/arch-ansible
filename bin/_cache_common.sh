@@ -4,18 +4,12 @@
 # the sccache/cargo/pacman caches, the AUR repo and build chroot, and the homed
 # credstore).
 #
-# Keyed off ARCH_ANSIBLE_TARGET, the same transitional switch that selects
-# mkosi/mkosi.conf.d/10-sources-{host,device}.conf:
-#
-#   host   (transitional builder): ~/.cache — the interactive user's cache,
-#          optionally a dedicated 60G btrfs volume (bin/setup-mkosi-cache-volume).
-#   device (in-image, the steady state): /var/cache/arch-ansible on the encrypted
-#          root btrfs. Keeps the build off the small homed /home partition (a full
-#          build's transient footprint — e.g. systemd-repart's ~5G /usr copy to
-#          size the erofs slot — overflows it) and makes the whole local-rebuild
-#          pipeline root-resident, alongside the update staging dir
-#          /var/lib/arch-ansible/updates. See docs/bootstrapping.md "Partition
-#          layout" and "Updates".
+# Defaults to /var/cache/arch-ansible on the encrypted root btrfs. Keeps the
+# build off the small homed /home partition (a full build's transient footprint
+# — e.g. systemd-repart's ~5G /usr copy to size the erofs slot — overflows it)
+# and makes the whole local-rebuild pipeline root-resident, alongside the update
+# staging dir /var/lib/arch-ansible/updates. See docs/bootstrapping.md
+# "Partition layout" and "Updates".
 #
 # mkosi expands ${ARCH_ANSIBLE_CACHE} in mkosi/mkosi.conf from the process environment,
 # so every script that invokes mkosi sources this and the export carries through.
@@ -24,13 +18,7 @@
 #
 # Override by exporting ARCH_ANSIBLE_CACHE before invoking.
 
-if [[ -z "${ARCH_ANSIBLE_CACHE:-}" ]]; then
-  if [[ "${ARCH_ANSIBLE_TARGET:-host}" == device ]]; then
-    ARCH_ANSIBLE_CACHE=/var/cache/arch-ansible
-  else
-    ARCH_ANSIBLE_CACHE="$HOME/.cache"
-  fi
-fi
+: "${ARCH_ANSIBLE_CACHE:=/var/cache/arch-ansible}"
 export ARCH_ANSIBLE_CACHE
 
 # mkosi's output dir, derived from the base. Both build-image (writes it) and
@@ -43,9 +31,19 @@ export ARCH_ANSIBLE_OUTPUT_DIR="$ARCH_ANSIBLE_CACHE/mkosi/images/image"
 # the signing key) into the plaintext /usr.
 export ARCH_ANSIBLE_SRCTREE="$ARCH_ANSIBLE_CACHE/mkosi-srctree"
 
-# Ensure the base exists and is writable by the build user. On a device
-# /var/cache is root-owned, so escalate once to create a user-owned subtree;
-# on the host ~/.cache is already ours and no sudo is needed.
+# The password-store the build reads and the image ships at
+# /usr/share/password-store (mkosi/mkosi.conf): the user's own, so new entries
+# reach the next image. A live medium boots a fresh tmpfs $HOME with none, so it
+# falls back to the one the running image ships.
+if [[ -z "${ARCH_ANSIBLE_PASSWORD_STORE:-}" ]]; then
+  ARCH_ANSIBLE_PASSWORD_STORE="${PASSWORD_STORE_DIR:-$HOME/.local/share/password-store}"
+  [[ -d "$ARCH_ANSIBLE_PASSWORD_STORE" ]] || ARCH_ANSIBLE_PASSWORD_STORE=/usr/share/password-store
+fi
+export ARCH_ANSIBLE_PASSWORD_STORE
+
+# Ensure the base exists and is writable by the build user. /var/cache is
+# root-owned, so escalate once to create a user-owned subtree; an override the
+# user can already write to needs no sudo.
 arch_ansible_ensure_cache() {
   [[ -d "$ARCH_ANSIBLE_CACHE" && -w "$ARCH_ANSIBLE_CACHE" ]] && return 0
   if [[ -w "$(dirname "$ARCH_ANSIBLE_CACHE")" ]]; then

@@ -5,10 +5,11 @@ hostname: `host_secrets/<hostname>/restic_backblaze_key{,_id}`. The repo
 password (`restic_backup_password`) is shared. A new machine needs its own key
 before it can back up or restore.
 
-The password store ships read-only in the image (`/usr/share/password-store`),
-so a machine sees credentials added before its image was built. Add them before
-building the recovery USB that installs it, and it can restore right after its
-first login.
+The image ships a read-only copy of the builder's password store
+(`/usr/share/password-store`), so a machine sees credentials that were in that
+store when its image was built. Add them, and pull them into the store on the
+machine that builds, before building the recovery USB that installs it, and it
+can restore right after its first login.
 
 1. Pick the machine's name. It's typed at the hostname prompt on the machine's
    first boot ([install-machine.md](install-machine.md)); for a machine that's

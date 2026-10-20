@@ -71,11 +71,8 @@ case "$caching" in
     ;;
 esac
 
-# Device vs host build context (bin/_build_context_common.sh): on one of our
-# images (a device or the live medium) the caches move to /var/cache (or the
-# medium's scratch) and the sources to /usr, since there's no ~/.local
-# password-store or /var/lib/pacman/sync to build from. Must precede
-# bin/_cache_common.sh.
+# Build context (bin/_build_context_common.sh): on a live medium the caches
+# move to the medium's scratch. Must precede bin/_cache_common.sh.
 source bin/_build_context_common.sh
 arch_ansible_select_build_target --provision
 
@@ -84,7 +81,7 @@ arch_ansible_select_build_target --provision
 # mkosi's $PROFILES. Exported for bin/sync-aur, which must resolve the same
 # package set.
 # On a device, rebuild with the running image's organizations by default.
-if [[ ${#organizations[@]} -eq 0 && "${ARCH_ANSIBLE_TARGET:-host}" == device ]]; then
+if [[ ${#organizations[@]} -eq 0 ]]; then
   arch_ansible_default_organizations
 fi
 if [[ ${#organizations[@]} -eq 0 && -n "${ARCH_ANSIBLE_ORGANIZATIONS:-}" ]]; then
@@ -117,9 +114,7 @@ fi
 
 source bin/_cache_common.sh
 arch_ansible_ensure_cache
-if [[ "${ARCH_ANSIBLE_TARGET:-host}" == device ]]; then
-  arch_ansible_seed_device_build
-fi
+arch_ansible_seed_device_build
 
 # mkosi removes its scratch dirs on a clean exit; a crashed or killed build
 # leaves them behind (up to ~17G each). The age cutoff spares a concurrent build.
@@ -136,18 +131,9 @@ fi
 
 arch_ansible_stage_srctree
 
-# Point pass at the shipped password-store when building from a live/volatile
-# medium. The live-USB profile boots a fresh tmpfs $HOME with no password-store,
-# but the encrypted store ships read-only in the image at /usr/share/password-store
-# (ExtraTree), and a YubiKey supplies the GPG secret to decrypt it. Without this,
-# the signing-key lookup falls back to $HOME/.local/share/password-store (empty)
-# and the build aborts. A normal host build keeps its own ~/.local/share copy, so
-# only the live case falls through here; an explicit PASSWORD_STORE_DIR wins.
-if [[ -z "${PASSWORD_STORE_DIR:-}" \
-      && ! -d "$HOME/.local/share/password-store" \
-      && -d /usr/share/password-store ]]; then
-  export PASSWORD_STORE_DIR=/usr/share/password-store
-fi
+# Decrypt the signing key from the same store the image ships
+# (bin/_cache_common.sh).
+export PASSWORD_STORE_DIR="$ARCH_ANSIBLE_PASSWORD_STORE"
 
 source bin/_secureboot_common.sh
 # Delete the decrypted signing key however the build ends. The signal traps
@@ -210,8 +196,6 @@ mkosi \
   --verity-key="$SECUREBOOT_KEY" \
   --profile="$mkosi_profiles" \
   --force \
-  --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
-  `# TRANSITIONAL: selects mkosi/mkosi.conf.d/10-sources-*.conf; remove after cutover` \
   "${caching_args[@]}" \
   --environment="CACHING=$caching" \
   ${skip_postinst:+"$skip_postinst"} \
@@ -225,8 +209,8 @@ echo "$ARCH_ANSIBLE_ORGANIZATIONS" > "$output_dir/image_$(cat mkosi/mkosi.versio
 
 # Fold the postinst-generated cargo/sccache/nvim caches into the reusable caches
 # so the next build's SkeletonTrees/BuildSources seed them. mkosi/mkosi.finalize can't
-# write the host ~/.cache from its sandbox, so it stages the new files into the
-# output dir; here (on the host, post-mkosi) we merge them and clear the staging.
+# write the real cache from its sandbox, so it stages the new files into the
+# output dir; here (outside the sandbox, post-mkosi) we merge them and clear the staging.
 # (pacman is handled inside mkosi/mkosi.finalize via the package-cache mount.)
 cwb="$output_dir/cache-writeback"
 if [[ -d "$cwb" ]]; then

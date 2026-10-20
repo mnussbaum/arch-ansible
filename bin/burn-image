@@ -36,9 +36,9 @@ done
 : "${device:?Usage: $0 <device>}"
 
 # Resolve the build context and organizations exactly as bin/update-system
-# does, so this burns the image it built: on one of our images the output dir
-# is the device cache (or a live medium's existing scratch, never created
-# here), and the organizations default to the running image's.
+# does, so this burns the image it built: the output dir is under the build
+# cache (or a live medium's existing scratch, never created here), and the
+# organizations default to the running image's.
 source bin/_build_context_common.sh
 arch_ansible_select_build_target
 source bin/_cache_common.sh
@@ -90,8 +90,6 @@ mkosi \
   --output-directory="$output_dir" \
   --profile="build${orgs:+,$orgs}" \
   --image-version="$version" \
-  --environment="ARCH_ANSIBLE_TARGET=${ARCH_ANSIBLE_TARGET:-host}" \
-  `# TRANSITIONAL: selects mkosi/mkosi.conf.d/10-sources-*.conf; remove after cutover` \
   "${mkosi_args[@]}" \
   burn "$device"
 

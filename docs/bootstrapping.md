@@ -364,8 +364,8 @@ carry `Type=usr`, so the inactive one is labelled `_empty` and the UKI's
 
 ## Build caches
 
-A build reuses six caches under `${ARCH_ANSIBLE_CACHE}` (`~/.cache` on a host,
-`/var/cache/arch-ansible` on a device — `bin/_cache_common.sh`):
+A build reuses six caches under `${ARCH_ANSIBLE_CACHE}` (`/var/cache/arch-ansible`,
+or a live medium's scratch partition — `bin/_cache_common.sh`):
 
 | cache              | what it saves                                                            |
 | ------------------ | ------------------------------------------------------------------------ |
@@ -394,7 +394,7 @@ changing any of it:
 2. **`BuildSources=`** mounts the same host directory live at `/work/src/…`, so
    the postinst sees whatever previous builds have written since the snapshot.
    `mkosi/mkosi.postinst.chroot` delta-seeds from there (`rsync --ignore-existing`).
-3. **`mkosi/mkosi.finalize`** writes new files back out. It cannot touch the host
+3. **`mkosi/mkosi.finalize`** writes new files back out. It cannot touch the real
    cache from its sandbox, so it stages into the output directory
    (`cache-writeback/`) and `bin/build-image` rsyncs that into the real cache
    after mkosi exits.
@@ -413,9 +413,9 @@ docs, which the printed recovery guide also embeds
 
 ### Building the image
 
-On an Arch host with the builder packages (`mkosi/mkosi.conf.d/20-builder.conf`),
-mkosi runs on the host directly (`ToolsTree=/`), and `bin/burn-image` writes the
-result to a USB drive:
+On one of our machines (or a live medium), mkosi runs on the running image
+directly (`ToolsTree=/`; the builder packages are `mkosi/mkosi.conf.d/20-builder.conf`),
+and `bin/burn-image` writes the result to a USB drive:
 
 ```bash
 bin/build-image
@@ -431,7 +431,9 @@ slot for sysupdate), and runs `mkosi build`, which:
 
 1. Installs the Arch packages declared in `mkosi/mkosi.conf` into the rootfs.
 2. Copies the arch-ansible repository in via `BuildSources`/`ExtraTrees` (a
-   tracked-files-only staging copy, so gitignored secrets don't reach `/usr`).
+   tracked-files-only staging copy, so gitignored secrets don't reach `/usr`),
+   and the builder's password store (`~/.local/share/password-store`, or on a
+   live medium the one it ships) to `/usr/share/password-store`.
 3. Runs the post-install (Ansible against the `build` identity) inside
    `systemd-nspawn` — configuring sway, networking, Wi-Fi credentials, fonts, and
    user-facing software.
@@ -440,7 +442,7 @@ slot for sysupdate), and runs `mkosi build`, which:
 5. Builds the erofs `/usr`, its dm-verity hash + signature, and emits the disk
    plus split artifacts (`SplitArtifacts=partitions,uki`).
 
-Output is under `~/.cache/mkosi/images/image/` (the split `.usr-*.raw`, `.efi`,
+Output is under `/var/cache/arch-ansible/mkosi/images/image/` (the split `.usr-*.raw`, `.efi`,
 and the full `.raw`). `mkosi burn` writes the full image and expands its
 partitions to fill the device.
 

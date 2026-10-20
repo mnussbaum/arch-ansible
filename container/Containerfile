@@ -21,7 +21,7 @@ RUN sed -i 's/^Architecture = auto/Architecture = x86_64/' /etc/pacman.conf \
  && pacman -Scc --noconfirm \
  && rm /tmp/20-builder.conf /tmp/91-rust.conf
 
-# mkosi and makepkg run as an unprivileged user, as bin/build-image does on a host.
+# mkosi and makepkg run as an unprivileged user, as bin/build-image does on a machine.
 RUN useradd --create-home --uid 1000 builder \
  && echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder \
  && echo 'builder:100000:65536' > /etc/subuid \

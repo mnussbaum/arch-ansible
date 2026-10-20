@@ -17,8 +17,8 @@
 #     installs the freshly built artifacts to the target's inactive /usr slot,
 #     writing the new UKI to the target's own ESP. Only the usr* partitions and
 #     the ESP are touched; the TPM2-sealed LUKS root/home/swap are left intact, so
-#     user data (homed volumes under /home) survives. The on-device guard,
-#     device-target build env, and staging step are skipped.
+#     user data (homed volumes under /home) survives. The on-device guard and
+#     staging step are skipped.
 #
 # Both modes drive systemd-sysupdate directly (not updatectl/systemd-sysupdated):
 # the transfers use PathRelativeTo=explicit, so the source must be supplied with
@@ -109,11 +109,10 @@ if [[ -z "$image" ]]; then
   fi
 fi
 
-# Device vs host build context (and a live medium's scratch, created here if
-# missing), shared with bin/build-image and bin/burn-image so all three agree on
-# where images live. --image runs on the live medium, so it lands on the device
-# target too. bin/build-image seeds the device caches and defaults the
-# organizations to the running image's.
+# Build context (a live medium's scratch, created here if missing), shared with
+# bin/build-image and bin/burn-image so all three agree on where images live.
+# bin/build-image seeds the caches and defaults the organizations to the
+# running image's.
 arch_ansible_select_build_target --provision
 source bin/_cache_common.sh
 

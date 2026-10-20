@@ -3,16 +3,9 @@
 # builds in and bin/burn-image burns from. Both must resolve it identically, or burn-image looks for images where
 # update-system never put them.
 #
-# Source this BEFORE bin/_cache_common.sh: arch_ansible_select_build_target sets
-# the ARCH_ANSIBLE_TARGET/ARCH_ANSIBLE_CACHE that _cache_common.sh derives the
-# output dir from.
+# Source this BEFORE bin/_cache_common.sh: arch_ansible_select_build_target may
+# set the ARCH_ANSIBLE_CACHE that _cache_common.sh derives the output dir from.
 
-# Select the build target by what /usr is. Running from one of our images — a
-# device or the live medium, whose /usr is the dissected verity image — means
-# the device target (caches on /var/cache/arch-ansible, sources from
-# /usr/share|lib); anything else is a conventional Arch install, the host target
-# (~/.cache, ~/.local).
-#
 # A live medium's root is tmpfs (RAM), too small for a full rebuild, so the
 # caches move to persistent scratch carved from the medium's free space (see
 # arch_ansible_scratch). Pass --provision to create that scratch partition when
@@ -21,7 +14,6 @@
 # provisioned device already has a real root fs, so it stays on /var/cache.
 arch_ansible_select_build_target() {
   [[ "$(findmnt -no SOURCE /usr 2>/dev/null || true)" == /dev/mapper/usr ]] || return 0
-  export ARCH_ANSIBLE_TARGET=device
   if [[ "$(findmnt -no FSTYPE / 2>/dev/null)" == tmpfs ]]; then
     arch_ansible_scratch "${1:-}"
   fi
@@ -112,7 +104,7 @@ arch_ansible_seed_device_build() {
   fi
 
   # The .chroot postinst's pacman needs a sync DB, and a device has no system one
-  # (and /var doesn't persist). Seed a persistent copy that 10-sources-device.conf
+  # (and /var doesn't persist). Seed a persistent copy that mkosi/mkosi.conf
   # feeds into the image. Only fetch it when missing; once primed, builds reuse it
   # offline. Root: pacman -Sy refuses to run unprivileged even with a custom
   # --dbpath. DBs are SigLevel DatabaseOptional, so this needs no keyring. No

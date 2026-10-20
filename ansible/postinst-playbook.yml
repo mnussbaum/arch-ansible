@@ -167,9 +167,6 @@
         name: devops
       tags: [devops]
     - import_role:
-        name: archiso
-      tags: [archiso]
-    - import_role:
         name: pdf
       tags: [pdf]
     - import_role:
