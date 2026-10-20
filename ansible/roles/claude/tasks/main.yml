@@ -14,3 +14,9 @@
     src: claude_settings.json
     dest: /etc/claude-code/managed-settings.json
     mode: "0644"
+
+- name: Install Claude Code managed instructions
+  copy:
+    src: CLAUDE.md
+    dest: /etc/claude-code/CLAUDE.md
+    mode: "0644"
