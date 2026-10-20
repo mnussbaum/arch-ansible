@@ -4,8 +4,10 @@
 - Remove old host directory setup once fully cut over to image based hosts
 - Remove ARCH_ANSIBLE_SRCTREE copying used to avoid copying secrets dir with repo into image
 - Add testing and CI
-- Confirm all data is in backup
-- Reformat bodie
+- Fix swap on all devices
+- Burn fresh USBs
+- Clean up old OTPs
+- Print recovery packets
 
 ## Sync
 
