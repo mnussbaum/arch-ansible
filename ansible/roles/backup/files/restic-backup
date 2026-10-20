@@ -4,7 +4,8 @@
 Subcommands:
     backup     Snapshot home (btrfs ro snapshot), back up included paths.
     restore    Restore included paths in place from a snapshot, adding only
-               missing files (or, with --exact, matching it exactly).
+               missing files (or per --overwrite, or with --exact, matching
+               it exactly).
     snapshots  List snapshots in the repository.
     mount      FUSE-mount the repository for browsing.
 
@@ -291,7 +292,7 @@ def cmd_restore(args: argparse.Namespace) -> None:
                 ]
             # By default only fill in missing files, leaving anything already
             # on disk (newer work, files added since the snapshot) untouched.
-            cmd += ["--overwrite", "always" if args.exact else "never"]
+            cmd += ["--overwrite", "always" if args.exact else args.overwrite]
             subprocess.run(cmd, check=True, env=env)
 
 
@@ -353,9 +354,17 @@ def build_parser() -> argparse.ArgumentParser:
                          "must resolve to a location under the user's home. "
                          f"Default: contents of {INCLUDES_FILE} "
                          "(home-relative).")
-    sp.add_argument("--exact", action="store_true",
-                    help="Make each path match the snapshot exactly: overwrite "
-                         "changed files and delete files not in the snapshot.")
+    mode = sp.add_mutually_exclusive_group()
+    mode.add_argument("--exact", action="store_true",
+                      help="Make each path match the snapshot exactly: "
+                           "overwrite changed files and delete files not in "
+                           "the snapshot.")
+    mode.add_argument("--overwrite", default="never",
+                      choices=["never", "if-newer", "if-changed", "always"],
+                      help="When to overwrite existing files (restic's "
+                           "--overwrite; default: never). if-newer keeps "
+                           "local files newer than the snapshot's. Nothing "
+                           "is deleted.")
     add_device(sp)
     sp.set_defaults(func=cmd_restore)
 
@@ -376,7 +385,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    args = build_parser().parse_args()
+    parser = build_parser()
+    # REMAINDER doesn't capture args that start with an option (e.g.
+    # `snapshots --host foo`), so forward unknown args to restic ourselves.
+    args, unknown = parser.parse_known_args()
+    if unknown:
+        if not hasattr(args, "restic_args"):
+            parser.error(f"unrecognized arguments: {' '.join(unknown)}")
+        args.restic_args = unknown + args.restic_args
     args.func(args)
 
 

@@ -17,7 +17,10 @@ restic-backup restore -d ~/Documents     # or specific paths
 
 By default the restore only adds files that are missing. It never deletes or
 overwrites anything, so it's safe to run on a home that already has work in it,
-such as a repo cloned during setup. Pass `--exact` to make each path match the
+such as a repo cloned during setup. To catch up a home restored earlier, pass
+`--snapshot <id> --overwrite if-newer`: files that are newer in the snapshot
+replace older local copies, but newer local edits are kept and nothing is
+deleted. Pass `--exact` to make each path match the
 snapshot exactly, deleting files not in it and overwriting changed ones.
 
 Restore before adding any Syncthing folders. If a folder is already being
