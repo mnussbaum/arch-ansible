@@ -71,6 +71,9 @@
         name: enable_network
       tags: [enable_network]
     - import_role:
+        name: firewall
+      tags: [firewall]
+    - import_role:
         name: secrets
       tags: [secrets]
     - import_role:

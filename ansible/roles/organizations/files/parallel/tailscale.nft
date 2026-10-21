@@ -1,0 +1,3 @@
+# Tailscale peer-to-peer, and everything from the tailnet while it's up.
+add rule inet filter input udp dport 41641 accept
+add rule inet filter input iifname "tailscale0" accept

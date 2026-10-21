@@ -60,6 +60,12 @@
     src: parallel/tailscaled-down.conf
     dest: /usr/lib/systemd/system/tailscaled.service.d/arch-ansible-down.conf
 
+- name: Allow tailscale through the firewall
+  copy:
+    src: parallel/tailscale.nft
+    dest: /etc/nftables.d/tailscale.nft
+    mode: "0644"
+
 - name: Install tailscale waybar scripts
   copy:
     src: "parallel/{{ item }}"

@@ -1,0 +1,24 @@
+# vim:ft=yaml.ansible:
+---
+- name: Create nftables fragment dir
+  file:
+    path: /etc/nftables.d
+    state: directory
+
+- name: Install nftables ruleset
+  copy:
+    src: nftables.conf
+    dest: /etc/nftables.conf
+    mode: "0644"
+
+# A static link rather than a preset, which only applies on first boot.
+- name: Create multi-user.target.wants directory
+  file:
+    path: /usr/lib/systemd/system/multi-user.target.wants
+    state: directory
+
+- name: Enable nftables service
+  file:
+    src: ../nftables.service
+    dest: /usr/lib/systemd/system/multi-user.target.wants/nftables.service
+    state: link
