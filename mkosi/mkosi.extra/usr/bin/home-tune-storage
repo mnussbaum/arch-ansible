@@ -1,0 +1,19 @@
+#!/bin/bash
+# Tune the sudo caller's homed LUKS home for the small /home slice: keep the
+# image sparse, skip the grow-on-login that fails with "Not enough disk space
+# for home", and let it use the whole /home partition. Run as root via sudo by
+# the first-login playbook, on an active home.
+#
+#   home-tune-storage
+#
+# Deliberately narrow, since wheel may run it without a password: it only sets
+# these three fields, and only on the caller's own home.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+[[ $EUID -eq 0 ]] || { echo "error: run as root" >&2; exit 1; }
+user=${SUDO_USER:?run via sudo}
+[[ $user =~ ^[a-z_][a-z0-9_-]*$ ]] || { echo "error: bad user name '$user'" >&2; exit 2; }
+
+homectl update "$user" --auto-resize-mode=off --disk-size=max --luks-discard=on

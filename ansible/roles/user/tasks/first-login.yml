@@ -76,7 +76,7 @@
   when: root_fstype.stdout != 'tmpfs'
   block:
     - name: Inspect homed record
-      ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
+      ansible.builtin.command: "homectl inspect {{ user.name }} --json=short"
       register: homed_record
       changed_when: false
 
@@ -105,7 +105,7 @@
       changed_when: yubikey_enrollment.stdout == 'changed'
 
     - name: Re-inspect homed record after enrollment
-      ansible.builtin.command: "sudo -n homectl inspect {{ user.name }} --json=short"
+      ansible.builtin.command: "homectl inspect {{ user.name }} --json=short"
       register: homed_record_after
       changed_when: false
 
@@ -115,9 +115,7 @@
       # disk-size=max lets the home use the whole /home partition. The first two are
       # also pre-set in the home.create record (bin/_credstore_common.sh) so the very
       # first login works; disk-size=max needs the active home, so it's applied here.
-      ansible.builtin.command: >-
-        sudo -n homectl update {{ user.name }}
-        --auto-resize-mode=off --disk-size=max --luks-discard=on
+      ansible.builtin.command: sudo -n /usr/bin/home-tune-storage
       when: >-
         '"storage":"luks"' in homed_record_after.stdout and
         ('"autoResizeMode":"off"' not in homed_record_after.stdout or
