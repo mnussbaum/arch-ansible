@@ -6,6 +6,17 @@
     dest: /usr/bin/pinentry-auto
     mode: "0755"
 
+- name: Create system-sleep script directory
+  file:
+    path: /usr/lib/systemd/system-sleep
+    state: directory
+
+- name: Install rebind-yubikey-controller sleep hook
+  copy:
+    src: rebind-yubikey-controller
+    dest: /usr/lib/systemd/system-sleep/rebind-yubikey-controller
+    mode: a+x
+
 - name: Install systemd preset
   copy:
     src: 80-gpg.preset
