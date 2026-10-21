@@ -5,6 +5,8 @@ VISUAL=nvim
 PAGER=less
 # Fetch git deps with git so ssh host aliases from gitconfig insteadOf resolve
 CARGO_NET_GIT_FETCH_WITH_CLI=true
+# Trust the system CA store instead of Node's bundled roots
+NODE_OPTIONS=--use-openssl-ca
 MOZ_LEGACY_PROFILES=1
 IRBRC=/etc/xdg/irb/irbrc
 PSQLRC=/etc/xdg/psql/psqlrc
