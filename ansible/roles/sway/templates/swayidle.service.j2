@@ -7,10 +7,8 @@ PartOf=graphical-session.target
 # -w blocks swayidle on every command, so swaylock must daemonize (-f) or
 # swayidle stalls until unlock and then replays queued events.
 # before-sleep locks directly: logind's Lock signal is async and would race the
-# sleep inhibitor. after-resume runs once per sleep: rebuilding outputs unsticks
-# i915 after hibernate, and libinput-gestures picks up the rebound touchpad.
-# Only rebuild on i915: it blanks the lock screen for a few seconds, and sway
-# exposes no way to detect the stuck atomic commits it works around.
+# sleep inhibitor. after-resume runs once per sleep and starts sway-resume.target,
+# which roles hook into with WantedBy=sway-resume.target units.
 ExecStart=swayidle -w \
     timeout {{ idle_thresholds["lock_screen_delay_minutes"] * 60 }} "chayang && loginctl lock-session" \
     timeout {{ idle_thresholds["screen_off_delay_minutes"] * 60 }} "swaymsg 'output * power off'" \
@@ -18,7 +16,7 @@ ExecStart=swayidle -w \
     timeout {{ idle_thresholds["suspend_delay_minutes"] * 60 }} "systemctl sleep" \
     lock "pgrep -x swaylock || swaylock -f" \
     before-sleep "pgrep -x swaylock || swaylock -f" \
-    after-resume "if ls -d /sys/bus/pci/drivers/i915/0000:* >/dev/null 2>&1; then swaymsg 'output * disable'; sleep 2; swaymsg 'output * enable'; fi; systemctl --user try-restart libinput-gestures.service"
+    after-resume "systemctl --user start sway-resume.target"
 Restart=on-failure
 RestartSec=1
 TimeoutStopSec=10

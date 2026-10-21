@@ -1,0 +1,11 @@
+# vim:ft=yaml.ansible:
+---
+- name: Install sway-resume-i915-outputs service
+  copy:
+    src: sway-resume-i915-outputs.service
+    dest: /usr/lib/systemd/user/sway-resume-i915-outputs.service
+
+- name: Install systemd user preset
+  copy:
+    src: 80-graphics.preset
+    dest: /usr/lib/systemd/user-preset/80-graphics.preset

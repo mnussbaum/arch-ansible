@@ -1,0 +1,9 @@
+[Unit]
+Description=Restart libinput-gestures onto the touchpad rebound at resume
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --user try-restart libinput-gestures.service
+
+[Install]
+WantedBy=sway-resume.target

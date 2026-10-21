@@ -1,0 +1,5 @@
+[Unit]
+Description=Session hooks to run after resume from sleep
+Documentation=man:swayidle(1)
+# Lets swayidle start it again on every resume, which pulls in each hook anew
+StopWhenUnneeded=yes

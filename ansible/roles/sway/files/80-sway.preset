@@ -1,2 +1,3 @@
 enable swayidle.service
 enable kanshi.service
+enable sway-resume-kanshi.service

@@ -122,6 +122,9 @@
         name: fonts
       tags: [fonts, min-user-session]
     - import_role:
+        name: graphics
+      tags: [graphics]
+    - import_role:
         name: libinput
       tags: [libinput]
     - import_role:

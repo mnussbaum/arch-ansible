@@ -1,0 +1,12 @@
+[Unit]
+Description=Reapply kanshi output profiles after resume
+# Docked monitors can come back as new heads, which kanshi skips when the
+# matched profile hasn't changed
+After=sway-resume-i915-outputs.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/systemctl --user try-reload-or-restart kanshi.service
+
+[Install]
+WantedBy=sway-resume.target

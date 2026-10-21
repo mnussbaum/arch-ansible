@@ -5,6 +5,11 @@
     dest: /usr/lib/systemd/user/libinput-gestures.service
     src: libinput-gestures.service
 
+- name: Install sway-resume-libinput-gestures service
+  copy:
+    dest: /usr/lib/systemd/user/sway-resume-libinput-gestures.service
+    src: sway-resume-libinput-gestures.service
+
 - name: Install libinput-gestures.conf
   copy:
     dest: /etc/libinput-gestures.conf

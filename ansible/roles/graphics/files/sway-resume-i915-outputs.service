@@ -1,0 +1,15 @@
+[Unit]
+Description=Rebuild sway outputs after resume on i915
+# Rebuilding unsticks i915 after hibernate. Only run on i915: it blanks the lock
+# screen for a few seconds, and sway exposes no way to detect the stuck atomic
+# commits it works around.
+ConditionPathExistsGlob=/sys/bus/pci/drivers/i915/0000:*
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/swaymsg "output * disable"
+ExecStart=/usr/bin/sleep 2
+ExecStart=/usr/bin/swaymsg "output * enable"
+
+[Install]
+WantedBy=sway-resume.target

@@ -75,6 +75,16 @@
     src: kanshi.service
     dest: /usr/lib/systemd/user/kanshi.service
 
+- name: Install sway-resume target
+  copy:
+    src: sway-resume.target
+    dest: /usr/lib/systemd/user/sway-resume.target
+
+- name: Install sway-resume-kanshi service
+  copy:
+    src: sway-resume-kanshi.service
+    dest: /usr/lib/systemd/user/sway-resume-kanshi.service
+
 - name: Install systemd user preset
   copy:
     src: 80-sway.preset

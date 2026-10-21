@@ -35,6 +35,6 @@ case "$1" in
             rebound=$((rebound + 1))
         done
         log "post: rebound $rebound device(s)"
-        # swayidle's after-resume restarts libinput-gestures onto the new device
+        # sway-resume.target restarts libinput-gestures onto the new device
         ;;
 esac

@@ -1,1 +1,2 @@
 enable libinput-gestures.service
+enable sway-resume-libinput-gestures.service
