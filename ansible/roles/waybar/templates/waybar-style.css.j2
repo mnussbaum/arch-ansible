@@ -19,6 +19,14 @@ window#waybar {
   color: #{{ color_scheme_vars['base04-hex'] }};
 }
 
+/* The powerline triangles stop on a half pixel at the line's top and bottom,
+   leaving an antialiased strip of bar behind them. Overhanging the bar by a
+   pixel clips those rows off. */
+.modules-left,
+.modules-right {
+  margin: -1px 0;
+}
+
 #workspaces button {
   /* base01 */
   background: rgba({{ color_scheme_vars['base01-rgb-r'] }}, {{ color_scheme_vars['base01-rgb-g'] }}, {{ color_scheme_vars['base01-rgb-b'] }}, {{ color_scheme_opacity }});
