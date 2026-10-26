@@ -9,6 +9,14 @@ installed onto the system (called by units, sudoers, tasks, other scripts) go
 in `/usr/bin`, shipped from `mkosi/mkosi.extra/usr/bin/` or copied there by a
 role, never an arch-ansible-named directory.
 
+Enable a system unit with a static link,
+`/usr/lib/systemd/system/<target>.wants/<unit>` -> `../<unit>`, and give the
+unit no `[Install]` section. Not a `system-preset` line, `systemctl enable` or
+ansible's `systemd_service: enabled`: `/etc/systemd/system` is filled by
+`preset-all` on first boot only, so those never reach installed machines. User
+units may use `user-preset` lines. See "Immutable /usr" in
+docs/bootstrapping.md.
+
 This is a public repo (github.com/mnussbaum/arch-ansible, default branch
 `main`); its own work is fine to push there, but never commit secrets or key
 material. Sensitive, gitignored paths: `secrets/` (generated GPG recovery
