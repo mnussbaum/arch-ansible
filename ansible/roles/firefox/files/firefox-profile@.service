@@ -8,8 +8,9 @@ After=graphical-session.target
 # here; otherwise restored tabs load offline. "-": start offline after the
 # timeout rather than not at all.
 ExecStartPre=-/usr/lib/systemd/systemd-networkd-wait-online --any --timeout=60
-# Matches the firefox-%i.desktop launcher, so links reach this instance
-ExecStart=/usr/bin/firefox -P %i --name firefox-%i
+# The firefox-%i command, same as the desktop launcher, so links reach this
+# instance and it gets the same camera logging
+ExecStart=/usr/bin/firefox-%i
 
 [Install]
 WantedBy=graphical-session.target
