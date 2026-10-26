@@ -1,0 +1,11 @@
+#!/bin/bash
+# Cap the hibernation image at half of the swap free at sleep time. Shrinking
+# memory to the cap swaps pages out to the same partition the image is written
+# to, so the other half leaves room for them.
+set -o errexit
+set -o nounset
+set -o pipefail
+
+swap_free_kib=$(awk '/^SwapFree:/ { print $2 }' /proc/meminfo)
+
+echo $((swap_free_kib * 1024 / 2)) > /sys/power/image_size

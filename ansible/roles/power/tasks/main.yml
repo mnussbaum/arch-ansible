@@ -122,6 +122,12 @@
     dest: /usr/lib/systemd/system-sleep/reset-elan-touchpad
     mode: a+x
 
+- name: Install poweroff-after-failed-hibernate hook
+  copy:
+    src: poweroff-after-failed-hibernate
+    dest: /usr/lib/systemd/system-sleep/poweroff-after-failed-hibernate
+    mode: a+x
+
 - name: Install disable-pm-async service
   copy:
     src: disable-pm-async.service

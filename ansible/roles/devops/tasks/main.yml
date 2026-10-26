@@ -43,3 +43,26 @@
   copy:
     src: 50-ecr.conf
     dest: /etc/containers/registries.conf.d/50-ecr.conf
+
+- name: Install podman-stop-before-sleep script
+  copy:
+    src: podman-stop-before-sleep
+    dest: /usr/bin/podman-stop-before-sleep
+    mode: a+x
+
+- name: Install podman-stop-before-sleep service
+  copy:
+    src: podman-stop-before-sleep.service
+    dest: /usr/lib/systemd/system/podman-stop-before-sleep.service
+    mode: "0644"
+
+- name: Create sleep.target.wants directory
+  file:
+    path: /usr/lib/systemd/system/sleep.target.wants
+    state: directory
+
+- name: Stop rootless containers before sleep
+  file:
+    src: ../podman-stop-before-sleep.service
+    dest: /usr/lib/systemd/system/sleep.target.wants/podman-stop-before-sleep.service
+    state: link

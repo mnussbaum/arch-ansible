@@ -1,0 +1,18 @@
+#!/bin/sh
+# Power off when hibernation fails instead of falling back to suspend, which
+# would drain the battery. systemd-sleep runs hooks before that fallback and
+# waits for them, so holding here keeps the system awake until shutdown kills
+# systemd-sleep.
+
+case "$1:${SYSTEMD_SLEEP_ACTION:-}" in
+    pre:suspend-after-failed-hibernate) ;;
+    *) exit 0 ;;
+esac
+
+logger -t poweroff-after-failed-hibernate "hibernation failed, powering off"
+
+# Straight to PID 1: logind refuses a power action while its sleep job runs
+systemctl start --no-block --job-mode=replace-irreversibly poweroff.target
+
+# Fall through to the suspend if shutdown stalls
+sleep 120

@@ -1,0 +1,15 @@
+#!/bin/bash
+# Stop each logged-in user's rootless containers before sleep, so their memory
+# needn't fit in the hibernation image.
+set -o nounset
+set -o pipefail
+
+status=0
+while read -r uid user _; do
+    # System accounts, e.g. greetd's greeter, don't run podman
+    (( uid >= 1000 )) || continue
+    systemd-run --machine="$user@" --user --wait --quiet --collect \
+        /usr/bin/podman stop --all --time 5 || status=1
+done < <(loginctl list-users --no-legend)
+
+exit "$status"

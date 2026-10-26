@@ -1,0 +1,12 @@
+# Sized at sleep rather than at boot, since free swap shrinks with use. See
+# /usr/bin/hibernate-image-size.
+[Unit]
+Description=Size the hibernation image to free swap
+ConditionPathExists=/sys/power/image_size
+# After stopped containers have released their memory and swap
+After=podman-stop-before-sleep.service
+Before=sleep.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/hibernate-image-size

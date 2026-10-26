@@ -1,0 +1,9 @@
+[Unit]
+Description=Stop rootless containers before sleep
+Before=sleep.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/podman-stop-before-sleep
+# Bound the delay to sleep if a container won't stop
+TimeoutStartSec=30s
