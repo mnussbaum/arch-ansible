@@ -1,8 +1,10 @@
 # Run the user playbook on the first interactive login, and again on the first
-# one after each image update, so homes pick up provisioning changes.
+# one after an image update that changes what the playbook reads (the digest
+# mkosi.postinst.chroot records in os-release), so homes pick up provisioning
+# changes.
 #
 # On the Live profile's volatile root the home, and so this marker, last until
 # shutdown, so there it runs once per boot.
-if [[ "$(cat "$HOME/.config/user-first-login-done" 2>/dev/null)" != "$(grep '^IMAGE_VERSION=' /usr/lib/os-release)" ]]; then
+if [[ "$(cat "$HOME/.config/user-first-login-done" 2>/dev/null)" != "$(grep '^ARCH_ANSIBLE_USER_PLAYBOOK_DIGEST=' /usr/lib/os-release)" ]]; then
     (cd /usr/share/arch-ansible && ANSIBLE_PLAYBOOK=user-first-login-playbook.yml NO_ASK_BECOME_PASS=1 ./bin/ansible)
 fi

@@ -117,3 +117,29 @@ env NO_ASK_BECOME_PASS=1 ARCH_ANSIBLE_IDENTITY="$identity" \
     ANSIBLE_PLAYBOOK=postinst-playbook.yml \
     SCCACHE_SERVER_PORT=14226 \
     ./bin/ansible "${extra_args[@]}" ${ANSIBLE_TAGS:+--tags "$ANSIBLE_TAGS"}
+
+# Digest of what the user first-login playbook reads from the image: the playbook,
+# its imported roles, ansible's config and vars, the image's organizations and the
+# helpers it calls. /etc/zsh/zlogin re-runs the playbook only when this changes.
+cd /usr/share/arch-ansible
+mapfile -t user_roles < <(python3 -c '
+import sys, yaml
+for play in yaml.safe_load(open(sys.argv[1])):
+    for task in play.get("tasks", []):
+        role = task.get("import_role") or task.get("ansible.builtin.import_role")
+        if role:
+            print("ansible/roles/" + role["name"])
+' ansible/user-first-login-playbook.yml)
+user_playbook_digest=$(
+  {
+    find bin/ansible ansible/ansible.cfg ansible/hosts.yml ansible/group_vars \
+      ansible/filter_plugins ansible/user-first-login-playbook.yml "${user_roles[@]}" \
+      /usr/bin/home-enroll-yubikey /usr/bin/home-tune-storage \
+      /usr/bin/home-drop-baked-secret /usr/bin/store-wifi-credential \
+      /usr/bin/wifi-networks /etc/skel/.mozilla/firefox/profiles.ini \
+      -type f -print0 | sort -z | xargs -0 sha256sum
+    grep '^ARCH_ANSIBLE_ORGANIZATIONS=' /usr/lib/os-release || true
+  } | sha256sum | cut -d' ' -f1
+)
+sed -i '/^ARCH_ANSIBLE_USER_PLAYBOOK_DIGEST=/d' /usr/lib/os-release
+echo "ARCH_ANSIBLE_USER_PLAYBOOK_DIGEST=$user_playbook_digest" >> /usr/lib/os-release

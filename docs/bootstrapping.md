@@ -511,8 +511,14 @@ reaches homes in one of these ways, in order of preference:
    needs the user's secrets or YubiKey: the password store, `~/.pgpass`, AWS
    credentials, Wi-Fi, gpg key import, homed enrollment. `/etc/zsh/zlogin` runs it
    whenever `~/.config/user-first-login-done` doesn't hold the image's
-   `IMAGE_VERSION`, so it runs on first login and again on the first login after
-   each update. Its tasks must be safe to re-run.
+   `ARCH_ANSIBLE_USER_PLAYBOOK_DIGEST`, so it runs on first login and again on
+   the first login after an update that changes what it reads.
+   `mkosi/mkosi.postinst.chroot` computes that digest over the playbook, its
+   imported roles, ansible's config and vars, the image's organizations and the
+   helpers it calls. Changes made only in `pass` (Wi-Fi, AWS, organization SSH
+   keys) don't change the digest, so after one, re-run it by hand:
+   `cd ~/Projects/arch-ansible && ANSIBLE_PLAYBOOK=user-first-login-playbook.yml NO_ASK_BECOME_PASS=1 ./bin/ansible`.
+   Its tasks must be safe to re-run.
 
 ### Backups
 

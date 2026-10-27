@@ -1,7 +1,8 @@
 # vim:ft=yaml.ansible:
 ---
 # Runs tasks as a user on their first login, and again on their first login after
-# each image update (zlogin compares the marker below with the image version).
+# an image update that changes this playbook's inputs (zlogin compares the marker
+# below with the digest mkosi.postinst.chroot records in os-release).
 # Runs from user shell configs, blocking user interaction until it completes.
 # Should be used for home state that needs the user's secrets or YubiKey, or
 # machine role specific user services that aren't known until runtime, and must
@@ -29,5 +30,5 @@
     - import_role:
         name: firefox
         tasks_from: user
-    - name: Record the image version this home was provisioned for
-      shell: grep '^IMAGE_VERSION=' /usr/lib/os-release > ~/.config/user-first-login-done
+    - name: Record the playbook digest this home was provisioned for
+      shell: grep '^ARCH_ANSIBLE_USER_PLAYBOOK_DIGEST=' /usr/lib/os-release > ~/.config/user-first-login-done
