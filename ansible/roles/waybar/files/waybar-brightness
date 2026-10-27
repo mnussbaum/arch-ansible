@@ -1,0 +1,24 @@
+#!/bin/bash
+# Streams wluma's brightness and gamma for this bar's output, which waybar
+# names in WAYBAR_OUTPUT_NAME, as waybar JSON. Shows a placeholder while the
+# output has no brightness or wluma isn't running.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+while true; do
+  wluma watch --json 2> /dev/null || true
+  echo null
+  sleep 5
+done |
+  jq --unbuffered --compact-output --arg output "$WAYBAR_OUTPUT_NAME" '
+    (first(.outputs[]? | select(.name == $output)) // {}) as $o
+    | {
+        text: (if $o.brightness == null then "–" else "\($o.brightness)%" end),
+        alt: "🌡︎ \(if $o.temperature == null then "–" else "\($o.temperature)K" end) ◐ \(if $o.dim == null then "–" else "\($o.dim)%" end)",
+        percentage: ($o.brightness // 0)
+      }
+  ' |
+  # wluma reports every luma and light sensor change, so only pass on new values
+  awk '$0 != last { print; fflush(); last = $0 }'

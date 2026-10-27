@@ -103,7 +103,7 @@
       "network",
       "custom/bluetooth",
       "pulseaudio",
-      "backlight"
+      "custom/brightness"
     ],
 
     "idle_inhibitor": {
@@ -156,8 +156,15 @@
       "tooltip": false
     },
 
-    "backlight": {
-      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{percent}% {icon}', last_block=True, position='right') }}",
+    "custom/brightness": {
+      "exec": "waybar-brightness",
+      "return-type": "json",
+      "format": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{text} {icon}', last_block=True, position='right') }}",
+      "format-alt": "{{ color_scheme_vars | waybar_colored_block('base0C-hex', 'base0B-hex', '{alt}', last_block=True, position='right') }}",
+      // Scroll commands aren't told their bar's output, so this adjusts the focused one
+      "on-scroll-up": "wluma-adjust brightness +5%",
+      "on-scroll-down": "wluma-adjust brightness -5%",
+      "tooltip": false,
       "format-icons": ["", ""]
     }
   }
