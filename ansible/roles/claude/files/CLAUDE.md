@@ -11,6 +11,9 @@
 - Never post to GitHub (comments, review replies, reactions, resolving threads,
   PR descriptions) without my approval of the exact text. "Respond to" means
   draft a reply, not post it.
+- Never ask me to run commands and paste outputs. Instead write scripts I can
+  run that record their own output for your inspection. Or prefereably run
+  the commands yourself if you can, after getting my permission.
 
 ## Comments, commits and PRs
 
