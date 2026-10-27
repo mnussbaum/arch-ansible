@@ -1,0 +1,4 @@
+# Revokes the session user's access, granted by ddcutil's 60- rule, to amdgpu's
+# hardware I2C engines. No display is wired to them, and probing one blocks
+# amdgpu display updates while it times out. Displays do DDC over the AUX buses.
+SUBSYSTEM=="i2c-dev", ATTR{name}=="AMDGPU DM i2c hw bus *", TAG-="uaccess"

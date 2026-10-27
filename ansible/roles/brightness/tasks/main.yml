@@ -12,6 +12,11 @@
     dest: /usr/bin/wluma-adjust
     mode: a+x
 
+- name: Install amdgpu hardware I2C udev rule
+  copy:
+    src: 61-amdgpu-i2c-hw-no-uaccess.rules
+    dest: /usr/lib/udev/rules.d/61-amdgpu-i2c-hw-no-uaccess.rules
+
 - name: Create wluma config dir
   file:
     path: /etc/xdg/wluma
