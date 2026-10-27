@@ -1,7 +1,8 @@
 [Unit]
 Description=Restic backup
 Wants=network.target
-After=network.target
+Requires=pass-credential@restic_backup_password.socket
+After=network.target pass-credential@restic_backup_password.socket
 ConditionPathIsMountPoint=/home/%u
 
 [Service]
