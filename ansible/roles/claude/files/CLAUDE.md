@@ -55,6 +55,10 @@
   explicit schemas (`pl.Enum` mirroring `StrEnum`s), not JSON or Python loops.
   Projects use `uv`.
 
+### Bash
+
+- Always use "bash safe mode" of errexit, nounset and pipefail
+
 ## Tools
 
 - AWS: set `AWS_PROFILE=<profile>` on the command; don't use `assume`.
