@@ -166,10 +166,15 @@ def btrfs_snapshot(home: pathlib.Path):
     if snap.exists():
         delete_snapshot(snap, check=True)
     btrfs("subvolume", "snapshot", "-r", str(home), str(snap))
+    # A leftover snapshot breaks the next run, so failing to delete it is an
+    # error, unless the body already failed and its error should surface.
     try:
         yield snap
-    finally:
+    except BaseException:
         delete_snapshot(snap, check=False)
+        raise
+
+    delete_snapshot(snap, check=True)
 
 
 def resolve_targets(snap: pathlib.Path, includes: list[str]) -> list[pathlib.Path]:
