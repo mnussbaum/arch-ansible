@@ -510,9 +510,10 @@ reaches homes in one of these ways, in order of preference:
 4. **The user playbook** (`user-first-login-playbook.yml`), for home state that
    needs the user's secrets or YubiKey: the password store, `~/.pgpass`, AWS
    credentials, Wi-Fi, gpg key import, homed enrollment. `/etc/zsh/zlogin` runs it
-   whenever `~/.config/user-first-login-done` doesn't hold the image's
-   `ARCH_ANSIBLE_USER_PLAYBOOK_DIGEST`, so it runs on first login and again on
-   the first login after an update that changes what it reads.
+   in interactive login shells whenever `~/.config/user-first-login-done`
+   doesn't hold the image's `ARCH_ANSIBLE_USER_PLAYBOOK_DIGEST`, so it runs on
+   first login and again on the first login after an update that changes what
+   it reads.
    `mkosi/mkosi.postinst.chroot` computes that digest over the playbook, its
    imported roles, ansible's config and vars, the image's organizations and the
    helpers it calls. Changes made only in `pass` (Wi-Fi, AWS, organization SSH
