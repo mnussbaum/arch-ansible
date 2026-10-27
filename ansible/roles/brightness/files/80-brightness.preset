@@ -1,1 +1,6 @@
 enable wluma.service
+# Disabled for now. preset-all's default policy would otherwise enable the
+# timer, and firing it at login pulls up graphical-session.target before sway
+# has imported WAYLAND_DISPLAY.
+disable colorscheme-changer.timer
+disable colorscheme-changer.service
