@@ -40,6 +40,8 @@
   return.
 - Unit tests should cover every branch, but only through a module's external
   interface, not its private fields or helpers.
+- Unit tests should always used fixed timestamps, never the current wall clock
+  time
 
 ### Python
 
