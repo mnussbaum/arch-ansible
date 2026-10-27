@@ -1,0 +1,5 @@
+# Turns keyboard backlights off after a minute idle. Displays keep their
+# brightness, since swayidle already dims, locks and blanks them.
+[idle]
+timeout = 60
+brightness = 100

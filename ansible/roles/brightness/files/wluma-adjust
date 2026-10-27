@@ -1,0 +1,13 @@
+#!/bin/bash
+# Adjusts a wluma property on the output under the cursor, which sway focuses
+# because focus_follows_mouse is on. wluma learns from each adjustment.
+#
+# Usage: wluma-adjust brightness|dim|temperature VALUE
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+output=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name')
+
+wluma set "$1" "$output" "$2"

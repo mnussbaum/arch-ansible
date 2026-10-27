@@ -219,12 +219,17 @@ bindsym --locked XF86AudioPause exec playerctl play-pause
 bindsym --locked XF86AudioNext exec playerctl next
 bindsym --locked XF86AudioPrev exec playerctl previous
 
-bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
-bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
+# Each adjusts the output under the cursor, and wluma learns from it
+bindsym --locked XF86MonBrightnessDown exec wluma-adjust brightness -5%
+bindsym --locked XF86MonBrightnessUp exec wluma-adjust brightness +5%
 
-bindsym --locked $mod+XF86MonBrightnessDown exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n -1000
-bindsym --locked $mod+XF86MonBrightnessUp exec busctl --user -- call rs.wl-gammarelay / rs.wl.gammarelay UpdateTemperature n +1000
-bindsym --locked $mod+Control+0 exec  busctl --user set-property rs.wl-gammarelay / rs.wl.gammarelay Temperature q 6500
+bindsym --locked $mod+XF86MonBrightnessDown exec wluma-adjust temperature -500K
+bindsym --locked $mod+XF86MonBrightnessUp exec wluma-adjust temperature +500K
+bindsym --locked $mod+Shift+XF86MonBrightnessDown exec wluma-adjust dim +5%
+bindsym --locked $mod+Shift+XF86MonBrightnessUp exec wluma-adjust dim -5%
+bindsym --locked $mod+Control+0 exec wluma-adjust temperature neutral && wluma-adjust dim 0%
+# Pauses or resumes automatic adjustment on every output
+bindsym $mod+Control+p exec wluma toggle --all
 
 # Screenshot a selectable region and open in editor
 bindsym Print exec grim -g "$(slurp -c '#ff0000ff')" - | satty --filename - --fullscreen --output-filename ~/Downloads/screenshot-$(date '+%Y%m%d-%H:%M:%S').png

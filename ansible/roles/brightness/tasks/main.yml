@@ -6,21 +6,26 @@
     dest: /usr/bin/day-or-night
     mode: a+x
 
-- name: Lengthen Dell keyboard backlight timeout
+- name: Install wluma-adjust binary
   copy:
-    src: 99-dell-kbd-backlight-timeout.rules
-    dest: /usr/lib/udev/rules.d/99-dell-kbd-backlight-timeout.rules
+    src: wluma-adjust
+    dest: /usr/bin/wluma-adjust
+    mode: a+x
 
-- name: Install wl-gammarelay service
+- name: Create wluma config dir
+  file:
+    path: /etc/xdg/wluma
+    state: directory
+
+- name: Install wluma config
   copy:
-    src: wl-gammarelay.service
-    dest: /usr/lib/systemd/user/wl-gammarelay.service
+    src: wluma-config.toml
+    dest: /etc/xdg/wluma/config.toml
 
-- name: Enable wl-gammarelay service
-  systemd_service:
-    name: wl-gammarelay.service
-    enabled: yes
-    scope: global
+- name: Install systemd user preset
+  copy:
+    src: 80-brightness.preset
+    dest: /usr/lib/systemd/user-preset/80-brightness.preset
 
 - name: Install colorscheme-changer binary
   copy:
