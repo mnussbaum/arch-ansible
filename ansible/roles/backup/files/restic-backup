@@ -148,21 +148,28 @@ def btrfs(*args: str) -> None:
     subprocess.run(["btrfs", *args], check=True)
 
 
+def delete_snapshot(snap: pathlib.Path, check: bool) -> None:
+    # Unprivileged users can't delete a read-only subvolume, so clear the flag
+    # first; the owner may change it.
+    for cmd in (
+        ["btrfs", "property", "set", str(snap), "ro", "false"],
+        ["btrfs", "subvolume", "delete", str(snap)],
+    ):
+        subprocess.run(cmd, check=check)
+
+
 @contextlib.contextmanager
 def btrfs_snapshot(home: pathlib.Path):
     snaps_dir = home / SNAPSHOT_DIRNAME
     snaps_dir.mkdir(exist_ok=True)
     snap = snaps_dir / SNAPSHOT_NAME
     if snap.exists():
-        btrfs("subvolume", "delete", str(snap))
+        delete_snapshot(snap, check=True)
     btrfs("subvolume", "snapshot", "-r", str(home), str(snap))
     try:
         yield snap
     finally:
-        subprocess.run(
-            ["btrfs", "subvolume", "delete", str(snap)],
-            check=False,
-        )
+        delete_snapshot(snap, check=False)
 
 
 def resolve_targets(snap: pathlib.Path, includes: list[str]) -> list[pathlib.Path]:
