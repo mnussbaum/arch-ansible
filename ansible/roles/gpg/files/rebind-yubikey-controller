@@ -48,7 +48,9 @@ case "$1" in
             [ -n "$missing" ] || break
             sleep 0.5
         done
-        rm -f "$state"
+
+        # Keep the state: suspend-then-hibernate runs post after each leg but
+        # pre only once, and the next pre overwrites it
 
         for controller in $missing; do
             pci=$(basename "$controller")
