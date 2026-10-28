@@ -1,0 +1,16 @@
+#!/bin/bash
+# Check for the YubiKey after each resume in a transient unit, so the wait
+# doesn't hold up thawing the session or run into systemd-sleep's hook
+# timeout.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+case "$1" in
+    post)
+        systemd-run --no-block --quiet --collect \
+            --unit=reset-yubikey-ports /usr/bin/reset-yubikey-ports \
+            || logger -t reset-yubikey-ports "post: check already running"
+        ;;
+esac

@@ -11,11 +11,17 @@
     path: /usr/lib/systemd/system-sleep
     state: directory
 
-- name: Install rebind-yubikey-controller sleep hook
+- name: Install reset-yubikey-ports
   copy:
-    src: rebind-yubikey-controller
-    dest: /usr/lib/systemd/system-sleep/rebind-yubikey-controller
-    mode: a+x
+    src: reset-yubikey-ports
+    dest: /usr/bin/reset-yubikey-ports
+    mode: "0755"
+
+- name: Install reset-yubikey-ports sleep hook
+  copy:
+    src: reset-yubikey-ports-sleep-hook
+    dest: /usr/lib/systemd/system-sleep/reset-yubikey-ports
+    mode: "0755"
 
 - name: Install systemd preset
   copy:

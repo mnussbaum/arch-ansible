@@ -1,0 +1,65 @@
+#!/bin/bash
+# Reset empty USB ports when no YubiKey comes back after resume. Controllers
+# that lose power over hibernate can miss a port's reconnect, leaving the key
+# absent until it's replugged; disabling and re-enabling the port makes its
+# hub detect it again. The key may have moved ports while asleep, so every
+# empty port is reset, and ports with a device attached are left alone.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+log() {
+    logger -t reset-yubikey-ports "$*"
+}
+
+yubikey_present() {
+    for dev in /sys/bus/usb/devices/*; do
+        [ "$(cat "$dev/idVendor" 2>/dev/null)" = 1050 ] && return 0
+    done
+
+    return 1
+}
+
+wait_for_yubikey() {
+    for _ in 1 2 3 4 5 6 7 8 9 10; do
+        yubikey_present && return 0
+        sleep 0.5
+    done
+
+    return 1
+}
+
+enable_ports() {
+    for port in "${disabled[@]}"; do
+        echo 0 > "$port/disable" || log "failed to re-enable $(basename "$port")"
+    done
+}
+
+# Leave time for ordinary re-enumeration, which takes a fraction of a second
+# when the port does report the reconnect
+wait_for_yubikey && exit 0
+
+disabled=()
+trap enable_ports EXIT
+
+for port in /sys/bus/usb/devices/*:*/*-port[0-9]*; do
+    [ -e "$port/device" ] && continue
+
+    if echo 1 > "$port/disable"; then
+        disabled+=("$port")
+    else
+        log "failed to disable $(basename "$port")"
+    fi
+done
+
+log "YubiKey missing, reset ${#disabled[@]} empty port(s)"
+sleep 1
+enable_ports
+trap - EXIT
+
+if wait_for_yubikey; then
+    log "YubiKey came back"
+else
+    log "YubiKey still missing"
+fi
