@@ -1,0 +1,43 @@
+#!/bin/bash
+# Stop wireplumber before sleep and start it after resume. Hibernate resume
+# re-enumerates the USB bridge the IPU6 camera sensor sits behind, which
+# re-registers the sensor's sub-devices, and closing a descriptor held across
+# that crashes the kernel. wireplumber holds the camera open, so it can't be
+# running when the bridge goes away. The stale sub-devices are gone before
+# user space thaws, so it's safe to start again straight after resume.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+marker=/run/ipu6-camera-released
+
+log() {
+    logger -t ipu6-camera-sleep "$*"
+}
+
+# Run a systemctl verb on each logged-in user's wireplumber
+each_wireplumber() {
+    local verb=$1
+    local uid user _
+
+    while read -r uid user _; do
+        # System accounts, e.g. greetd's greeter, don't run wireplumber
+        (( uid >= 1000 )) || continue
+        systemctl --machine="$user@" --user "$verb" wireplumber.service \
+            || log "failed to $verb wireplumber for $user"
+    done < <(loginctl list-users --no-legend)
+}
+
+case "$1" in
+    release)
+        # Before stopping anything, so restore restarts wireplumber whatever fails
+        touch "$marker"
+        each_wireplumber stop
+        ;;
+    restore)
+        udevadm settle || log "udev didn't settle"
+        each_wireplumber start
+        rm -f "$marker"
+        ;;
+esac

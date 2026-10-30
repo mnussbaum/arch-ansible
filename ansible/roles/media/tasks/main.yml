@@ -62,6 +62,42 @@
     src: 99-ov01a10-digital-gain.rules
     dest: /usr/lib/udev/rules.d/99-ov01a10-digital-gain.rules
 
+- name: Install ipu6-camera-sleep script
+  copy:
+    src: ipu6-camera-sleep
+    dest: /usr/bin/ipu6-camera-sleep
+    mode: a+x
+
+- name: Install IPU6 camera release and restore services
+  copy:
+    src: "{{ item }}"
+    dest: "/usr/lib/systemd/system/{{ item }}"
+    mode: "0644"
+  loop:
+    - ipu6-camera-release.service
+    - ipu6-camera-restore.service
+
+- name: Create sleep target wants directories
+  file:
+    path: "/usr/lib/systemd/system/{{ item }}.target.wants"
+    state: directory
+  loop: [sleep, suspend, hibernate, hybrid-sleep, suspend-then-hibernate]
+
+# Hibernate resume re-registers the camera's sub-devices under wireplumber's
+# open descriptors, which crashes the kernel when they're closed
+- name: Release the IPU6 camera before sleep
+  file:
+    src: ../ipu6-camera-release.service
+    dest: /usr/lib/systemd/system/sleep.target.wants/ipu6-camera-release.service
+    state: link
+
+- name: Restore the IPU6 camera after resume
+  file:
+    src: ../ipu6-camera-restore.service
+    dest: "/usr/lib/systemd/system/{{ item }}.target.wants/ipu6-camera-restore.service"
+    state: link
+  loop: [suspend, hibernate, hybrid-sleep, suspend-then-hibernate]
+
 - name: Install headphone profile toggle script
   copy:
     src: toggle-headphone-profile

@@ -1,0 +1,10 @@
+[Unit]
+Description=Release the IPU6 camera before sleep
+Before=sleep.target
+ConditionPathExists=/sys/module/intel_ipu6
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ipu6-camera-sleep release
+# Bound the delay to sleep if wireplumber won't stop
+TimeoutStartSec=30s

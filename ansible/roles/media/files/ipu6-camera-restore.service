@@ -1,0 +1,11 @@
+[Unit]
+Description=Restore the IPU6 camera after resume
+# After the sleep targets rather than a sleep hook's post step, which
+# suspend-then-hibernate runs between its suspend and hibernate legs
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+ConditionPathExists=/run/ipu6-camera-released
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/ipu6-camera-sleep restore
+TimeoutStartSec=30s
