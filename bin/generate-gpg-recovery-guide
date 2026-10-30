@@ -1,8 +1,8 @@
 #!/bin/bash
 # Generates the printable recovery guide as a PDF: docs/recovery-guide.md with
-# the docs it embeds, plus the key material from the primary key USB.
+# the docs it embeds, plus the key material from the root GPG key USB.
 #
-# Usage: bin/generate-gpg-recovery-guide <primary-key-usb-device> [output.pdf]
+# Usage: bin/generate-gpg-recovery-guide <root-gpg-key-usb-device> [output.pdf]
 #        bin/generate-gpg-recovery-guide --preview [output.pdf]
 #
 # --preview prints placeholders in place of key material, so the layout can be
@@ -24,7 +24,7 @@ if [[ "${1:-}" == "--preview" ]]; then
   OUTPUT="${2:-secrets/recovery-guide-preview.pdf}"
   RENDER_ARGS=(--preview)
 else
-  DEVICE="${1:?Usage: $0 (<primary-key-usb-device> | --preview) [output.pdf]}"
+  DEVICE="${1:?Usage: $0 (<root-gpg-key-usb-device> | --preview) [output.pdf]}"
   OUTPUT="${2:-secrets/gpg-recovery-guide.pdf}"
 fi
 
@@ -35,7 +35,8 @@ for f in "$GUIDE" "$PUBKEY_FILE"; do
   fi
 done
 
-WORK=$(mktemp -d)
+# Under /tmp: macOS's $TMPDIR is long enough to overflow the agent's socket path.
+WORK=$(mktemp -d /tmp/recovery-guide.XXXXXX)
 cleanup() {
   if [[ -n "$DEVICE" ]]; then close_usb; fi
   rm -rf "$WORK"
@@ -47,7 +48,7 @@ if [[ -n "$DEVICE" ]]; then
   setup_gnupghome "$WORK/gnupg"
   export GNUPGHOME="$WORK/gnupg"
 
-  open_usb "$DEVICE"
+  open_usb "$DEVICE" --read-only
 
   echo "==> Importing primary key..."
   gpg --batch --import "$USB_MOUNT/primary-key.asc"

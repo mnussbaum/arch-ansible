@@ -1,7 +1,7 @@
 # GPG keys and YubiKeys
 
 One GPG key is the root of trust. Its primary key (cert-only, no expiry) lives
-offline on a LUKS-encrypted USB drive, the primary GPG USB, which is plugged in
+offline on a LUKS-encrypted USB drive, the root GPG key USB, which is plugged in
 only for key ceremonies. Its three subkeys (sign, encrypt, auth) live on every
 YubiKey: encrypt decrypts the password store, and auth is the SSH key. Every
 YubiKey also carries the same PIV key, kept in `pass`, which unlocks LUKS and
@@ -10,7 +10,7 @@ the homed home on every machine, and the TOTP seeds for 2FA codes.
 Losing a YubiKey is covered under [Lost or blocked YubiKeys](#lost-or-blocked-yubikeys),
 and losing more in [disaster-recovery.md](disaster-recovery.md).
 
-## Primary GPG USB
+## Root GPG key USB
 
 ### Create a new primary key
 
@@ -19,8 +19,8 @@ and losing more in [disaster-recovery.md](disaster-recovery.md).
 ./bin/create-gpg-key <device> <totp-file>             # starting fresh
 ```
 
-`<device>` is wiped. The second argument supplies the TOTP seeds: a previous primary
-GPG USB (whose key also re-encrypts the password store) or a file of `otpauth://`
+`<device>` is wiped. The second argument supplies the TOTP seeds: a previous root
+GPG key USB (whose key also re-encrypts the password store) or a file of `otpauth://`
 URIs.
 
 This will:
@@ -48,9 +48,9 @@ Also add the SSH public key to GitHub/GitLab:
 gpg --export-ssh-key <fingerprint>
 ```
 
-### Back up the primary GPG USB
+### Back up the root GPG key USB
 
-Keep a second encrypted copy of the primary GPG USB in a separate physical location:
+Keep a second encrypted copy of the root GPG key USB in a separate physical location:
 
 ```
 ./bin/backup-gpg-key <source-device> <dest-device>
@@ -66,7 +66,7 @@ to get from nothing to a working laptop with its home restored. Its text is
 when to reprint.
 
 ```
-./bin/generate-gpg-recovery-guide <primary-key-usb-device> [output.pdf]
+./bin/generate-gpg-recovery-guide <root-gpg-key-usb-device> [output.pdf]
 ./bin/generate-gpg-recovery-guide --preview [output.pdf]   # placeholders, no USB
 ```
 
@@ -82,13 +82,18 @@ same three subkeys (sign, encrypt, auth), its TOTP seeds, and the shared PIV key
 `pass` that unlocks LUKS and homed, so a replacement YubiKey works on every machine
 with no per-machine re-enrollment.
 
-To program additional YubiKeys against an existing primary GPG USB:
+To program additional YubiKeys against an existing root GPG key USB:
 
 ```
 ./bin/enroll-yubikeys <device>
 ```
 
-When prompted, insert YubiKeys one at a time and follow the prompts.
+When prompted, insert YubiKeys one at a time and follow the prompts. It gets
+the password store over SSH with the primary key, and renews subkeys that
+expire within 30 days (then commit and push the public key, as it says). It
+also runs on macOS, set up as in
+[set-up-recovery-computer.md](set-up-recovery-computer.md), where it first
+copies the whole USB drive to open it in a container.
 
 ### Use YubiKeys
 
@@ -111,7 +116,7 @@ gpg --card-status
 
 ### Renew subkeys
 
-Subkeys expire annually. Renew them with the primary GPG USB plugged in:
+Subkeys expire annually. Renew them with the root GPG key USB plugged in:
 
 ```
 ./bin/renew-gpg-subkeys <device>   # e.g. /dev/sda1
@@ -136,13 +141,11 @@ wipe the old PKCS#11 slot (`bin/revoke-luks-yubikey <slot>`) and re-enroll
 
 **Lose every YubiKey.** Machines whose TPM still unlocks keep booting, but you
 can't log in: homes take only the token. Rebuild YubiKeys from the offline
-primary-key USB with `bin/enroll-yubikeys <device>`. It loads the same PIV key
+root GPG key USB with `bin/enroll-yubikeys <device>`. It loads the same PIV key
 from pass, so the new keys unlock every disk and home with no re-enrollment. If
-the USB is gone too, rebuild the key from the paper recovery guide
-([gpg-paper-recovery.md](gpg-paper-recovery.md)), which writes a new USB and
-programs the YubiKeys the same way. Either way the password-store has to
-be reachable first: with the primary key imported, gpg-agent's SSH support can
-clone it.
+the USB is gone too, first rebuild it from the paper recovery guide
+([gpg-paper-recovery.md](gpg-paper-recovery.md)). `enroll-yubikeys` clones or
+pulls the password-store itself, with the primary key's SSH key.
 
 **PIV PIN blocked** (too many wrong tries): unblock it with the PUK,
 
@@ -166,12 +169,11 @@ store. This preserves genuine two-factor separation: compromising the password
 store doesn't expose TOTP seeds. The OATH applet is password-protected; the
 password is set during YubiKey provisioning.
 
-Seeds are backed up as `otpauth://` URIs in `oath-accounts.txt` on the primary
-GPG USB. They are automatically loaded onto each YubiKey during
+Seeds are backed up as `otpauth://` URIs in `oath-accounts.txt` on the root
+GPG key USB. They are automatically loaded onto each YubiKey during
 `create-gpg-key` and `enroll-yubikeys`. The recovery guide includes QR codes
-and `otpauth://` URIs for a curated set of critical accounts (defined in
-`CRITICAL_TOTPS` in `bin/_recovery_guide.py`), so those accounts can
-be restored from paper alone without the USB.
+and `otpauth://` URIs for a curated set of critical accounts, so those
+accounts can be restored from paper alone without the USB.
 
 **Add a single account**
 

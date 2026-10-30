@@ -1,8 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -o errexit
 set -o nounset
 set -o pipefail
+
+# Off our machines the build runs in an Arch container (bin/_container_common.sh).
+if [[ ${1:-} == --container ]]; then
+  shift
+  source bin/_container_common.sh
+  container_build "$@"
+  exit
+fi
 
 caching="available"
 keep="1"
@@ -16,6 +24,7 @@ while [[ $# -gt 0 ]]; do
     --help|-h)
       echo "Build the image. vm run/burn-image set the hostname at boot." >&2
       echo "Usage: $0 [--caching force|off|available] [--keep N|all] [--organization NAME]... [--skip-postinst] [--ansible-tags TAGS] [mkosi options...]" >&2
+      echo "       $0 --container [--help | options...]   Build in a container on any Linux or macOS computer." >&2
       echo "  --caching        Package cache policy for the package-install AND postinst" >&2
       echo "                   phases (default: available):" >&2
       echo "                     force      install only already-cached packages; never use the network" >&2

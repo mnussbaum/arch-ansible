@@ -12,12 +12,12 @@ Where to start, by what was lost:
   ([bootstrapping.md](bootstrapping.md), "System recovery").
 - **A YubiKey, or every YubiKey**: [gpg-and-yubikeys.md](gpg-and-yubikeys.md),
   "Lost or blocked YubiKeys".
-- **Every YubiKey and the primary-key USBs**: rebuild the key from the printed
+- **Every YubiKey and the root GPG key USBs**: rebuild the key from the printed
   recovery guide ([gpg-paper-recovery.md](gpg-paper-recovery.md)).
 - **Everything**: the printed recovery guide ([recovery-guide.md](recovery-guide.md))
   runs from nothing to a working laptop with its home restored.
 
-## How `dr-build` works
+## How `build-image --container` works
 
 - `container/Containerfile` is an Arch container holding the packages listed in
   `mkosi/mkosi.conf.d/20-builder.conf`, the same ones the image carries to
@@ -26,12 +26,14 @@ Where to start, by what was lost:
   pinned, so emulation on an arm64 host can't change what gets built.
 - `container/dr-unlock` imports the public key from
   `ansible/roles/gpg/files/gpg-pubkey.asc` into a throwaway GNUPGHOME, clones the
-  password-store and decrypts the three build secrets. It runs in the container
-  on Linux and on the host on macOS, so it sticks to bash 3.2.
+  password-store and decrypts the three build secrets. It runs on the host,
+  Linux or macOS, because macOS containers can't reach the YubiKey; so it sticks
+  to gpg, git, ssh and BSD tools.
 - `container/dr-entrypoint` clones the mounted checkout, collects the secrets,
   and runs `bin/build-image` with `ARCH_ANSIBLE_SECRETS_DIR`, which makes it
   read them from there instead of from `pass`. With `ARCH_ANSIBLE_AUR_CHROOT=no`,
   `bin/sync-aur` builds AUR packages with plain `makepkg` in the throwaway
   container instead of an nspawn chroot, which is fragile inside a container.
-- `bin/dr-burn` is a plain `dd`. `mkosi burn` adds only a backup GPT at the end
-  of the USB drive, and systemd-repart puts one there on the medium's first boot.
+- `bin/burn-image <image.raw> <device>` is a plain `dd`. `mkosi burn` adds only
+  a backup GPT at the end of the USB drive, and systemd-repart puts one there on
+  the medium's first boot.

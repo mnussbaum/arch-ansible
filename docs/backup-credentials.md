@@ -1,15 +1,29 @@
 # Add a machine's backup credentials
 
 `restic-backup` (the `backup` role) looks up its Backblaze key in `pass` by
-hostname: `host_secrets/<hostname>/restic_backblaze_key{,_id}`. The repo
-password (`restic_backup_password`) is shared. A new machine needs its own key
-before it can back up or restore.
+hostname: `host_secrets/<hostname>/restic_backblaze_key{,_id}`. A new machine
+needs its own key before it can back up or restore.
 
-The image ships a read-only copy of the builder's password store
-(`/usr/share/password-store`), so a machine sees credentials that were in that
-store when its image was built. Add them, and pull them into the store on the
-machine that builds, before building the recovery USB that installs it, and it
-can restore right after its first login.
+The image ships a read-only copy of the builder's password store, so a machine
+sees credentials that were in that store when its image was built. Add Backblaze
+host credentials before building the recovery USB, and a new machine can restore
+right after its first login.
+
+On a computer that isn't ours, set up as in
+[set-up-recovery-computer.md](set-up-recovery-computer.md), first point gpg,
+pass and SSH at the YubiKey. Insert it, and from the repo run:
+
+```bash
+gpg --import ansible/roles/gpg/files/gpg-pubkey.asc
+gpg --card-status
+echo enable-ssh-support >> ~/.gnupg/gpg-agent.conf
+gpgconf --kill gpg-agent
+export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
+export PASSWORD_STORE_DIR=~/.local/share/password-store
+export PASSWORD_STORE_GPG_OPTS="--trust-model always"
+[ -d "$PASSWORD_STORE_DIR" ] || git clone git@gitlab.com:mnussbaum/password-store.git "$PASSWORD_STORE_DIR"
+git -C "$PASSWORD_STORE_DIR" pull
+```
 
 1. Pick the machine's name. It's typed at the hostname prompt on the machine's
    first boot ([install-machine.md](install-machine.md)); for a machine that's

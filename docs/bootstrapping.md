@@ -422,8 +422,9 @@ bin/build-image
 bin/burn-image /dev/sdX
 ```
 
-Anywhere else, `bin/dr-build` runs `bin/build-image` in a container and
-`bin/dr-burn` writes the result ([build-recovery-usb.md](build-recovery-usb.md)).
+Anywhere else, `bin/build-image --container` builds in a container and
+`bin/burn-image <image.raw> <device>` writes the result
+([build-recovery-usb.md](build-recovery-usb.md)).
 
 `bin/build-image` materializes the Secure Boot keypair from `pass`, bumps
 `mkosi/mkosi.version` (a fresh monotonic version so each build supersedes the running
@@ -661,9 +662,9 @@ YubiKey problems (losing one or all of them, a blocked PIV PIN) are in
 
 Every image, the recovery USB included, is signed with the one Secure Boot key
 from `pass`, the key every installed machine enrolled at first boot. So a
-recovery USB built by `bin/build-image` or `bin/dr-build` boots under any of our
-machines' Secure Boot with no firmware changes. The exception is one built with
-a throwaway key ([build-recovery-usb.md](build-recovery-usb.md)).
+recovery USB built by `bin/build-image`, natively or `--container`, boots under
+any of our machines' Secure Boot with no firmware changes. The exception is one
+built with a throwaway key ([build-recovery-usb.md](build-recovery-usb.md)).
 
 ---
 

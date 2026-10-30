@@ -6,10 +6,10 @@
 #
 # <device>: encrypted USB block device containing primary-key.asc (e.g. /dev/sdb)
 #
-# Run annually with the offline USB plugged in. The primary key is imported into
-# a temporary GNUPGHOME so the main keyring is never touched. Afterwards
-# ansible/roles/gpg/files/gpg-pubkey.asc holds the new expiry and should be
-# committed.
+# Run annually with the root GPG key USB plugged in. The primary key is
+# imported into a temporary GNUPGHOME so the main keyring is never touched.
+# Afterwards ansible/roles/gpg/files/gpg-pubkey.asc holds the new expiry and
+# should be committed.
 
 set -o errexit
 set -o nounset
@@ -19,7 +19,8 @@ source bin/_gpg_common.sh
 
 DEVICE="${1:?Usage: $0 <device>}"
 
-RENEWAL_HOME=$(mktemp -d)
+# Under /tmp: macOS's $TMPDIR is long enough to overflow the agent's socket path.
+RENEWAL_HOME=$(mktemp -d /tmp/renewal-gnupg.XXXXXX)
 
 cleanup() {
   close_usb
@@ -30,7 +31,7 @@ trap cleanup EXIT
 setup_gnupghome "$RENEWAL_HOME"
 export GNUPGHOME="$RENEWAL_HOME"
 
-open_usb "$DEVICE"
+open_usb "$DEVICE" --read-only
 
 echo "==> Importing primary key from USB..."
 "${GPG_BATCH[@]}" --import "$USB_MOUNT/primary-key.asc"

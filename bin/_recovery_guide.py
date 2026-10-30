@@ -34,19 +34,25 @@ INCLUDE = re.compile(r'^\[[^\]]+\]\(([^)\s]+)\s+"embedded in the printed guide"\
 SECRET = re.compile(r"^<!-- secret: ([a-z-]+) -->\s*$", re.M)
 LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 FENCE = re.compile(r"^```.*?^```", re.M | re.S)
+HEADING = re.compile(r"<h[1-6][ >]")
+
+# Secret blocks printed on one page with their section's heading and intro.
+KEEP_WITH_HEADING = {"public-key", "private-key"}
 
 CSS = """
+@page { @bottom-center { content: counter(page); font-family: Georgia, serif; font-size: 10px; } }
 body { font-family: Georgia, serif; max-width: 740px; margin: 40px auto; padding: 0 24px; color: #000; font-size: 13px; line-height: 1.6; }
 h1 { font-size: 1.5em; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 4px; }
 h2 { font-size: 1.25em; margin-top: 2em; border-bottom: 1px solid #999; padding-bottom: 3px; page-break-after: avoid; }
 h3 { font-size: 1.08em; margin-top: 1.6em; margin-bottom: 6px; page-break-after: avoid; }
 h4 { font-size: 1em; margin-top: 1.3em; margin-bottom: 4px; page-break-after: avoid; }
 .generated { color: #555; font-size: 0.85em; margin-bottom: 1.5em; font-family: monospace; }
-.uid { font-family: monospace; font-size: 1.05em; background: #f5f5f5; padding: 8px 12px; border: 1px solid #ccc; }
-.fingerprint { font-family: monospace; font-size: 1.05em; letter-spacing: 0.12em; background: #f5f5f5; padding: 12px; border: 1px solid #ccc; white-space: pre; }
-.mono { font-family: monospace; white-space: pre-wrap; font-size: 0.8em; background: #f5f5f5; padding: 10px; border: 1px solid #ccc; word-break: break-all; }
-.qr { margin: 12px 0; }
+.uid { font-family: monospace; font-size: 1.05em; background: #f5f5f5; padding: 8px 12px; border: 1px solid #ccc; page-break-inside: avoid; }
+.fingerprint { font-family: monospace; font-size: 1.05em; letter-spacing: 0.12em; background: #f5f5f5; padding: 12px; border: 1px solid #ccc; white-space: pre; page-break-inside: avoid; }
+.mono { font-family: monospace; white-space: pre-wrap; font-size: 0.8em; background: #f5f5f5; padding: 10px; border: 1px solid #ccc; word-break: break-all; page-break-inside: avoid; }
+.qr { margin: 12px 0; page-break-inside: avoid; }
 .qr img { display: block; image-rendering: pixelated; border: 1px solid #ccc; }
+.keep { page-break-inside: avoid; }
 .totps { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0; }
 .totp { width: 130px; text-align: center; page-break-inside: avoid; }
 .totp img { width: 120px; display: block; border: 1px solid #ccc; }
@@ -104,7 +110,7 @@ def secret_blocks(args) -> dict[str, str]:
                     f'<div class="label">{html.escape(label)}</div>'
                     f'<div class="uri">{html.escape(line)}</div></div>')
     blocks["totp"] = (f'<div class="totps">{"".join(totps)}</div>' if totps
-                      else "<p>(The primary key USB has no oath-accounts.txt.)</p>")
+                      else "<p>(The root GPG key USB has no oath-accounts.txt.)</p>")
     return blocks
 
 
@@ -171,13 +177,19 @@ def main() -> None:
     tokens = {}
     def stash(m: re.Match) -> str:
         token = f"SECRETBLOCK{len(tokens)}"
-        tokens[token] = blocks[m.group(1)]
+        tokens[token] = m.group(1)
         return token
     text = SECRET.sub(stash, text)
 
-    body = markdown.markdown(text, extensions=["fenced_code"])
-    for token, block in tokens.items():
-        body = body.replace(f"<p>{token}</p>", block)
+    body = markdown.markdown(text, extensions=["fenced_code", "sane_lists"])
+    for token, name in tokens.items():
+        placeholder = f"<p>{token}</p>"
+        if name in KEEP_WITH_HEADING:
+            end = body.index(placeholder) + len(placeholder)
+            start = list(HEADING.finditer(body, 0, end))[-1].start()
+            body = (f'{body[:start]}<div class="keep">{body[start:end]}</div>'
+                    f"{body[end:]}")
+        body = body.replace(placeholder, blocks[name])
 
     generated = html.escape(args.generated or "preview")
     if args.uid:

@@ -46,11 +46,11 @@ mkosi/                      Image build (bin/* run `mkosi --directory=mkosi`)
                             commands live in mkosi.extra/usr/bin/)
   mkosi.postinst.chroot     Runs the Ansible postinst inside the image
   mkosi.repart/, mkosi.sysupdate/, mkosi.uki-profiles/, mkosi.initrd.conf/
-container/                  Disaster-recovery build container (run by bin/dr-build)
+container/                  Disaster-recovery build container (bin/build-image --container)
 docs/                       Design (bootstrapping.md), procedures (disaster-recovery.md
                             indexes them), the recovery guide, plans, todos
 secrets/                    Generated recovery guide (gitignored)
-dr-out/                     bin/dr-build output (gitignored)
+dr-out/                     bin/build-image --container output (gitignored)
 ```
 
 ## GPG keys and YubiKeys
@@ -65,7 +65,7 @@ and printing the recovery guide are in `docs/gpg-and-yubikeys.md`.
 
 Passwords are managed with `pass` in a GPG-encrypted git repo, cloned into the home
 directory at first login. The store is encrypted with the GPG key, so the YubiKey
-(or primary GPG USB) is required to decrypt entries.
+(or root GPG key USB) is required to decrypt entries.
 
 `bin/build-image` reads the Secure Boot key and other build secrets from the password
 store, so the YubiKey must be present for a build.
@@ -79,8 +79,9 @@ roles") explains the design.
 ### Build a new install/recovery USB
 
 `bin/build-image` and `bin/burn-image` on an Arch machine
-(`docs/bootstrapping.md`, "Building the image"), or `bin/dr-build` and
-`bin/dr-burn` on any Linux or macOS computer (`docs/build-recovery-usb.md`).
+(`docs/bootstrapping.md`, "Building the image"), or `bin/build-image --container`
+and `bin/burn-image <image.raw> <device>` on any Linux or macOS computer
+(`docs/build-recovery-usb.md`).
 
 ### Provision a new physical machine
 

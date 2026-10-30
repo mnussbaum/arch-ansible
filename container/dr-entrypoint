@@ -1,12 +1,11 @@
 #!/bin/bash
 # Entry point of the disaster-recovery builder (container/Containerfile), started
-# by bin/dr-build. Clones the mounted checkout, gets the build secrets, runs
-# bin/build-image and copies the finished medium to /out. Arguments go to
-# bin/build-image.
+# by bin/build-image --container. Clones the mounted checkout, gets the build
+# secrets, runs bin/build-image and copies the finished medium to /out.
+# Arguments go to bin/build-image.
 #
 # DR_MODE picks where the secrets come from:
-#   yubikey    decrypted here from pass, with the YubiKey passed in (Linux hosts)
-#   provided   /host-secrets, decrypted on the host by dr-unlock (macOS hosts)
+#   provided   /host-secrets, decrypted on the host by dr-unlock
 #   ephemeral  a throwaway Secure Boot key, kept in the cache volume; no YubiKey
 #
 # Mounts: /host-repo (ro), /home/builder/.cache (named volume), /out, and
@@ -23,10 +22,6 @@ if [[ $EUID -eq 0 ]]; then
   chown builder:builder /home/builder/.cache
   install -d -o builder -g builder -m 700 "$secrets"
   pacman -Syu --noconfirm
-  if [[ $DR_MODE == yubikey ]]; then
-    install -d /run/pcscd
-    pcscd --disable-polkit
-  fi
   [[ $(uname -m) == x86_64 ]] \
     || echo "dr-entrypoint: running under $(uname -m) emulation; expect a slow build" >&2
 
@@ -51,15 +46,6 @@ store=$HOME/.local/share/password-store
 mkdir -p "$(dirname "$store")"
 
 case $DR_MODE in
-  yubikey)
-    unlock_args=()
-    if [[ -d /host-password-store ]]; then
-      unlock_args=(--password-store /host-password-store)
-    elif [[ -n ${DR_PASSWORD_STORE_URL:-} ]]; then
-      unlock_args=(--password-store-url "$DR_PASSWORD_STORE_URL")
-    fi
-    dr-unlock --repo "$src" --out "$secrets" --store-dest "$store" "${unlock_args[@]}"
-    ;;
   provided)
     cp /host-secrets/secureboot.key /host-secrets/secureboot.crt \
       /host-secrets/home-recovery-key "$secrets/"

@@ -3,10 +3,10 @@
 # YubiKey, into a directory bin/build-image reads via ARCH_ANSIBLE_SECRETS_DIR:
 # secureboot.key, secureboot.crt and home-recovery-key.
 #
-# Runs inside the disaster-recovery container on Linux, and on the host on macOS,
-# where containers can't reach USB devices: so bash 3.2 and BSD tools, and gpg,
-# git and ssh are all it needs. Uses a throwaway GNUPGHOME holding only the
-# public key; the secret keys stay on the YubiKey.
+# Runs on the host for bin/build-image --container, since macOS containers can't
+# reach USB devices: so BSD tools, and gpg, git and ssh are all it needs. Uses a
+# throwaway GNUPGHOME holding only the public key; the secret keys stay on the
+# YubiKey.
 set -o errexit
 set -o nounset
 set -o pipefail

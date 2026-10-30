@@ -1,21 +1,25 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -o errexit
 set -o nounset
+set -o pipefail
 
 mkosi_args=()
 organizations=()
-device=""
+positional=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       echo "Write the built image to a device. Build it first with build-image." >&2
       echo "Usage: $0 [--organization NAME]... [mkosi options...] <device>" >&2
+      echo "       $0 <image.raw> <device>" >&2
       echo "  <device>         Whole block device to write the image to. It is wiped first (sudo)." >&2
       echo "  --organization   Burn the newest image built with exactly these organizations" >&2
       echo "                   (repeatable). Defaults to \$ARCH_ANSIBLE_ORGANIZATIONS, else the" >&2
       echo "                   running image's (as update-system), else none." >&2
+      echo "  <image.raw>      Write this image file instead, on Linux or macOS: e.g. one from" >&2
+      echo "                   build-image --container." >&2
       echo "  The machine names itself at first boot (mkosi Hostname=, machine-id derived)." >&2
       echo "  Any other options are forwarded to mkosi." >&2
       exit
@@ -26,14 +30,110 @@ while [[ $# -gt 0 ]]; do
       if [[ "$1" =~ ^-- ]]; then
         mkosi_args+=("$1")
         if [[ $# -gt 1 && "$2" != -* ]]; then mkosi_args+=("$2"); shift; fi
-      elif [[ -z "$device" ]]; then device="$1"
-      else echo "Unexpected argument: $1" >&2; exit 1; fi
+      else positional+=("$1"); fi
       ;;
   esac
   shift
 done
 
-: "${device:?Usage: $0 <device>}"
+# Clear the device's old layout before burning. After writing the new GPT,
+# systemd-repart syncs the kernel's view one partition at a time with BLKPG, in
+# partition order, and the kernel refuses (EBUSY) any resize or add that
+# overlaps a partition it still knows about. So burning a layout that moved
+# partitions — e.g. the ESP growing 1G→2G, which shifts everything after it —
+# over the old one wrote the disk correctly but failed with "Failed to reread
+# partition table: Device or resource busy", leaving the host with a stale view
+# of the stick. With no old partitions registered, repart only adds.
+wipe_linux_device() {
+  local device="$1"
+  local disk leftover
+
+  [[ -b "$device" ]] || { echo "error: $device is not a block device" >&2; exit 1; }
+  disk=$(basename "$(readlink -f "$device")")
+  if [[ -e "/sys/class/block/$disk/partition" ]]; then
+    echo "error: $device is a partition; pass the whole disk" >&2
+    exit 1
+  fi
+  if lsblk -nro MOUNTPOINTS "$device" | grep -q .; then
+    echo "error: something on $device is mounted; unmount it first:" >&2
+    lsblk -o NAME,MOUNTPOINTS "$device" >&2
+    exit 1
+  fi
+
+  echo "Wiping $device (sudo)…" >&2
+  sudo wipefs --all --quiet "$device"
+  # wipefs asks the kernel to re-read the (now absent) table, but that alone can
+  # fail on a busy device; partx drops each old partition explicitly.
+  sudo partx --delete "$device" 2>/dev/null || true
+  leftover=$(find "/sys/class/block/$disk/" -mindepth 1 -maxdepth 1 -name "${disk}*" -printf '%f ')
+  if [[ -n "$leftover" ]]; then
+    echo "error: the kernel still has partitions of $device registered ($leftover)." >&2
+    echo "       Something holds them open; replug the device and retry." >&2
+    exit 1
+  fi
+}
+
+# Writes an image file with a plain dd, on Linux or macOS. The image is a
+# complete GPT disk, and systemd-repart on its first boot moves the backup GPT
+# to the end of a larger stick, which is all that `mkosi burn` adds.
+burn_file() {
+  local img="$1" device="$2"
+  local img_size dev_size info answer
+
+  [[ -f "$img" ]] || { echo "error: $img is not a file" >&2; exit 1; }
+  img_size=$(wc -c < "$img" | tr -d ' ')
+  case "$(uname -s)" in
+    Linux)
+      [[ -b "$device" ]] || { echo "error: $device is not a block device" >&2; exit 1; }
+      dev_size=$(lsblk -bndo SIZE "$device")
+      lsblk -o NAME,SIZE,MODEL,TRAN "$device" >&2
+      ;;
+    Darwin)
+      info=$(diskutil info "$device") || { echo "error: diskutil doesn't know $device" >&2; exit 1; }
+      if ! grep -Eq 'Whole: +Yes' <<< "$info"; then
+        echo "error: $device is a partition; pass the whole disk" >&2
+        exit 1
+      fi
+      if grep -Eq 'Device Location: +Internal|Internal: +Yes' <<< "$info"; then
+        echo "error: $device is an internal disk" >&2
+        exit 1
+      fi
+      dev_size=$(diskutil info -plist "$device" | plutil -extract TotalSize raw -)
+      grep -E 'Device Node|Media Name|Disk Size|Protocol' <<< "$info" >&2
+      ;;
+    *) echo "error: unsupported OS $(uname -s)" >&2; exit 1 ;;
+  esac
+  if [[ $dev_size -lt $img_size ]]; then
+    echo "error: $device holds $((dev_size / 1000000000))G; the image needs $((img_size / 1000000000))G" >&2
+    exit 1
+  fi
+
+  printf 'Everything on %s will be erased. Type the device path to continue: ' "$device" >&2
+  read -r answer
+  [[ "$answer" == "$device" ]] || { echo "Aborted." >&2; exit 1; }
+
+  case "$(uname -s)" in
+    Linux)
+      wipe_linux_device "$device"
+      sudo dd if="$img" of="$device" bs=4M conv=fsync oflag=direct status=progress
+      ;;
+    Darwin)
+      diskutil unmountDisk "$device"
+      echo "Writing (Ctrl-T shows progress)…" >&2
+      # The raw node skips the buffer cache, which is many times faster.
+      sudo dd if="$img" of="/dev/r${device#/dev/}" bs=4m
+      sync
+      diskutil eject "$device"
+      ;;
+  esac
+  echo "Wrote $img to $device" >&2
+}
+
+case ${#positional[@]} in
+  1) device="${positional[0]}" ;;
+  2) burn_file "${positional[0]}" "${positional[1]}"; exit ;;
+  *) echo "Usage: $0 [options...] <device>, or $0 <image.raw> <device>" >&2; exit 1 ;;
+esac
 
 # Resolve the build context and organizations exactly as bin/update-system
 # does, so this burns the image it built: the output dir is under the build
@@ -51,36 +151,7 @@ orgs=$(arch_ansible_normalize_organizations "$(IFS=,; echo "${organizations[*]}"
 version=$(arch_ansible_latest_image_version "$orgs")
 echo "Burning image $version (organizations: ${orgs:-none})" >&2
 
-# Clear the device's old layout before burning. After writing the new GPT,
-# systemd-repart syncs the kernel's view one partition at a time with BLKPG, in
-# partition order, and the kernel refuses (EBUSY) any resize or add that
-# overlaps a partition it still knows about. So burning a layout that moved
-# partitions — e.g. the ESP growing 1G→2G, which shifts everything after it —
-# over the old one wrote the disk correctly but failed with "Failed to reread
-# partition table: Device or resource busy", leaving the host with a stale view
-# of the stick. With no old partitions registered, repart only adds.
-[[ -b "$device" ]] || { echo "error: $device is not a block device" >&2; exit 1; }
-disk=$(basename "$(readlink -f "$device")")
-if [[ -e "/sys/class/block/$disk/partition" ]]; then
-  echo "error: $device is a partition; pass the whole disk" >&2
-  exit 1
-fi
-if lsblk -nro MOUNTPOINTS "$device" | grep -q .; then
-  echo "error: something on $device is mounted; unmount it first:" >&2
-  lsblk -o NAME,MOUNTPOINTS "$device" >&2
-  exit 1
-fi
-echo "Wiping $device (sudo)…" >&2
-sudo wipefs --all --quiet "$device"
-# wipefs asks the kernel to re-read the (now absent) table, but that alone can
-# fail on a busy device; partx drops each old partition explicitly.
-sudo partx --delete "$device" 2>/dev/null || true
-leftover=$(find "/sys/class/block/$disk/" -mindepth 1 -maxdepth 1 -name "${disk}*" -printf '%f ')
-if [[ -n "$leftover" ]]; then
-  echo "error: the kernel still has partitions of $device registered ($leftover)." >&2
-  echo "       Something holds them open; replug the device and retry." >&2
-  exit 1
-fi
+wipe_linux_device "$device"
 
 output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 mkdir -p "$output_dir"

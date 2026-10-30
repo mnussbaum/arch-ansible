@@ -1,21 +1,19 @@
-#!/bin/bash
-# Programs new YubiKeys and creates a new LUKS-encrypted primary key USB from
-# a GPG key already imported into GNUPGHOME. Use this after reconstructing the
-# primary key from the paper recovery guide (public key + paperkey).
+#!/usr/bin/env bash
+# Rebuilds the primary GPG key from the printed recovery guide and writes it to
+# a new LUKS-encrypted root GPG key USB. Program YubiKeys from that USB
+# afterwards with bin/enroll-yubikeys. Runs on any Linux or macOS computer with
+# the tools in docs/set-up-recovery-computer.md, or in a Live System.
 #
-# Works on a copy of the key in a temporary GNUPGHOME, like enroll-yubikeys, so
-# the real one keeps its config and the full key on disk; only the renewed
-# public key is imported back.
+# The guide's paperkey lines hold only the secret bytes; the public key comes
+# from the repo, which has the current one. The key is rebuilt in a temporary
+# GNUPGHOME, deleted on exit.
 #
-# Usage: bin/restore-primary-gpg-from-paper <device> [<totp-file>]
+# Usage: bin/restore-primary-gpg-from-paper [--secrets <file>] [--totp <file>] <device>
 #
-# <device>:    blank USB to format with LUKS as the new primary key backup.
-#              WARNING: this wipes the device.
-# <totp-file>: otpauth:// URIs (one per line), typed from the guide's TOTP
-#              section. Saved to the USB as oath-accounts.txt and loaded onto
-#              each YubiKey.
-#
-# Rebuild the key from paper first: docs/gpg-paper-recovery.md, Step 2.
+# <device>:          USB drive to erase and write the new root GPG key USB to.
+# --secrets <file>:  the guide's numbered private key lines; asked for if absent.
+# --totp <file>:     the guide's otpauth:// URIs, one per line, saved to the USB
+#                    for enroll-yubikeys; asked for if absent.
 
 set -o errexit
 set -o nounset
@@ -23,69 +21,86 @@ set -o pipefail
 
 source bin/_gpg_common.sh
 
-DEVICE="${1:?Usage: $0 <device> [<totp-file>]}"
-TOTP_FILE="${2:-}"
-REAL_GNUPGHOME="${GNUPGHOME:-$HOME/.gnupg}"
-RESTORE_HOME=$(mktemp -d)
-SUBKEY_BACKUP=$(mktemp)
+USAGE="Usage: $0 [--secrets <file>] [--totp <file>] <device>"
+SECRETS_FILE=""
+TOTP_FILE=""
+DEVICE=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --secrets) SECRETS_FILE="$2"; shift ;;
+    --totp) TOTP_FILE="$2"; shift ;;
+    -h|--help) echo "$USAGE" >&2; exit ;;
+    *)
+      if [[ -n "$DEVICE" ]]; then echo "$USAGE" >&2; exit 1; fi
+      DEVICE="$1"
+      ;;
+  esac
+  shift
+done
+if [[ -z "$DEVICE" ]]; then
+  echo "$USAGE" >&2
+  exit 1
+fi
+
+PUBKEY_FILE="ansible/roles/gpg/files/gpg-pubkey.asc"
+# Under /tmp: macOS's $TMPDIR is long enough to overflow the agent's socket path.
+RESTORE_HOME=$(mktemp -d /tmp/restore-gnupg.XXXXXX)
+STAGE=$(key_usb_stage_dir)
 
 cleanup() {
-  close_usb
-  rm -rf "$RESTORE_HOME"
-  rm -f "$SUBKEY_BACKUP"
+  GNUPGHOME="$RESTORE_HOME" gpgconf --kill all 2>/dev/null || true
+  rm -rf "$RESTORE_HOME" "$STAGE"
 }
 trap cleanup EXIT
 
-if [[ -n "$TOTP_FILE" && ! -f "$TOTP_FILE" ]]; then
-  echo "Error: $TOTP_FILE not found" >&2
-  exit 1
-fi
-
-FINGERPRINT=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/{print $10; exit}')
-if [[ -z "$FINGERPRINT" ]]; then
-  echo "Error: no GPG secret key found in GNUPGHOME=$REAL_GNUPGHOME" >&2
-  echo "Reconstruct the primary key from the paper guide first." >&2
-  exit 1
-fi
-echo "==> Found key: $FINGERPRINT"
-
 setup_gnupghome "$RESTORE_HOME"
 export GNUPGHOME="$RESTORE_HOME"
+mkdir "$STAGE/files"
 
-echo "==> Copying the key into a temporary GNUPGHOME..."
-GNUPGHOME="$REAL_GNUPGHOME" "${GPG_BATCH[@]}" --export-secret-keys "$FINGERPRINT" \
-  | "${GPG_BATCH[@]}" --import
+"${GPG_BATCH[@]}" --quiet --import "$PUBKEY_FILE"
+FINGERPRINT=$(gpg --list-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')
+echo "==> Key: $FINGERPRINT"
 
-# The paper may predate the last annual renewal, leaving the subkeys expired.
-echo "==> Extending all subkey expiry by 1 year..."
-"${GPG_BATCH[@]}" --yes --quick-set-expire "$FINGERPRINT" 1y "*"
-
-format_and_open_usb "$DEVICE"
-
-echo "==> Backing up primary key to USB..."
-"${GPG_BATCH[@]}" --armor --export-secret-keys "$FINGERPRINT" > "$USB_MOUNT/primary-key.asc"
-
-echo "==> Generating revocation certificate..."
-printf 'y\n0\n\ny\n' | gpg --command-fd 0 --gen-revoke "$FINGERPRINT" > "$USB_MOUNT/revocation-cert.asc"
-
-if [[ -n "$TOTP_FILE" ]]; then
-  echo "==> Saving TOTP accounts to USB..."
-  cp "$TOTP_FILE" "$USB_MOUNT/oath-accounts.txt"
+if [[ -z "$SECRETS_FILE" ]]; then
+  SECRETS_FILE="$RESTORE_HOME/secrets.txt"
+  echo "Type the numbered lines from the guide's \"Private key\" section and nothing"
+  echo "else, then press Ctrl-D on an empty line:"
+  cat > "$SECRETS_FILE"
 fi
 
-echo "==> Exporting public key to ansible/roles/gpg/files/gpg-pubkey.asc..."
-gpg --armor --export "$FINGERPRINT" > ansible/roles/gpg/files/gpg-pubkey.asc
-GNUPGHOME="$REAL_GNUPGHOME" gpg --batch --import ansible/roles/gpg/files/gpg-pubkey.asc
+# Each line ends in a checksum, so paperkey names the line with a typo.
+gpg --no-armor --export "$FINGERPRINT" > "$RESTORE_HOME/pubring.gpg"
+until paperkey --pubring "$RESTORE_HOME/pubring.gpg" --secrets "$SECRETS_FILE" \
+    | "${GPG_BATCH[@]}" --import 2>/dev/null; do
+  echo ""
+  echo "Fix the line paperkey names in $SECRETS_FILE (e.g. nano $SECRETS_FILE),"
+  read -r -p "then press Enter to try again: " _
+done
+echo "==> Rebuilt the private key and its subkeys."
 
-echo "==> Creating subkey backup for YubiKey programming..."
-"${GPG_BATCH[@]}" --armor --export-secret-subkeys "$FINGERPRINT" > "$SUBKEY_BACKUP"
+renew_expiring_subkeys
 
-program_all_yubikeys
+if [[ -z "$TOTP_FILE" ]]; then
+  TOTP_FILE="$RESTORE_HOME/totp.txt"
+  echo ""
+  echo "Type the otpauth:// lines from the guide's \"Critical TOTP accounts\" section,"
+  echo "one per line, then press Ctrl-D on an empty line (Ctrl-D alone for none):"
+  cat > "$TOTP_FILE"
+fi
+if [[ -s "$TOTP_FILE" ]]; then
+  cp "$TOTP_FILE" "$STAGE/files/oath-accounts.txt"
+fi
+
+echo "==> Preparing the new root GPG key USB..."
+"${GPG_BATCH[@]}" --armor --export-secret-keys "$FINGERPRINT" > "$STAGE/files/primary-key.asc"
+printf 'y\n0\n\ny\n' | gpg --command-fd 0 --gen-revoke "$FINGERPRINT" \
+  > "$STAGE/files/revocation-cert.asc"
+write_key_usb "$DEVICE" "$STAGE"
 
 echo ""
-echo "Next steps:"
-echo "  1. Store $DEVICE offline in a separate location from any other backup."
-echo "  2. Commit and push the renewed public key:"
-echo "       git add ansible/roles/gpg/files/gpg-pubkey.asc && git commit -m 'Renew GPG subkeys' && git push"
-echo "  3. Once a machine is provisioned, regenerate the paper recovery guide:"
-echo "       bin/generate-gpg-recovery-guide $DEVICE"
+echo "Done. Program YubiKeys from the new USB with: bin/enroll-yubikeys $DEVICE"
+echo "Then store the USB offline, away from the YubiKeys."
+if [[ -n "$RENEWED" ]]; then
+  echo "The subkeys were renewed: commit and push the new public key, which builds use:"
+  echo "  git commit -m 'Renew GPG subkeys' $PUBKEY_FILE && git push"
+fi

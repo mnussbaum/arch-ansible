@@ -2,6 +2,11 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+if (( BASH_VERSINFO[0] < 4 )); then
+  echo "Error: bash 4 or newer is needed (macOS: brew install bash)." >&2
+  exit 1
+fi
+
 # Requires FINGERPRINT, SUBKEY_BACKUP, and GNUPGHOME to be set by the caller.
 #
 # GPG_BATCH: use for all key operations in the temp GNUPGHOME. Uses loopback
@@ -14,7 +19,8 @@ GPG_BATCH=(gpg --batch --pinentry-mode loopback --passphrase "")
 # RSA key + self-signed cert, so a single homed enrollment (the volume key is
 # wrapped to that one public key) is unlocked by ANY of the cards — mirroring how
 # program_yubikey writes the same GPG subkeys to every card. The shared private
-# key lives only on the LUKS-encrypted offline USB and on the cards themselves.
+# key lives only on the LUKS-encrypted root GPG key USB and on the cards
+# themselves.
 HOMED_PIV_SLOT="9d"
 # Factory PIV management key / PIN / PUK after `ykman piv reset` (pre-5.7 TDES
 # default; ykman auto-detects the algorithm). Adjust if your YubiKeys ship a
@@ -25,6 +31,31 @@ PIV_DEFAULT_PUK="12345678"
 
 USB_MAPPER="gpg-offline-usb"
 USB_MOUNT=""
+
+PASSWORD_STORE_URL="git@gitlab.com:mnussbaum/password-store.git"
+GITLAB_HOST_KEY="gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf"
+
+# Builds a root GPG key USB image: a LUKS volume holding the given files. Runs
+# as root, natively on Linux and in a container on macOS, which has no LUKS.
+# Arguments: the image file to create and the directory of files to copy.
+KEY_USB_SCRIPT='
+set -o errexit
+set -o nounset
+set -o pipefail
+img=$1
+files=$2
+mapper=gpg-offline-usb-image
+mount=$(mktemp -d)
+truncate -s 64M "$img"
+cryptsetup luksFormat "$img"
+cryptsetup open "$img" "$mapper"
+mkfs.ext4 -q "/dev/mapper/$mapper"
+mount "/dev/mapper/$mapper" "$mount"
+cp "$files"/* "$mount/"
+umount "$mount"
+cryptsetup close "$mapper"
+rmdir "$mount"
+'
 
 OLD_USB_MAPPER="gpg-offline-usb-old"
 OLD_USB_MOUNT=""
@@ -70,8 +101,72 @@ format_and_open_usb() {
   sudo chown "$(id -u):$(id -g)" "$USB_MOUNT"
 }
 
+# A directory for staging a root GPG key USB. On macOS it is under $HOME, which
+# every macOS container runtime shares into its VM.
+key_usb_stage_dir() {
+  if [[ $(uname -s) == Darwin ]]; then
+    mktemp -d "$HOME/.key-usb.XXXXXX"
+  else
+    mktemp -d
+  fi
+}
+
+# Writes <stage>/files to <device> as a new LUKS-encrypted root GPG key USB,
+# through an image built in <stage>.
+write_key_usb() {
+  local device="$1" stage="$2"
+
+  echo "==> Encrypting the new root GPG key USB (choose its passphrase)..."
+  if [[ $(uname -s) == Darwin ]]; then
+    printf '%s' "$KEY_USB_SCRIPT" > "$stage/key-usb.sh"
+    source bin/_container_common.sh
+    container_runtime
+    "${CONTAINER_RT[@]}" run --rm --interactive --tty --privileged --platform linux/amd64 \
+      --volume "$stage:/stage" docker.io/library/archlinux:latest bash -c \
+      'pacman -Sy --noconfirm --needed cryptsetup e2fsprogs >/dev/null
+       bash /stage/key-usb.sh /stage/key-usb.img /stage/files'
+  else
+    sudo bash -c "$KEY_USB_SCRIPT" _ "$stage/key-usb.img" "$stage/files"
+  fi
+
+  bin/burn-image "$stage/key-usb.img" "$device"
+}
+
+# Mounts the root GPG key USB at USB_MOUNT. macOS has no LUKS, so there it copies
+# the whole drive into a file, opens that in a container and leaves copies of
+# its files in USB_MOUNT. Writes to those would be lost, so callers on macOS
+# must pass --read-only.
 open_usb() {
-  local device="$1"
+  local device="$1" mode="${2:-}"
+
+  if [[ $(uname -s) == Darwin ]]; then
+    if [[ $mode != --read-only ]]; then
+      echo "Error: on macOS the root GPG key USB can only be read; use Linux to change it." >&2
+      exit 1
+    fi
+    USB_MOUNT=$(mktemp -d "$HOME/.key-usb.XXXXXX")
+    echo "==> Copying encrypted USB $device (the whole drive, which takes a few minutes)..."
+    diskutil unmountDisk "$device"
+    sudo dd if="/dev/r${device#/dev/}" of="$USB_MOUNT/usb.img" bs=4m
+    sudo chown "$(id -u)" "$USB_MOUNT/usb.img"
+    echo "==> Opening it (enter the USB's passphrase)..."
+    source bin/_container_common.sh
+    container_runtime
+    "${CONTAINER_RT[@]}" run --rm --interactive --tty --privileged --platform linux/amd64 \
+      --volume "$USB_MOUNT:/usb" docker.io/library/archlinux:latest bash -c \
+      'set -o errexit
+       pacman -Sy --noconfirm --needed cryptsetup >/dev/null
+       cryptsetup open --readonly /usb/usb.img key-usb
+       mkdir /m
+       mount -o ro /dev/mapper/key-usb /m
+       cp /m/* /usb/
+       chmod 644 /usb/*
+       umount /m
+       cryptsetup close key-usb'
+    rm "$USB_MOUNT/usb.img"
+    return
+  fi
+
   USB_MOUNT=$(mktemp -d)
   echo "==> Opening encrypted USB $device..."
   sudo cryptsetup open "$device" "$USB_MAPPER"
@@ -80,6 +175,12 @@ open_usb() {
 }
 
 close_usb() {
+  if [[ $(uname -s) == Darwin ]]; then
+    if [[ -n "$USB_MOUNT" ]]; then rm -rf "$USB_MOUNT"; fi
+    USB_MOUNT=""
+    return
+  fi
+
   if [[ -n "$USB_MOUNT" ]]; then
     sudo umount "$USB_MOUNT" 2>/dev/null || true
     rmdir "$USB_MOUNT" 2>/dev/null || true
@@ -88,10 +189,56 @@ close_usb() {
   sudo cryptsetup close "$USB_MAPPER" 2>/dev/null || true
 }
 
+# Extends the subkeys of the key in GNUPGHOME by a year when any expires within
+# 30 days, and exports the changed public key to the repo. Sets RENEWED then.
+# Rebuilding or importing a key changes nothing, so otherwise the public key
+# stays as it is.
+renew_expiring_subkeys() {
+  local renew_by expiring
+  renew_by=$(( $(date +%s) + 30 * 24 * 60 * 60 ))
+  expiring=$(gpg --list-keys --with-colons "$FINGERPRINT" \
+    | awk -F: -v by="$renew_by" '$1 == "sub" && $7 != "" && $7 < by')
+  RENEWED=""
+  if [[ -z "$expiring" ]]; then
+    return
+  fi
+
+  echo "==> Subkeys expire within 30 days; extending them by 1 year..."
+  "${GPG_BATCH[@]}" --yes --quick-set-expire "$FINGERPRINT" 1y "*"
+  gpg --armor --export "$FINGERPRINT" > ansible/roles/gpg/files/gpg-pubkey.asc
+  RENEWED=1
+}
+
+# Clones the password store into PASSWORD_STORE_DIR, or pulls it, over SSH with
+# the authentication subkey of the key in GNUPGHOME.
+fetch_password_store() {
+  : "${PASSWORD_STORE_DIR:=$HOME/.local/share/password-store}"
+  export PASSWORD_STORE_DIR
+
+  echo "==> Getting the password store over SSH..."
+  echo enable-ssh-support >> "$GNUPGHOME/gpg-agent.conf"
+  gpg --with-keygrip --list-keys "$FINGERPRINT" \
+    | awk '/\[A\]/ { auth = 1 } auth && /Keygrip/ { print $NF " 0"; exit }' \
+    > "$GNUPGHOME/sshcontrol"
+  echo "$GITLAB_HOST_KEY" > "$GNUPGHOME/known_hosts"
+  gpgconf --kill gpg-agent
+  gpgconf --launch gpg-agent
+
+  local git_env=(SSH_AUTH_SOCK="$(gpgconf --list-dirs agent-ssh-socket)"
+    GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=$GNUPGHOME/known_hosts")
+  if [[ -d "$PASSWORD_STORE_DIR/.git" ]]; then
+    env "${git_env[@]}" git -C "$PASSWORD_STORE_DIR" pull --quiet \
+      || echo "    Warning: couldn't pull the password store; using it as it is."
+  else
+    mkdir -p "$(dirname "$PASSWORD_STORE_DIR")"
+    env "${git_env[@]}" git clone --quiet "$PASSWORD_STORE_URL" "$PASSWORD_STORE_DIR"
+  fi
+}
+
 open_old_usb() {
   local device="$1"
   OLD_USB_MOUNT=$(mktemp -d)
-  echo "==> Opening existing root key USB $device..."
+  echo "==> Opening existing root GPG key USB $device..."
   sudo cryptsetup open "$device" "$OLD_USB_MAPPER"
   sudo mount "/dev/mapper/$OLD_USB_MAPPER" "$OLD_USB_MOUNT"
 }
@@ -191,9 +338,9 @@ change_yubikey_pins() {
 }
 
 load_oath_accounts() {
-  local oath_file="$USB_MOUNT/oath-accounts.txt"
+  local oath_file="${OATH_FILE:-$USB_MOUNT/oath-accounts.txt}"
   if [[ ! -f "$oath_file" ]]; then
-    echo "==> No OATH seed backup found on USB, skipping."
+    echo "==> No OATH seed backup found, skipping."
     return
   fi
   echo "==> Loading OATH accounts onto YubiKey..."
@@ -232,8 +379,8 @@ load_homed_piv_keypair() {
   export PASSWORD_STORE_DIR PASSWORD_STORE_GPG_OPTS="--trust-model always"
 
   local user pass_key pass_cert
-  user=$(python3 -c \
-    "import yaml;print(yaml.safe_load(open('ansible/group_vars/all/vars.yml'))['user']['name'])")
+  user=$(awk '/^user:/ { u = 1; next } u && /^[^ ]/ { u = 0 } u && $1 == "name:" { print $2; exit }' \
+    ansible/group_vars/all/vars.yml)
   pass_key="linux_users/$user/piv-key"
   pass_cert="linux_users/$user/piv-cert"
 

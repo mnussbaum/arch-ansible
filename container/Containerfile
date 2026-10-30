@@ -1,7 +1,7 @@
 # Disaster-recovery builder: builds the image (and nothing else) on any Linux
-# or macOS machine with podman or docker. Run it through bin/dr-build, not
-# directly; see docs/disaster-recovery.md. The build context is the repo root,
-# narrowed by .dockerignore.
+# or macOS machine with podman or docker. Run it through
+# bin/build-image --container, not directly; see docs/disaster-recovery.md.
+# The build context is the repo root, narrowed by .dockerignore.
 #
 # x86_64 only, like the image. On an arm64 host it runs under Rosetta/qemu.
 FROM docker.io/library/archlinux:latest
@@ -28,6 +28,6 @@ RUN useradd --create-home --uid 1000 builder \
  && echo 'builder:100000:65536' > /etc/subgid \
  && install -d -o builder -g builder /home/builder/.cache
 
-COPY container/dr-entrypoint container/dr-unlock /usr/bin/
+COPY container/dr-entrypoint /usr/bin/
 
 ENTRYPOINT ["/usr/bin/dr-entrypoint"]

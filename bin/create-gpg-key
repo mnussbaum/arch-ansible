@@ -108,9 +108,9 @@ echo "==> Copying TOTP accounts to USB..."
 if [[ -b "$SOURCE" ]]; then
   if [[ -f "$OLD_USB_MOUNT/oath-accounts.txt" ]]; then
     cp "$OLD_USB_MOUNT/oath-accounts.txt" "$USB_MOUNT/oath-accounts.txt"
-    echo "    Copied from existing root key USB."
+    echo "    Copied from existing root GPG key USB."
   else
-    echo "    No oath-accounts.txt on existing root key USB, skipping."
+    echo "    No oath-accounts.txt on existing root GPG key USB, skipping."
   fi
   close_old_usb
 else

@@ -33,7 +33,7 @@
   changed_when: "'removed' in password_store_links.stdout"
 
 - name: Check for a shipped password-store
-  # Images built with dr-build --ephemeral-key ship an empty directory instead.
+  # Images built with build-image --container --ephemeral-key ship an empty directory instead.
   ansible.builtin.stat:
     path: /usr/share/password-store/.git
   register: shipped_password_store
