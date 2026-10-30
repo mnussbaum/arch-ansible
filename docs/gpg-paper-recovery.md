@@ -55,7 +55,7 @@ line ends in a checksum, so on a typo paperkey names the line to fix
 (`CRC on line 5 does not match`):
 
 ```
-gpg --export > pubkey.gpg
+gpg --no-armor --export > pubkey.gpg
 paperkey --pubring pubkey.gpg --secrets secrets.txt | gpg --import
 gpg --list-secret-keys
 ```

@@ -55,8 +55,9 @@ if [[ -n "$DEVICE" ]]; then
   UID_STRING=$(gpg --list-keys --with-colons | awk -F: '/^uid/{print $10; exit}')
 
   # base16 carries a CRC per line, so paperkey names the line with a typo.
+  # paperkey reads only binary packets; --no-armor overrides /etc/gnupg/gpg.conf.
   echo "==> Encoding the private key with paperkey..."
-  gpg --batch --export-secret-keys "$FINGERPRINT" \
+  gpg --batch --no-armor --export-secret-keys "$FINGERPRINT" \
     | paperkey --output-type base16 > "$WORK/paperkey.txt"
 
   RENDER_ARGS=(--uid "$UID_STRING" --fingerprint "$FINGERPRINT"
