@@ -198,7 +198,9 @@ if [[ -n "$image" ]]; then
   # system). SYSTEMD_ESP_PATH + RELAX_ESP_CHECKS make sysupdate write the UKI to
   # the target ESP we mounted instead of scanning the live system's mount points.
   # vacuum first clears any partial install a failed run left behind, which
-  # sysupdate otherwise refuses to retry.
+  # sysupdate otherwise refuses to retry. A failed update is vacuumed too: its
+  # partial slot carries a non-usr partition type, so systemd-repart can't match
+  # it to the usr-b definitions and fails on boot trying to create a new slot.
   sudo unshare --mount --propagation private -- \
     bash -c '
       set -o errexit
@@ -209,10 +211,16 @@ if [[ -n "$image" ]]; then
         --definitions="$4" \
         --transfer-source="$5" \
         vacuum
-      exec /usr/lib/systemd/systemd-sysupdate \
+      if ! /usr/lib/systemd/systemd-sysupdate \
         --definitions="$4" \
         --transfer-source="$5" \
-        update "$6"
+        update "$6"; then
+        /usr/lib/systemd/systemd-sysupdate \
+          --definitions="$4" \
+          --transfer-source="$5" \
+          vacuum
+        exit 1
+      fi
     ' bash "$runtmp" "$esp_part" "$esp_mnt" "$PWD/mkosi/mkosi.sysupdate" "$output_dir" "$new_version"
 else
   staging=/var/lib/arch-ansible/updates
@@ -232,8 +240,13 @@ else
   # inactive usr slot; the guard above (we're on a real device) keeps that
   # discovery off a build host's disk.
   # vacuum first clears any partial install a failed run left behind, which
-  # sysupdate otherwise refuses to retry.
+  # sysupdate otherwise refuses to retry, and after a failed update for the same
+  # systemd-repart reason as the --image path above.
   sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" vacuum
-  sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" update "$new_version"
+  if ! sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" update "$new_version"; then
+    sudo /usr/lib/systemd/systemd-sysupdate --transfer-source="$staging" vacuum
+    exit 1
+  fi
+
   if [[ -n "$reboot" ]]; then sudo systemctl reboot; fi
 fi
