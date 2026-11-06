@@ -85,7 +85,7 @@ arch_ansible_default_organizations() {
 # runs offline. Call after bin/_cache_common.sh and arch_ansible_ensure_cache.
 arch_ansible_seed_device_build() {
   # Seed the package cache baked into /usr (mkosi/mkosi.conf ExtraTree) so the rebuild
-  # installs offline instead of re-downloading ~1G. cp -n leaves a primed cache
+  # installs offline instead of re-downloading ~2.5G. cp -n leaves a primed cache
   # (reused scratch) alone.
   local pkg_dst="$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg"
   if [[ -d /usr/lib/arch-ansible/pkg-cache ]]; then

@@ -161,6 +161,18 @@ mkdir -p "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg" "$output_dir" \
   "$ARCH_ANSIBLE_CACHE/cargo/registry" "$ARCH_ANSIBLE_CACHE/sccache" \
   "$ARCH_ANSIBLE_CACHE/rustup"
 
+# The package cache is baked into /usr (mkosi/mkosi.conf ExtraTrees), so every
+# superseded version it keeps grows the image toward its fixed A/B slot size.
+# Keep only the newest version of each package. Skipped with a warning on a
+# builder whose image predates pacman-contrib in mkosi.conf.d/20-builder.conf.
+# TODO: Require paccache once every machine runs an image with pacman-contrib.
+if command -v paccache >/dev/null; then
+  paccache --remove --keep 1 --quiet \
+    --cachedir "$ARCH_ANSIBLE_CACHE/mkosi/pacman-pkg/cache/pacman/pkg"
+else
+  echo "warning: paccache not found, not pruning the package cache" >&2
+fi
+
 # Prime an empty nvim plugin/parser cache from the invoking user's personal nvim,
 # so the very first build (or one after a cache wipe) skips re-fetching ~130M of
 # plugins and recompiling tree-sitter parsers. Only when the cache is empty —
