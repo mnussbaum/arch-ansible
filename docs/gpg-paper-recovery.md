@@ -30,7 +30,7 @@ computer with a recovery USB:
    The password is the image's baked home secret: switch to a console
    (Ctrl+Alt+F2), which logs in as root, and read it with `cat
 /usr/lib/credstore/home.new-password`.
-4. Connect to the internet. An ethernet cable works immediately. For Wi-Fi,
+4. Connect to the internet. An ethernet cable works immediately. Or for Wi-Fi,
    open a terminal and run `iwctl`. In it, `device list` shows the Wi-Fi
    device's name (e.g. `wlan0`); then run `station wlan0 connect "<network
 name>"` with that name, enter the network's password, and type `exit`.
@@ -47,18 +47,20 @@ bin/restore-primary-gpg-from-paper /dev/sdX
 
 It asks you to type in, from the guide's appendix:
 
-1. The numbered lines from [Private key](recovery-guide.md#private-key), and
-   nothing else: a blank or comment line breaks the checksum. Each line ends in
-   a checksum, so on a typo paperkey names the line to fix
-   (`CRC on line 5 does not match`); fix it in the file it names and press
-   Enter.
-2. The `otpauth://` URIs from
-   [Critical TOTP accounts](recovery-guide.md#critical-totp-accounts), one per
-   line.
+1. The numbered lines from the [Private
+   key](recovery-guide.md#private-key) section. Type each line exactly
+   as written, with its line number, the spaces between the pairs of
+   characters, and its final six-character checksum; the indentation
+   and upper or lower case don't matter. After the last line, press
+   Enter, then Ctrl-D to finish. On a typo, paperkey names the line to
+   fix (e.g. `CRC on line 5 does not match`) and the restore prints
+   the file holding what you typed: open it with `nano <file>`, fix
+   that line, save, and press Enter to try again.
+2. The `otpauth://` URIs from [Critical TOTP
+   accounts](recovery-guide.md#critical-totp-accounts), one per line.
+   After the last one, press Enter, then Ctrl-D to finish; with none
+   to enter, press Ctrl-D alone.
 
 It then rebuilds the key and writes the new root GPG key USB, asking for a new
-passphrase for it, then for the device path again before erasing it.
-
-The public key comes from the repo, so nothing about the key changes unless its
-subkeys expire within 30 days. Then the script renews them, and says to commit
-and push the new public key, which builds use.
+passphrase for it, then for the device path again before overwriting the USB
+with the GPG data.

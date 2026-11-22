@@ -1,8 +1,8 @@
 # Add a machine's backup credentials
 
-`restic-backup` (the `backup` role) looks up its Backblaze key in `pass` by
-hostname: `host_secrets/<hostname>/restic_backblaze_key{,_id}`. A new machine
-needs its own key before it can back up or restore user data.
+`restic-backup` looks up its Backblaze key in `pass` by hostname:
+`host_secrets/<hostname>/restic_backblaze_key{,_id}`. A new machine needs its
+own key before it can back up or restore user data.
 
 The image ships a copy of the password store, so a machine sees credentials
 that were in that store when its image was built. Add Backblaze host
@@ -27,8 +27,7 @@ export PASSWORD_STORE_GPG_OPTS="--trust-model always"
 git -C "$PASSWORD_STORE_DIR" pull
 ```
 
-If asked whether to trust gitlab.com, check that the fingerprint is
-`SHA256:eUXGGm1YGsMAS7vkcx6JOJdOGHPem5gQp4taiCfCLB8` and answer `yes`.
+If asked whether to trust gitlab.com, answer `yes`.
 
 1. Pick the machine's name. It's typed at the hostname prompt on the machine's
    first boot ([install-machine.md](install-machine.md)).

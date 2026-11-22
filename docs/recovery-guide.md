@@ -1,8 +1,9 @@
 # Recovery guide
 
-How to get from nothing to a working computer with all its files restored from
-backup, even after losing every computer, YubiKey and root GPG key USB. If any
-of these survived, you can skip steps and need less:
+This guide walks you through going from nothing, to a working computer with all
+its files restored from backup, even after losing every computer, YubiKey and
+root GPG key USB. If any of the items below are present, you can skip some
+steps in the guide:
 
 - a **root GPG key USB**: the encrypted USB drive holding the GPG key
 - a **working YubiKey**: one already set up with our keys
@@ -12,7 +13,8 @@ of these survived, you can skip steps and need less:
   it
 
 **With a working computer**, only the keys need rebuilding: follow
-Part 2 and Part 3 on the computer itself, skipping them as the steps below say.
+Part 2 and Part 3 on the computer itself. Skip Part 2 if you still have a root
+GPG key USB, and Part 3 if you have a working YubiKey.
 You need this printed guide, a USB drive for a new root GPG key, and new
 YubiKeys.
 
@@ -32,25 +34,24 @@ change, or these instructions change.
 
 ## Steps
 
-1. **Set up the borrowed computer**:
-   [Part 1](#part-1--set-up-the-borrowed-computer). Skip if you have a working
-   computer or a working recovery USB.
-2. **Rebuild the GPG key from this paper** onto a new root GPG key USB:
-   [Part 2](#part-2--rebuild-the-gpg-key-from-paper). Skip if you have a root GPG
+1. [Part 1](#part-1--set-up-the-borrowed-computer): **Set up the borrowed
+   computer**. Skip if you have a working computer or a working recovery USB.
+2. [Part 2](#part-2--rebuild-the-gpg-key-from-paper): **Rebuild the GPG key
+   from this paper** onto a new root GPG key USB. Skip if you have a root GPG
    key USB.
-3. **Set up new YubiKeys** from the root GPG key USB:
-   [Part 3](#part-3--set-up-new-yubikeys). Skip if you have a working YubiKey.
+3. [Part 3](#part-3--set-up-new-yubikeys): **Set up new YubiKeys** from the
+   root GPG key USB. Skip if you have a working YubiKey.
 
 The remaining steps are only needed if you're setting up a new computer:
 
-4. **Set up the computer's backup access**:
-   [Part 4](#part-4--set-up-the-computers-backup-access).
-5. **Make the recovery USB**: [Part 5](#part-5--make-the-recovery-usb). Skip if
+4. [Part 4](#part-4--set-up-the-computers-backup-access): **Set up the
+   computer's backup access**.
+5. [Part 5](#part-5--make-the-recovery-usb): **Make the recovery USB**. Skip if
    you have a working recovery USB.
-6. **Install the computer** from that USB:
-   [Part 6](#part-6--install-the-computer).
-7. **Restore the computer's files** from backup:
-   [Part 7](#part-7--restore-the-computers-files).
+6. [Part 6](#part-6--install-the-computer): **Install the computer** from that
+   USB.
+7. [Part 7](#part-7--restore-the-computers-files): **Restore the computer's
+   files** from backup.
 
 ## Part 1 — Set up the borrowed computer
 
@@ -82,9 +83,9 @@ On a working computer, the new YubiKeys now unlock its files, and you're done.
 
 ## Part 4 — Set up the computer's backup access
 
-On the borrowed computer or the computer started from the recovery USB, with a
-YubiKey plugged in. Choose the computer's name now; you type it in when
-installing in Part 6.
+Run this on a borrowed computer, or a computer started from the recovery USB,
+with a YubiKey plugged in. Choose the new computer's name now; you type it in
+when installing in Part 6.
 
 [Add a machine's backup credentials](backup-credentials.md "embedded in the printed guide")
 
@@ -147,7 +148,7 @@ current copy at `ansible/roles/gpg/files/gpg-pubkey.asc`.
 ### Private key
 
 The primary key and its subkeys in paperkey's text format: only the secret
-bytes, with a checksum per line. Rebuilding the key also needs the public key.
+bytes, with a checksum per line.
 
 <!-- secret: private-key -->
 
