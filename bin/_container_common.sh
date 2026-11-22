@@ -52,7 +52,8 @@ container_build_usage() {
   echo "  --password-store      Use this password-store instead of cloning it." >&2
   echo "  --password-store-url  Clone it from here (default: GitLab over SSH via the YubiKey;" >&2
   echo "                        with --ephemeral-key, no password-store unless given)." >&2
-  echo "  --out                 Where the medium lands (default: dr-out/ in the checkout)." >&2
+  echo "  --out                 Where the image lands, replacing older ones there" >&2
+  echo "                        (default: dr-out/ in the checkout)." >&2
   echo "  Builds the committed state of this checkout. Caches persist in the" >&2
   echo "  '$DR_VOLUME' volume; remove it to reclaim the space." >&2
 }
@@ -76,11 +77,12 @@ container_build() {
     shift
   done
 
-  local repo=$PWD
-  : "${out:=$repo/dr-out}"
-  mkdir -p "$out"
-  out=$(cd "$out" && pwd)
+  # Paths given relative to where it was run, then everything from the checkout.
+  if [[ -n $out ]]; then mkdir -p "$out"; out=$(cd "$out" && pwd); fi
   if [[ -n $store_dir ]]; then store_dir=$(cd "$store_dir" && pwd); fi
+  cd "$(dirname "${BASH_SOURCE[0]}")/.."
+  local repo=$PWD
+  if [[ -z $out ]]; then out=$repo/dr-out; mkdir -p "$out"; fi
 
   container_runtime
 
@@ -105,6 +107,13 @@ container_build() {
   if [[ -n $ephemeral ]]; then
     run+=(--env DR_MODE=ephemeral)
   else
+    # gpg reaches the YubiKey through pcscd (scdaemon.conf: disable-ccid).
+    if [[ $(uname -s) == Linux ]] && ! pgrep -x pcscd >/dev/null \
+        && ! systemctl is-active --quiet pcscd.socket 2>/dev/null; then
+      echo "Error: pcscd isn't running; start it with:" >&2
+      echo "  sudo systemctl enable --now pcscd.socket" >&2
+      exit 1
+    fi
     # Under $HOME, which every macOS runtime shares into its VM; deleted on exit.
     DR_SECRETS=$(mktemp -d "$HOME/.dr-secrets.XXXXXX")
     trap 'rm -rf "$DR_SECRETS"' EXIT
@@ -119,7 +128,7 @@ container_build() {
   "${CONTAINER_RT[@]}" build --platform linux/amd64 --tag "$DR_IMAGE" \
     --file container/Containerfile .
 
-  echo "==> Building the image (a cold build takes hours, more under emulation)" >&2
+  echo "==> Building the image (a cold build can take a while)" >&2
   "${run[@]}" "$DR_IMAGE" ${build_args[@]+"${build_args[@]}"}
 
   echo "Built:" >&2

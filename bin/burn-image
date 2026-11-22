@@ -36,17 +36,10 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# Clear the device's old layout before burning. After writing the new GPT,
-# systemd-repart syncs the kernel's view one partition at a time with BLKPG, in
-# partition order, and the kernel refuses (EBUSY) any resize or add that
-# overlaps a partition it still knows about. So burning a layout that moved
-# partitions — e.g. the ESP growing 1G→2G, which shifts everything after it —
-# over the old one wrote the disk correctly but failed with "Failed to reread
-# partition table: Device or resource busy", leaving the host with a stale view
-# of the stick. With no old partitions registered, repart only adds.
-wipe_linux_device() {
+# Refuses anything but a whole, unmounted block device.
+check_linux_device() {
   local device="$1"
-  local disk leftover
+  local disk
 
   [[ -b "$device" ]] || { echo "error: $device is not a block device" >&2; exit 1; }
   disk=$(basename "$(readlink -f "$device")")
@@ -59,6 +52,19 @@ wipe_linux_device() {
     lsblk -o NAME,MOUNTPOINTS "$device" >&2
     exit 1
   fi
+}
+
+# Clears the device's old partitions before burning. systemd-repart syncs the
+# kernel's view one partition at a time, and the kernel refuses any change that
+# overlaps a partition it still has registered, so a burn that moves partitions
+# would leave the host with a stale view. With none registered, repart only
+# adds.
+wipe_linux_device() {
+  local device="$1"
+  local disk leftover
+
+  check_linux_device "$device"
+  disk=$(basename "$(readlink -f "$device")")
 
   echo "Wiping $device (sudo)…" >&2
   sudo wipefs --all --quiet "$device"
@@ -78,13 +84,13 @@ wipe_linux_device() {
 # to the end of a larger stick, which is all that `mkosi burn` adds.
 burn_file() {
   local img="$1" device="$2"
-  local img_size dev_size info answer
+  local img_size dev_size info answer raw
 
   [[ -f "$img" ]] || { echo "error: $img is not a file" >&2; exit 1; }
   img_size=$(wc -c < "$img" | tr -d ' ')
   case "$(uname -s)" in
     Linux)
-      [[ -b "$device" ]] || { echo "error: $device is not a block device" >&2; exit 1; }
+      check_linux_device "$device"
       dev_size=$(lsblk -bndo SIZE "$device")
       lsblk -o NAME,SIZE,MODEL,TRAN "$device" >&2
       ;;
@@ -121,7 +127,9 @@ burn_file() {
       diskutil unmountDisk "$device"
       echo "Writing (Ctrl-T shows progress)…" >&2
       # The raw node skips the buffer cache, which is many times faster.
-      sudo dd if="$img" of="/dev/r${device#/dev/}" bs=4m
+      raw=${device#/dev/}
+      raw=/dev/r${raw#r}
+      sudo dd if="$img" of="$raw" bs=4m
       sync
       diskutil eject "$device"
       ;;
@@ -131,7 +139,14 @@ burn_file() {
 
 case ${#positional[@]} in
   1) device="${positional[0]}" ;;
-  2) burn_file "${positional[0]}" "${positional[1]}"; exit ;;
+  2)
+    if [[ ${#organizations[@]} -gt 0 || ${#mkosi_args[@]} -gt 0 ]]; then
+      echo "error: --organization and mkosi options don't apply to an image file" >&2
+      exit 1
+    fi
+    burn_file "${positional[0]}" "${positional[1]}"
+    exit
+    ;;
   *) echo "Usage: $0 [options...] <device>, or $0 <image.raw> <device>" >&2; exit 1 ;;
 esac
 

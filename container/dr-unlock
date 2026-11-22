@@ -3,20 +3,19 @@
 # YubiKey, into a directory bin/build-image reads via ARCH_ANSIBLE_SECRETS_DIR:
 # secureboot.key, secureboot.crt and home-recovery-key.
 #
-# Runs on the host for bin/build-image --container, since macOS containers can't
-# reach USB devices: so BSD tools, and gpg, git and ssh are all it needs. Uses a
-# throwaway GNUPGHOME holding only the public key; the secret keys stay on the
-# YubiKey.
+# Runs on the Linux or macOS host for bin/build-image --container, since macOS
+# containers can't reach USB devices, so it sticks to tools common to both: gpg,
+# git and ssh. Uses a throwaway GNUPGHOME holding only the public key; the
+# secret keys stay on the YubiKey.
 set -o errexit
 set -o nounset
 set -o pipefail
 
 usage() {
-  echo "Usage: $0 --repo DIR --out DIR [--store-dest DIR]" >&2
+  echo "Usage: $0 --repo DIR --out DIR" >&2
   echo "          [--password-store DIR | --password-store-url URL]" >&2
   echo "  --repo                The arch-ansible checkout (for the GPG public key)." >&2
   echo "  --out                 Where to write the decrypted secrets." >&2
-  echo "  --store-dest          Where to put the password-store (default: OUT/password-store)." >&2
   echo "  --password-store      Copy an existing password-store instead of cloning one." >&2
   echo "  --password-store-url  Clone from here (default: $store_url)." >&2
 }
@@ -25,12 +24,10 @@ repo=
 out=
 store_dir=
 store_url=git@gitlab.com:mnussbaum/password-store.git
-store_dest=
 while [ $# -gt 0 ]; do
   case "$1" in
     --repo) repo=$2; shift ;;
     --out) out=$2; shift ;;
-    --store-dest) store_dest=$2; shift ;;
     --password-store) store_dir=$2; shift ;;
     --password-store-url) store_url=$2; shift ;;
     -h|--help) usage; exit ;;
@@ -39,7 +36,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 if [ -z "$repo" ] || [ -z "$out" ]; then usage; exit 1; fi
-: "${store_dest:=$out/password-store}"
+store_dest=$out/password-store
 
 for tool in gpg gpgconf gpg-connect-agent git ssh; do
   if ! command -v "$tool" >/dev/null; then
@@ -47,6 +44,12 @@ for tool in gpg gpgconf gpg-connect-agent git ssh; do
     exit 1
   fi
 done
+scdaemon=$(gpgconf --list-components | awk -F: '$1 == "scdaemon" { print $3 }')
+if [ ! -x "$scdaemon" ]; then
+  echo "dr-unlock: gpg's smart card daemon (scdaemon) is missing; install it" >&2
+  echo "  (Debian/Ubuntu: scdaemon; Fedora: gnupg2-smime)" >&2
+  exit 1
+fi
 
 # Under /tmp, not $TMPDIR: macOS's is long enough to overflow the agent's socket path.
 GNUPGHOME=$(mktemp -d /tmp/dr-gnupg.XXXXXX)
@@ -65,6 +68,7 @@ gpg --quiet --import "$repo/ansible/roles/gpg/files/gpg-pubkey.asc"
 # Card status links the imported public key to the card's secret keys.
 until gpg --card-status >/dev/null 2>&1; do
   echo "dr-unlock: no YubiKey found. Insert it and press Enter (Ctrl-C to abort)." >&2
+  echo "  If it is inserted, check that pcscd is running and nothing else holds the card." >&2
   read -r _
 done
 gpg-connect-agent updatestartuptty /bye >/dev/null
