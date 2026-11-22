@@ -20,7 +20,7 @@ Otherwise if you need to build a computer you need:
 
 - this printed guide
 - the computer to set up
-- a borrowed Mac or Linux computer with internet, at least 150GB of free disk
+- a borrowed Mac or Linux computer with internet, at least 80GB of free disk
   space and 8GB of memory, unless you already have a working recovery USB
 - a USB drive of at least 32GB to become the recovery USB
 - A USB drive to store the root GPG key

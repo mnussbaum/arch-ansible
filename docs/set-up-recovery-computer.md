@@ -8,7 +8,7 @@ copy, programs YubiKeys, and builds a recovery USB in a container
 need: the container runtime, and the GPG and YubiKey tools that run on the
 computer itself.
 
-It needs about 150G of free disk and 8G+ of memory for the container runtime.
+It needs about 80G of free disk and 8G+ of memory for the container runtime.
 
 ## If you're on a Mac
 
@@ -18,7 +18,7 @@ so its newer bash comes first on the `PATH`:
 ```sh
 xcode-select --install          # git
 brew install bash gnupg ykman pass paperkey podman
-podman machine init --rootful --cpus 8 --memory 16384 --disk-size 150
+podman machine init --rootful --cpus 8 --memory 16384 --disk-size 100
 podman machine start
 ```
 
