@@ -19,12 +19,16 @@ gpg --import ansible/roles/gpg/files/gpg-pubkey.asc
 gpg --card-status
 echo enable-ssh-support >> ~/.gnupg/gpg-agent.conf
 gpgconf --kill gpg-agent
+gpg-connect-agent updatestartuptty /bye
 export SSH_AUTH_SOCK=$(gpgconf --list-dirs agent-ssh-socket)
 export PASSWORD_STORE_DIR=~/.local/share/password-store
 export PASSWORD_STORE_GPG_OPTS="--trust-model always"
 [ -d "$PASSWORD_STORE_DIR" ] || git clone git@gitlab.com:mnussbaum/password-store.git "$PASSWORD_STORE_DIR"
 git -C "$PASSWORD_STORE_DIR" pull
 ```
+
+If asked whether to trust gitlab.com, check that the fingerprint is
+`SHA256:eUXGGm1YGsMAS7vkcx6JOJdOGHPem5gQp4taiCfCLB8` and answer `yes`.
 
 1. Pick the machine's name. It's typed at the hostname prompt on the machine's
    first boot ([install-machine.md](install-machine.md)).

@@ -38,9 +38,13 @@ sudo apt install podman git gnupg scdaemon yubikey-manager pass paperkey pcscd c
 On Fedora:
 
 ```sh
-sudo dnf install podman git gnupg2 gnupg2-smime yubikey-manager pass paperkey pcsc-lite cryptsetup
+sudo dnf install podman git gnupg2 gnupg2-scdaemon yubikey-manager pass paperkey pcsc-lite cryptsetup
 sudo systemctl enable --now pcscd.socket
 ```
+
+Plug in the YubiKey after installing these, or unplug it and plug it back in:
+the smart card daemon can't read a YubiKey that was plugged in before it was
+installed.
 
 ## Clone the repo
 

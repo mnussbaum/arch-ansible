@@ -47,7 +47,7 @@ done
 scdaemon=$(gpgconf --list-components | awk -F: '$1 == "scdaemon" { print $3 }')
 if [ ! -x "$scdaemon" ]; then
   echo "dr-unlock: gpg's smart card daemon (scdaemon) is missing; install it" >&2
-  echo "  (Debian/Ubuntu: scdaemon; Fedora: gnupg2-smime)" >&2
+  echo "  (Debian/Ubuntu: scdaemon; Fedora: gnupg2-scdaemon)" >&2
   exit 1
 fi
 
