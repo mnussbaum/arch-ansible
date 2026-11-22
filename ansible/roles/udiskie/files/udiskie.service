@@ -6,7 +6,8 @@ After=graphical-session.target
 
 [Service]
 # Waybar has no tray module, so mount/unmount actions live on the notifications
-ExecStart=/usr/bin/udiskie --automount --notify --no-tray
+# Never pop up a password dialog; encrypted drives are left locked
+ExecStart=/usr/bin/udiskie --automount --notify --no-tray --no-password-prompt
 Restart=on-failure
 RestartSec=1
 
