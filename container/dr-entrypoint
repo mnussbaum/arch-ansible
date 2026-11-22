@@ -9,13 +9,16 @@
 #   ephemeral  a throwaway Secure Boot key, kept in the cache volume; no YubiKey
 #
 # Mounts: /host-repo (ro), /home/builder/.cache (named volume), /out, and
-# optionally /host-secrets or /host-password-store (ro).
+# optionally /host-secrets or /host-password-store (ro). Root reads the mounts
+# and hands builder copies: they belong to the host's uid, which needn't be
+# builder's, and can be private (a 700 checkout, mktemp's secrets dir).
 set -o errexit
 set -o nounset
 set -o pipefail
 
 secrets=/dev/shm/dr-secrets
 src=/home/builder/src
+store=/home/builder/.local/share/password-store
 
 if [[ $EUID -eq 0 ]]; then
   # A fresh named volume can come up root-owned.
@@ -24,6 +27,22 @@ if [[ $EUID -eq 0 ]]; then
   pacman -Syu --noconfirm
   [[ $(uname -m) == x86_64 ]] \
     || echo "dr-entrypoint: running under $(uname -m) emulation; expect a slow build" >&2
+
+  if git -c safe.directory='*' -C /host-repo status --porcelain | grep -q .; then
+    echo "dr-entrypoint: warning: uncommitted changes in the checkout are not built" >&2
+  fi
+  git -c safe.directory='*' clone --quiet /host-repo "$src"
+  chown -R builder:builder "$src"
+
+  install -d -o builder -g builder "$(dirname "$(dirname "$store")")" "$(dirname "$store")"
+  if [[ $DR_MODE == provided ]]; then
+    cp /host-secrets/secureboot.key /host-secrets/secureboot.crt \
+      /host-secrets/home-recovery-key "$secrets/"
+    cp -R /host-secrets/password-store "$store"
+  elif [[ -d /host-password-store ]]; then
+    cp -R /host-password-store "$store"
+  fi
+  chown -R builder:builder "$secrets" "$(dirname "$store")"
 
   runuser -u builder -- "$0" "$@"
 
@@ -36,21 +55,10 @@ if [[ $EUID -eq 0 ]]; then
   exit
 fi
 
-if git -c safe.directory='*' -C /host-repo status --porcelain | grep -q .; then
-  echo "dr-entrypoint: warning: uncommitted changes in the checkout are not built" >&2
-fi
-git -c safe.directory='*' clone --quiet /host-repo "$src"
 cd "$src"
 
-store=$HOME/.local/share/password-store
-mkdir -p "$(dirname "$store")"
-
 case $DR_MODE in
-  provided)
-    cp /host-secrets/secureboot.key /host-secrets/secureboot.crt \
-      /host-secrets/home-recovery-key "$secrets/"
-    cp -R /host-secrets/password-store "$store"
-    ;;
+  provided) ;;
   ephemeral)
     keys=$HOME/.cache/dr-ephemeral-secureboot
     if [[ ! -f $keys/secureboot.key ]]; then
@@ -77,8 +85,8 @@ case $DR_MODE in
     (umask 077; printf '%s' "$pw" > "$secrets/home-recovery-key")
     unset pw pw2
 
-    if [[ -d /host-password-store ]]; then
-      cp -R /host-password-store "$store"
+    if [[ -d $store ]]; then
+      : # Copied from /host-password-store above.
     elif [[ -n ${DR_PASSWORD_STORE_URL:-} ]]; then
       git clone --quiet "$DR_PASSWORD_STORE_URL" "$store"
     else

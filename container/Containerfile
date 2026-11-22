@@ -22,7 +22,9 @@ RUN sed -i 's/^Architecture = auto/Architecture = x86_64/' /etc/pacman.conf \
  && rm /tmp/20-builder.conf /tmp/91-rust.conf
 
 # mkosi and makepkg run as an unprivileged user, as bin/build-image does on a machine.
+# Its home is traversable so pacman's download user can reach the build cache.
 RUN useradd --create-home --uid 1000 builder \
+ && chmod 755 /home/builder \
  && echo 'builder ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builder \
  && echo 'builder:100000:65536' > /etc/subuid \
  && echo 'builder:100000:65536' > /etc/subgid \
