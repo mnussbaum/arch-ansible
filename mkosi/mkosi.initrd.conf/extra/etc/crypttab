@@ -9,13 +9,19 @@
 # open past switch-root, where gpt-auto finds them already active.
 # link-volume-key= leaves each volume key in root's user keyring, which is how
 # luks-volume-key authorizes keyslot changes after boot.
-root /dev/disk/by-designator/root-luks - tpm2-device=auto,pkcs11-uri=auto,tpm2-measure-pcr=yes,tpm2-measure-keyslot-nvpcr=yes,link-volume-key=@u::%user:arch-ansible-root-vk,noauto
+# tpm2-device=/dev/tpm0 bypasses the kernel's resource manager (/dev/tpmrm0),
+# which saves and reloads every session and object around each command; on a
+# slow TPM that made each unseal several times slower. The raw device allows one
+# opener at a time, which is safe here: TPM setup finishes before root unlocks
+# and the volumes unlock one after another. A failed open falls back to the
+# YubiKey.
+root /dev/disk/by-designator/root-luks - tpm2-device=/dev/tpm0,pkcs11-uri=auto,tpm2-measure-pcr=yes,tpm2-measure-keyslot-nvpcr=yes,link-volume-key=@u::%user:arch-ansible-root-vk,noauto
 # Swap falls back to the YubiKey when its TPM2 slot doesn't unseal, so its
 # volume key still reaches the keyring and pcrlock-enroll-luks can re-bind the
 # slot; otherwise it would stay closed on every boot. nofail: a missed touch
 # only skips swap for that boot. systemd-cryptsetup@root.service pulls it in.
-swap /dev/disk/by-designator/swap-luks - tpm2-device=auto,pkcs11-uri=auto,link-volume-key=@u::%user:arch-ansible-swap-vk,x-initrd.attach,nofail,noauto
+swap /dev/disk/by-designator/swap-luks - tpm2-device=/dev/tpm0,pkcs11-uri=auto,link-volume-key=@u::%user:arch-ansible-swap-vk,x-initrd.attach,nofail,noauto
 # An encrypted home (the full-disk-encryption profile), so the YubiKey works
 # when the TPM doesn't. Only that profile's drop-in for
 # systemd-cryptsetup@root.service pulls it in.
-home /dev/disk/by-designator/home-luks - tpm2-device=auto,pkcs11-uri=auto,link-volume-key=@u::%user:arch-ansible-home-vk,x-initrd.attach,noauto
+home /dev/disk/by-designator/home-luks - tpm2-device=/dev/tpm0,pkcs11-uri=auto,link-volume-key=@u::%user:arch-ansible-home-vk,x-initrd.attach,noauto
