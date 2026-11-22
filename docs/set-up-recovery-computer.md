@@ -1,6 +1,7 @@
 # Set up a Linux or macOS computer for recovery
 
-Any Linux or macOS computer can stand in for our machines in a recovery: it
+Any Linux or macOS computer can stand in for machines based on this repo in a
+recovery: it
 rebuilds the GPG key from a paper ([gpg-paper-recovery.md](gpg-paper-recovery.md))
 copy, programs YubiKeys, and builds a recovery USB in a container
 ([build-recovery-usb.md](build-recovery-usb.md)). This installs what those

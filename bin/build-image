@@ -4,7 +4,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-# Off our machines the build runs in an Arch container (bin/_container_common.sh).
+# Off machines based on this repo, the build runs in an Arch container
+# (bin/_container_common.sh).
 if [[ ${1:-} == --container ]]; then
   shift
   source bin/_container_common.sh

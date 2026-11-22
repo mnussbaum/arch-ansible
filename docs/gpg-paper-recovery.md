@@ -13,14 +13,14 @@ key. First get a terminal in the repo, in whichever of these ways fits.
 Set it up as in [set-up-recovery-computer.md](set-up-recovery-computer.md),
 open a terminal in the repo it cloned, then skip to "Rebuild the key" below.
 
-## On one of our devices you can log in to
+## On a machine based on this repo that you can log in to
 
 Open a terminal in `~/Projects/arch-ansible`, then skip to "Rebuild the key" below.
 
 ## From the recovery option
 
-For one of our devices you can't log in to, or a borrowed computer with a
-recovery USB:
+For a machine based on this repo that you can't log in to, or a borrowed
+computer with a recovery USB:
 
 1. Start the computer with the recovery USB plugged in, and boot into it from
    the BIOS. If it won't start from the USB, turn off Secure Boot in its

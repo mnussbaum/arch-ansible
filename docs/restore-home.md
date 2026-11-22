@@ -1,18 +1,11 @@
 # Restore a home from backup
 
-Seeds a machine's home from the latest restic snapshot in Backblaze. The machine
-needs its own backup credentials first ([backup-credentials.md](backup-credentials.md)).
-Check they work:
+Seeds a machine's home directory (aka user data) from the latest restic
+backup snapshot in Backblaze. The machine needs its own backup credentials first
+([backup-credentials.md](backup-credentials.md)).
 
 ```bash
-restic-backup snapshots
-```
-
-Then restore:
-
-```bash
-restic-backup restore                    # every path in /etc/restic-backup/includes
-restic-backup restore -d ~/Documents     # or specific paths
+restic-backup restore
 ```
 
 By default the restore only adds files that are missing. It never deletes or

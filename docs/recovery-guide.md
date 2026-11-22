@@ -6,9 +6,9 @@ of these survived, you can skip steps and need less:
 
 - a **root GPG key USB**: the encrypted USB drive holding the GPG key
 - a **working YubiKey**: one already set up with our keys
-- a **working recovery USB**: a USB drive that starts a computer into our system
-  and installs it
-- a **working computer**: one already running our system, with its files still on
+- a **working recovery USB**: a USB drive that starts a computer into a system
+  based on this repo and installs it
+- a **working computer**: a machine based on this repo, with its files still on
   it
 
 **With a working computer**, only the keys need rebuilding: follow
@@ -104,16 +104,16 @@ bin/build-image --container --password-store ~/.local/share/password-store
 
 ## Part 7 — Restore the computer's files
 
-If you installed from a recovery USB made before Part 4, its system doesn't have
-the backup access yet. Update it first; it takes a while, then restarts the
-computer:
+If you skipped Part 5 and installed from an older recovery USB, its system
+doesn't have the backup access from Part 4 yet. Update the computer first; it
+builds a new system, which can take a while, then restarts:
 
 ```sh
 cd ~/Projects/arch-ansible
 bin/update-system --reboot
 ```
 
-[Restore a home from backup](restore-home.md "embedded in the printed guide")
+[Restore user data from backup](restore-home.md "embedded in the printed guide")
 
 ## Afterwards
 

@@ -5,7 +5,7 @@ Where to start, by what was lost:
 - **A machine** (lost, dead or wiped): add the replacement's backup credentials
   ([backup-credentials.md](backup-credentials.md)), build a recovery USB
   (`bin/build-image`, or [build-recovery-usb.md](build-recovery-usb.md) when no
-  machine of ours can build one), install
+  machine based on this repo can build one), install
   ([install-machine.md](install-machine.md)) and restore the home
   ([restore-home.md](restore-home.md)). A machine that won't boot can often be
   repaired from the recovery USB's Live System instead

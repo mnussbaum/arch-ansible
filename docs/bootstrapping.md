@@ -413,9 +413,10 @@ docs, which the printed recovery guide also embeds
 
 ### Building the image
 
-On one of our machines (or a live medium), mkosi runs on the running image
-directly (`ToolsTree=/`; the builder packages are `mkosi/mkosi.conf.d/20-builder.conf`),
-and `bin/burn-image` writes the result to a USB drive:
+On a machine based on this repo (or a live medium), mkosi runs on the running
+image directly (`ToolsTree=/`; the builder packages are
+`mkosi/mkosi.conf.d/20-builder.conf`), and `bin/burn-image` writes the result to
+a USB drive:
 
 ```bash
 bin/build-image
@@ -663,8 +664,9 @@ YubiKey problems (losing one or all of them, a blocked PIV PIN) are in
 Every image, the recovery USB included, is signed with the one Secure Boot key
 from `pass`, the key every installed machine enrolled at first boot. So a
 recovery USB built by `bin/build-image`, natively or `--container`, boots under
-any of our machines' Secure Boot with no firmware changes. The exception is one
-built with a throwaway key ([build-recovery-usb.md](build-recovery-usb.md)).
+the Secure Boot of any machine based on this repo with no firmware changes. The
+exception is one built with a throwaway key
+([build-recovery-usb.md](build-recovery-usb.md)).
 
 ---
 
