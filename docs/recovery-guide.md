@@ -105,11 +105,14 @@ bin/build-image --container --password-store ~/.local/share/password-store
 ## Part 7 — Restore the computer's files
 
 If you skipped Part 5 and installed from an older recovery USB, its system
-doesn't have the backup access from Part 4 yet. Update the computer first; it
-builds a new system, which can take a while, then restarts:
+doesn't have the backup access from Part 4 yet. Its copies of this repo and the
+password store are as old as the USB, so get the latest of both, then update
+the computer; it builds a new system, which can take a while, then restarts:
 
 ```sh
 cd ~/Projects/arch-ansible
+git pull
+pass git pull
 bin/update-system --reboot
 ```
 
