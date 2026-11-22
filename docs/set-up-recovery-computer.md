@@ -12,6 +12,9 @@ It needs about 80G of free disk and 8G+ of memory for the container runtime.
 
 ## If you're on a Mac
 
+The macOS steps haven't been tested yet; the Linux ones have. Prefer a Linux
+computer when there's a choice.
+
 Install Homebrew first if it's missing (see brew.sh), then open a new terminal,
 so its newer bash comes first on the `PATH`:
 
