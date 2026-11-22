@@ -48,7 +48,7 @@ container_build_usage() {
   echo "          [--password-store DIR | --password-store-url URL] [--out DIR]" >&2
   echo "          [-- build-image options...]" >&2
   echo "  --ephemeral-key       No YubiKey: sign with a throwaway key and ask for a new" >&2
-  echo "                        home password. Boot it with Secure Boot in setup mode." >&2
+  echo "                        home password. Boot it with Secure Boot off." >&2
   echo "  --password-store      Use this password-store instead of cloning it." >&2
   echo "  --password-store-url  Clone it from here (default: GitLab over SSH via the YubiKey;" >&2
   echo "                        with --ephemeral-key, no password-store unless given)." >&2
