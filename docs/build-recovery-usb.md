@@ -26,8 +26,8 @@ There are two kinds of build:
   [set-up-recovery-computer.md](set-up-recovery-computer.md).
 - A USB drive of 32G or more.
 - For a real-key build, a YubiKey and its PIN.
-- A few hours. A cold build downloads every package and compiles the AUR
-  packages.
+- Time. A cold build can take a while: it downloads every package and compiles
+  the AUR packages.
 
 ## 1. Build
 
