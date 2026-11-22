@@ -123,7 +123,9 @@ def demote(text: str) -> str:
 def unlink(text: str, parts: dict[str, str]) -> str:
     """Rewrite links for paper, leaving fenced code alone."""
     def replace(m: re.Match) -> str:
-        label, target = m.group(1), m.group(2)
+        # A label wrapped across lines would leave its line break in plain
+        # text, where a line starting "1." becomes a list item.
+        label, target = " ".join(m.group(1).split()), m.group(2)
         if target.startswith(("http://", "https://")):
             return label if label == target else f"{label} ({target})"
         name = target.split("#", 1)[0]
