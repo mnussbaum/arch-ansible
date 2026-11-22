@@ -22,6 +22,9 @@ podman machine init --rootful --cpus 8 --memory 16384 --disk-size 100
 podman machine start
 ```
 
+Homebrew's podman needs a Mac with an Apple chip. On an Intel Mac, install
+podman from podman.io instead, and drop it from the `brew install` line.
+
 ## If you're on Linux
 
 Install rootful podman or docker (the scripts use `sudo` when needed), gnupg
@@ -35,7 +38,7 @@ sudo apt install podman git gnupg scdaemon yubikey-manager pass paperkey pcscd c
 On Fedora:
 
 ```sh
-sudo dnf install podman git gnupg2 yubikey-manager pass paperkey pcsc-lite cryptsetup
+sudo dnf install podman git gnupg2 gnupg2-smime yubikey-manager pass paperkey pcsc-lite cryptsetup
 sudo systemctl enable --now pcscd.socket
 ```
 
