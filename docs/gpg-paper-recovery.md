@@ -26,10 +26,14 @@ computer with a recovery USB:
    the BIOS. If it won't start from the USB, turn off Secure Boot in its
    firmware setup.
 2. Pick the recovery option from its start-up menu.
-3. Log in as `mnussbaum` (`user.name` in `ansible/group_vars/all/vars.yml`). The
-   password is the image's baked home secret: switch to a console
-   (Ctrl+Alt+F2), which logs in as root, and read it with
-   `cat /usr/lib/credstore/home.new-password`.
+3. Log in as `mnussbaum` (`user.name` in `ansible/group_vars/all/vars.yml`).
+   The password is the image's baked home secret: switch to a console
+   (Ctrl+Alt+F2), which logs in as root, and read it with `cat
+/usr/lib/credstore/home.new-password`.
+4. Connect to the internet. An ethernet cable works immediately. For Wi-Fi,
+   open a terminal and run `iwctl`. In it, `device list` shows the Wi-Fi
+   device's name (e.g. `wlan0`); then run `station wlan0 connect "<network
+name>"` with that name, enter the network's password, and type `exit`.
 
 ## Rebuild the key
 

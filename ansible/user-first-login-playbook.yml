@@ -17,13 +17,26 @@
     - import_role:
         name: gpg
         tasks_from: user
-    # Needs the YubiKey-backed gpg agent above to decrypt the wifi entries in pass.
+    # Wifi and organization setup decrypt pass, which needs a YubiKey. Without
+    # one (the recovery option after losing them all) they're skipped, and the
+    # run isn't recorded as done, so it finishes at a login with a YubiKey.
+    - name: Check for a YubiKey
+      command: gpg --card-status
+      register: yubikey_check
+      changed_when: false
+      failed_when: false
+    - name: Note the skipped setup
+      debug:
+        msg: No YubiKey, so wifi and organization setup are skipped until a login with one.
+      when: yubikey_check.rc != 0
     - import_role:
         name: network_configuration
         tasks_from: wifi-credentials
+      when: yubikey_check.rc == 0
     - import_role:
         name: organizations
         tasks_from: user
+      when: yubikey_check.rc == 0
     - import_role:
         name: postgres
         tasks_from: pgpass
@@ -32,3 +45,4 @@
         tasks_from: user
     - name: Record the playbook digest this home was provisioned for
       shell: grep '^ARCH_ANSIBLE_USER_PLAYBOOK_DIGEST=' /usr/lib/os-release > ~/.config/user-first-login-done
+      when: yubikey_check.rc == 0
