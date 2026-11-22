@@ -1,0 +1,11 @@
+# Loads the camera drivers blacklisted in
+# /etc/modprobe.d/camera-after-login.conf, so their slow firmware download
+# runs after the login screen instead of stalling module loads during boot.
+[Unit]
+Description=Load camera drivers after boot
+After=graphical.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/modprobe -a intel_ipu6 mei_vsc_hw
