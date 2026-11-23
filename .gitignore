@@ -8,3 +8,7 @@
 /mkosi/mkosi.version
 .ansible/
 /dr-out/
+/.venv/
+.ruff_cache/
+.pytest_cache/
+__pycache__/
