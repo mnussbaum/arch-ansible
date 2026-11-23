@@ -389,7 +389,7 @@ tests/e2e/                  one module per stage, a pytest marker each, and
 - Build caches live only in the Actions cache; nightly runs keep them from
   being evicted. Revisit if the spike's cold build takes more than ~4h.
 - Stage 1's checks are defined once in `.pre-commit-config.yaml`
-  (`language: system` hooks), run by prek (from the AUR) as a git pre-commit
+  (`language: system` hooks), run by prek as a git pre-commit
   hook and by CI with `prek run --all-files`. Tool settings live in the
   tools' own config files (`.shellcheckrc`, `.ansible-lint`, ruff in
   `pyproject.toml`), which nvim reads too.
