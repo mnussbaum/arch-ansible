@@ -19,8 +19,13 @@ build-backend = "uv_build"
 module-name = ["arch_ansible_vm", "arch_ansible_ci"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# The end-to-end stages boot VMs, so they run only when named: bin/ci test.
+testpaths = ["tests/unit"]
 addopts = ["--strict-markers"]
+markers = [
+  "install: stage 3, the medium's Installer writes an installable disk",
+  "first_boot: stage 4, the installed disk's first and second boots",
+]
 
 [tool.pyright]
 venvPath = "."
