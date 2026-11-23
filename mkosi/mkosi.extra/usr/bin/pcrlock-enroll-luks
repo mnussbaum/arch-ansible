@@ -3,14 +3,11 @@
 # pcrlock policy, keeping the initrd-only signed PCR 11 policy, so Secure Boot
 # variable changes can be re-predicted instead of breaking the seal. Volumes are
 # born literal (repart enrolls in the initrd, before any policy exists) and moved
-# here after boot. Also moves slots sealed to the older signed PCR 11 policy,
-# which still unseals after switch-root, onto the initrd-only one, keeping
-# literal PCR 7 when there is no pcrlock policy. And seals swap and home to the
-# PCR 15 value root's volume key measurement leaves in the initrd
-# (luks-root-pcr15), so they only open after this machine's root did; repart
-# can't, as it creates root in the same run. Authorized by the volume keys
-# (luks-volume-key). Run every boot by pcrlock-enroll-luks.service; a no-op once
-# all are bound.
+# here after boot. Also seals swap and home to the PCR 15 value root's volume
+# key measurement leaves in the initrd (luks-root-pcr15), so they only open
+# after this machine's root did; repart can't, as it creates root in the same
+# run. Authorized by the volume keys (luks-volume-key). Run every boot by
+# pcrlock-enroll-luks.service; a no-op once all are bound.
 #
 # Only moves literal bindings: slots bound to a replaced NV index (after
 # `systemd-pcrlock remove-policy`) must be re-enrolled by hand.
@@ -43,8 +40,7 @@ else
     want=literal
 fi
 
-# Prints "none" if the volume has no TPM2 token, "old" if one is sealed to the
-# signed PCR 11 policy without the initrd policyref, and otherwise "pcrlock" or
+# Prints "none" if the volume has no TPM2 token, and otherwise "pcrlock" or
 # "literal" by how PCR 7 is bound, with "+15" when every slot is also sealed to
 # PCR 15.
 tpm2_binding() {
@@ -53,8 +49,6 @@ import json, sys
 tokens = [t for t in json.load(sys.stdin)["tokens"].values() if t["type"] == "systemd-tpm2"]
 if not tokens:
     print("none")
-elif not all(t.get("tpm2_pubkey_ref") for t in tokens):
-    print("old")
 else:
     pcr7 = "pcrlock" if all(t.get("tpm2_pcrlock") for t in tokens) else "literal"
     print(pcr7 + ("+15" if all(15 in t.get("tpm2-pcrs", []) for t in tokens) else ""))'

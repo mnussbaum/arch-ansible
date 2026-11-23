@@ -18,9 +18,6 @@
 - Dispose of old laptops, phones and hard drives
 - Document lost recovery packet procedure
 - Server based setup
-- Fix swap on all devices
-- Once every machine runs an image with pacman-contrib, make paccache required
-  in bin/build-image instead of skipping the package cache prune with a warning
 
 ## Sync
 
