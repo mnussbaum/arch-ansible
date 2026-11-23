@@ -45,16 +45,21 @@ container_runtime() {
 }
 
 container_build_usage() {
-  echo "Usage: bin/build-image --container [--ephemeral-key]" >&2
+  echo "Usage: bin/build-image --container [--ephemeral-key | --secrets DIR]" >&2
   echo "          [--password-store DIR | --password-store-url URL] [--out DIR]" >&2
-  echo "          [-- build-image options...]" >&2
+  echo "          [--split-artifacts] [-- build-image options...]" >&2
   echo "  --ephemeral-key       No YubiKey: sign with a throwaway key and ask for a new" >&2
   echo "                        home password. Boot it with Secure Boot off." >&2
   echo "  --password-store      Use this password-store instead of cloning it." >&2
   echo "  --password-store-url  Clone it from here (default: GitLab over SSH via the YubiKey;" >&2
   echo "                        with --ephemeral-key, no password-store unless given)." >&2
+  echo "  --secrets             Use these build secrets instead of decrypting them with the" >&2
+  echo "                        YubiKey: secureboot.key, secureboot.crt, home-recovery-key and" >&2
+  echo "                        password-store/, as dr-unlock writes them (e.g. bin/ci identity)." >&2
   echo "  --out                 Where the image lands, replacing older ones there" >&2
   echo "                        (default: dr-out/ in the checkout)." >&2
+  echo "  --split-artifacts     Also copy the split usr, verity and UKI artifacts that" >&2
+  echo "                        systemd-sysupdate installs." >&2
   echo "  Builds the committed state of this checkout. Caches persist in the" >&2
   echo "  '$DR_VOLUME' volume; remove it to reclaim the space." >&2
 }
@@ -63,7 +68,7 @@ container_build_usage() {
 # YubiKey decrypts the build secrets here, on the host, so the container needs
 # no USB access (which macOS runtimes can't give it).
 container_build() {
-  local ephemeral="" store_dir="" store_url="" out=""
+  local ephemeral="" store_dir="" store_url="" out="" secrets_dir="" split=""
   local build_args=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -71,6 +76,8 @@ container_build() {
       --password-store) store_dir=$2; shift ;;
       --password-store-url) store_url=$2; shift ;;
       --out) out=$2; shift ;;
+      --secrets) secrets_dir=$2; shift ;;
+      --split-artifacts) split=1 ;;
       -h|--help) container_build_usage; exit ;;
       --) shift; build_args=("$@"); break ;;
       *) echo "Unexpected argument: $1" >&2; container_build_usage; exit 1 ;;
@@ -81,6 +88,11 @@ container_build() {
   # Paths given relative to where it was run, then everything from the checkout.
   if [[ -n $out ]]; then mkdir -p "$out"; out=$(cd "$out" && pwd); fi
   if [[ -n $store_dir ]]; then store_dir=$(cd "$store_dir" && pwd); fi
+  if [[ -n $secrets_dir ]]; then secrets_dir=$(cd "$secrets_dir" && pwd); fi
+  if [[ -n $ephemeral && -n $secrets_dir ]]; then
+    echo "Error: --ephemeral-key and --secrets are alternatives" >&2
+    exit 1
+  fi
   cd "$(dirname "${BASH_SOURCE[0]}")/.."
   local repo=$PWD
   if [[ -z $out ]]; then out=$repo/dr-out; mkdir -p "$out"; fi
@@ -107,9 +119,12 @@ container_build() {
   if [[ -t 0 ]]; then run+=(--tty); fi
   if [[ -n $store_dir ]]; then run+=(--volume "$store_dir:/host-password-store:ro"); fi
   if [[ -n $store_url ]]; then run+=(--env "DR_PASSWORD_STORE_URL=$store_url"); fi
+  if [[ -n $split ]]; then run+=(--env DR_SPLIT_ARTIFACTS=1); fi
 
   if [[ -n $ephemeral ]]; then
     run+=(--env DR_MODE=ephemeral)
+  elif [[ -n $secrets_dir ]]; then
+    run+=(--env DR_MODE=provided --volume "$secrets_dir:/host-secrets:ro")
   else
     # gpg reaches the YubiKey through pcscd (scdaemon.conf: disable-ccid).
     if [[ $(uname -s) == Linux ]] && ! pgrep -x pcscd >/dev/null \
@@ -137,6 +152,6 @@ container_build() {
 
   echo "Built:" >&2
   # shellcheck disable=SC2012 # image names are plain image_<version>_<arch>.raw
-  ls -1t "$out"/image_*.raw | head -1 >&2
+  ls -1t "$out"/image_*_x86-64.raw | head -1 >&2
   echo "Write it to a USB drive with: bin/burn-image <image> <device>" >&2
 }
