@@ -7,8 +7,9 @@ References:
   build ([build-recovery-usb.md](build-recovery-usb.md))
 - GitHub Actions hosted runners (free for public repos):
   <https://docs.github.com/en/actions/reference/runners/github-hosted-runners>;
-  4 vCPU, 16G RAM, 14G of free SSD (≈45–50G after deleting the preinstalled
-  toolchains), `/dev/kvm`, 6h per job, 20 concurrent jobs
+  4 vCPU, 16G RAM, `/dev/kvm`, 6h per job, 20 concurrent jobs. Measured
+  (see "Measured on a hosted runner"): one 145G disk with 88G free, 119G after
+  deleting the preinstalled toolchains; no separate `/mnt`
 - Actions cache: 10G per repo, LRU-evicted, 7-day retention at no cost
   (<https://github.blog/changelog/2025-11-20-github-actions-cache-size-can-now-exceed-10-gb-per-repository/>)
 
@@ -47,7 +48,7 @@ screenshots behind when it fails:
 | Pass access | Every store entry is encrypted to the real GPG key |
 | Graphical session | Login goes through greetd on the VGA console, which serial can't see |
 | Recovery guide | Parts 2 and 3 need the root GPG key USB, the paper key and YubiKeys; Part 7 restores from Backblaze |
-| Resources | One version is ~23G of output (13G disk plus 10G of split artifacts), mkosi's incremental cache 13G, the package cache 2.6G, the mkosi workspace up to ~17G, an installed test disk ~15G; a cold build compiles Rust and AUR packages. A hosted runner has ~50G at most |
+| Resources | One version is ~23G of output (13G disk plus 10G of split artifacts), mkosi's incremental cache 13G, the package cache 2.6G, the mkosi workspace up to ~17G, an installed test disk ~15G; a cold build compiles Rust and AUR packages. A cold build peaked at ~50G of a runner's 119G |
 | Host OS | Hosted runners are Ubuntu; `bin/vm` and the build expect Arch paths (`/usr/share/edk2/x64/…`) and tools |
 
 ## 1. Static checks and unit tests
@@ -83,12 +84,13 @@ committed:
 - the GPG key's secret half handed to the test VM at runtime (SMBIOS
   credential or the virtiofs share), never baked into `/usr`.
 
-`--ephemeral-key` gains a non-interactive form (`--home-password-file`, and no
-`--tty` when stdin isn't one) so the container build runs unattended:
+The container build gets `--tty` only when stdin is a terminal, so in CI the
+`--ephemeral-key` home password is piped in, which `dr-entrypoint` already
+reads from stdin:
 
 ```
-bin/build-image --container --ephemeral-key --password-store <ci-store> \
-  --home-password-file <file>
+printf '%s\n' "$home_password" \
+  | bin/build-image --container --ephemeral-key --password-store <ci-store>
 ```
 
 The VM firmware enrolls the throwaway cert in its varstore exactly as
@@ -164,17 +166,13 @@ boot the container-built medium (the live system is a supported build host,
 stages 3 and 4. This also covers building from a live medium, which is the
 recovery USB's job.
 
-This is the stage that fits a hosted runner worst. It needs a second full
-build, and that build's workspace, caches and output (~45G) have to sit inside
-the guest's disk, on top of the medium, on a runner with ~50G. It is also slow:
-4 nested vCPUs and at most ~12G of guest RAM. Options, best first:
-
-- Run it weekly in its own job, with the guest's build caches and output
-  on the host through the virtiofs share so the guest disk stays small, and
-  build without split artifacts.
-- If it still doesn't fit, build with `--skip-postinst`. That still covers
-  what differs from the container build (`ToolsTree=/`, the live medium's
-  cache placement, `sync-aur` with a chroot), but not the ansible postinst.
+It's a second full build, inside a VM: ~50G of workspace, caches and output
+in the guest on top of the 12G medium, which fits in a runner's 119G. It is
+slower than the container build, with 4 nested vCPUs and at most ~12G of guest
+RAM, so it runs weekly in its own job, seeded with the Actions caches through
+the virtiofs share. If it ever outgrows the 6h limit, `--skip-postinst` still
+covers what differs from the container build (`ToolsTree=/`, the live
+medium's cache placement, `sync-aur` with a chroot).
 
 ## 7. Recovery guide
 
@@ -220,13 +218,10 @@ the next. On the first run, with no previous medium, the stage is skipped with
 a notice.
 
 1. `bin/vm install` the previous medium, first boot it (stage 4 checks), then
-   delete the medium to free its 13G.
-2. Build the split artifacts sysupdate wants from this run's medium instead of
-   shipping them from the build job (saves a 10G artifact): read the
-   partition table with `sfdisk --json`, `dd` out the `usr`, `usr-verity` and
-   `usr-verity-sig` partitions under the names the transfers match
-   (`image_<v>_x86-64.usr-x86-64.<uuid>.raw` and so on), and copy the UKI out
-   of the ESP. Then delete the medium.
+   delete the medium to free its 12G.
+2. Download this run's split artifacts (`usr`, `usr-verity`,
+   `usr-verity-sig`, the UKI; ~10.5G), which the build job uploads beside the
+   medium.
 3. `bin/vm run DISK --share <artifacts> --run 'bin/update-system --no-build …'`
    applies them to the inactive slot, pointed at the share.
 4. Boot again and check: `IMAGE_VERSION` in `/usr/lib/os-release` is the new
@@ -238,8 +233,8 @@ a notice.
    whose cmdline adds `systemd.unit=emergency.target`) as a newer version,
    boot it three times, and check sd-boot falls back to the previous entry.
 
-Peak disk is about 15G for the installed disk plus 13G for the decompressed
-medium plus 10G for the extracted partitions, which fits.
+Peak disk is about 15G for the installed disk plus 12G for the medium plus
+10.5G of split artifacts.
 
 ## 9. Restic back-up and restore
 
@@ -269,19 +264,33 @@ secrets, so pull requests from forks are safe to run too.
 | Tier | What | When |
 |---|---|---|
 | Fast | Stage 1 | Every push and PR |
-| Image | Stages 2–5 | Push to `main`, nightly, manual, and PRs labelled `ci:image` |
-| Slow | Stages 6–7 | Weekly and manual |
+| Image | Stages 2–5 and 7–9 | Push to `main`, nightly, manual, and PRs labelled `ci:image` |
+| Slow | Stage 6 (native build in a VM) | Weekly and manual |
 
-### Fitting a build on a hosted runner
+### Measured on a hosted runner
 
-A runner has ~50G after cleanup and 6h per job, so the image tier is split
-into jobs that pass the image between them as an artifact:
+One cold `--ephemeral-key` container build with no caches, `--incremental=no`
+and no split artifacts, on a standard `ubuntu-latest` runner:
+
+| | |
+|---|---|
+| Total | 42 min: AUR packages ~24 (wluma 5, calibre-bin 5, pwvucontrol 3.5, claude-code 2.5), mkosi package install ~4, ansible postinst ~3 (287 tasks), finalize, erofs, signing and disk image ~9; the builder container under 1 |
+| Disk | One 145G disk: 88G free, 119G after cleanup; peak use ~50G |
+| Memory | 3.2G peak of 16G |
+| Medium | 12G apparent, 9.3G allocated, 7.7G with `zstd -T0` (49s) |
+
+With the AUR packages cached, a build should take ~18 min. Disk and time both
+leave room, so jobs are split for parallelism, not to fit.
+
+### Job layout
 
 ```
-builder-container ──► build ──► install ──► first-boot ──► first-login
-     (weekly)          │                    (stage 4)       (stage 5)
-                       ├──► recovery-guide (stage 7)
-                       └──► ab-update (stage 8, with the previous run's medium)
+builder-container ──► build ──┬──► vm: install, first boot, first login,
+     (weekly)                 │        back-up (stages 3–5, 9)
+                              ├──► ab-update (stage 8, from the previous
+                              │        run's medium)
+                              └──► recovery-guide (stage 7, with the restore
+                                       half of stage 9)
 ```
 
 - **Builder container.** `container/Containerfile` plus the VM tools
@@ -291,22 +300,19 @@ builder-container ──► build ──► install ──► first-boot ──�
   `bin/vm` finds the same paths as on Arch, and no job installs packages
   on Ubuntu.
 - **Disk.** Each job starts by deleting the runner's preinstalled toolchains
-  (Android, .NET, GHC, CodeQL, Docker images; ≈35G) and puts its work on
-  whichever of `/` and `/mnt` has the room.
+  (Android, .NET, GHC, CodeQL, Docker images; ≈30G).
 - **Build job.** `--incremental=no`: mkosi's 13G incremental cache doesn't
-  fit the 10G Actions cache and costs as much disk as it saves. No split
-  artifacts in CI (they're only needed by `update-system`), which saves
-  10G. Peak is then roughly 3G caches + 17G workspace + 13G image.
+  fit the 10G Actions cache. Split artifacts stay on (~10G more disk), so
+  the A/B update stage can use them as built.
 - **Actions cache** (≈4G total, within the 10G quota): the pacman package
   cache keyed on a hash of the package lists, `aur-repo` keyed on the AUR
   package versions (so `sync-aur` only compiles what changed), sccache, the
-  cargo registry and nvim's site directory. A cold cache means a first run
-  that may approach the 6h limit; after that a build should mostly be package
-  extraction and the ansible postinst.
-- **Handing the image on.** The medium is sparse; `zstd` it and upload it as a
-  workflow artifact with a few days' retention (artifacts on public repos
-  don't count against a quota). Downstream jobs download and decompress it
-  with `--sparse`.
+  cargo registry and nvim's site directory.
+- **Handing the image on.** Two workflow artifacts with a few days'
+  retention (artifacts on public repos don't count against a quota): the
+  medium, `zstd`-compressed to ~7.7G and decompressed with `--sparse`
+  downstream, and the split artifacts (~10.5G; the erofs `/usr` is already
+  compressed).
 - **Memory.** 16G total, so test VMs get 8G and the container's build
   leaves room for them by running in a separate job.
 
@@ -330,7 +336,7 @@ src/arch_ansible_vm/
   sdboot.py                 sd-boot menu parsing and selection
   disks.py                  test-disk retention
   __main__.py               the `vm run` / `vm install` CLI
-bin/vm                      exec uv run --project <repo> python -m arch_ansible_vm "$@"
+bin/vm                      PYTHONPATH=<repo>/src exec python3 -m arch_ansible_vm "$@"
 bin/ci                      exec uv run --project <repo> pytest tests/e2e -m <stage>...
 tests/unit/                 stage 1's unit tests
 tests/e2e/                  one module per stage, a pytest marker each, and
@@ -339,6 +345,9 @@ tests/e2e/                  one module per stage, a pytest marker each, and
 ```
 
 - `bin/vm` keeps its flags and behaviour; only where the code lives changes.
+  It runs the package with plain `python3` rather than `uv run`, which would
+  create a `.venv` in the image's read-only copy of the repo; the harness
+  needs only the standard library.
 - The library holds the VM harness only. CI-only pieces stay in `tests/e2e/`,
   since nothing else uses them.
 - `uv` already ships in the image (`90-packages.conf`); the CI builder
@@ -351,16 +360,14 @@ tests/e2e/                  one module per stage, a pytest marker each, and
 
 ## Order of work
 
-1. Stage 1 plus the GitHub workflow. Small, catches the most regressions per
-   minute.
-2. A spike: the builder container on GHCR and one cold `--ephemeral-key`
-   build on a hosted runner, recording peak disk and wall time. This decides
-   whether the build-job settings above are enough before anything else is
-   built on them.
-3. CI identity and unattended container build (stage 2), with the Actions
-   caches.
-4. Extract the `bin/vm` library; turn its printed checks into assertions
-   (stages 3–4) and add `bin/ci`.
+1. Done: stage 1 plus the GitHub workflow, and the `bin/vm` library
+   extraction with its unit tests.
+2. Done: a spike measuring one cold build on a hosted runner (see "Measured
+   on a hosted runner").
+3. CI identity, the builder container on GHCR and the build job (stage 2),
+   with the Actions caches.
+4. Turn `bin/vm`'s printed checks into assertions (stages 3–4) and add
+   `bin/ci`.
 5. First login, pass and the graphical session (stage 5).
 6. A/B update and rollback (stage 8).
 7. Restic back-up and restore (stage 9).
@@ -373,8 +380,8 @@ tests/e2e/                  one module per stage, a pytest marker each, and
 - One CI identity (throwaway Secure Boot key, GPG key and store) per run;
   real secrets never reach CI, so no job uses repository secrets.
 - Jobs run inside the Arch builder container, published to GHCR.
-- The image tier is split into jobs joined by a compressed image artifact,
-  to stay within one runner's disk and the 6h job limit.
+- The image tier is split into jobs joined by the compressed medium and the
+  split artifacts, for parallelism; a cold build measured 42 min and ~50G.
 - The heavy stages run through `bin/ci`, so CI and local runs are identical.
 - Hardware-only steps (YubiKey provisioning, Wi-Fi, real Secure Boot
   firmware) stay on a manual checklist.
@@ -387,7 +394,8 @@ tests/e2e/                  one module per stage, a pytest marker each, and
   command it runs; the docs aren't restructured.
 - A/B updates and rollback are tested, from the previous `main` run's image.
 - Build caches live only in the Actions cache; nightly runs keep them from
-  being evicted. Revisit if the spike's cold build takes more than ~4h.
+  being evicted. A cold build measured 42 min, so a lost cache costs time,
+  not the run.
 - Stage 1's checks are defined once in `.pre-commit-config.yaml`
   (`language: system` hooks), run by prek as a git pre-commit
   hook and by CI with `prek run --all-files`. Tool settings live in the
