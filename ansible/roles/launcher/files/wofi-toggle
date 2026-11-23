@@ -2,6 +2,9 @@
 
 set -o nounset
 
+# The command arrives as one string (sway passes it quoted), so split it into words.
+read -ra command <<< "$*"
+
 invoking_wofi_pass=false
 if grep -q wofipassmenu <<< "$@" ; then
   invoking_wofi_pass=true
@@ -16,15 +19,15 @@ fi
 
 if $invoking_wofi_pass ; then
   pkill --exact wofi
-  exec $@
+  exec "${command[@]}"
 fi
 
 # If we're running wofi-pass then kill it and start new wofi command
 if [ $running_wofi_pass == 0 ] && pkill --exact wofi ; then
-  exec $@
+  exec "${command[@]}"
 fi
 
 # If we're running normal wofi then kill it, if we aren't then start it
 if ! pkill --exact --full "$@" ; then
-  exec $@
+  exec "${command[@]}"
 fi

@@ -179,6 +179,7 @@
     XDG_CONFIG_HOME: /etc/skel/.config
     XDG_DATA_HOME: /etc/skel/.local/share
     XDG_CONFIG_DIRS: /etc/xdg
+  changed_when: true
   when: plugin_config.changed
 
 - name: Configure base16 colorscheme

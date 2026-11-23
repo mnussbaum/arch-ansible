@@ -76,6 +76,7 @@ EOF
 # given.
 arch_ansible_default_organizations() {
   [[ -z "${ARCH_ANSIBLE_ORGANIZATIONS+set}" ]] || return 0
+  # shellcheck source=/dev/null
   ARCH_ANSIBLE_ORGANIZATIONS=$(. /usr/lib/os-release; echo "${ARCH_ANSIBLE_ORGANIZATIONS:-}")
   export ARCH_ANSIBLE_ORGANIZATIONS
   echo "Organizations: ${ARCH_ANSIBLE_ORGANIZATIONS:-none}" >&2

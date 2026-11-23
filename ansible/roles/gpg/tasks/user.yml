@@ -21,10 +21,12 @@
 
 - name: Import public key
   command: gpg --import ~/.gnupg/pubkey.asc
+  changed_when: true
   when: gpg_pubkey_file.changed or gpg_key_check.rc != 0
 
 - name: Set ultimate trust on own key
   shell: |
+    set -o pipefail
     fingerprint=$(gpg --list-keys --with-colons "{{ user.gpg_key_uid }}" | awk -F: '/^fpr/{print $10; exit}')
     [[ -n "$fingerprint" ]] && echo "$fingerprint:6:" | gpg --import-ownertrust || true
   args:
@@ -34,6 +36,7 @@
 # Keygrips of the public key's usable authentication subkeys.
 - name: Find YubiKey SSH keygrips
   shell: |
+    set -o pipefail
     gpg --show-keys --with-colons --with-keygrip ~/.gnupg/pubkey.asc \
       | awk -F: '$1 == "sub" { auth = $12 ~ /a/ && $2 !~ /[erd]/ } $1 == "grp" && auth { print $10; auth = 0 }'
   args:

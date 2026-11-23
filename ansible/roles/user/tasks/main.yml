@@ -1,7 +1,9 @@
 # vim:ft=yaml.ansible:
 ---
 - name: Create wheel group
-  group: name=wheel state=present
+  group:
+    name: wheel
+    state: present
 
 - name: Give the user a subordinate ID range
   # For rootless podman; homed doesn't add one. Same range useradd assigns.

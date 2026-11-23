@@ -1,7 +1,4 @@
-#!/usr/bin/python
-
-
-class FilterModule(object):
+class FilterModule:
     def filters(self):
         return {"dict_values": self.values}
 

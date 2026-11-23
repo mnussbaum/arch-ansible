@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -132,6 +133,7 @@ container_build() {
   "${run[@]}" "$DR_IMAGE" ${build_args[@]+"${build_args[@]}"}
 
   echo "Built:" >&2
+  # shellcheck disable=SC2012 # image names are plain image_<version>_<arch>.raw
   ls -1t "$out"/image_*.raw | head -1 >&2
   echo "Write it to a USB drive with: bin/burn-image <image> <device>" >&2
 }

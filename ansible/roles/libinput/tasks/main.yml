@@ -24,4 +24,3 @@
   copy:
     src: 80-libinput.preset
     dest: /usr/lib/systemd/user-preset/80-libinput.preset
-

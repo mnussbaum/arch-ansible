@@ -17,7 +17,7 @@ def _reload_wayland():
     )
     subprocess.run(["systemctl", "--user", "restart", "waybar"], check=True)
 
-    subprocess.run(["swaymsg", "reload"])
+    subprocess.run(["swaymsg", "reload"], check=False)
 
 
 def main():
@@ -29,10 +29,11 @@ def main():
         cwd="/usr/share/arch-ansible",
         encoding="utf-8",
         env=env,
+        check=False,
     )
 
     if ansible_result.returncode != 0:
-        print("Ansible run failed: {}".format(ansible_result.stderr))
+        print(f"Ansible run failed: {ansible_result.stderr}")
         sys.exit(ansible_result.returncode)
 
     if "changed=0" in ansible_result.stdout:

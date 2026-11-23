@@ -30,10 +30,12 @@ CRITICAL_TOTPS = {
     "Ubiquiti SSO:michael.nussbaum",
 }
 
-INCLUDE = re.compile(r'^\[[^\]]+\]\(([^)\s]+)\s+"embedded in the printed guide"\)\s*$', re.M)
-SECRET = re.compile(r"^<!-- secret: ([a-z-]+) -->\s*$", re.M)
+INCLUDE = re.compile(
+    r'^\[[^\]]+\]\(([^)\s]+)\s+"embedded in the printed guide"\)\s*$', re.MULTILINE
+)
+SECRET = re.compile(r"^<!-- secret: ([a-z-]+) -->\s*$", re.MULTILINE)
 LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
-FENCE = re.compile(r"^```.*?^```", re.M | re.S)
+FENCE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
 HEADING = re.compile(r"<h[1-6][ >]")
 
 # Secret blocks printed on one page with their section's heading and intro.
@@ -69,7 +71,9 @@ def qr_png_b64(data: str, size: int, level: str) -> str:
     # On stdin: armored data starts with "-----", which qrencode reads as options.
     png = subprocess.run(
         ["qrencode", "-t", "PNG", "-s", str(size), "-l", level, "-o", "-"],
-        input=data.encode(), capture_output=True, check=True,
+        input=data.encode(),
+        capture_output=True,
+        check=True,
     ).stdout
     return base64.b64encode(png).decode()
 
@@ -77,22 +81,27 @@ def qr_png_b64(data: str, size: int, level: str) -> str:
 def secret_blocks(args) -> dict[str, str]:
     if args.preview:
         placeholder = '<div class="mono">(printed only in the real guide)</div>'
-        return {name: placeholder for name in
-                ("identity", "fingerprint", "public-key", "private-key", "totp")}
+        return {
+            name: placeholder
+            for name in ("identity", "fingerprint", "public-key", "private-key", "totp")
+        }
 
     fpr = args.fingerprint
-    groups = [fpr[i:i + 4] for i in range(0, len(fpr), 4)]
+    groups = [fpr[i : i + 4] for i in range(0, len(fpr), 4)]
     pubkey = pathlib.Path(args.pubkey).read_text()
     # Only the numbered lines get typed back in; paperkey's comments explain its format.
-    paperkey = "\n".join(line for line in pathlib.Path(args.paperkey).read_text().splitlines()
-                         if re.match(r"\s*\d+:", line))
+    paperkey = "\n".join(
+        line
+        for line in pathlib.Path(args.paperkey).read_text().splitlines()
+        if re.match(r"\s*\d+:", line)
+    )
     blocks = {
         "identity": f'<div class="uid">{html.escape(args.uid)}</div>',
         "fingerprint": '<div class="fingerprint">'
-                       f'{" ".join(groups[:5])}\n{" ".join(groups[5:])}</div>',
+        f"{' '.join(groups[:5])}\n{' '.join(groups[5:])}</div>",
         "public-key": f'<div class="qr"><img width="230" height="230" '
-                      f'src="data:image/png;base64,{qr_png_b64(pubkey, 5, "L")}"></div>'
-                      f'<div class="mono">{html.escape(pubkey)}</div>',
+        f'src="data:image/png;base64,{qr_png_b64(pubkey, 5, "L")}"></div>'
+        f'<div class="mono">{html.escape(pubkey)}</div>',
         "private-key": f'<div class="mono">{html.escape(paperkey)}</div>',
     }
 
@@ -108,20 +117,25 @@ def secret_blocks(args) -> dict[str, str]:
                     '<div class="totp">'
                     f'<img src="data:image/png;base64,{qr_png_b64(line, 3, "M")}">'
                     f'<div class="label">{html.escape(label)}</div>'
-                    f'<div class="uri">{html.escape(line)}</div></div>')
-    blocks["totp"] = (f'<div class="totps">{"".join(totps)}</div>' if totps
-                      else "<p>(The root GPG key USB has no oath-accounts.txt.)</p>")
+                    f'<div class="uri">{html.escape(line)}</div></div>'
+                )
+    blocks["totp"] = (
+        f'<div class="totps">{"".join(totps)}</div>'
+        if totps
+        else "<p>(The root GPG key USB has no oath-accounts.txt.)</p>"
+    )
     return blocks
 
 
 def demote(text: str) -> str:
     """Drop the doc's title and push its headings one level down."""
     text = re.sub(r"\A# .*\n", "", text.lstrip())
-    return re.sub(r"^(#{2,5}) ", r"#\1 ", text, flags=re.M)
+    return re.sub(r"^(#{2,5}) ", r"#\1 ", text, flags=re.MULTILINE)
 
 
 def unlink(text: str, parts: dict[str, str]) -> str:
     """Rewrite links for paper, leaving fenced code alone."""
+
     def replace(m: re.Match) -> str:
         # A label wrapped across lines would leave its line break in plain
         # text, where a line starting "1." becomes a list item.
@@ -139,7 +153,7 @@ def unlink(text: str, parts: dict[str, str]) -> str:
 
     out, pos = [], 0
     for fence in FENCE.finditer(text):
-        out.append(LINK.sub(replace, text[pos:fence.start()]))
+        out.append(LINK.sub(replace, text[pos : fence.start()]))
         out.append(fence.group(0))
         pos = fence.end()
     out.append(LINK.sub(replace, text[pos:]))
@@ -157,8 +171,12 @@ def main() -> None:
     ap.add_argument("--oath")
     ap.add_argument("--generated", default="")
     args = ap.parse_args()
-    if not args.preview and not all((args.uid, args.fingerprint, args.pubkey, args.paperkey)):
-        ap.error("--uid, --fingerprint, --pubkey and --paperkey are required without --preview")
+    if not args.preview and not all(
+        (args.uid, args.fingerprint, args.pubkey, args.paperkey)
+    ):
+        ap.error(
+            "--uid, --fingerprint, --pubkey and --paperkey are required without --preview"
+        )
 
     guide_path = pathlib.Path(args.guide)
     text = guide_path.read_text()
@@ -168,19 +186,22 @@ def main() -> None:
     # Each embedded doc is referred to by the "Part N" heading it sits under.
     parts = {}
     for m in INCLUDE.finditer(text):
-        heading = re.findall(r"^## (.*)$", text[:m.start()], re.M)[-1]
+        heading = re.findall(r"^## (.*)$", text[: m.start()], re.MULTILINE)[-1]
         parts[m.group(1)] = heading.split(" — ", 1)[0]
 
     text = INCLUDE.sub(
-        lambda m: demote((guide_path.parent / m.group(1)).read_text()), text)
+        lambda m: demote((guide_path.parent / m.group(1)).read_text()), text
+    )
     text = unlink(text, parts)
 
     blocks = secret_blocks(args)
     tokens = {}
+
     def stash(m: re.Match) -> str:
         token = f"SECRETBLOCK{len(tokens)}"
         tokens[token] = m.group(1)
         return token
+
     text = SECRET.sub(stash, text)
 
     body = markdown.markdown(text, extensions=["fenced_code", "sane_lists"])
@@ -189,8 +210,9 @@ def main() -> None:
         if name in KEEP_WITH_HEADING:
             end = body.index(placeholder) + len(placeholder)
             start = list(HEADING.finditer(body, 0, end))[-1].start()
-            body = (f'{body[:start]}<div class="keep">{body[start:end]}</div>'
-                    f"{body[end:]}")
+            body = (
+                f'{body[:start]}<div class="keep">{body[start:end]}</div>{body[end:]}'
+            )
         body = body.replace(placeholder, blocks[name])
 
     generated = html.escape(args.generated or "preview")
@@ -201,7 +223,8 @@ def main() -> None:
         f"<title>{html.escape(title)}</title>\n<style>{CSS}</style>\n</head>\n<body>\n"
         f"<h1>{html.escape(title)}</h1>\n"
         f'<div class="generated">Generated: {generated}</div>\n'
-        f"{body}\n</body>\n</html>\n")
+        f"{body}\n</body>\n</html>\n"
+    )
 
 
 if __name__ == "__main__":

@@ -40,7 +40,7 @@
     src: /run/tlp-hardware.conf
     dest: /etc/tlp.d/60-hardware.conf
     state: link
-    force: yes
+    force: true
 
 - name: Create TLP service drop-in directory
   file:
