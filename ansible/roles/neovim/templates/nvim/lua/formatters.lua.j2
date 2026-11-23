@@ -2,7 +2,7 @@
 return {
   formatters_by_ft = {
   {%- for language, formatters in language_formatters.items() %}
-    {{ language }} = {
+    ["{{ language }}"] = {
       {%- for formatter in formatters %}
       "{{ formatter }}",
       {%- endfor %}

@@ -36,6 +36,7 @@
       - name: "hrsh7th/nvim-cmp"
       - name: "RRethy/nvim-base16"
       - name: "stevearc/conform.nvim"
+      - name: "mfussenegger/nvim-lint"
       - name: "cshuaimin/ssr.nvim"
       - name: "nvim-lua/plenary.nvim"
       - name: "nvim-telescope/telescope.nvim"
@@ -115,10 +116,18 @@
         - rubocop
       rust:
         - rustfmt
+      # The same checks the repos' pre-commit hooks run, applying what they can fix.
+      sh:
+        - shellcheck
+      bash:
+        - shellcheck
       typescript:
         - prettier
       yaml:
         - prettier
+      # Instead of prettier, whose YAML style ansible-lint would undo.
+      yaml.ansible:
+        - ansible-lint
       proto:
         - buf
       beancount:
