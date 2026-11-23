@@ -57,6 +57,17 @@ import sys
 import time
 from pathlib import Path
 
+from arch_ansible_vm.checks import (
+    esp_layout,
+    failed_unit_journals,
+    install_system,
+    network_checks,
+    partition_table,
+    pending_password_prompts,
+    system_state,
+    tpm2_bindings,
+    unit_state,
+)
 from arch_ansible_vm.disks import (
     medium_organizations,
     newest_medium,
@@ -65,56 +76,27 @@ from arch_ansible_vm.disks import (
     use_disk,
 )
 from arch_ansible_vm.qemu import (
-    FIRSTBOOT_HOSTNAME,
-    FIRSTBOOT_ROOT_PASSWORD,
     REPO,
     SHARE_MNT,
     SHARE_TAG,
-    Drive,
     LiveOptions,
-    Vm,
     build_live_cmd,
     make_varstore,
     mkosi_env,
     secureboot_cert,
     start_swtpm,
     stop_swtpm,
-    yubikey_qemu_args,
 )
-from arch_ansible_vm.sdboot import select_boot_entry
+from arch_ansible_vm.sessions import (
+    boot_to_shell,
+    default_cpus,
+    disk_vm,
+    installer_vm,
+    power_off,
+    recreate_disk,
+)
 
 # --- subcommands -------------------------------------------------------------
-
-
-def wait_for_shell(vm, timeout, log):
-    """Wait for the serial root shell, capturing the VGA console if it never comes.
-
-    A boot that stalls on tty0 — a LUKS passphrase query, systemd-firstboot's
-    prompt, an emergency shell — looks identical on serial to one that is simply
-    slow: silence. The screendump is what tells the two apart.
-    """
-    interval = 60
-    waited = 0
-    while True:
-        try:
-            vm.shell.wait_ready(timeout=min(interval, timeout - waited))
-            return
-        except TimeoutError:
-            waited += interval
-            if waited >= timeout:
-                shot = vm.screenshot("stalled")
-                log(f"==> no root shell after {timeout}s; VGA console: {shot}")
-                raise TimeoutError(
-                    f"no root shell on serial after {timeout}s. The boot is "
-                    f"stalled on something only /dev/console (tty0) shows — see "
-                    f"the screendump at {shot}."
-                )
-            shot = vm.screenshot(f"waiting-{waited}s")
-            log(f"==> still waiting ({waited}s); VGA console: {shot}")
-        except EOFError:
-            shot = vm.screenshot("died")
-            log(f"==> guest exited; VGA console: {shot}")
-            raise
 
 
 def write_line(stream, msg):
@@ -211,87 +193,44 @@ def cmd_install(args):
     target = Path(args.target).resolve()
 
     if args.fresh:
-        # `truncate -s N` on an existing N-byte file is a no-op: it sets the
-        # size and leaves every byte alone. The stale GPT then auto-activates
-        # when the medium boots and repart fails with "Device or resource busy".
-        # Removing the file first is the only way to get a genuinely blank disk.
         log(f"==> recreating {target} ({args.size}) from scratch")
-        target.unlink(missing_ok=True)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["truncate", "-s", args.size, str(target)], check=True)
+        recreate_disk(target, args.size)
     elif not target.is_file():
         sys.exit(f"error: {target} does not exist (drop --no-fresh to create it)")
     use_disk(target, log, time.time(), orgs=medium_organizations(medium))
 
-    cert = secureboot_cert()
-    run_dir = output_dir() / "vm"
-    varstore = make_varstore(run_dir / "installer-vars.fd", cert)
-
     log(f"==> medium: {medium.name}")
-    with Vm(
-        name="installer",
-        drives=[
-            # snapshot=on: the installer only reads the medium (root=tmpfs), and
-            # discarding writes keeps the built artifact byte-identical.
-            Drive(file=medium, bootindex=0, snapshot=True),
-            Drive(file=target),
-        ],
-        varstore=varstore,
-        tpm_state=run_dir / "installer-tpm",
-        run_dir=run_dir,
-        log=log,
-        memory=args.memory,
-        cpus=args.cpus,
-        echo=args.verbose,
+    with installer_vm(
+        medium, target, log, args.memory, args.cpus, echo=args.verbose
     ) as vm:
-        select_boot_entry(vm, "Installer")
-
-        log("==> waiting for a root shell on ttyS0 …")
-        wait_for_shell(vm, args.boot_timeout, log)
+        boot_to_shell(vm, args.boot_timeout, log, entry="Installer")
         sh = vm.shell
 
-        # The greetd fix (systemd.unit=multi-user.target in the Installer
-        # profile) is exactly this pair of facts: the guided installer is up on
-        # tty1 and the graphical login never started.
+        # The guided installer is up on tty1 and the graphical login never
+        # started (systemd.unit=multi-user.target in the Installer profile).
         log("\n===== Installer environment =====")
-        sh.run("systemctl is-system-running || true")
-        sh.run("systemctl is-active arch-install.service || true")
-        sh.run("systemctl is-active greetd.service || true")
-        sh.run("systemctl get-default")
-        sh.run("systemctl --failed --no-legend --plain || true")
-        # The failed units name what broke but rarely why.
-        sh.run(
-            "for u in $(systemctl --failed --no-legend --plain | awk '{print $1}'); "
-            'do echo "--- $u"; journalctl -b --no-pager -o cat -u "$u" | tail -15; done'
-        )
-
-        # Stop the guided installer before driving the one-shot path, so the two
-        # can't race for the target. An explicit stop wins over Restart=always.
-        sh.run("systemctl stop arch-install.service || true")
+        state = system_state(sh)
+        log(f"{state}")
+        log(f"arch-install.service: {unit_state(sh, 'arch-install.service')}")
+        log(f"greetd.service: {unit_state(sh, 'greetd.service')}")
+        if state.failed_units:
+            log(failed_unit_journals(sh))
 
         log("\n===== install-system --yes /dev/vdb =====")
-        rc, _ = sh.run(
-            "/usr/bin/install-system --yes /dev/vdb 2>&1",
-            timeout=args.install_timeout,
-        )
+        rc, _ = install_system(sh, "/dev/vdb", args.install_timeout)
         if rc != 0:
             log("==> INSTALL FAILED")
-            sh.run("journalctl -b --no-pager -p warning | tail -60 || true")
+            sh.run("journalctl -b --no-pager -p warning | tail -60")
             return 1
 
-        # Validation question #1: a pure Type #2 layout — sd-boot plus a bare UKI
-        # in EFI/Linux/, no /image/ dir and no loader/entries/*.conf.
-        log("\n===== Written layout (validation question #1) =====")
-        sh.run("udevadm settle; lsblk -o NAME,SIZE,TYPE,PARTLABEL,FSTYPE /dev/vdb")
-        sh.run("mkdir -p /mnt/esp && mount /dev/vdb1 /mnt/esp")
-        sh.run("find /mnt/esp -maxdepth 3 | sort")
-        sh.run("ls -A /mnt/esp/loader/entries 2>/dev/null | wc -l")
-        sh.run("ls -A /mnt/esp/image 2>/dev/null | wc -l")
-        sh.run("umount /mnt/esp")
+        # A pure Type #2 layout: sd-boot plus a bare UKI in EFI/Linux/, no
+        # /image/ dir and no loader/entries/*.conf.
+        log("\n===== Written layout =====")
+        for partition in partition_table(sh, "/dev/vdb"):
+            log(f"{partition}")
+        log(f"{esp_layout(sh, '/dev/vdb1')}")
 
-        log("\n==> powering off")
-        sh.c.send("systemctl poweroff\n")
-        vm.wait(timeout=120)
+        power_off(vm, timeout=120)
 
     log(f"\n==> CHECKPOINT A reached: {target} installed.")
     log(f"    Next: bin/vm run {target}")
@@ -299,8 +238,6 @@ def cmd_install(args):
 
 
 HEALTH_CHECKS = [
-    "systemctl is-system-running",
-    "systemctl --failed --no-legend --plain",
     "hostnamectl",
     # One target per call: findmnt prints nothing for a multi-target invocation.
     "findmnt -no SOURCE,FSTYPE /",
@@ -318,49 +255,16 @@ def run_disk(args, log):
         sys.exit(f"error: {disk} is not a file")
     use_disk(disk, log, time.time())
 
-    cert = secureboot_cert()
-    run_dir = output_dir() / "vm"
-    # Varstore and TPM live next to the disk (as bin/boot-disk did), so the
-    # LUKS keyslot sealed on first boot can be unsealed on every later boot.
-    varstore = make_varstore(Path(f"{disk}.ovmf_vars.fd"), cert)
-
-    # Answers for everything the installed system's first boot asks the user, all
-    # delivered as SMBIOS type 11 credentials. This matters more than it looks:
-    # systemd-firstboot prompts on /dev/console, which the image pins to tty0
-    # (`console=tty0` comes last on the cmdline), so a headless boot that hits a
-    # prompt just goes silent forever with nothing on serial to say why.
-    creds = [
-        # Testing convenience only: a root shell on every getty, so the system's
-        # health can be read back over serial without a password and without
-        # switching VTs. Never use this for a real install.
-        "agetty.autologin=root",
-        # First prompt: systemd-firstboot --prompt-hostname (added by
-        # mkosi/mkosi.extra/…/systemd-firstboot.service.d/10-prompt-hostname.conf).
-        f"firstboot.hostname={FIRSTBOOT_HOSTNAME}",
-        # Second prompt: --prompt-root-password, from the same ExecStart. Test
-        # credential only — a real install is meant to be answered by the human
-        # sitting at the console.
-        f"passwd.plaintext-password.root={FIRSTBOOT_ROOT_PASSWORD}",
-    ]
-    if args.yubikey:
-        # Run the guest's own pcscd for the passed-through key instead of the
-        # vsock relay (ansible/roles/qemu-guest/files/pcscd-novm-condition.conf).
-        creds.append("pcscd.local=1")
-
-    with Vm(
-        name=disk.stem,
-        drives=[Drive(file=disk, bootindex=0)],
-        varstore=varstore,
-        tpm_state=Path(args.tpm_state) if args.tpm_state else Path(f"{disk}.tpm"),
-        run_dir=run_dir,
-        log=log,
-        memory=args.memory,
-        cpus=args.cpus,
-        credentials=creds,
+    with disk_vm(
+        disk,
+        log,
+        args.memory,
+        args.cpus,
         echo=args.verbose,
         share=args.share,
         gui=args.gui,
-        extra_args=yubikey_qemu_args() if args.yubikey else (),
+        yubikey=args.yubikey,
+        tpm_state=args.tpm_state,
     ) as vm:
         if args.gui:
             # Nothing is scripted here: the window is the interface. Wait for
@@ -372,53 +276,36 @@ def run_disk(args, log):
             vm.proc.wait()
             return 0
 
-        if args.entry:
-            select_boot_entry(vm, args.entry)
-
-        log("==> waiting for a root shell on ttyS0 …")
         # First boot does the whole provisioning run (repart creates root/home/
         # swap, TPM2-seals LUKS, homed/firstboot units), so allow plenty.
-        wait_for_shell(vm, args.boot_timeout, log)
+        boot_to_shell(vm, args.boot_timeout, log, entry=args.entry)
         sh = vm.shell
 
-        log("\n===== Health checks (validation question #2) =====")
-        state = None
+        log("\n===== Health checks =====")
+        state = system_state(sh)
+        log(f"{state}")
         for check in HEALTH_CHECKS:
-            _rc, out = sh.run(check + " || true", timeout=120)
-            if check.startswith("systemctl is-system-running"):
-                state = out.strip().splitlines()[-1] if out.strip() else "?"
+            sh.run(check, timeout=120)
+        log(f"network checks (exit codes): {network_checks(sh)}")
 
-        # Did anything ask for a passphrase? First boot seals to the TPM, later
-        # boots must unseal silently; a pending ask-password request (or a
-        # cryptsetup unit that fell back to a prompt) is the failure signal, and
-        # it would otherwise be invisible on tty0.
+        # First boot seals to the TPM and later boots must unseal silently; a
+        # pending ask-password request is the failure signal, and it would
+        # otherwise be invisible on tty0.
         log("\n===== LUKS / TPM =====")
-        sh.run("systemd-tty-ask-password-agent --list 2>&1 | head || true")
+        log(f"pending password prompts: {pending_password_prompts(sh)}")
         sh.run(
             "journalctl -b --no-pager -o cat -u systemd-cryptsetup@root.service "
-            "2>&1 | tail -10 || true"
+            "| tail -10"
         )
-        sh.run(
-            "cryptsetup luksDump /dev/disk/by-designator/root-luks 2>/dev/null "
-            "| grep -i -A2 'tokens\\|systemd-tpm2' | head -20 || true"
-        )
-        sh.run("systemd-cryptenroll /dev/disk/by-designator/root-luks || true")
-        # How each TPM2 slot is bound: born literal PCR 7 + initrd-only signed
-        # PCR 11 (tpm2_pubkey_ref), then moved onto the pcrlock policy by
-        # pcrlock-enroll-luks.service.
-        sh.run(
-            "systemctl is-active systemd-pcrlock-make-policy.service "
-            "pcrlock-enroll-luks.service || true"
-        )
-        sh.run(
-            "for d in root-luks swap-luks home-luks; do printf '%s: ' $d; "
-            "cryptsetup luksDump --dump-json-metadata /dev/disk/by-designator/$d "
-            "| python3 -c 'import json,sys; print([{k: t.get(k) for k in "
-            '("keyslots", "tpm2-pcrs", "tpm2_pubkey_pcrs", "tpm2_pubkey_ref", '
-            '"tpm2_pcrlock")} '
-            'for t in json.load(sys.stdin)["tokens"].values() '
-            'if t["type"] == "systemd-tpm2"])\'; done || true'
-        )
+        # Born literal PCR 7 + initrd-only signed PCR 11, then moved onto the
+        # pcrlock policy by pcrlock-enroll-luks.service.
+        for unit in (
+            "systemd-pcrlock-make-policy.service",
+            "pcrlock-enroll-luks.service",
+        ):
+            log(f"{unit}: {unit_state(sh, unit)}")
+        for designator in ("root-luks", "swap-luks"):
+            log(f"{designator}: {tpm2_bindings(sh, designator)}")
 
         if args.share:
             sh.run(
@@ -432,18 +319,18 @@ def run_disk(args, log):
             for cmd in args.run:
                 sh.run(cmd, timeout=args.run_timeout)
 
-        if state != "running":
+        if state.state != "running":
             # Only on a bad run: the failed units alone rarely say why, and this
             # is the one chance to read the journal before the guest is gone.
+            log("\n===== Failed units =====")
+            log(failed_unit_journals(sh))
             log("\n===== Journal (warnings and worse) =====")
-            sh.run("journalctl -b --no-pager -p warning | tail -80 || true")
+            sh.run("journalctl -b --no-pager -p warning | tail -80")
 
-        log("\n==> powering off")
-        sh.c.send("systemctl poweroff\n")
-        vm.wait(timeout=180)
+        power_off(vm)
 
-    log(f"\n==> is-system-running = {state}")
-    if state == "running":
+    log(f"\n==> is-system-running = {state.state}")
+    if state.state == "running":
         log("==> CHECKPOINT B: clean boot.")
         return 0
     log("==> NOT a clean boot — see the failed units above.")
@@ -459,13 +346,12 @@ def main(argv=None):
     )
     # On the subcommands, not the top level: `vm run DISK --cpus 4` is what
     # anyone types, and a top-level-only option silently fails there.
-    nproc = os.cpu_count() or 4
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--memory", default="8G", help="guest RAM (default 8G)")
     common.add_argument(
         "--cpus",
         type=int,
-        default=nproc - 2 if nproc > 4 else nproc,
+        default=default_cpus(),
         help="vCPUs (default: host CPUs minus 2, leaving the host "
         "room; in-guest rebuilds scale with this)",
     )
