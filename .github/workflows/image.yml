@@ -92,7 +92,7 @@ jobs:
         run: |
           sudo podman volume create arch-ansible-dr-cache >/dev/null
           volume=$(sudo podman volume inspect --format '{{.Mountpoint}}' arch-ansible-dr-cache)
-          sudo mkdir -p "$volume/aur-repo" "$volume/mkosi/pacman-pkg" "$BUILD_CACHE"
+          sudo mkdir -p "$volume/aur-repo" "$volume/mkosi/pacman-pkg"
           if [[ -d $BUILD_CACHE/aur-repo ]]; then
             sudo rsync -a "$BUILD_CACHE/aur-repo/" "$volume/aur-repo/"
           fi
@@ -115,7 +115,7 @@ jobs:
         id: caches
         if: always() && steps.seed.outcome == 'success'
         run: |
-          mkdir -p "$BUILD_CACHE/aur-repo" "$BUILD_CACHE/pacman-pkg"
+          sudo mkdir -p "$BUILD_CACHE/aur-repo" "$BUILD_CACHE/pacman-pkg"
           sudo rsync -a --delete "$VOLUME/aur-repo/" "$BUILD_CACHE/aur-repo/"
           sudo rsync -a --delete "$VOLUME/mkosi/pacman-pkg/" "$BUILD_CACHE/pacman-pkg/"
           sudo chown -R "$USER" "$BUILD_CACHE"
