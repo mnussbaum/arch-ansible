@@ -341,16 +341,21 @@ src/arch_ansible_vm/
   qemu.py                   QEMU command line, swtpm, OVMF varstore
   sdboot.py                 sd-boot menu parsing and selection
   disks.py                  test-disk retention
+  checks.py                 facts read from a booted guest (system state,
+                            ESP layout, partitions, TPM2 bindings, network),
+                            printed by bin/vm and asserted on by the tests
+  sessions.py               booting the installer and installed disks
   __main__.py               the `vm run` / `vm install` CLI
 bin/vm                      PYTHONPATH=<repo>/src exec python3 -m arch_ansible_vm "$@"
 src/arch_ansible_ci/
   identity.py               the throwaway CI identity
 bin/ci                      PYTHONPATH=<repo>/src exec python3 -m arch_ansible_ci "$@":
-                            `identity DIR` now, the e2e stages later
+                            `identity DIR`, and `test STAGE...`, which runs
+                            `uv run pytest tests/e2e -m STAGE`
 tests/unit/                 stage 1's unit tests
 tests/e2e/                  one module per stage, a pytest marker each, and
-                            the CI-only support code: the throwaway identity,
-                            doc_command, shared VM fixtures
+                            session fixtures that boot each VM once and
+                            record what it found; doc_command later
 ```
 
 - `bin/vm` keeps its flags and behaviour; only where the code lives changes.
@@ -375,7 +380,7 @@ tests/e2e/                  one module per stage, a pytest marker each, and
    on a hosted runner").
 3. CI identity and the build job (stage 2), with the Actions caches.
 4. Turn `bin/vm`'s printed checks into assertions (stages 3–4) and add
-   `bin/ci`.
+   `bin/ci test`, run by the image workflow's `vm` job.
 5. First login, pass and the graphical session (stage 5).
 6. A/B update and rollback (stage 8).
 7. Restic back-up and restore (stage 9).
