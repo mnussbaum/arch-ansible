@@ -4,8 +4,7 @@ name: Image
 
 on:
   push:
-    # TODO: drop the branch once this workflow has run from it.
-    branches: [main, mnussbaum/ci-image-build]
+    branches: [main]
   schedule:
     # Nightly, which also keeps the caches from being evicted.
     - cron: "17 9 * * *"
