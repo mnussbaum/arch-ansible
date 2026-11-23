@@ -13,6 +13,10 @@ opts.formatters = {
       return not is_helm_template(ctx)
     end,
   },
+  -- Run from the project root so ansible-lint finds the project's config
+  ["ansible-lint"] = {
+    cwd = require("conform.util").root_file({ ".ansible-lint", ".config/ansible-lint.yml", ".git" }),
+  },
 }
 
 require("conform").setup(opts)

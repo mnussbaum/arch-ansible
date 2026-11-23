@@ -50,7 +50,8 @@ def notify(urgency: str, summary: str, body: str = "") -> None:
                 f"--urgency={urgency}",
                 "--app-name=Restic Backup",
                 "--expire-time=8000",
-                summary, body,
+                summary,
+                body,
             ],
             check=False,
         )
@@ -69,15 +70,15 @@ def credential(name: str) -> str:
         if path.exists():
             return path.read_text().rstrip("\n")
     pass_paths = {
-        "restic_backblaze_key":
-            f"host_secrets/{hostname()}/restic_backblaze_key",
-        "restic_backblaze_key_id":
-            f"host_secrets/{hostname()}/restic_backblaze_key_id",
+        "restic_backblaze_key": f"host_secrets/{hostname()}/restic_backblaze_key",
+        "restic_backblaze_key_id": f"host_secrets/{hostname()}/restic_backblaze_key_id",
         "restic_backup_password": "restic_backup_password",
     }
     r = subprocess.run(
         ["pass", "show", pass_paths[name]],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     )
     return r.stdout.rstrip("\n")
 
@@ -95,7 +96,9 @@ def read_lines(path: pathlib.Path) -> list[str]:
 def mountpoint_of(device: str) -> pathlib.Path | None:
     r = subprocess.run(
         ["findmnt", "-no", "TARGET", device],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     target = r.stdout.strip()
     return pathlib.Path(target) if r.returncode == 0 and target else None
@@ -189,8 +192,7 @@ def resolve_targets(snap: pathlib.Path, includes: list[str]) -> list[pathlib.Pat
 
 
 def cmd_backup(args: argparse.Namespace) -> None:
-    notify("normal", "Backup starting",
-           "You might be prompted for credentials")
+    notify("normal", "Backup starting", "You might be prompted for credentials")
     try:
         home = home_dir(args.user)
         if not home.is_dir():
@@ -203,32 +205,40 @@ def cmd_backup(args: argparse.Namespace) -> None:
             if not targets:
                 sys.exit("Nothing to back up: no included paths exist in the snapshot")
             cmd = [
-                "restic", "backup",
-                "--compression", "max",
+                "restic",
+                "backup",
+                "--compression",
+                "max",
                 "--exclude-caches",
                 "--one-file-system",
                 "--cleanup-cache",
-                "--exclude-file", str(EXCLUDES_FILE),
-                "--tag", f"user={args.user}",
-                "--tag", f"host={hostname()}",
+                "--exclude-file",
+                str(EXCLUDES_FILE),
+                "--tag",
+                f"user={args.user}",
+                "--tag",
+                f"host={hostname()}",
                 *[str(t) for t in targets],
             ]
             subprocess.run(cmd, check=True, env=env)
     except BaseException:
-        notify("critical", "Backup failed",
-               "Check journal: journalctl --user -u restic-backup")
+        notify(
+            "critical",
+            "Backup failed",
+            "Check journal: journalctl --user -u restic-backup",
+        )
         raise
     notify("normal", "Backup complete", "")
 
 
-def snapshot_entry_type(
-    env: dict, snapshot: str, path: pathlib.Path
-) -> str | None:
+def snapshot_entry_type(env: dict, snapshot: str, path: pathlib.Path) -> str | None:
     """Return 'dir', 'file', or None if `path` is absent in the snapshot."""
     r = subprocess.run(
-        ["restic", "find", "--no-lock", "--snapshot", snapshot,
-         "--json", str(path)],
-        capture_output=True, text=True, env=env,
+        ["restic", "find", "--no-lock", "--snapshot", snapshot, "--json", str(path)],
+        capture_output=True,
+        text=True,
+        env=env,
+        check=False,
     )
     # A path missing from the snapshot is an empty result, not an error, so a
     # failure here (bad credentials, unreachable repo, unknown snapshot) must
@@ -270,15 +280,16 @@ def cmd_restore(args: argparse.Namespace) -> None:
 
     with repo_env(args.device) as env:
         for rel in rels:
-            dst = home / rel            # the same path on disk, restored in place
+            dst = home / rel  # the same path on disk, restored in place
             for root in snap_roots:
-                src = root / rel        # the path inside the snapshot
+                src = root / rel  # the path inside the snapshot
                 kind = snapshot_entry_type(env, args.snapshot, src)
                 if kind is not None:
                     break
             else:
-                print(f"skipping {rel}: not in snapshot {args.snapshot}",
-                      file=sys.stderr)
+                print(
+                    f"skipping {rel}: not in snapshot {args.snapshot}", file=sys.stderr
+                )
                 continue
 
             print(f"Restoring {rel} -> {dst} ...", file=sys.stderr)
@@ -288,8 +299,11 @@ def cmd_restore(args: argparse.Namespace) -> None:
                 # snapshot, so dst ends up matching the snapshot exactly.
                 dst.mkdir(parents=True, exist_ok=True)
                 cmd = [
-                    "restic", "restore", f"{args.snapshot}:{src}",
-                    "--target", str(dst),
+                    "restic",
+                    "restore",
+                    f"{args.snapshot}:{src}",
+                    "--target",
+                    str(dst),
                 ]
                 if args.exact:
                     cmd.append("--delete")
@@ -298,9 +312,13 @@ def cmd_restore(args: argparse.Namespace) -> None:
                 # can't use --delete here (it would prune the file's siblings).
                 dst.parent.mkdir(parents=True, exist_ok=True)
                 cmd = [
-                    "restic", "restore", f"{args.snapshot}:{src.parent}",
-                    "--target", str(dst.parent),
-                    "--include", f"/{src.name}",
+                    "restic",
+                    "restore",
+                    f"{args.snapshot}:{src.parent}",
+                    "--target",
+                    str(dst.parent),
+                    "--include",
+                    f"/{src.name}",
                 ]
             # By default only fill in missing files, leaving anything already
             # on disk (newer work, files added since the snapshot) untouched.
@@ -312,7 +330,8 @@ def cmd_snapshots(args: argparse.Namespace) -> None:
     with repo_env(args.device) as env:
         subprocess.run(
             ["restic", "snapshots", *args.restic_args],
-            check=True, env=env,
+            check=True,
+            env=env,
         )
 
 
@@ -322,7 +341,8 @@ def cmd_mount(args: argparse.Namespace) -> None:
     with repo_env(args.device) as env:
         subprocess.run(
             ["restic", "mount", str(mnt), *args.restic_args],
-            check=True, env=env,
+            check=True,
+            env=env,
         )
 
 
@@ -337,60 +357,91 @@ def build_parser() -> argparse.ArgumentParser:
         sp.add_argument(
             "--device",
             help="Local block device (e.g. /dev/sda1) to use as repo. "
-                 "Defaults to Backblaze B2.",
+            "Defaults to Backblaze B2.",
         )
 
     default_user = os.environ.get("USER") or pwd.getpwuid(os.getuid()).pw_name
 
     sp = sub.add_parser("backup", help="Snapshot home and back it up.")
-    sp.add_argument("user", nargs="?", default=default_user,
-                    help=f"User whose home to back up (default: {default_user})")
-    sp.add_argument("--directory", "-d", action="append", default=[],
-                    help="Path relative to home to back up (repeatable). "
-                         f"Default: contents of {INCLUDES_FILE}.")
+    sp.add_argument(
+        "user",
+        nargs="?",
+        default=default_user,
+        help=f"User whose home to back up (default: {default_user})",
+    )
+    sp.add_argument(
+        "--directory",
+        "-d",
+        action="append",
+        default=[],
+        help="Path relative to home to back up (repeatable). "
+        f"Default: contents of {INCLUDES_FILE}.",
+    )
     add_device(sp)
     sp.set_defaults(func=cmd_backup)
 
     sp = sub.add_parser(
         "restore",
         help="Restore paths in place from a snapshot. By default only "
-             "missing files are restored; nothing is deleted or overwritten.",
+        "missing files are restored; nothing is deleted or overwritten.",
     )
-    sp.add_argument("user", nargs="?", default=default_user,
-                    help=f"User whose home to restore (default: {default_user})")
-    sp.add_argument("--snapshot", default="latest",
-                    help="Snapshot ID to restore (default: latest)")
-    sp.add_argument("--directory", "-d", action="append", default=[],
-                    help="Path to restore in place (repeatable). May be "
-                         "absolute or relative to the current directory, but "
-                         "must resolve to a location under the user's home. "
-                         f"Default: contents of {INCLUDES_FILE} "
-                         "(home-relative).")
+    sp.add_argument(
+        "user",
+        nargs="?",
+        default=default_user,
+        help=f"User whose home to restore (default: {default_user})",
+    )
+    sp.add_argument(
+        "--snapshot", default="latest", help="Snapshot ID to restore (default: latest)"
+    )
+    sp.add_argument(
+        "--directory",
+        "-d",
+        action="append",
+        default=[],
+        help="Path to restore in place (repeatable). May be "
+        "absolute or relative to the current directory, but "
+        "must resolve to a location under the user's home. "
+        f"Default: contents of {INCLUDES_FILE} "
+        "(home-relative).",
+    )
     mode = sp.add_mutually_exclusive_group()
-    mode.add_argument("--exact", action="store_true",
-                      help="Make each path match the snapshot exactly: "
-                           "overwrite changed files and delete files not in "
-                           "the snapshot.")
-    mode.add_argument("--overwrite", default="never",
-                      choices=["never", "if-newer", "if-changed", "always"],
-                      help="When to overwrite existing files (restic's "
-                           "--overwrite; default: never). if-newer keeps "
-                           "local files newer than the snapshot's. Nothing "
-                           "is deleted.")
+    mode.add_argument(
+        "--exact",
+        action="store_true",
+        help="Make each path match the snapshot exactly: "
+        "overwrite changed files and delete files not in "
+        "the snapshot.",
+    )
+    mode.add_argument(
+        "--overwrite",
+        default="never",
+        choices=["never", "if-newer", "if-changed", "always"],
+        help="When to overwrite existing files (restic's "
+        "--overwrite; default: never). if-newer keeps "
+        "local files newer than the snapshot's. Nothing "
+        "is deleted.",
+    )
     add_device(sp)
     sp.set_defaults(func=cmd_restore)
 
     sp = sub.add_parser("snapshots", help="List snapshots in the repository.")
     add_device(sp)
-    sp.add_argument("restic_args", nargs=argparse.REMAINDER,
-                    help="Extra args forwarded to `restic snapshots`")
+    sp.add_argument(
+        "restic_args",
+        nargs=argparse.REMAINDER,
+        help="Extra args forwarded to `restic snapshots`",
+    )
     sp.set_defaults(func=cmd_snapshots)
 
     sp = sub.add_parser("mount", help="FUSE-mount the repository.")
     sp.add_argument("mountpoint", help="Empty directory to mount onto.")
     add_device(sp)
-    sp.add_argument("restic_args", nargs=argparse.REMAINDER,
-                    help="Extra args forwarded to `restic mount`")
+    sp.add_argument(
+        "restic_args",
+        nargs=argparse.REMAINDER,
+        help="Extra args forwarded to `restic mount`",
+    )
     sp.set_defaults(func=cmd_mount)
 
     return p

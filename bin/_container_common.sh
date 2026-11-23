@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -96,11 +97,14 @@ container_build() {
     echo "Warning: the runtime has $((mem / 1000000000))G of memory; give it 8G+" >&2
   fi
 
-  local run=("${CONTAINER_RT[@]}" run --rm --interactive --tty --privileged --platform linux/amd64
+  local run=("${CONTAINER_RT[@]}" run --rm --interactive --privileged --platform linux/amd64
     --shm-size 2g
     --volume "$repo:/host-repo:ro"
     --volume "$DR_VOLUME:/home/builder/.cache"
     --volume "$out:/out")
+  # Without a terminal (CI), stdin passes through instead, e.g. the
+  # --ephemeral-key home password, which dr-entrypoint then reads from it.
+  if [[ -t 0 ]]; then run+=(--tty); fi
   if [[ -n $store_dir ]]; then run+=(--volume "$store_dir:/host-password-store:ro"); fi
   if [[ -n $store_url ]]; then run+=(--env "DR_PASSWORD_STORE_URL=$store_url"); fi
 
@@ -132,6 +136,7 @@ container_build() {
   "${run[@]}" "$DR_IMAGE" ${build_args[@]+"${build_args[@]}"}
 
   echo "Built:" >&2
+  # shellcheck disable=SC2012 # image names are plain image_<version>_<arch>.raw
   ls -1t "$out"/image_*.raw | head -1 >&2
   echo "Write it to a USB drive with: bin/burn-image <image> <device>" >&2
 }

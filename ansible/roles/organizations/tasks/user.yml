@@ -21,7 +21,12 @@
 
 # gpg-agent prompts once for a passphrase to protect its copy of each key.
 - name: Add organization ssh keys from pass to gpg-agent
-  shell: pass show "{{ item.value.ssh_key.pass }}" | ssh-add -
+  shell: |
+    set -o pipefail
+    pass show "{{ item.value.ssh_key.pass }}" | ssh-add -
+  args:
+    executable: /bin/bash
+  changed_when: true
   loop: "{{ active_organizations | dict2items }}"
   loop_control:
     label: "{{ item.key }}"

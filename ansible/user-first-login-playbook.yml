@@ -9,7 +9,8 @@
 # be safe to re-run. Plain config files don't belong here: install them
 # system-wide (/etc/xdg and the like) or link them into homes with user tmpfiles
 # (/usr/share/user-tmpfiles.d) in postinst-playbook.yml, so they track the image.
-- hosts: all
+- name: Set up the user's home
+  hosts: all
   tasks:
     - import_role:
         name: user
@@ -45,4 +46,5 @@
         tasks_from: user
     - name: Record the playbook digest this home was provisioned for
       shell: grep '^ARCH_ANSIBLE_USER_PLAYBOOK_DIGEST=' /usr/lib/os-release > ~/.config/user-first-login-done
+      changed_when: true
       when: yubikey_check.rc == 0

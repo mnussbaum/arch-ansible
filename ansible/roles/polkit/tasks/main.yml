@@ -14,4 +14,3 @@
   copy:
     src: 80-polkit.preset
     dest: /usr/lib/systemd/user-preset/80-polkit.preset
-

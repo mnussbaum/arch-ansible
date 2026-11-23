@@ -8,9 +8,12 @@
       rm -rf /usr/share/factory/var/vanta
       mkdir -p /usr/share/factory/var
       mv /var/vanta /usr/share/factory/var/vanta
+      echo moved
     fi
   args:
     executable: /bin/bash
+  register: vanta_move
+  changed_when: "'moved' in vanta_move.stdout"
 
 - name: Seed /var/vanta at boot
   copy:

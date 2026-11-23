@@ -5,17 +5,24 @@
   # bin/_cache_common.sh). Cloning it locally gives the VM a real checkout
   # offline; origin is repointed at GitHub below so pull/push work.
   # update: false leaves any later local work untouched on re-runs.
-  ansible.builtin.git:
+  ansible.builtin.git:  # noqa: latest[git]
     repo: /usr/share/arch-ansible
     dest: "{{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible"
     update: false
 
 - name: Point arch-ansible origin at GitHub
-  ansible.builtin.command:
+  ansible.builtin.command:  # noqa: command-instead-of-module
     cmd: >-
       git -C {{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible
       remote set-url origin git@github.com:mnussbaum/arch-ansible.git
   changed_when: false
+
+- name: Install the arch-ansible pre-commit hook
+  # Runs the static checks from .pre-commit-config.yaml before each commit.
+  ansible.builtin.command:
+    cmd: prek install
+    chdir: "{{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible"
+    creates: "{{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible/.git/hooks/pre-commit"
 
 - name: Remove read-only password-store symlinks
   # Older images linked these at the read-only /usr/share/password-store through
@@ -44,7 +51,7 @@
     - name: Clone password-store into home
       # The image ships /usr/share/password-store as a git repo. The ansible git
       # module can't pass safe.directory, which the root-owned repo needs.
-      ansible.builtin.command:
+      ansible.builtin.command:  # noqa: command-instead-of-module
         cmd: >-
           git -c safe.directory=/usr/share/password-store/.git
           clone /usr/share/password-store
@@ -52,7 +59,7 @@
         creates: "{{ ansible_facts['env']['HOME'] }}/.local/share/password-store"
 
     - name: Point password-store origin at GitLab
-      ansible.builtin.command:
+      ansible.builtin.command:  # noqa: command-instead-of-module
         cmd: >-
           git -C {{ ansible_facts['env']['HOME'] }}/.local/share/password-store
           remote set-url origin git@gitlab.com:mnussbaum/password-store.git
@@ -116,6 +123,7 @@
       # also pre-set in the home.create record (bin/_credstore_common.sh) so the very
       # first login works; disk-size=max needs the active home, so it's applied here.
       ansible.builtin.command: sudo -n /usr/bin/home-tune-storage
+      changed_when: true
       when: >-
         '"storage":"luks"' in homed_record_after.stdout and
         ('"autoResizeMode":"off"' not in homed_record_after.stdout or

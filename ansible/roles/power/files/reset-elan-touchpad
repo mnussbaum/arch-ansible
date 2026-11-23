@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Rebind the Elan i2c touchpad after resume. Without this, pointer movement
 # works but clicking is delayed ~1-2 minutes while the touchpad firmware
 # reinitializes its button reporting path.

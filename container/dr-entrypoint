@@ -65,7 +65,7 @@ case $DR_MODE in
     keys=$HOME/.cache/dr-ephemeral-secureboot
     if [[ ! -f $keys/secureboot.key ]]; then
       echo "==> Minting a throwaway Secure Boot key" >&2
-      mkdir -p -m 700 "$keys"
+      install -d -m 700 "$keys"
       openssl req -new -x509 -newkey rsa:2048 -nodes -days 36500 \
         -subj "/CN=arch-ansible disaster-recovery (throwaway)" \
         -keyout "$keys/secureboot.key" -out "$keys/secureboot.crt" 2>/dev/null

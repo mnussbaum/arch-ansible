@@ -42,7 +42,11 @@ with open(LOG) as f:
         record = json.loads(chunk)
         if record.get("pcr") != 15:
             continue
-        sha256 = [d["digest"] for d in record.get("digests", []) if d.get("hashAlg") == "sha256"]
+        sha256 = [
+            d["digest"]
+            for d in record.get("digests", [])
+            if d.get("hashAlg") == "sha256"
+        ]
         if not sha256:
             fail(f"PCR 15 record without a sha256 digest: {record}")
         string = (record.get("content") or {}).get("string", "")

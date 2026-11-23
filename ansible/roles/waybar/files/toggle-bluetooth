@@ -9,4 +9,4 @@ bluetooth_device_id=$(
     jq '.rfkilldevices | map(select(.type == "bluetooth")) | map(.id) | first'
 )
 
-pkexec rfkill toggle $bluetooth_device_id
+pkexec rfkill toggle "$bluetooth_device_id"

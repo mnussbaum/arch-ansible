@@ -1,7 +1,4 @@
-#!/usr/bin/python
-
-
-class FilterModule(object):
+class FilterModule:
     def filters(self):
         return {"waybar_colored_block": self.waybar_colored_block}
 

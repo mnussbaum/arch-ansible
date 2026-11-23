@@ -9,4 +9,4 @@ wifi_device_id=$(
     jq '.rfkilldevices | map(select(.type == "wlan")) | map(.id) | first'
 )
 
-pkexec rfkill toggle $wifi_device_id
+pkexec rfkill toggle "$wifi_device_id"

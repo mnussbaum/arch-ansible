@@ -34,8 +34,6 @@ def main():
     #     print("daytime", end="")
     print("daytime", end="")
 
-    return
-
 
 if __name__ == "__main__":
     main()

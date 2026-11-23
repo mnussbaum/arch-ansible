@@ -278,7 +278,7 @@ if [[ ${#stale[@]} -gt 0 ]]; then
             ( cd "$dir" && PKGDEST="$repo" MAKEFLAGS="${MAKEFLAGS:--j$(nproc)}" \
                 makechrootpkg -c -r "$chroots" "${install[@]}" -- --skippgpcheck )
         fi
-        state[$base]=done
+        state[$base]="done"
     }
 
     for pkg in "${aur[@]}"; do

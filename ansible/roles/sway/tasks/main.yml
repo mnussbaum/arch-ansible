@@ -89,4 +89,3 @@
   copy:
     src: 80-sway.preset
     dest: /usr/lib/systemd/user-preset/80-sway.preset
-

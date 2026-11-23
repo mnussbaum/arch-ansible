@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -38,6 +39,7 @@ GITLAB_HOST_KEY="gitlab.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6
 # Builds a root GPG key USB image: a LUKS volume holding the given files. Runs
 # as root, natively on Linux and in a container on macOS, which has no LUKS.
 # Arguments: the image file to create and the directory of files to copy.
+# shellcheck disable=SC2016 # expanded by the shell that runs it, not here
 KEY_USB_SCRIPT='
 set -o errexit
 set -o nounset
@@ -85,6 +87,7 @@ PINENTRY_EOF
 }
 
 _write_card_admin_pin() {
+  # shellcheck disable=SC2153 # GNUPGHOME is exported by the caller
   printf '%s' "$YUBIKEY_CURRENT_ADMIN_PIN" > "$GNUPGHOME/card-admin-pin"
   chmod 600 "$GNUPGHOME/card-admin-pin"
 }
@@ -206,6 +209,7 @@ renew_expiring_subkeys() {
   echo "==> Subkeys expire within 30 days; extending them by 1 year..."
   "${GPG_BATCH[@]}" --yes --quick-set-expire "$FINGERPRINT" 1y "*"
   gpg --armor --export "$FINGERPRINT" > ansible/roles/gpg/files/gpg-pubkey.asc
+  # shellcheck disable=SC2034 # read by the scripts that source this file
   RENEWED=1
 }
 

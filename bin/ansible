@@ -27,12 +27,14 @@ ansible --version >/dev/null 2>&1
 if [[ -n "${ARCH_ANSIBLE_IDENTITY:-}" ]]; then
   target=(--limit "$ARCH_ANSIBLE_IDENTITY")
 else
+  # shellcheck disable=SC2054 # "localhost," is an inline inventory, not a separator
   target=(--inventory localhost, --connection local)
 fi
 
 # The image's organizations: set by the build, otherwise recorded in os-release
 # by the organizations role.
 if [[ -z "${ARCH_ANSIBLE_ORGANIZATIONS+set}" && -r /usr/lib/os-release ]]; then
+  # shellcheck source=/dev/null
   ARCH_ANSIBLE_ORGANIZATIONS=$(. /usr/lib/os-release; echo "${ARCH_ANSIBLE_ORGANIZATIONS:-}")
 fi
 organizations_json=$(python3 -c 'import json,sys;print(json.dumps({"image_organizations":[o for o in sys.argv[1].split(",") if o]}))' \

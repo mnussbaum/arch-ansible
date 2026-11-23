@@ -37,6 +37,7 @@ for mnt in /usr /boot /efi; do
     [[ $src == /dev/* ]] || continue
     while IFS= read -r line; do
         eval "$line"
+        # shellcheck disable=SC2153 # NAME and TYPE come from the eval'd lsblk -P line
         # One disk is reached via several paths (both verity partitions, the ESP).
         [[ ${TYPE:-} == disk && $boot_disks != *" $NAME "* ]] && boot_disks+="$NAME "
     done < <(lsblk -sPno NAME,TYPE "$src" 2>/dev/null)
