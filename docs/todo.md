@@ -2,7 +2,6 @@
 
 - Fix colorscheme changer for the new world. Needs a whole new strategy
 - Add testing and CI
-- Fix swap on all devices
 - Burn fresh USBs
 - Clean up old OTPs
 - Print recovery packets
