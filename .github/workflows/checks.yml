@@ -1,0 +1,31 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    # Arch, so the tools match the versions the image ships.
+    container: archlinux:latest
+    steps:
+      - name: Install tools
+        run: >-
+          pacman -Syu --noconfirm --needed
+          git shellcheck ansible ansible-lint ruff uv qrencode
+
+      - uses: actions/checkout@v5
+
+      # The checkout belongs to the runner's user, not the container's root.
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Static checks
+        run: uvx prek run --all-files --show-diff-on-failure
+
+      - name: Unit tests
+        run: uv run pytest tests/unit
