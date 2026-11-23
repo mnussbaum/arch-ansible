@@ -17,6 +17,13 @@
       remote set-url origin git@github.com:mnussbaum/arch-ansible.git
   changed_when: false
 
+- name: Install the arch-ansible pre-commit hook
+  # Runs the static checks from .pre-commit-config.yaml before each commit.
+  ansible.builtin.command:
+    cmd: prek install
+    chdir: "{{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible"
+    creates: "{{ ansible_facts['env']['HOME'] }}/Projects/arch-ansible/.git/hooks/pre-commit"
+
 - name: Remove read-only password-store symlinks
   # Older images linked these at the read-only /usr/share/password-store through
   # /etc/skel, which breaks pass insert/edit.

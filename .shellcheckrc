@@ -1,0 +1,6 @@
+# Follow sourced files, resolving them the way the scripts do: helpers next
+# to the script, and bin/ scripts sourcing bin/_*.sh from the repo root. This
+# keeps results the same whatever directory shellcheck runs from.
+external-sources=true
+source-path=SCRIPTDIR
+source-path=SCRIPTDIR/..

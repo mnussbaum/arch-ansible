@@ -1,0 +1,54 @@
+# Static checks, run by prek as a git pre-commit hook and by CI over every
+# file. Each hook uses the tool installed on the system (the image ships
+# them), so the versions match the ones nvim runs on save. Rule settings live
+# in each tool's own config: .shellcheckrc, .ansible-lint, pyproject.toml.
+exclude: ^ansible/vendor/
+repos:
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: shellcheck
+        language: system
+        entry: shellcheck
+        types_or: [bash, sh]
+
+      - id: ansible-lint
+        name: ansible-lint
+        language: system
+        entry: ansible-lint
+        files: ^(ansible/|\.ansible-lint$)
+        pass_filenames: false
+
+      - id: ansible-syntax-check
+        name: ansible-playbook --syntax-check
+        language: system
+        entry: >-
+          bash -c 'set -o errexit -o nounset -o pipefail; cd ansible;
+          ansible-playbook --syntax-check postinst-playbook.yml user-first-login-playbook.yml'
+        files: ^ansible/
+        pass_filenames: false
+
+      # Missing binaries are skipped: the units' commands come from the image,
+      # not from wherever the check runs.
+      - id: systemd-analyze-verify
+        name: systemd-analyze verify
+        language: system
+        entry: >-
+          bash -c 'set -o errexit -o nounset -o pipefail;
+          out=$(systemd-analyze verify --man=no --recursive-errors=no "$@" 2>&1
+          | grep -v "is not executable: No such file or directory" || true);
+          if [[ -n $out ]]; then echo "$out"; exit 1; fi' --
+        files: \.(service|socket|timer|mount|target|path)$
+        exclude: \.d/
+
+      - id: ruff-check
+        name: ruff check
+        language: system
+        entry: ruff check
+        types: [python]
+
+      - id: ruff-format
+        name: ruff format --check
+        language: system
+        entry: ruff format --check
+        types: [python]

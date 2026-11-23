@@ -1,0 +1,21 @@
+---
+# Style rules the codebase doesn't follow; correctness rules stay on.
+skip_list:
+  - fqcn[action-core]
+  - fqcn[action]
+  - risky-file-permissions
+  - name[missing]
+  - role-name
+  - var-naming[no-role-prefix]
+  # Handlers run at the end of the play, after tasks that depend on these.
+  - no-handler
+exclude_paths:
+  - ansible/vendor/
+# Vendored role and its modules resolve only through ansible/ansible.cfg's
+# roles_path, so mock them to lint the same from any directory.
+mock_roles:
+  - mnussbaum.base16-builder-ansible
+  - mnussbaum.firefox_ext_sideloader
+mock_modules:
+  - base16_builder
+  - firefox_ext_sideloader
