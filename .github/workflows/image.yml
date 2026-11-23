@@ -165,3 +165,59 @@ jobs:
           path: ${{ env.OUT }}/split/
           retention-days: 7
           compression-level: 0
+
+  # Stages 3 and 4: install the medium onto a blank disk, then boot it twice.
+  vm:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    # Arch, so bin/vm finds QEMU, OVMF and swtpm where it does on a machine
+    # built from this repo.
+    container:
+      image: archlinux:latest
+      options: --device /dev/kvm --privileged
+    env:
+      ARCH_ANSIBLE_CACHE: /var/cache/arch-ansible
+    steps:
+      - name: Install tools
+        run: >-
+          pacman -Syu --noconfirm --needed
+          git python uv qemu-system-x86 edk2-ovmf swtpm virt-firmware zstd imagemagick
+
+      - uses: actions/checkout@v5
+
+      # The checkout belongs to the runner's user, not the container's root.
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: medium
+          path: /tmp/medium
+
+      # Where bin/vm looks: the newest medium in the cache's image directory,
+      # and the certificate it enrolls in each VM's firmware.
+      - name: Unpack the medium
+        run: |
+          images=$ARCH_ANSIBLE_CACHE/mkosi/images/image
+          mkdir -p "$images" "$ARCH_ANSIBLE_CACHE/mkosi-secureboot"
+          for packed in /tmp/medium/*.raw.zst; do
+            zstd -d -q --sparse "$packed" -o "$images/$(basename "$packed" .zst)"
+          done
+          cp /tmp/medium/secureboot.crt "$ARCH_ANSIBLE_CACHE/mkosi-secureboot/mkosi.crt"
+          rm -rf /tmp/medium
+
+      - name: Install and boot
+        run: bin/ci test install first_boot
+
+      - name: Keep the VM logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vm-logs
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.log
+            ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.png
+            ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.ppm
