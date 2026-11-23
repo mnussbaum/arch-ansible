@@ -8,6 +8,8 @@
 #   provided   /host-secrets, decrypted on the host by dr-unlock
 #   ephemeral  a throwaway Secure Boot key, kept in the cache volume; no YubiKey
 #
+# DR_SPLIT_ARTIFACTS=1 also copies the split usr/verity/UKI artifacts to /out.
+#
 # Mounts: /host-repo (ro), /home/builder/.cache (named volume), /out, and
 # optionally /host-secrets or /host-password-store (ro). Root reads the mounts
 # and hands builder copies: they belong to the host's uid, which needn't be
@@ -52,8 +54,16 @@ if [[ $EUID -eq 0 ]]; then
   echo "==> Copying $(basename "$medium") to the host" >&2
   cp --sparse=always "$medium" /out/
   chown "$(stat -c %u:%g /out)" "/out/$(basename "$medium")"
-  # Only the newest, so a glob over /out names one image.
-  find /out -maxdepth 1 -name 'image_*.raw' ! -name "$(basename "$medium")" -print -delete
+  # Only the newest version, so a glob over /out names one image.
+  find /out -maxdepth 1 \( -name 'image_*.raw' -o -name 'image_*.efi' \) \
+    ! -name "image_${version}_*" -print -delete
+  if [[ ${DR_SPLIT_ARTIFACTS:-} == 1 ]]; then
+    echo "==> Copying the split artifacts to the host" >&2
+    find /home/builder/.cache/mkosi/images/image -maxdepth 1 \
+      \( -name "image_${version}_x86-64.usr-*.raw" -o -name "image_${version}_x86-64.efi" \) \
+      -exec cp --sparse=always -t /out/ {} +
+    find /out -maxdepth 1 -name "image_${version}_*" -exec chown "$(stat -c %u:%g /out)" -- {} +
+  fi
   exit
 fi
 

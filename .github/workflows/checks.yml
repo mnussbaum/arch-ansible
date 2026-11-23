@@ -16,7 +16,7 @@ jobs:
       - name: Install tools
         run: >-
           pacman -Syu --noconfirm --needed
-          git shellcheck ansible ansible-lint ruff uv qrencode prek
+          git shellcheck ansible ansible-lint ruff uv qrencode prek pass gnupg openssl
 
       - uses: actions/checkout@v5
 

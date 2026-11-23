@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# CI tasks for this repo's image; see `bin/ci --help`. The code lives in
+# src/arch_ansible_ci and needs only the standard library.
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
+repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+PYTHONPATH="$repo/src${PYTHONPATH:+:$PYTHONPATH}" exec python3 -m arch_ansible_ci "$@"

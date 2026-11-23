@@ -1,0 +1,167 @@
+# The image tier of docs/plan-ci.md: builds the image with a throwaway CI
+# identity and hands it to the jobs that test it.
+name: Image
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Nightly, which also keeps the caches from being evicted.
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
+
+# Fixed paths: the cache actions restore to the path they saved from.
+env:
+  IDENTITY: /home/runner/ci-identity
+  BUILD_CACHE: /home/runner/build-cache
+  OUT: /home/runner/out
+
+jobs:
+  build:
+    # Pull requests build only when labelled, since a build takes most of an hour.
+    if: >-
+      github.event_name != 'pull_request'
+      || contains(github.event.pull_request.labels.*.name, 'ci:image')
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Free disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift \
+            /usr/local/share/powershell /usr/local/share/chromium /usr/local/lib/node_modules
+          sudo docker image prune --all --force >/dev/null
+          df -h /
+
+      # One throwaway identity, kept in the cache so every run signs with the
+      # same Secure Boot key and the A/B update can boot the previous run's image.
+      - name: Restore the CI identity
+        id: identity
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.IDENTITY }}
+          key: ci-identity-v1
+
+      - name: Create the CI identity
+        if: steps.identity.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install --yes --no-install-recommends pass >/dev/null
+          bin/ci identity "$IDENTITY"
+
+      - name: Save the CI identity
+        if: steps.identity.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.IDENTITY }}
+          key: ci-identity-v1
+
+      - name: Restore the AUR repo
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BUILD_CACHE }}/aur-repo
+          key: aur-repo-
+          restore-keys: aur-repo-
+
+      - name: Restore the pacman package cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BUILD_CACHE }}/pacman-pkg
+          key: pacman-pkg-
+          restore-keys: pacman-pkg-
+
+      # The build's caches live in the container's named volume, as builder
+      # (uid 1000); bin/build-image --container uses rootful podman here.
+      - name: Seed the build volume
+        id: seed
+        run: |
+          sudo podman volume create arch-ansible-dr-cache >/dev/null
+          volume=$(sudo podman volume inspect --format '{{.Mountpoint}}' arch-ansible-dr-cache)
+          sudo mkdir -p "$volume/aur-repo" "$volume/mkosi/pacman-pkg"
+          if [[ -d $BUILD_CACHE/aur-repo ]]; then
+            sudo rsync -a "$BUILD_CACHE/aur-repo/" "$volume/aur-repo/"
+          fi
+          if [[ -d $BUILD_CACHE/pacman-pkg ]]; then
+            sudo rsync -a "$BUILD_CACHE/pacman-pkg/" "$volume/mkosi/pacman-pkg/"
+          fi
+          sudo chown -R 1000:1000 "$volume"
+          echo "VOLUME=$volume" >> "$GITHUB_ENV"
+          sudo du -sh "$volume/aur-repo" "$volume/mkosi/pacman-pkg"
+
+      - name: Build
+        run: |
+          mkdir -p "$OUT"
+          bin/build-image --container --secrets "$IDENTITY" --split-artifacts --out "$OUT" \
+            -- --incremental=no
+
+      # Saved even after a failed build, so a retry reuses what it got through.
+      # Keyed on the contents, so an unchanged cache isn't saved again.
+      - name: Collect the build caches
+        id: caches
+        if: always() && steps.seed.outcome == 'success'
+        run: |
+          sudo mkdir -p "$BUILD_CACHE/aur-repo" "$BUILD_CACHE/pacman-pkg"
+          sudo rsync -a --delete "$VOLUME/aur-repo/" "$BUILD_CACHE/aur-repo/"
+          sudo rsync -a --delete "$VOLUME/mkosi/pacman-pkg/" "$BUILD_CACHE/pacman-pkg/"
+          sudo chown -R "$USER" "$BUILD_CACHE"
+          for name in aur-repo pacman-pkg; do
+            digest=$(cd "$BUILD_CACHE/$name" && find . -type f -printf '%p %s\n' | sort | sha256sum | cut -c1-16)
+            echo "$name=$digest" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Save the AUR repo
+        if: always() && steps.caches.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.BUILD_CACHE }}/aur-repo
+          key: aur-repo-${{ steps.caches.outputs.aur-repo }}
+
+      - name: Save the pacman package cache
+        if: always() && steps.caches.outcome == 'success'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.BUILD_CACHE }}/pacman-pkg
+          key: pacman-pkg-${{ steps.caches.outputs.pacman-pkg }}
+
+      # The medium travels compressed with the identity's certificate, which
+      # the test VMs enroll and the A/B update compares against.
+      - name: Package the artifacts
+        run: |
+          mkdir -p "$OUT/medium" "$OUT/split"
+          medium=$(find "$OUT" -maxdepth 1 -name 'image_*_x86-64.raw')
+          zstd -T0 -q "$medium" -o "$OUT/medium/$(basename "$medium").zst"
+          cp "$IDENTITY/secureboot.crt" "$OUT/medium/"
+          jq '{secureboot_cert_sha256}' "$IDENTITY/manifest.json" > "$OUT/medium/identity.json"
+          find "$OUT" -maxdepth 1 \( -name 'image_*.usr-*.raw' -o -name 'image_*.efi' \) \
+            -exec mv -t "$OUT/split/" {} +
+          du -sh "$OUT"/medium/* "$OUT"/split/*
+
+      - name: Upload the medium
+        uses: actions/upload-artifact@v4
+        with:
+          name: medium
+          path: ${{ env.OUT }}/medium/
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload the split artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: split-artifacts
+          path: ${{ env.OUT }}/split/
+          retention-days: 7
+          compression-level: 0

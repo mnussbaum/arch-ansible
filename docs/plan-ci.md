@@ -73,25 +73,32 @@ inputs. The test list gets reviewed before any are written.
 
 ## 2. A CI identity and the container build
 
-A build mode that needs nothing from `pass`, generated fresh per run and never
-committed:
+`bin/ci identity DIR` (`src/arch_ansible_ci/identity.py`) creates a throwaway
+identity, never committed, in the layout `dr-unlock` decrypts the real
+secrets into:
 
-- a throwaway Secure Boot key (what `--ephemeral-key` mints today);
-- a fixed home recovery secret;
-- a throwaway GPG key with no passphrase, and a small password store
-  encrypted to it, holding a canary entry and the entries first login reads
-  (wifi, `host_secrets/<hostname>/pgpass`);
-- the GPG key's secret half handed to the test VM at runtime (SMBIOS
-  credential or the virtiofs share), never baked into `/usr`.
+- `secureboot.key` / `secureboot.crt`, a throwaway Secure Boot keypair;
+- `home-recovery-key`, the home's first password;
+- `password-store/`, a git store encrypted to a passphrase-less GPG key
+  (`gnupg/`), holding `ci/canary`; later stages add the entries they read;
+- `manifest.json`, the certificate's digest, the GPG fingerprint and the
+  canary.
 
-The container build gets `--tty` only when stdin is a terminal, so in CI the
-`--ephemeral-key` home password is piped in, which `dr-entrypoint` already
-reads from stdin:
+The build reads it through `bin/build-image --container --secrets DIR`, the
+same "provided" mode the YubiKey path uses, so nothing is piped or minted:
 
 ```
-printf '%s\n' "$home_password" \
-  | bin/build-image --container --ephemeral-key --password-store <ci-store>
+bin/build-image --container --secrets "$IDENTITY" --split-artifacts --out "$OUT" \
+  -- --incremental=no
 ```
+
+The identity lives in the Actions cache under a fixed key, so every run signs
+with the same Secure Boot key and the A/B update can boot the previous run's
+image; it's recreated only if the cache is evicted, and the A/B job skips
+when the previous medium's certificate doesn't match. Its private keys are
+readable by anyone who can read this repo's caches, which is harmless: only
+CI VMs enroll the certificate. The GPG secret key reaches test VMs at runtime
+(SMBIOS credential or the virtiofs share), never baked into `/usr`.
 
 The VM firmware enrolls the throwaway cert in its varstore exactly as
 `make_varstore` does with the real one, so Secure Boot, PCR 7 and the TPM
@@ -285,29 +292,28 @@ leave room, so jobs are split for parallelism, not to fit.
 ### Job layout
 
 ```
-builder-container ──► build ──┬──► vm: install, first boot, first login,
-     (weekly)                 │        back-up (stages 3–5, 9)
-                              ├──► ab-update (stage 8, from the previous
-                              │        run's medium)
-                              └──► recovery-guide (stage 7, with the restore
-                                       half of stage 9)
+build ──┬──► vm: install, first boot, first login, back-up (stages 3–5, 9)
+        ├──► ab-update (stage 8, from the previous run's medium)
+        └──► recovery-guide (stage 7, with the restore half of stage 9)
 ```
 
-- **Builder container.** `container/Containerfile` plus the VM tools
-  (`qemu-base`, `edk2-ovmf`, `swtpm`, `virt-firmware`, `virtiofsd`), pushed to
-  GHCR (free for public packages) and rebuilt weekly or when its inputs
-  change. Every job runs inside it with `--device /dev/kvm --privileged`, so
-  `bin/vm` finds the same paths as on Arch, and no job installs packages
-  on Ubuntu.
+- **Build job.** Runs `bin/build-image --container` on the runner itself,
+  as the spike did; the builder container builds in under a minute, so it
+  isn't published anywhere.
+- **VM jobs.** Run in an `archlinux` container with `--device /dev/kvm
+  --privileged` and install QEMU, OVMF, swtpm, virt-firmware and virtiofsd
+  with pacman, as `checks.yml` does, so `bin/vm` finds the same paths as on
+  Arch.
 - **Disk.** Each job starts by deleting the runner's preinstalled toolchains
   (Android, .NET, GHC, CodeQL, Docker images; ≈30G).
-- **Build job.** `--incremental=no`: mkosi's 13G incremental cache doesn't
-  fit the 10G Actions cache. Split artifacts stay on (~10G more disk), so
-  the A/B update stage can use them as built.
-- **Actions cache** (≈4G total, within the 10G quota): the pacman package
-  cache keyed on a hash of the package lists, `aur-repo` keyed on the AUR
-  package versions (so `sync-aur` only compiles what changed), sccache, the
-  cargo registry and nvim's site directory.
+- **Build settings.** `--incremental=no`: mkosi's 13G incremental cache
+  doesn't fit the 10G Actions cache. `--split-artifacts` copies the split
+  artifacts out beside the medium for the A/B update stage.
+- **Actions cache** (≈3G, within the 10G quota): the AUR repo (so `sync-aur`
+  only compiles what changed) and the pacman package cache, each saved under
+  a digest of its contents so an unchanged cache isn't saved again, and the
+  CI identity under a fixed key. The caches are copied into and out of the
+  build's podman volume, which belongs to the container's builder user.
 - **Handing the image on.** Two workflow artifacts with a few days'
   retention (artifacts on public repos don't count against a quota): the
   medium, `zstd`-compressed to ~7.7G and decompressed with `--sparse`
@@ -337,7 +343,10 @@ src/arch_ansible_vm/
   disks.py                  test-disk retention
   __main__.py               the `vm run` / `vm install` CLI
 bin/vm                      PYTHONPATH=<repo>/src exec python3 -m arch_ansible_vm "$@"
-bin/ci                      exec uv run --project <repo> pytest tests/e2e -m <stage>...
+src/arch_ansible_ci/
+  identity.py               the throwaway CI identity
+bin/ci                      PYTHONPATH=<repo>/src exec python3 -m arch_ansible_ci "$@":
+                            `identity DIR` now, the e2e stages later
 tests/unit/                 stage 1's unit tests
 tests/e2e/                  one module per stage, a pytest marker each, and
                             the CI-only support code: the throwaway identity,
@@ -364,8 +373,7 @@ tests/e2e/                  one module per stage, a pytest marker each, and
    extraction with its unit tests.
 2. Done: a spike measuring one cold build on a hosted runner (see "Measured
    on a hosted runner").
-3. CI identity, the builder container on GHCR and the build job (stage 2),
-   with the Actions caches.
+3. CI identity and the build job (stage 2), with the Actions caches.
 4. Turn `bin/vm`'s printed checks into assertions (stages 3–4) and add
    `bin/ci`.
 5. First login, pass and the graphical session (stage 5).
@@ -377,9 +385,12 @@ tests/e2e/                  one module per stage, a pytest marker each, and
 ## Decisions
 
 - Everything runs on GitHub-hosted runners; no self-hosted hardware.
-- One CI identity (throwaway Secure Boot key, GPG key and store) per run;
-  real secrets never reach CI, so no job uses repository secrets.
-- Jobs run inside the Arch builder container, published to GHCR.
+- One throwaway CI identity (Secure Boot key, GPG key and store), kept in
+  the Actions cache so runs share a Secure Boot key; real secrets never
+  reach CI, so no job uses repository secrets.
+- The build runs on the runner with `bin/build-image --container`; VM jobs
+  run in an `archlinux` container with pacman-installed tools. Nothing is
+  published to GHCR.
 - The image tier is split into jobs joined by the compressed medium and the
   split artifacts, for parallelism; a cold build measured 42 min and ~50G.
 - The heavy stages run through `bin/ci`, so CI and local runs are identical.
