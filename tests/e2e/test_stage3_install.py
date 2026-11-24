@@ -7,7 +7,9 @@ pytestmark = pytest.mark.install
 
 def test_installer_boots_to_the_guided_installer_without_the_graphical_login(installer):
     assert installer.system.failed_units == ()
-    assert installer.system.default_target == "multi-user.target"
+    # The Installer profile's systemd.unit= overrides the default target.
+    assert installer.multi_user_target == "active"
+    assert installer.graphical_target != "active"
     assert installer.installer_unit == "active"
     assert installer.greetd != "active"
 
@@ -27,10 +29,12 @@ def test_esp_holds_one_bare_uki_and_systemd_boot(installer):
     assert esp.has_fallback_loader
 
 
-def test_target_holds_only_the_esp_and_usr_partitions(installer):
-    assert sorted(p.type_name for p in installer.partitions) == [
-        "esp",
-        "usr",
-        "usr-verity",
-        "usr-verity-sig",
-    ]
+def test_target_holds_the_esp_and_both_usr_slots_but_not_root_home_or_swap(installer):
+    usr_types = ("usr", "usr-verity", "usr-verity-sig")
+
+    assert sorted(p.type_name for p in installer.partitions) == sorted(
+        ["esp", *usr_types, *usr_types]
+    )
+    # Slot B is written empty; root, home and swap wait for first boot.
+    empty = sorted(p.type_name for p in installer.partitions if p.label == "_empty")
+    assert empty == sorted(usr_types)

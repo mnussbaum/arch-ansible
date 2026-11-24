@@ -51,6 +51,8 @@ DISK_BOOT_TIMEOUT = 900
 @dataclass(frozen=True, kw_only=True)
 class InstallerFacts:
     system: SystemState
+    multi_user_target: str
+    graphical_target: str
     installer_unit: str
     greetd: str
     install_rc: int
@@ -131,12 +133,16 @@ def installer(medium, target, log):
         boot_to_shell(vm, INSTALLER_BOOT_TIMEOUT, log, entry="Installer")
         sh = vm.shell
         system = system_state(sh)
+        multi_user_target = unit_state(sh, "multi-user.target")
+        graphical_target = unit_state(sh, "graphical.target")
         installer_unit = unit_state(sh, "arch-install.service")
         greetd = unit_state(sh, "greetd.service")
         rc, out = install_system(sh, "/dev/vdb", INSTALL_TIMEOUT)
         installed = rc == 0
         facts = InstallerFacts(
             system=system,
+            multi_user_target=multi_user_target,
+            graphical_target=graphical_target,
             installer_unit=installer_unit,
             greetd=greetd,
             install_rc=rc,

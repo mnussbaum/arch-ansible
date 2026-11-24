@@ -36,6 +36,7 @@ class SystemState:
     # is-system-running once boot has finished: running, degraded, ...
     state: str
     failed_units: tuple[str, ...]
+    # The configured default, which a systemd.unit= on the cmdline overrides.
     default_target: str
 
 
@@ -78,7 +79,9 @@ def system_state(shell, timeout=600):
     """Wait for boot to finish, then read its state."""
     _rc, state = shell.run("systemctl is-system-running --wait", timeout=timeout)
     _rc, failed = shell.run("systemctl --failed --no-legend --plain | awk '{print $1}'")
-    _rc, default = shell.run("systemctl get-default")
+    # Without stderr: a systemd.unit= on the cmdline adds a note there, and
+    # serial merges it into the output.
+    _rc, default = shell.run("systemctl get-default 2>/dev/null")
 
     return SystemState(
         state=last_line(state),
