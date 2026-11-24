@@ -44,6 +44,7 @@ from arch_ansible_vm.desktop import (
     home_user,
     log_in,
     log_out,
+    login_diagnostics,
     open_local_page,
     restart_greeter,
     seed_software_token,
@@ -331,7 +332,11 @@ def logged_in(second_boot, target, identity, log):
         login = log_in(vm, user, password)
         vm.screenshot("session-login")
         if login is None:
-            pytest.fail(f"no session for {user} after logging in at greetd")
+            diagnostics = login_diagnostics(sh)
+            log(diagnostics)
+            pytest.fail(
+                f"no session for {user} after logging in at greetd\n{diagnostics}"
+            )
 
         uid = user_uid(sh, user)
         sock = sway_socket(sh, uid)

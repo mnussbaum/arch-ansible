@@ -214,10 +214,14 @@ def log_in(vm, user, secret, attempts=3, settle=20):
     wait_for_greeter(sh)
     vm.log(f"==> logging in as {user} at greetd")
     type_text(vm, user)
+    time.sleep(1)
+    vm.screenshot("greeter-user")
     vm.monitor.sendkey("ret")
     time.sleep(3)
-    for _ in range(attempts):
+    for attempt in range(1, attempts + 1):
         type_text(vm, secret)
+        time.sleep(1)
+        vm.screenshot(f"greeter-secret-{attempt}")
         vm.monitor.sendkey("ret")
         deadline = time.monotonic() + settle
         while time.monotonic() < deadline:
@@ -226,6 +230,20 @@ def log_in(vm, user, secret, attempts=3, settle=20):
             time.sleep(2)
 
     return None
+
+
+def login_diagnostics(shell):
+    """What a failed greetd login leaves behind: the guest's input devices and
+    the recent journal of greetd, PAM and homed."""
+    _, inputs = shell.run("grep -h '^N: Name=' /proc/bus/input/devices", quiet=True)
+    _, journal = shell.run(
+        "journalctl -b --no-pager -o short-monotonic --since -10min"
+        " | grep -iE 'greetd|gtkgreet|pam|homed|homework|sway|softhsm|pkcs' | tail -150",
+        timeout=60,
+        quiet=True,
+    )
+
+    return f"input devices:\n{inputs}\n\njournal:\n{journal}"
 
 
 def log_out(shell, user, timeout=120):
