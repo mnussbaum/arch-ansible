@@ -172,7 +172,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     # Arch, so bin/vm finds QEMU, OVMF and swtpm where it does on a machine
-    # built from this repo.
+    # built from this repo. qemu-desktop, as the image installs, since plain
+    # qemu-system-x86 lacks device modules the VMs use, like virtio-vga.
     container:
       image: archlinux:latest
       options: --device /dev/kvm --privileged
@@ -182,7 +183,7 @@ jobs:
       - name: Install tools
         run: >-
           pacman -Syu --noconfirm --needed
-          git python uv qemu-system-x86 edk2-ovmf swtpm virt-firmware zstd imagemagick
+          git python uv qemu-desktop edk2-ovmf swtpm virt-firmware zstd imagemagick
 
       - uses: actions/checkout@v5
 

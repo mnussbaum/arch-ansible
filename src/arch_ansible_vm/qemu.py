@@ -429,6 +429,8 @@ class Vm:
         self.serial_sock = run_dir / f"{name}-serial.sock"
         self.monitor_sock = run_dir / f"{name}-monitor.sock"
         self.serial_log = run_dir / f"{name}-serial.log"
+        # QEMU's own errors, e.g. why it refused to start the machine.
+        self.qemu_log = run_dir / f"{name}-qemu.log"
         for p in (self.serial_sock, self.monitor_sock):
             p.unlink(missing_ok=True)
 
@@ -453,8 +455,10 @@ class Vm:
 
         how = "in a window" if gui else "headless"
         self.log(f"==> launching {name} {how} (serial log: {self.serial_log})")
+        # Held open for QEMU's lifetime; closed in close().
+        self._qemu_log_file = self.qemu_log.open("wb")
         self.proc = subprocess.Popen(
-            args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
+            args, stdout=subprocess.DEVNULL, stderr=self._qemu_log_file
         )
         # Order matters when headless: the serial chardev is server=on,wait=on,
         # so QEMU holds the machine reset — and has not yet created the monitor
@@ -493,6 +497,15 @@ class Vm:
                 return png
         return ppm
 
+    def qemu_errors(self, lines=20):
+        """The end of QEMU's stderr."""
+        if not self.qemu_log.exists():
+            return ""
+
+        return "\n".join(
+            self.qemu_log.read_text(errors="replace").splitlines()[-lines:]
+        )
+
     def wait(self, timeout=300):
         try:
             return self.proc.wait(timeout=timeout)
@@ -506,6 +519,7 @@ class Vm:
                 self.proc.wait(timeout=10)
             except subprocess.TimeoutExpired:
                 self.proc.kill()
+        self._qemu_log_file.close()
         stop_swtpm(self.tpm_pidfile)
         if self.virtiofsd:
             self.virtiofsd["proc"].terminate()

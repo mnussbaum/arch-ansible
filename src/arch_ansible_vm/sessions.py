@@ -160,12 +160,23 @@ def wait_for_shell(vm, timeout, log):
 
 
 def boot_to_shell(vm, timeout, log, entry=None):
-    """Pick `entry` in the boot menu if given, then wait for the root shell."""
-    if entry:
-        select_boot_entry(vm, entry)
+    """Pick `entry` in the boot menu if given, then wait for the root shell.
 
-    log("==> waiting for a root shell on ttyS0 …")
-    wait_for_shell(vm, timeout, log)
+    If QEMU exits instead, raises with its errors rather than the broken
+    socket that reveals it.
+    """
+    try:
+        if entry:
+            select_boot_entry(vm, entry)
+
+        log("==> waiting for a root shell on ttyS0 …")
+        wait_for_shell(vm, timeout, log)
+    except (BrokenPipeError, ConnectionResetError, EOFError) as e:
+        rc = vm.wait(timeout=5)
+        if rc is None:
+            raise
+
+        raise RuntimeError(f"QEMU exited with {rc}:\n{vm.qemu_errors()}") from e
 
 
 def power_off(vm, timeout=180):
