@@ -110,6 +110,8 @@ binding are exercised the same way as with the real key.
 --yes /dev/vdb` and inspects the ESP. Its "validation question #1" checks
 become assertions that fail the run: exactly one UKI in `EFI/Linux/`, no
 `loader/entries/*.conf`, no `/image/`.
+The target holds the ESP and both `usr` slots, slot B empty; root, home and
+swap wait for its first boot.
 
 ## 4. First boot, graphical target, network
 

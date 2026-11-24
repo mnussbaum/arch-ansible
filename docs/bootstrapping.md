@@ -455,12 +455,14 @@ profile runs `mkosi/mkosi.extra/usr/bin/install-system --guided` via
 `arch-install.service`.
 
 The whole install is a single `systemd-repart` run against the target, driven by
-the image's baked `/usr/lib/repart.d/`. It lays down only the ESP and the active
-`usr` slot: the ESP def carries `CopyFiles=/boot:/`, so repart populates the
+the image's baked `/usr/lib/repart.d/`. It lays down the ESP and both `usr`
+slots: the ESP def carries `CopyFiles=/boot:/`, so repart populates the
 freshly-created target ESP with systemd-boot + the bare UKI + `loader/` copied
-straight from the running medium's `/boot`, and `usr-A` (`CopyBlocks=auto`) is
-cloned from the running `/usr`. `root`/`home`/`swap` and the inactive `usr-B`
-slot are deferred to the target's own first boot.
+straight from the running medium's `/boot`, `usr-A` (`CopyBlocks=auto`) is
+cloned from the running `/usr`, and `usr-B` is left empty (labelled `_empty`).
+`root`/`home`/`swap` are deferred to the target's own first boot. `usr-B` can't
+be deferred with them: `--defer-partitions` selects by partition type, which
+the two slots share.
 
 This produces a pure **Boot Loader Spec Type #2** ESP — a bare UKI under
 `EFI/Linux/`, no `loader/entries/*.conf` — the same convention

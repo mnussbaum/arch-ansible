@@ -13,11 +13,14 @@
 #     freshly-created target ESP with systemd-boot + the Type #2 UKI + loader/
 #     copied from THIS medium's /boot — no bootctl needed;
 #   - usr-A (22-usr-a.conf, CopyBlocks=auto) is cloned from the running /usr;
+#   - usr-B (NoAuto) is created empty, labelled _empty: --defer-partitions
+#     selects by type, which it shares with usr-A;
 #   - swap/root/home are DEFERRED (--defer-partitions) to the target's own first
 #     boot, where its repart.service creates them and TPM2-seals the LUKS
-#     root/swap; usr-B (NoAuto) is likewise created there.
-# So this tool only lays down esp + usr-A; the installed system self-provisions
-# the rest (and self-assigns its arch-XXXX-XXXX hostname) on first boot.
+#     root/swap.
+# So this tool lays down esp + both usr slots; the installed system
+# self-provisions the rest (and self-assigns its arch-XXXX-XXXX hostname) on
+# first boot.
 #
 # Two ways to run it:
 #   install-system DISK      one-shot against a named target (block dev or raw
