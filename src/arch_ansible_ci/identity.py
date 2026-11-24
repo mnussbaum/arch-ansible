@@ -30,12 +30,17 @@ class Manifest:
     canary: str
 
 
+def load_identity(path):
+    """The manifest of the complete identity in `path`."""
+    return Manifest(**json.loads((Path(path) / MANIFEST).read_text()))
+
+
 def ensure_identity(path):
     """Create the identity in `path`, or return the one already there."""
     path = Path(path)
     manifest_file = path / MANIFEST
     if manifest_file.is_file():
-        return Manifest(**json.loads(manifest_file.read_text()))
+        return load_identity(path)
 
     path.mkdir(parents=True, exist_ok=True)
     path.chmod(0o700)
@@ -125,6 +130,21 @@ def make_gpg_key(gnupghome):
     return next(
         line.split(":")[9] for line in listing.splitlines() if line.startswith("fpr:")
     )
+
+
+def export_gpg_secret_key(path):
+    """The identity's GPG secret key, ASCII-armored, for a home to import."""
+    gnupghome = Path(path) / "gnupg"
+    try:
+        return subprocess.run(
+            ["gpg", "--batch", "--armor", "--export-secret-keys", GPG_UID],
+            check=True,
+            capture_output=True,
+            text=True,
+            env=gpg_env(gnupghome),
+        ).stdout
+    finally:
+        stop_gpg_agent(gnupghome)
 
 
 def stop_gpg_agent(gnupghome):

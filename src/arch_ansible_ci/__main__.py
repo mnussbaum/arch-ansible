@@ -10,7 +10,7 @@ from pathlib import Path
 from arch_ansible_ci.identity import ensure_identity
 
 REPO = Path(__file__).resolve().parent.parent.parent
-STAGES = ("install", "first_boot")
+STAGES = ("install", "first_boot", "session")
 
 
 def cmd_identity(args):

@@ -4,10 +4,13 @@ the fact that was wrong while the VMs' serial logs and screendumps sit in the
 VM run directory for the details.
 
 The medium is $ARCH_ANSIBLE_CI_MEDIUM, else the newest one built for
-$ARCH_ANSIBLE_ORGANIZATIONS.
+$ARCH_ANSIBLE_ORGANIZATIONS. The session stage logs in with the identity it
+was built with (bin/ci identity), at $ARCH_ANSIBLE_CI_IDENTITY, and needs a
+medium built with --test-token.
 """
 
 import functools
+import json
 import os
 import shutil
 from dataclasses import dataclass
@@ -15,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from arch_ansible_ci.identity import Manifest, export_gpg_secret_key, load_identity
 from arch_ansible_vm.checks import (
     EspLayout,
     Partition,
@@ -29,6 +33,25 @@ from arch_ansible_vm.checks import (
     system_state,
     tpm2_bindings,
     unit_state,
+)
+from arch_ansible_vm.desktop import (
+    FIREFOX,
+    GHOSTTY,
+    Home,
+    Session,
+    Window,
+    home_facts,
+    home_user,
+    log_in,
+    log_out,
+    open_local_page,
+    restart_greeter,
+    seed_software_token,
+    sway_socket,
+    user_uid,
+    wait_for_play_recap,
+    wait_for_windows,
+    write_guest_file,
 )
 from arch_ansible_vm.disks import newest_medium, output_dir, selected_organizations
 from arch_ansible_vm.sessions import (
@@ -46,6 +69,11 @@ INSTALLER_BOOT_TIMEOUT = 600
 INSTALL_TIMEOUT = 1800
 # First boot provisions the whole disk: repart, LUKS, homed.
 DISK_BOOT_TIMEOUT = 900
+FIRST_LOGIN_TIMEOUT = 1800
+# The software token's, standing in for the YubiKey's PIV PINs.
+TOKEN_PIN = "123456"
+TOKEN_SO_PIN = "12345678"
+NVIM_DIR = "/var/tmp/ci-nvim"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -73,6 +101,36 @@ class BootFacts:
     root_bindings: tuple[Tpm2Binding, ...]
     swap_bindings: tuple[Tpm2Binding, ...]
     failed_unit_journals: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class NvimFacts:
+    errmsg: str
+    messages: str
+    plugins: tuple[str, ...]
+    inactive_plugins: tuple[str, ...]
+    # Language server names attached to each sample file, by its kind.
+    lsp_clients: dict[str, tuple[str, ...]]
+    fixed_script: str
+
+
+@dataclass(frozen=True, kw_only=True)
+class SessionFacts:
+    login: Session | None
+    # The first-login playbook's PLAY RECAP counts, None if it never finished.
+    first_login_recap: dict[str, int] | None
+    home: Home
+    canary: str
+    windows: tuple[Window, ...]
+    firefox_title: str
+    user_failed_units: tuple[str, ...]
+    nvim: NvimFacts
+
+
+@dataclass(frozen=True, kw_only=True)
+class ReloginFacts:
+    with_home_password: Session | None
+    with_token_pin: Session | None
 
 
 def write_log_line(stream, msg):
@@ -174,3 +232,151 @@ def second_boot(first_boot, target, log):
         boot_to_shell(vm, DISK_BOOT_TIMEOUT, log)
 
         return collect_boot_facts(vm)
+
+
+@pytest.fixture(scope="session")
+def identity():
+    path = os.environ.get("ARCH_ANSIBLE_CI_IDENTITY")
+    if not path:
+        pytest.fail(
+            "set ARCH_ANSIBLE_CI_IDENTITY to the identity the medium was built with"
+        )
+
+    return Path(path)
+
+
+@pytest.fixture(scope="session")
+def manifest(identity) -> Manifest:
+    return load_identity(identity)
+
+
+def read_pass_canary(vm, user, identity):
+    sh = vm.shell
+    write_guest_file(sh, "/var/tmp/ci-gpg-key.asc", export_gpg_secret_key(identity))
+    sh.run(f"chown {user} /var/tmp/ci-gpg-key.asc", check=True)
+    sh.run(
+        f"runuser -u {user} -- gpg --batch --import /var/tmp/ci-gpg-key.asc", check=True
+    )
+    sh.run("rm /var/tmp/ci-gpg-key.asc", check=True)
+    _, canary = sh.run(f"runuser -u {user} -- pass show ci/canary")
+
+    return canary.strip()
+
+
+def user_failed_units(vm, user):
+    _, out = vm.shell.run(
+        f"systemctl --user --machine={user}@ list-units --state=failed --plain"
+        " --no-legend",
+        check=True,
+    )
+
+    return tuple(line.split()[0] for line in out.splitlines() if line.strip())
+
+
+def check_nvim(vm, user):
+    sh = vm.shell
+    files = {
+        "ansible.cfg": "[defaults]\n",
+        "roles/demo/tasks/main.yml": (
+            "# vim:ft=yaml.ansible:\n---\n- name: Say hello\n"
+            "  ansible.builtin.debug:\n    msg: hello\n"
+        ),
+        "pyproject.toml": '[project]\nname = "demo"\nversion = "0"\n',
+        "demo.py": 'print("hello")\n',
+        "fix.sh": "#!/bin/bash\necho $1\n",
+        "check.lua": (Path(__file__).parent / "nvim_check.lua").read_text(),
+    }
+    sh.run(f"rm -rf {NVIM_DIR} && mkdir -p {NVIM_DIR}/roles/demo/tasks", check=True)
+    for name, content in files.items():
+        write_guest_file(sh, f"{NVIM_DIR}/{name}", content)
+    sh.run(f"chown -R {user} {NVIM_DIR}", check=True)
+    sh.run(
+        f"cd {NVIM_DIR} && timeout 300 runuser -u {user} -- env"
+        f" NVIM_CHECK_DIR={NVIM_DIR} NVIM_CHECK_OUT={NVIM_DIR}/result.json"
+        f" nvim --headless -c 'luafile {NVIM_DIR}/check.lua' </dev/null >/dev/null 2>&1",
+        timeout=360,
+    )
+    rc, out = sh.run(f"cat {NVIM_DIR}/result.json")
+    if rc != 0:
+        pytest.fail("nvim wrote no results; it failed to start or hung")
+
+    found = json.loads(out)
+
+    return NvimFacts(
+        errmsg=found["errmsg"],
+        messages=found["messages"],
+        plugins=tuple(found["plugins"] or ()),
+        inactive_plugins=tuple(found["inactive_plugins"] or ()),
+        lsp_clients={
+            kind: tuple(attached["clients"] or ())
+            for kind, attached in found["lsp"].items()
+        },
+        fixed_script=found["fixed_script"],
+    )
+
+
+@pytest.fixture(scope="session")
+def logged_in(second_boot, target, identity, log):
+    """A third boot of the installed disk: seed the software token, then log
+    in at greetd with the home's first password and let first login run.
+    Yields the running VM for the re-login checks, then powers it off."""
+    password = (identity / "home-recovery-key").read_text().strip()
+    log(f"==> third boot of {target}: first login")
+    with disk_vm(target, log, MEMORY, default_cpus()) as vm:
+        boot_to_shell(vm, DISK_BOOT_TIMEOUT, log)
+        sh = vm.shell
+        user = home_user(sh)
+        seed_software_token(sh, TOKEN_PIN, TOKEN_SO_PIN)
+
+        login = log_in(vm, user, password)
+        vm.screenshot("session-login")
+        if login is None:
+            pytest.fail(f"no session for {user} after logging in at greetd")
+
+        uid = user_uid(sh, user)
+        sock = sway_socket(sh, uid)
+        recap, pane = wait_for_play_recap(sh, uid, FIRST_LOGIN_TIMEOUT)
+        (vm.run_dir / "session-first-login-pane.txt").write_text(pane)
+        windows = wait_for_windows(sh, sock, (GHOSTTY, FIREFOX))
+        firefox_title = open_local_page(sh, sock)
+        vm.screenshot("session-desktop")
+        facts = SessionFacts(
+            login=login,
+            first_login_recap=recap,
+            home=home_facts(sh, user),
+            canary=read_pass_canary(vm, user, identity),
+            windows=windows,
+            firefox_title=firefox_title,
+            user_failed_units=user_failed_units(vm, user),
+            nvim=check_nvim(vm, user),
+        )
+
+        yield vm, user, facts
+
+        power_off(vm)
+
+
+@pytest.fixture(scope="session")
+def session(logged_in):
+    return logged_in[2]
+
+
+@pytest.fixture(scope="session")
+def relogin(logged_in, identity, log):
+    """Log out, then try the home's first password, then the token's PIN."""
+    vm, user, _ = logged_in
+    password = (identity / "home-recovery-key").read_text().strip()
+    log(f"==> logging {user} out and in again")
+    log_out(vm.shell, user)
+    with_home_password = log_in(vm, user, password, attempts=1)
+    vm.screenshot("relogin-home-password")
+
+    with_token_pin = None
+    if with_home_password is None:
+        restart_greeter(vm.shell)
+        with_token_pin = log_in(vm, user, TOKEN_PIN)
+        vm.screenshot("relogin-token-pin")
+
+    return ReloginFacts(
+        with_home_password=with_home_password, with_token_pin=with_token_pin
+    )
