@@ -106,7 +106,7 @@ jobs:
         run: |
           mkdir -p "$OUT"
           bin/build-image --container --secrets "$IDENTITY" --split-artifacts --out "$OUT" \
-            -- --incremental=no
+            -- --test-token --incremental=no
 
       # Saved even after a failed build, so a retry reuses what it got through.
       # Keyed on the contents, so an unchanged cache isn't saved again.
@@ -183,7 +183,7 @@ jobs:
       - name: Install tools
         run: >-
           pacman -Syu --noconfirm --needed
-          git python uv qemu-desktop edk2-ovmf swtpm virt-firmware zstd imagemagick
+          git python uv qemu-desktop edk2-ovmf swtpm virt-firmware zstd imagemagick gnupg
 
       - uses: actions/checkout@v5
 
@@ -208,8 +208,19 @@ jobs:
           cp /tmp/medium/secureboot.crt "$ARCH_ANSIBLE_CACHE/mkosi-secureboot/mkosi.crt"
           rm -rf /tmp/medium
 
-      - name: Install and boot
-        run: bin/ci test install first_boot
+      # The home's first password, the GPG key the image's store is encrypted
+      # to, and the canary in it.
+      - name: Restore the CI identity
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.IDENTITY }}
+          key: ci-identity-v1
+          fail-on-cache-miss: true
+
+      - name: Install, boot and log in
+        env:
+          ARCH_ANSIBLE_CI_IDENTITY: ${{ env.IDENTITY }}
+        run: bin/ci test install first_boot session
 
       - name: Keep the VM logs
         if: always()
@@ -222,3 +233,4 @@ jobs:
             ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.log
             ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.png
             ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.ppm
+            ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.txt
