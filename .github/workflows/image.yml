@@ -217,10 +217,15 @@ jobs:
           key: ci-identity-v1
           fail-on-cache-miss: true
 
+      # The cache stores the path relative to the workspace, which this
+      # container mounts somewhere else, so it lands at the same relative path.
       - name: Install, boot and log in
-        env:
-          ARCH_ANSIBLE_CI_IDENTITY: ${{ env.IDENTITY }}
-        run: bin/ci test install first_boot session
+        run: |
+          relative=$(realpath -m --relative-to=/home/runner/work/arch-ansible/arch-ansible "$IDENTITY")
+          ARCH_ANSIBLE_CI_IDENTITY=$(realpath -m "$GITHUB_WORKSPACE/$relative")
+          test -f "$ARCH_ANSIBLE_CI_IDENTITY/manifest.json"
+          export ARCH_ANSIBLE_CI_IDENTITY
+          bin/ci test install first_boot session
 
       - name: Keep the VM logs
         if: always()
