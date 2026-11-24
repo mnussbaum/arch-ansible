@@ -232,18 +232,59 @@ def log_in(vm, user, secret, attempts=3, settle=20):
     return None
 
 
-def login_diagnostics(shell):
-    """What a failed greetd login leaves behind: the guest's input devices and
-    the recent journal of greetd, PAM and homed."""
-    _, inputs = shell.run("grep -h '^N: Name=' /proc/bus/input/devices", quiet=True)
-    _, journal = shell.run(
+_KEYBOARD_EVENT = (
+    "awk '/AT Translated/ {found = 1} found && /^H:/"
+    " {match($0, /event[0-9]+/); print substr($0, RSTART, RLENGTH); exit}'"
+    " /proc/bus/input/devices"
+)
+
+
+def keyboard_probe(vm):
+    """Bytes the guest kernel's keyboard device delivered while QEMU typed."""
+    sh = vm.shell
+    _, event = sh.run(_KEYBOARD_EVENT, quiet=True)
+    if not event.strip():
+        return "no AT keyboard event device"
+
+    sh.run(
+        f"(timeout 6 cat /dev/input/{event.strip()} > /var/tmp/ci-kbd.bin &)",
+        quiet=True,
+    )
+    time.sleep(1)
+    type_text(vm, "abc")
+    time.sleep(6)
+    _, size = sh.run("stat -c %s /var/tmp/ci-kbd.bin", quiet=True)
+
+    return f"/dev/input/{event.strip()} delivered {size.strip()} bytes for 3 keys"
+
+
+def login_diagnostics(vm):
+    """What a failed greetd login leaves behind: whether typed keys reach the
+    guest's kernel and the greeter's sway, and the recent journal of greetd,
+    PAM and homed."""
+    sh = vm.shell
+    _, inputs = sh.run("grep -h '^N: Name=' /proc/bus/input/devices", quiet=True)
+    probe = keyboard_probe(vm)
+    greeter_sway = "SWAYSOCK=$(ls /run/user/$(id -u greeter)/sway-ipc.*.sock | head -1)"
+    _, sway_inputs = sh.run(
+        f"{greeter_sway} swaymsg -t get_inputs -r"
+        " | python3 -c 'import json, sys;"
+        ' [print(i["type"], i["identifier"]) for i in json.load(sys.stdin)]\'',
+        quiet=True,
+    )
+    _, sway_seats = sh.run(f"{greeter_sway} swaymsg -t get_seats", quiet=True)
+    _, journal = sh.run(
         "journalctl -b --no-pager -o short-monotonic --since -10min"
         " | grep -iE 'greetd|gtkgreet|pam|homed|homework|sway|softhsm|pkcs' | tail -150",
         timeout=60,
         quiet=True,
     )
 
-    return f"input devices:\n{inputs}\n\njournal:\n{journal}"
+    return (
+        f"input devices:\n{inputs}\n\nkeyboard probe: {probe}\n\n"
+        f"greeter sway inputs:\n{sway_inputs}\n\ngreeter sway seats:\n{sway_seats}"
+        f"\n\njournal:\n{journal}"
+    )
 
 
 def log_out(shell, user, timeout=120):

@@ -332,7 +332,7 @@ def logged_in(second_boot, target, identity, log):
         login = log_in(vm, user, password)
         vm.screenshot("session-login")
         if login is None:
-            diagnostics = login_diagnostics(sh)
+            diagnostics = login_diagnostics(vm)
             log(diagnostics)
             pytest.fail(
                 f"no session for {user} after logging in at greetd\n{diagnostics}"
