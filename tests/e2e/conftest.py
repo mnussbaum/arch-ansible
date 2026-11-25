@@ -46,6 +46,7 @@ from arch_ansible_vm.desktop import (
     log_out,
     login_diagnostics,
     open_local_page,
+    quiet_console_password_agents,
     restart_greeter,
     seed_software_token,
     sway_socket,
@@ -328,6 +329,7 @@ def logged_in(second_boot, target, identity, log):
         sh = vm.shell
         user = home_user(sh)
         seed_software_token(sh, TOKEN_PIN, TOKEN_SO_PIN)
+        quiet_console_password_agents(sh)
 
         login = log_in(vm, user, password)
         vm.screenshot("session-login")
@@ -340,7 +342,7 @@ def logged_in(second_boot, target, identity, log):
 
         uid = user_uid(sh, user)
         sock = sway_socket(sh, uid)
-        recap, pane = wait_for_play_recap(sh, uid, FIRST_LOGIN_TIMEOUT)
+        recap, pane = wait_for_play_recap(vm, uid, sock, TOKEN_PIN, FIRST_LOGIN_TIMEOUT)
         (vm.run_dir / "session-first-login-pane.txt").write_text(pane)
         windows = wait_for_windows(sh, sock, (GHOSTTY, FIREFOX))
         firefox_title = open_local_page(sh, sock)

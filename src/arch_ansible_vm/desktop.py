@@ -455,15 +455,46 @@ def play_recap(output):
     return totals or None
 
 
-def wait_for_play_recap(shell, uid, timeout):
-    """The first-login playbook's PLAY RECAP and the pane it ran in."""
+# The title ask-password-agent gives the zenity dialog it shows for each
+# systemd password request, such as homectl's token PIN.
+ASK_PASSWORD_TITLE = "systemd-ask-password"
+
+
+def quiet_console_password_agents(shell):
+    """Keep systemd's console and wall password agents off the serial line the
+    tests drive, leaving password requests to the desktop's zenity agent."""
+    shell.run(
+        "systemctl mask --runtime --now"
+        " systemd-ask-password-console.path systemd-ask-password-console.service"
+        " systemd-ask-password-wall.path systemd-ask-password-wall.service",
+        check=True,
+    )
+
+
+def answer_password_dialog(vm, sock, secret):
+    """Type `secret` into the open zenity password dialog, as a person would."""
+    vm.log("==> answering a password dialog")
+    swaymsg(vm.shell, sock, shlex.quote(f'[title="^{ASK_PASSWORD_TITLE}$"] focus'))
+    time.sleep(1)
+    type_text(vm, secret)
+    time.sleep(1)
+    vm.screenshot("password-dialog")
+    vm.monitor.sendkey("ret")
+    time.sleep(3)
+
+
+def wait_for_play_recap(vm, uid, sock, pin, timeout):
+    """The first-login playbook's PLAY RECAP and the pane it ran in, answering
+    the token PIN dialogs it raises along the way."""
     deadline = time.monotonic() + timeout
     while True:
-        pane = tmux_pane(shell, uid)
+        if any(w.title == ASK_PASSWORD_TITLE for w in sway_windows(vm.shell, sock)):
+            answer_password_dialog(vm, sock, pin)
+        pane = tmux_pane(vm.shell, uid)
         recap = play_recap(pane)
         if recap is not None or time.monotonic() > deadline:
             return recap, pane
-        time.sleep(10)
+        time.sleep(5)
 
 
 # --- the home ----------------------------------------------------------------
