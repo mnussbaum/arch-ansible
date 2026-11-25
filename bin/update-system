@@ -126,12 +126,15 @@ output_dir="$ARCH_ANSIBLE_OUTPUT_DIR"
 # sysupdate can't discover this exact version in the source it exits non-zero (vs.
 # bare `update`, which prints "No update needed" and exits 0), and errexit aborts
 # before any reboot.
-new_version=$(cat mkosi/mkosi.version)
-
+#
 # With --no-build, take the version from the built UKI instead: build-image bumps
-# mkosi.version before building, so a failed build leaves it ahead of the output.
-# Versions are zero-padded timestamps, so the last in sort order is the newest.
-if [[ -n "$no_build" ]]; then
+# mkosi.version before building, so a failed build leaves it ahead of the output,
+# and a checkout that never built (like the image's own copy) has no
+# mkosi.version at all. Versions are zero-padded timestamps, so the last in sort
+# order is the newest.
+if [[ -z "$no_build" ]]; then
+  new_version=$(cat mkosi/mkosi.version)
+else
   new_version=$(find "$output_dir" -maxdepth 1 -name 'image_*_*.efi' -printf '%f\n' 2>/dev/null |
     sed 's/^image_\([^_]*\)_.*/\1/' | sort | tail -n 1)
   if [[ -z "$new_version" ]]; then
