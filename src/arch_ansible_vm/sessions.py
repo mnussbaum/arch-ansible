@@ -3,6 +3,7 @@ end-to-end tests."""
 
 import os
 import subprocess
+import time
 from pathlib import Path
 
 from arch_ansible_vm.disks import output_dir
@@ -177,6 +178,36 @@ def boot_to_shell(vm, timeout, log, entry=None):
             raise
 
         raise RuntimeError(f"QEMU exited with {rc}:\n{vm.qemu_errors()}") from e
+
+
+def boot_id(shell, timeout=120):
+    _, out = shell.run(
+        "cat /proc/sys/kernel/random/boot_id", timeout=timeout, check=True, quiet=True
+    )
+
+    return out.strip()
+
+
+def reboot(vm, timeout, log):
+    """Reboot the guest and wait for the next boot's root shell.
+
+    The old shell can still answer while the system stops, or die partway
+    through a command, so a shell counts only once its boot ID has changed.
+    """
+    before = boot_id(vm.shell)
+    vm.log("\n==> rebooting")
+    vm.shell.c.send("systemctl reboot\n")
+    deadline = time.monotonic() + timeout
+    while True:
+        time.sleep(5)
+        boot_to_shell(vm, max(deadline - time.monotonic(), 60), log)
+        try:
+            if boot_id(vm.shell, timeout=30) != before:
+                return
+        except TimeoutError:
+            pass
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"no new boot {timeout}s after rebooting")
 
 
 def power_off(vm, timeout=180):

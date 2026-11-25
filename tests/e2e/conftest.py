@@ -6,7 +6,9 @@ VM run directory for the details.
 The medium is $ARCH_ANSIBLE_CI_MEDIUM, else the newest one built for
 $ARCH_ANSIBLE_ORGANIZATIONS. The session stage logs in with the identity it
 was built with (bin/ci identity), at $ARCH_ANSIBLE_CI_IDENTITY, and needs a
-medium built with --test-token.
+medium built with --test-token. The update stage installs the medium, then
+updates it to the newer build shared from $ARCH_ANSIBLE_CI_UPDATE, and skips
+with $ARCH_ANSIBLE_CI_UPDATE_SKIP's reason when there's nothing to update from.
 """
 
 import functools
@@ -62,7 +64,22 @@ from arch_ansible_vm.sessions import (
     disk_vm,
     installer_vm,
     power_off,
+    reboot,
     recreate_disk,
+)
+from arch_ansible_vm.update import (
+    SHARED_BUILD,
+    BootEntry,
+    apply_update,
+    boot_entries,
+    install_unbootable_copy,
+    os_release_version,
+    remove_never_complete_unit,
+    selected_entry,
+    shared_build_version,
+    uki_id,
+    usr_partition_labels,
+    version_of,
 )
 
 MEMORY = "8G"
@@ -414,4 +431,115 @@ def relogin(logged_in, identity, log):
 
     return ReloginFacts(
         with_home_password=with_home_password, with_token_pin=with_token_pin
+    )
+
+
+@dataclass(frozen=True, kw_only=True)
+class UpdateFacts:
+    old_version: str
+    new_version: str
+    update_rc: int
+    update_output: str
+    # Read after rebooting into the update.
+    os_release_version: str
+    usr_labels: tuple[str, ...]
+    partitions: tuple[Partition, ...]
+    system: SystemState
+    password_prompts: tuple[str, ...]
+    swap_unlock: str
+    failed_unit_journals: str
+    entries: tuple[BootEntry, ...]
+    login: Session | None
+
+
+@dataclass(frozen=True, kw_only=True)
+class RollbackFacts:
+    newer_id: str
+    new_id: str
+    # The entry sd-boot started on each boot after installing the newer one.
+    selected: tuple[str, ...]
+    entries: tuple[BootEntry, ...]
+
+
+@pytest.fixture(scope="session")
+def updated(request, log):
+    """Install the previous image, first boot it, update it to the build shared
+    at $ARCH_ANSIBLE_CI_UPDATE with update-system, and reboot into it. Yields
+    the running VM for the rollback check, then powers it off."""
+    if reason := os.environ.get("ARCH_ANSIBLE_CI_UPDATE_SKIP"):
+        pytest.skip(reason)
+    share = os.environ.get("ARCH_ANSIBLE_CI_UPDATE")
+    if not share:
+        pytest.fail(
+            "set ARCH_ANSIBLE_CI_UPDATE to a directory holding the newer build"
+            f" under {SHARED_BUILD}"
+        )
+
+    # Only once there's something to update: these need the medium.
+    request.getfixturevalue("first_boot")
+    medium = request.getfixturevalue("medium")
+    target = request.getfixturevalue("target")
+    identity = request.getfixturevalue("identity")
+    old_version = version_of(medium.name)
+    new_version = shared_build_version(share)
+    password = (identity / "home-recovery-key").read_text().strip()
+    log(f"==> updating {target} from {old_version} to {new_version}")
+    with disk_vm(target, log, MEMORY, default_cpus(), share=share) as vm:
+        boot_to_shell(vm, DISK_BOOT_TIMEOUT, log)
+        sh = vm.shell
+        update_rc, update_output = apply_update(sh)
+        reboot(vm, DISK_BOOT_TIMEOUT, log)
+
+        system = system_state(sh)
+        quiet_console_password_agents(sh)
+        facts = UpdateFacts(
+            old_version=old_version,
+            new_version=new_version,
+            update_rc=update_rc,
+            update_output=update_output,
+            os_release_version=os_release_version(sh),
+            usr_labels=usr_partition_labels(sh),
+            partitions=partition_table(sh, "/dev/vda"),
+            system=system,
+            password_prompts=pending_password_prompts(sh),
+            swap_unlock=unit_state(sh, "systemd-cryptsetup@swap.service"),
+            failed_unit_journals=failed_unit_journals(sh)
+            if system.failed_units
+            else "",
+            entries=boot_entries(sh),
+            login=log_in(vm, home_user(sh), password),
+        )
+        vm.screenshot("update-login")
+
+        yield vm, facts
+
+        power_off(vm)
+
+
+@pytest.fixture(scope="session")
+def update(updated):
+    return updated[1]
+
+
+@pytest.fixture(scope="session")
+def rollback(updated, log):
+    """Install a newer entry whose boots never complete, boot four times, and
+    record which entry each boot started."""
+    vm, facts = updated
+    sh = vm.shell
+    newer = str(int(facts.new_version) + 1)
+    log(f"==> installing {newer}, which never completes a boot")
+    install_unbootable_copy(sh, facts.new_version, newer)
+    selected = []
+    for _ in range(4):
+        reboot(vm, DISK_BOOT_TIMEOUT, log)
+        selected.append(selected_entry(boot_entries(sh)))
+    entries = boot_entries(sh)
+    remove_never_complete_unit(sh)
+
+    return RollbackFacts(
+        newer_id=uki_id(newer),
+        new_id=uki_id(facts.new_version),
+        selected=tuple(selected),
+        entries=entries,
     )
