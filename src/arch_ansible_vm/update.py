@@ -4,6 +4,7 @@ reading back which version and boot entry it came up on."""
 import json
 import re
 import shlex
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,6 +12,9 @@ from arch_ansible_vm.qemu import SHARE_MNT, SHARE_TAG
 
 # Where update-system --no-build looks for a build under $ARCH_ANSIBLE_CACHE.
 SHARED_BUILD = "mkosi/images/image"
+# Where the checkout's bin/ goes in the share, so the update runs this
+# checkout's update-system, as a person runs their own, not the old image's.
+SHARED_CHECKOUT = "checkout"
 
 # Required by boot-complete.target and always failing, so a boot with it never
 # counts as good and its entry is never blessed.
@@ -58,9 +62,16 @@ def uki_id(version):
     return f"image_{version}_x86-64.efi"
 
 
+def share_checkout(share, repo):
+    """Copy `repo`'s bin/ into the share, where apply_update runs it from."""
+    shutil.copytree(
+        Path(repo) / "bin", Path(share) / SHARED_CHECKOUT / "bin", dirs_exist_ok=True
+    )
+
+
 def apply_update(shell, timeout=3600):
-    """Run update-system against the build shared at SHARE_MNT; returns its
-    (exit code, output)."""
+    """Run the shared checkout's update-system against the build shared at
+    SHARE_MNT; returns its (exit code, output)."""
     shell.run(
         f"mkdir -p {SHARE_MNT} && mount -t virtiofs {SHARE_TAG} {SHARE_MNT}",
         check=True,
@@ -68,7 +79,7 @@ def apply_update(shell, timeout=3600):
 
     return shell.run(
         f"ARCH_ANSIBLE_CACHE={SHARE_MNT}"
-        " /usr/share/arch-ansible/bin/update-system --no-build",
+        f" {SHARE_MNT}/{SHARED_CHECKOUT}/bin/update-system --no-build",
         timeout=timeout,
     )
 

@@ -76,6 +76,7 @@ from arch_ansible_vm.update import (
     os_release_version,
     remove_never_complete_unit,
     selected_entry,
+    share_checkout,
     shared_build_version,
     uki_id,
     usr_partition_labels,
@@ -482,6 +483,7 @@ def updated(request, log):
     identity = request.getfixturevalue("identity")
     old_version = version_of(medium.name)
     new_version = shared_build_version(share)
+    share_checkout(share, Path(__file__).parents[2])
     password = (identity / "home-recovery-key").read_text().strip()
     log(f"==> updating {target} from {old_version} to {new_version}")
     with disk_vm(target, log, MEMORY, default_cpus(), share=share) as vm:
