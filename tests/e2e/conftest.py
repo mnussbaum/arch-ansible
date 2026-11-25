@@ -331,12 +331,13 @@ def check_nvim(vm, user):
 
     return NvimFacts(
         errmsg=found["errmsg"],
-        messages=found["messages"],
+        # Errors a check step raised count as messages nvim printed.
+        messages="\n".join([found["messages"], *(found["check_errors"] or ())]).strip(),
         plugins=tuple(found["plugins"] or ()),
         inactive_plugins=tuple(found["inactive_plugins"] or ()),
         lsp_clients={
-            kind: tuple(attached["clients"] or ())
-            for kind, attached in found["lsp"].items()
+            kind: tuple((found["lsp"] or {}).get(kind, {}).get("clients") or ())
+            for kind in ("ansible", "python")
         },
         fixed_script=found["fixed_script"],
     )
