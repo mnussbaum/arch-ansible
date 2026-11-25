@@ -32,7 +32,7 @@ ExecStart=/usr/bin/false
 
 @dataclass(frozen=True, kw_only=True)
 class BootEntry:
-    # The entry's file name without the boot counter, as sd-boot reports it.
+    # The UKI's file name without the boot counter, as sd-boot reports it.
     id: str
     selected: bool
     # None once the entry is blessed, or for an entry that was never counted.
@@ -104,16 +104,38 @@ def usr_partition_labels(shell):
     return tuple(line.strip() for line in out.splitlines() if line.strip())
 
 
+def uki_of(entry_id):
+    """The UKI file name an entry ID names, without its @profile suffix."""
+    return entry_id.split("@", 1)[0]
+
+
 def parse_boot_entries(bootctl_json):
-    return tuple(
-        BootEntry(
-            id=entry.get("id", ""),
-            selected=bool(entry.get("isSelected")),
-            tries_left=entry.get("triesLeft"),
-            tries_done=entry.get("triesDone"),
+    """One entry per UKI on the ESP.
+
+    bootctl lists each UKI once per profile (id@profile), with its boot
+    counter, and again as the loader reported it (plain id), which is the only
+    listing that says whether it was selected.
+    """
+    raw = json.loads(bootctl_json)
+    selected = {uki_of(e["id"]) for e in raw if e.get("isSelected")}
+
+    entries = {}
+    for entry in raw:
+        if entry.get("type") != "type2":
+            continue
+
+        uki = uki_of(entry["id"])
+        entries.setdefault(
+            uki,
+            BootEntry(
+                id=uki,
+                selected=uki in selected,
+                tries_left=entry.get("triesLeft"),
+                tries_done=entry.get("triesDone"),
+            ),
         )
-        for entry in json.loads(bootctl_json)
-    )
+
+    return tuple(entries.values())
 
 
 def boot_entries(shell):
