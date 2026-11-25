@@ -76,6 +76,7 @@ FIRST_LOGIN_TIMEOUT = 1800
 TOKEN_PIN = "123456"
 TOKEN_SO_PIN = "12345678"
 NVIM_DIR = "/var/tmp/ci-nvim"
+NVIM_PACK = ".local/share/nvim/site/pack/core/opt"
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -301,15 +302,30 @@ def check_nvim(vm, user):
     for name, content in files.items():
         write_guest_file(sh, f"{NVIM_DIR}/{name}", content)
     sh.run(f"chown -R {user} {NVIM_DIR}", check=True)
+    # What vim.pack starts from: the plugins and lockfile homed seeded from skel.
     sh.run(
+        f"ls /etc/skel/{NVIM_PACK} | wc -l; ls /home/{user}/{NVIM_PACK} | wc -l;"
+        f" ls -l /home/{user}/.config/nvim",
+    )
+    nvim_rc, _ = sh.run(
         f"cd {NVIM_DIR} && timeout 300 {as_user(user)}"
         f" NVIM_CHECK_DIR={NVIM_DIR} NVIM_CHECK_OUT={NVIM_DIR}/result.json"
-        f" nvim --headless -c 'luafile {NVIM_DIR}/check.lua' </dev/null >/dev/null 2>&1",
+        f" nvim --headless -c 'luafile {NVIM_DIR}/check.lua'"
+        f" </dev/null >{NVIM_DIR}/nvim.log 2>&1",
         timeout=360,
     )
     rc, out = sh.run(f"cat {NVIM_DIR}/result.json")
     if rc != 0:
-        pytest.fail("nvim wrote no results; it failed to start or hung")
+        # Report it through the nvim tests alone, with what nvim printed.
+        _, printed = sh.run(f"tail -c 4000 {NVIM_DIR}/nvim.log | tr -cd '[:print:]\\n'")
+        return NvimFacts(
+            errmsg=f"nvim wrote no results (exit {nvim_rc})",
+            messages=printed,
+            plugins=(),
+            inactive_plugins=(),
+            lsp_clients={"ansible": (), "python": ()},
+            fixed_script="",
+        )
 
     found = json.loads(out)
 
