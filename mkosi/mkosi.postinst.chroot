@@ -109,6 +109,8 @@ for profile in "${profiles[@]}"; do
     build) identity=build ;;
     # Derived from the organizations, not one itself.
     full-disk-encryption) ;;
+    # The end-to-end tests' software token (bin/build-image --test-token).
+    ci) ;;
     *) organizations+=("$profile") ;;
   esac
 done

@@ -17,6 +17,7 @@ fi
 caching="available"
 keep="1"
 skip_postinst=""
+test_token=""
 ansible_tags=""
 organizations=()
 mkosi_args=()
@@ -25,7 +26,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --help|-h)
       echo "Build the image. vm run/burn-image set the hostname at boot." >&2
-      echo "Usage: $0 [--caching force|off|available] [--keep N|all] [--organization NAME]... [--skip-postinst] [--ansible-tags TAGS] [mkosi options...]" >&2
+      echo "Usage: $0 [--caching force|off|available] [--keep N|all] [--organization NAME]... [--skip-postinst] [--ansible-tags TAGS] [--test-token] [mkosi options...]" >&2
       echo "       $0 --container [--help | options...]   Build in a container on any Linux or macOS computer." >&2
       echo "  --caching        Package cache policy for the package-install AND postinst" >&2
       echo "                   phases (default: available):" >&2
@@ -39,6 +40,8 @@ while [[ $# -gt 0 ]]; do
       echo "                   (repeatable). Defaults to \$ARCH_ANSIBLE_ORGANIZATIONS (comma-separated)." >&2
       echo "  --skip-postinst  Skip the Ansible post-installation step." >&2
       echo "  --ansible-tags   Limit Ansible to specific tags." >&2
+      echo "  --test-token     Add SoftHSM, the software token the end-to-end tests log in" >&2
+      echo "                   with in place of a YubiKey (the ci mkosi profile). CI only." >&2
       echo "  Any other options are forwarded to mkosi." >&2
       exit
       ;;
@@ -51,6 +54,7 @@ while [[ $# -gt 0 ]]; do
     --skip-postinst) skip_postinst="--environment=SKIP_POSTINST=1" ;;
     --ansible-tags=*) ansible_tags="--environment=ANSIBLE_TAGS=${1#*=}" ;;
     --ansible-tags) ansible_tags="--environment=ANSIBLE_TAGS=$2"; shift ;;
+    --test-token) test_token=1 ;;
     *)
       mkosi_args+=("$1")
       if [[ "$1" =~ ^-- ]] && [[ $# -gt 1 && "$2" != -* ]]; then mkosi_args+=("$2"); shift; fi
@@ -117,6 +121,7 @@ mkosi_profiles="build${ARCH_ANSIBLE_ORGANIZATIONS:+,$ARCH_ANSIBLE_ORGANIZATIONS}
 ARCH_ANSIBLE_FULL_DISK_ENCRYPTION=$(arch_ansible_full_disk_encryption "$ARCH_ANSIBLE_ORGANIZATIONS")
 export ARCH_ANSIBLE_FULL_DISK_ENCRYPTION
 (( ARCH_ANSIBLE_FULL_DISK_ENCRYPTION )) && mkosi_profiles+=,full-disk-encryption
+[[ -n $test_token ]] && mkosi_profiles+=,ci
 
 if [[ "$keep" != all && ! "$keep" =~ ^[1-9][0-9]*$ ]]; then
   echo "error: --keep must be a positive integer or 'all' (got '$keep')" >&2

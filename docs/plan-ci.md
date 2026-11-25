@@ -132,39 +132,48 @@ swap wait for its first boot.
 ## 5. First login, pass, Firefox and terminal
 
 First login assumes a YubiKey, so CI uses a software PKCS#11 token in its
-place. A `ci` mkosi profile adds SoftHSM2 and registers it with p11-kit; the
-test seeds a token with a key and cert at id 3 (PIV slot 9D's id).
-`first-login.yml`'s `p11tool` discovery, `home-enroll-yubikey` and
-`home-drop-baked-secret` then run unchanged, and the home ends up token-only,
-as on hardware. Logins after that need the token PIN.
-
-The token is seeded after first boot, from the serial shell, so
-`luks-enroll-pkcs11` finds no token at first boot and behaves as it does in
-any VM. Running `/usr/bin/luks-enroll-pkcs11` against the token afterwards
-also tests LUKS PKCS#11 enrollment; unlocking with it in the initrd would need
-SoftHSM there too, which is out of scope.
+place. A `ci` mkosi profile, enabled by `bin/build-image --test-token`, adds
+SoftHSM2, whose package registers itself with p11-kit. The test seeds a token
+with a key and cert at id 3 (PIV slot 9D's id), from the serial shell on a
+third boot, so `luks-enroll-pkcs11` finds no token at first boot and behaves
+as it does in any VM. `first-login.yml`'s `p11tool` discovery,
+`home-enroll-yubikey` and `home-drop-baked-secret` then run unchanged, and the
+home ends up token-only, as on hardware.
 
 The `ci` profile is the only difference from the real image, and it only adds
-packages. The image is built with no organizations.
+a package. The image is built with no organizations.
 
-Then, driven over serial and the QEMU monitor:
+The login takes the real path: the test types the user name and the home's
+first password at gtkgreet with HMP `sendkey`. greetd starts sway, sway opens
+`ghostty -e tmux`, and the tmux pane's login zsh runs the first-login
+playbook from `zlogin`; Firefox starts from its user unit. The test only
+watches, from the serial shell:
 
-1. Log in on greetd by typing user and password/PIN with HMP `sendkey`, which
-   is the real login path (PAM, `pam_systemd_home`, zlogin).
-2. Wait for `~/.config/user-first-login-done`, or for the playbook's exit
-   recorded in the journal; fail on any failed ansible task.
-3. **Pass:** import the CI GPG key, `pass show ci/canary` matches. This tests
-   the store clone, gpg config and pass, but not the card path.
-4. **Sway, Firefox, terminal:** with `SWAYSOCK` from the user's runtime dir,
-   `swaymsg exec` Firefox and Ghostty, then poll `swaymsg -t get_tree` for
-   their `app_id`s; confirm Firefox loaded a local page (window title).
-   `grim` inside and a QEMU `screendump` outside are saved as artifacts.
-5. **Nvim:** as the user, `nvim --headless` starts with the image's config
-   and exits cleanly with nothing in `:messages`; every plugin in the
-   lockfile loads; opening a shell script, an Ansible tasks file and a
-   Python file attaches the expected LSP clients and conform formatters;
-   saving a script with an unquoted `$1` quotes it (the shellcheck fixer).
-6. `systemctl --user --failed` is empty for the session.
+1. The user has an active wayland session on seat0.
+2. The first-login playbook's PLAY RECAP, read from the tmux pane, has no
+   failed or unreachable tasks. SoftHSM isn't an OpenPGP card, so
+   `gpg --card-status` fails, the playbook skips wifi and organization setup
+   and never writes `~/.config/user-first-login-done`; the recap is the
+   completion signal instead.
+3. The home is token-only: its record names the SoftHSM token, it has no
+   password, and its LUKS header has one keyslot.
+4. **Pass:** after importing the CI GPG key, `pass show ci/canary` matches.
+   This tests the store clone, gpg config and pass, but not the card path.
+5. **Sway, Firefox, terminal:** the sway tree has Ghostty and Firefox
+   windows, Firefox on workspace 2, and `swaymsg exec firefox file://…`
+   changes Firefox's title to the local page's. QEMU screendumps are saved
+   as artifacts.
+6. `systemctl --user --failed` is empty.
+7. **Nvim:** as the user, `nvim --headless` starts with the image's config
+   with nothing in `:messages`, every plugin in `vim.pack.get()` is active,
+   `ansiblels` and `pyright` attach to an Ansible tasks file and a Python
+   file, and saving a script with an unquoted `$1` quotes it (the shellcheck
+   fixer).
+8. **Re-login:** after logging out, the home's first password no longer logs
+   in at greetd and the token's PIN does.
+
+`luks-enroll-pkcs11` against the token is left out: it asks for the PIN
+interactively, and unlocking with it in the initrd would need SoftHSM there.
 
 ## 6. Native build
 
@@ -380,8 +389,8 @@ tests/e2e/                  one module per stage, a pytest marker each, and
    extraction with its unit tests.
 2. Done: a spike measuring one cold build on a hosted runner (see "Measured
    on a hosted runner").
-3. CI identity and the build job (stage 2), with the Actions caches.
-4. Turn `bin/vm`'s printed checks into assertions (stages 3–4) and add
+3. Done: CI identity and the build job (stage 2), with the Actions caches.
+4. Done: turn `bin/vm`'s printed checks into assertions (stages 3–4) and add
    `bin/ci test`, run by the image workflow's `vm` job.
 5. First login, pass and the graphical session (stage 5).
 6. A/B update and rollback (stage 8).
