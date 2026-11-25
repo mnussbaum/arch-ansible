@@ -185,6 +185,9 @@ class Shell:
                 # Serial is a tty, so systemctl/journalctl page any output
                 # longer than zero lines and the command never returns.
                 self.c.send("export SYSTEMD_PAGER= PAGER=cat\n")
+                # The image's profile aliases ls, cat and others to tools whose
+                # icons and colours garble output the tests parse.
+                self.c.send("unalias -a 2>/dev/null\n")
                 return
             except TimeoutError:
                 if time.monotonic() > deadline:

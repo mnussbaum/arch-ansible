@@ -252,15 +252,22 @@ def manifest(identity) -> Manifest:
     return load_identity(identity)
 
 
+def as_user(user):
+    """A command prefix that runs as `user` with their own HOME and runtime
+    dir; runuser alone keeps root's."""
+    return (
+        f"runuser -u {user} -- env HOME=$(getent passwd {user} | cut -d: -f6)"
+        f" XDG_RUNTIME_DIR=/run/user/$(id -u {user})"
+    )
+
+
 def read_pass_canary(vm, user, identity):
     sh = vm.shell
     write_guest_file(sh, "/var/tmp/ci-gpg-key.asc", export_gpg_secret_key(identity))
     sh.run(f"chown {user} /var/tmp/ci-gpg-key.asc", check=True)
-    sh.run(
-        f"runuser -u {user} -- gpg --batch --import /var/tmp/ci-gpg-key.asc", check=True
-    )
+    sh.run(f"{as_user(user)} gpg --batch --import /var/tmp/ci-gpg-key.asc", check=True)
     sh.run("rm /var/tmp/ci-gpg-key.asc", check=True)
-    _, canary = sh.run(f"runuser -u {user} -- pass show ci/canary")
+    _, canary = sh.run(f"{as_user(user)} pass show ci/canary")
 
     return canary.strip()
 
@@ -293,7 +300,7 @@ def check_nvim(vm, user):
         write_guest_file(sh, f"{NVIM_DIR}/{name}", content)
     sh.run(f"chown -R {user} {NVIM_DIR}", check=True)
     sh.run(
-        f"cd {NVIM_DIR} && timeout 300 runuser -u {user} -- env"
+        f"cd {NVIM_DIR} && timeout 300 {as_user(user)}"
         f" NVIM_CHECK_DIR={NVIM_DIR} NVIM_CHECK_OUT={NVIM_DIR}/result.json"
         f" nvim --headless -c 'luafile {NVIM_DIR}/check.lua' </dev/null >/dev/null 2>&1",
         timeout=360,
@@ -342,7 +349,9 @@ def logged_in(second_boot, target, identity, log):
 
         uid = user_uid(sh, user)
         sock = sway_socket(sh, uid)
-        recap, pane = wait_for_play_recap(vm, uid, sock, TOKEN_PIN, FIRST_LOGIN_TIMEOUT)
+        recap, pane = wait_for_play_recap(
+            vm, uid, sock, TOKEN_PIN, password, FIRST_LOGIN_TIMEOUT
+        )
         (vm.run_dir / "session-first-login-pane.txt").write_text(pane)
         windows = wait_for_windows(sh, sock, (GHOSTTY, FIREFOX))
         firefox_title = open_local_page(sh, sock)

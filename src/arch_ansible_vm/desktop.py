@@ -471,25 +471,51 @@ def quiet_console_password_agents(shell):
     )
 
 
-def answer_password_dialog(vm, sock, secret):
+# More answers than the first login asks for means a secret is being refused;
+# stop before homed's rate limit makes every later attempt fail too.
+MAX_PASSWORD_ANSWERS = 6
+
+
+def pending_password_message(shell):
+    """The Message= of the newest systemd password request, or ""."""
+    _, out = shell.run(
+        "ask=$(ls -t /run/systemd/ask-password/ask.* 2>/dev/null | head -1);"
+        ' [ -n "$ask" ] && sed -n "s/^Message=//p" "$ask"',
+        quiet=True,
+    )
+
+    return out.strip()
+
+
+def answer_password_dialog(vm, sock, secret, tag):
     """Type `secret` into the open zenity password dialog, as a person would."""
-    vm.log("==> answering a password dialog")
     swaymsg(vm.shell, sock, shlex.quote(f'[title="^{ASK_PASSWORD_TITLE}$"] focus'))
     time.sleep(1)
     type_text(vm, secret)
     time.sleep(1)
-    vm.screenshot("password-dialog")
+    vm.screenshot(tag)
     vm.monitor.sendkey("ret")
     time.sleep(3)
 
 
-def wait_for_play_recap(vm, uid, sock, pin, timeout):
+def wait_for_play_recap(vm, uid, sock, pin, password, timeout):
     """The first-login playbook's PLAY RECAP and the pane it ran in, answering
-    the token PIN dialogs it raises along the way."""
+    the password dialogs it raises along the way: the token's PIN for a
+    security token prompt, the home's password for anything else."""
     deadline = time.monotonic() + timeout
+    answers = 0
     while True:
-        if any(w.title == ASK_PASSWORD_TITLE for w in sway_windows(vm.shell, sock)):
-            answer_password_dialog(vm, sock, pin)
+        dialog = any(
+            w.title == ASK_PASSWORD_TITLE for w in sway_windows(vm.shell, sock)
+        )
+        if dialog and answers < MAX_PASSWORD_ANSWERS:
+            answers += 1
+            message = pending_password_message(vm.shell)
+            token = "security token" in message
+            vm.log(f"==> answering password dialog {answers}: {message!r}")
+            answer_password_dialog(
+                vm, sock, pin if token else password, f"password-dialog-{answers}"
+            )
         pane = tmux_pane(vm.shell, uid)
         recap = play_recap(pane)
         if recap is not None or time.monotonic() > deadline:
