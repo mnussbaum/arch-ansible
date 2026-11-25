@@ -253,10 +253,12 @@ def manifest(identity) -> Manifest:
 
 
 def as_user(user):
-    """A command prefix that runs as `user` with their own HOME and runtime
-    dir; runuser alone keeps root's."""
+    """A command prefix that runs as `user` in a clean environment with their
+    own HOME and runtime dir. runuser alone keeps root's environment, whose
+    profile-set XDG dirs point under /root."""
     return (
-        f"runuser -u {user} -- env HOME=$(getent passwd {user} | cut -d: -f6)"
+        f"runuser -u {user} -- env -i PATH=/usr/local/bin:/usr/bin LANG=C.UTF-8"
+        f" USER={user} HOME=$(getent passwd {user} | cut -d: -f6)"
         f" XDG_RUNTIME_DIR=/run/user/$(id -u {user})"
     )
 
