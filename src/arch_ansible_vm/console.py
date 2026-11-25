@@ -103,7 +103,7 @@ class Console:
 
 
 class Monitor:
-    """QEMU's HMP monitor — used only for `sendkey`, which needs no display."""
+    """QEMU's HMP monitor: keys, clicks and screendumps, which need no display."""
 
     def __init__(self, path):
         self.sock = _connect(path)
@@ -126,6 +126,12 @@ class Monitor:
     def sendkey(self, key, times=1):
         for _ in range(times):
             self.cmd(f"sendkey {key}")
+
+    def click(self, x, y):
+        """Left-click at pixel (x, y) through the absolute virtio-tablet."""
+        self.cmd(f"mouse_move {x} {y}")
+        self.cmd("mouse_button 1")
+        self.cmd("mouse_button 0")
 
     def screendump(self, path):
         self.cmd(f"screendump {path}")

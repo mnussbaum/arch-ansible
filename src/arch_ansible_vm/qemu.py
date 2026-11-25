@@ -342,12 +342,11 @@ def build_qemu_args(
         # keyboard-shortcuts-inhibit protocol so the host compositor stops
         # eating $mod bindings (Ctrl+Alt+G toggles the grab by hand).
         args += ["-display", "gtk,gl=on,zoom-to-fit=off,grab-on-hover=on"]
-        # Absolute pointing device: without it QEMU gives the guest a relative
-        # PS/2 mouse, so the guest cursor drifts out of sync with the host
-        # pointer and clicks land in the wrong place.
-        args += ["-device", "virtio-tablet"]
     else:
         args += ["-display", "none"]
+    # Absolute pointing device: without it the guest cursor drifts out of sync
+    # with the host pointer, and headless runs have no pointer to click with.
+    args += ["-device", "virtio-tablet"]
 
     kind, path = serial
     if kind == "socket":

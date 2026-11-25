@@ -202,6 +202,11 @@ def wait_for_greeter(shell, timeout=300):
     time.sleep(5)
 
 
+# gtkgreet's Username entry on the 1280x800 screen. The layer-shell greeter
+# only takes keyboard focus once it's clicked.
+USERNAME_FIELD = (680, 391)
+
+
 def log_in(vm, user, secret, attempts=3, settle=20):
     """Log in at gtkgreet; returns the new Session, or None if none started.
 
@@ -213,6 +218,8 @@ def log_in(vm, user, secret, attempts=3, settle=20):
     sh = vm.shell
     wait_for_greeter(sh)
     vm.log(f"==> logging in as {user} at greetd")
+    vm.monitor.click(*USERNAME_FIELD)
+    time.sleep(1)
     type_text(vm, user)
     time.sleep(1)
     vm.screenshot("greeter-user")
@@ -265,7 +272,10 @@ def login_diagnostics(vm):
     sh = vm.shell
     _, inputs = sh.run("grep -h '^N: Name=' /proc/bus/input/devices", quiet=True)
     probe = keyboard_probe(vm)
-    greeter_sway = "SWAYSOCK=$(ls /run/user/$(id -u greeter)/sway-ipc.*.sock | head -1)"
+    # `command ls`: the guest's shell aliases ls to eza with icons.
+    greeter_sway = (
+        "SWAYSOCK=$(command ls /run/user/$(id -u greeter)/sway-ipc.*.sock | head -1)"
+    )
     _, sway_inputs = sh.run(
         f"{greeter_sway} swaymsg -t get_inputs -r"
         " | python3 -c 'import json, sys;"
@@ -320,7 +330,8 @@ def sway_socket(shell, uid, timeout=180):
     deadline = time.monotonic() + timeout
     while True:
         rc, out = shell.run(
-            f"ls /run/user/{uid}/sway-ipc.*.sock 2>/dev/null | head -1", quiet=True
+            f"command ls /run/user/{uid}/sway-ipc.*.sock 2>/dev/null | head -1",
+            quiet=True,
         )
         if rc == 0 and out.strip():
             return out.strip()
