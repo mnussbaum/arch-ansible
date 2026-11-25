@@ -299,13 +299,30 @@ def login_diagnostics(vm):
 
 def log_out(shell, user, timeout=120):
     """End `user`'s sessions, wait for homed to lock the home, then restart
-    greetd for a fresh greeter."""
-    shell.run(f"loginctl terminate-user {shlex.quote(user)}", check=True)
+    greetd for a fresh greeter.
+
+    Processes started as `user` with runuser (gpg-agent, language servers)
+    live outside their sessions, so terminate-user leaves them holding the
+    home open; they are killed too.
+    """
+    quoted = shlex.quote(user)
+    shell.run(f"loginctl terminate-user {quoted}", check=True)
+    shell.run(f"pkill -KILL -u {quoted}; true", check=True)
+
     deadline = time.monotonic() + timeout
-    while home_state(shell, user) != "inactive":
+    while (state := home_state(shell, user)) != "inactive":
         if time.monotonic() > deadline:
-            raise TimeoutError(f"the home of {user} still active after {timeout}s")
+            _, holders = shell.run(
+                f"ps -o pid,user,cgroup,args -u {quoted};"
+                " journalctl -b --no-pager -u systemd-homed -n 30",
+                quiet=True,
+            )
+            raise TimeoutError(
+                f"the home of {user} still {state} after {timeout}s:\n{holders}"
+            )
+
         time.sleep(2)
+
     restart_greeter(shell)
 
 

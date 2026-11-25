@@ -26,6 +26,7 @@ markers = [
   "install: stage 3, the medium's Installer writes an installable disk",
   "first_boot: stage 4, the installed disk's first and second boots",
   "session: stage 5, first login with a software token, pass, the desktop and nvim",
+  "update: stage 8, an A/B update from the previous image and a rollback",
 ]
 
 [tool.pyright]

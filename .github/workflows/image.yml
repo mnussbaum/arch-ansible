@@ -239,3 +239,99 @@ jobs:
             ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.png
             ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.ppm
             ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.txt
+
+  # Stage 8: install the previous successful main run's medium, update it to
+  # this run's image from the running system, then check a boot that never
+  # completes rolls back. Skipped, with the reason, when there's no previous
+  # medium to start from or it was signed with another CI identity.
+  ab-update:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+    container:
+      image: archlinux:latest
+      options: --device /dev/kvm --privileged
+    env:
+      ARCH_ANSIBLE_CACHE: /var/cache/arch-ansible
+      SHARE: /var/tmp/update-share
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Install tools
+        run: >-
+          pacman -Syu --noconfirm --needed
+          git python uv qemu-desktop edk2-ovmf swtpm virt-firmware virtiofsd
+          zstd imagemagick gnupg jq github-cli
+
+      - uses: actions/checkout@v5
+
+      - name: Trust the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Restore the CI identity
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.IDENTITY }}
+          key: ci-identity-v1
+          fail-on-cache-miss: true
+
+      # The newest successful image run on main other than this one, if its
+      # medium is still kept and was signed with this run's identity.
+      - name: Fetch the previous medium
+        run: |
+          relative=$(realpath -m --relative-to=/home/runner/work/arch-ansible/arch-ansible "$IDENTITY")
+          identity=$(realpath -m "$GITHUB_WORKSPACE/$relative")
+          echo "ARCH_ANSIBLE_CI_IDENTITY=$identity" >> "$GITHUB_ENV"
+          previous=$(gh run list -R "$GITHUB_REPOSITORY" --workflow image.yml --branch main \
+            --status success --limit 10 --json databaseId \
+            --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)][0].databaseId // empty")
+          reason=""
+          if [[ -z $previous ]]; then
+            reason="no earlier successful image run on main"
+          elif ! gh run download "$previous" -R "$GITHUB_REPOSITORY" -n medium -D /tmp/medium; then
+            reason="run $previous's medium is no longer kept"
+          elif [[ $(jq -r .secureboot_cert_sha256 /tmp/medium/identity.json) \
+              != $(jq -r .secureboot_cert_sha256 "$identity/manifest.json") ]]; then
+            reason="run $previous was signed with another CI identity"
+          fi
+          if [[ -n $reason ]]; then
+            echo "::notice title=A/B update skipped::$reason"
+            echo "ARCH_ANSIBLE_CI_UPDATE_SKIP=$reason" >> "$GITHUB_ENV"
+            rm -rf /tmp/medium
+            exit 0
+          fi
+          echo "Updating from run $previous"
+          images=$ARCH_ANSIBLE_CACHE/mkosi/images/image
+          mkdir -p "$images" "$ARCH_ANSIBLE_CACHE/mkosi-secureboot"
+          for packed in /tmp/medium/*.raw.zst; do
+            zstd -d -q --sparse "$packed" -o "$images/$(basename "$packed" .zst)"
+          done
+          cp /tmp/medium/secureboot.crt "$ARCH_ANSIBLE_CACHE/mkosi-secureboot/mkosi.crt"
+          rm -rf /tmp/medium
+
+      # Shared into the VM, laid out where update-system --no-build looks.
+      - name: Download this run's split artifacts
+        if: env.ARCH_ANSIBLE_CI_UPDATE_SKIP == ''
+        uses: actions/download-artifact@v4
+        with:
+          name: split-artifacts
+          path: ${{ env.SHARE }}/mkosi/images/image
+
+      - name: Update and roll back
+        run: |
+          [[ -n ${ARCH_ANSIBLE_CI_UPDATE_SKIP:-} ]] || export ARCH_ANSIBLE_CI_UPDATE=$SHARE
+          bin/ci test update
+
+      - name: Keep the VM logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ab-update-logs
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.log
+            ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.png
+            ${{ env.ARCH_ANSIBLE_CACHE }}/mkosi/images/image/vm/*.ppm
